@@ -22,3 +22,4 @@ update:
 	git -C $(GCCGIT) describe --abbrev=10 --match 'releases/*' $(GCCBRANCH) > REVISION
 	$(MAKE) bumpnogit
 	git commit -m "stable update to `cat REVISION`" -a
+	test -n "$(NO_KOJI)" || $(MAKE) koji-nowait
