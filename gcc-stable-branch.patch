@@ -1,4 +1,4 @@
-Alex Coplan (7):
+Alex Coplan (8):
       aarch64: Fix SVE ACLE builtins with LTO [PR99216]
       arm: Fix PCS for SFmode -> SImode libcalls [PR99748]
       arm: Various MVE vec_duplicate fixes [PR99647]
@@ -6,6 +6,7 @@ Alex Coplan (7):
       aarch64: Avoid duplicating bti j insns for jump tables [PR99988]
       arm: Fix ICEs with compare-and-swap and -march=armv8-m.base [PR99977]
       arm: Fix wrong code with MVE V2DImode loads and stores [PR99960]
+      arm: Avoid emitting bogus CFA adjusts for CMSE nonsecure calls [PR99725]
 
 Andre Vieira (1):
       arm: Fix testisms introduced with fix for pr target/95646
@@ -31,7 +32,14 @@ François Dumont (3):
       libstdc++: Fix unordered containers move constructors noexcept qualification
       libstdc++: [_GLIBCXX_DEBUG] Fix management of __dp_sign_max_size [PR 99402]
 
-GCC Administrator (48):
+GCC Administrator (55):
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -87,10 +95,11 @@ Geng Qi (1):
 Hafiz Abid Qadeer (1):
       [OpenACC] Fix an ICE where a loop with GT condition is collapsed.
 
-Harald Anlauf (3):
+Harald Anlauf (4):
       PR fortran/63797 - Bogus ambiguous reference to 'sqrt'
       PR fortran/100154 - ICE in gfc_conv_procedure_call, at fortran/trans-expr.c:6131
       PR fortran/100274 - ICE in gfc_conv_procedure_call, at fortran/trans-expr.c:6131
+      PR fortran/98411 - Pointless warning for static variables
 
 Iain Buclaw (1):
       d: Fix ICE in when formating a string with '%' or '`' characters (PR98457)
@@ -116,7 +125,7 @@ Jakub Jelinek (19):
       nvptx: Fix up nvptx build against latest libstdc++ [PR100375]
       libcpp: Fix up pragma preprocessing [PR100450]
 
-Jason Merrill (18):
+Jason Merrill (19):
       c++: lambda pack init-capture within generic lambda
       c++: NRV in lambda in template [PR91217]
       c++: PMF template parm and noexcept [PR90664]
@@ -135,6 +144,7 @@ Jason Merrill (18):
       c++: generic lambda in template fn with DMI [PR100054]
       c++: constexpr and volatile member function [PR80456]
       c++: designated init with anonymous union [PR100489]
+      c++: 'this' adjustment for devirtualized call
 
 Jonathan Wakely (24):
       libstdc++: Fix Doxygen warning about ambiguous file name
@@ -1681,10 +1691,19 @@ index 0719d810258..a9368325816 100644
 -10.3.0
 +10.3.1
 diff --git a/gcc/ChangeLog b/gcc/ChangeLog
-index 3b1384e707f..69c0ed7de35 100644
+index 3b1384e707f..1e957985333 100644
 --- a/gcc/ChangeLog
 +++ b/gcc/ChangeLog
-@@ -1,3 +1,602 @@
+@@ -1,3 +1,611 @@
++2021-06-01  Alex Coplan  <alex.coplan@arm.com>
++
++	Backported from master:
++	2021-05-11  Alex Coplan  <alex.coplan@arm.com>
++
++	PR target/99725
++	* config/arm/arm.c (cmse_nonsecure_call_inline_register_clear):
++	Avoid emitting CFA adjusts on the sp if we have the fp.
++
 +2021-05-25  Alex Coplan  <alex.coplan@arm.com>
 +
 +	Backported from master:
@@ -3531,7 +3550,7 @@ index 0a7145281fa..ff5b23d71b1 100644
      UNSPEC_COND_CMPGE_WIDE ; Used in aarch64-sve.md.
      UNSPEC_COND_CMPGT_WIDE ; Used in aarch64-sve.md.
 diff --git a/gcc/config/arm/arm.c b/gcc/config/arm/arm.c
-index db37e2b8e71..ed2ea53b8f7 100644
+index db37e2b8e71..8f8386c5770 100644
 --- a/gcc/config/arm/arm.c
 +++ b/gcc/config/arm/arm.c
 @@ -3850,7 +3850,7 @@ arm_options_perform_arch_sanity_checks (void)
@@ -3599,7 +3618,42 @@ index db37e2b8e71..ed2ea53b8f7 100644
  
        /* Values from double-precision helper functions are returned in core
  	 registers if the selected core only supports single-precision
-@@ -25242,7 +25267,7 @@ arm_hard_regno_mode_ok (unsigned int regno, machine_mode mode)
+@@ -18740,10 +18765,14 @@ cmse_nonsecure_call_inline_register_clear (void)
+ 		  imm = gen_int_mode (- lazy_store_stack_frame_size, SImode);
+ 		  add_insn = emit_insn (gen_addsi3 (stack_pointer_rtx,
+ 						    stack_pointer_rtx, imm));
+-		  arm_add_cfa_adjust_cfa_note (add_insn,
+-					       - lazy_store_stack_frame_size,
+-					       stack_pointer_rtx,
+-					       stack_pointer_rtx);
++		  /* If we have the frame pointer, then it will be the
++		     CFA reg.  Otherwise, the stack pointer is the CFA
++		     reg, so we need to emit a CFA adjust.  */
++		  if (!frame_pointer_needed)
++		    arm_add_cfa_adjust_cfa_note (add_insn,
++						 - lazy_store_stack_frame_size,
++						 stack_pointer_rtx,
++						 stack_pointer_rtx);
+ 		  emit_insn (gen_lazy_store_multiple_insn (stack_pointer_rtx));
+ 		}
+ 	      /* Save VFP callee-saved registers.  */
+@@ -18781,10 +18810,11 @@ cmse_nonsecure_call_inline_register_clear (void)
+ 		  rtx_insn *add_insn =
+ 		    emit_insn (gen_addsi3 (stack_pointer_rtx,
+ 					   stack_pointer_rtx, imm));
+-		  arm_add_cfa_adjust_cfa_note (add_insn,
+-					       lazy_store_stack_frame_size,
+-					       stack_pointer_rtx,
+-					       stack_pointer_rtx);
++		  if (!frame_pointer_needed)
++		    arm_add_cfa_adjust_cfa_note (add_insn,
++						 lazy_store_stack_frame_size,
++						 stack_pointer_rtx,
++						 stack_pointer_rtx);
+ 		}
+ 	      /* Restore VFP callee-saved registers.  */
+ 	      else
+@@ -25242,7 +25272,7 @@ arm_hard_regno_mode_ok (unsigned int regno, machine_mode mode)
      return false;
  
    if (IS_VPR_REGNUM (regno))
@@ -3608,7 +3662,7 @@ index db37e2b8e71..ed2ea53b8f7 100644
  
    if (TARGET_THUMB1)
      /* For the Thumb we only allow values bigger than SImode in
-@@ -27007,7 +27032,7 @@ cmse_nonsecure_entry_clear_before_return (void)
+@@ -27007,7 +27037,7 @@ cmse_nonsecure_entry_clear_before_return (void)
  	continue;
        if (IN_RANGE (regno, IP_REGNUM, PC_REGNUM))
  	continue;
@@ -3617,7 +3671,7 @@ index db37e2b8e71..ed2ea53b8f7 100644
  	  && (!IN_RANGE (regno, FIRST_VFP_REGNUM, LAST_VFP_REGNUM)
  	      || TARGET_HARD_FLOAT))
  	bitmap_set_bit (to_clear_bitmap, regno);
-@@ -30470,13 +30495,31 @@ arm_split_compare_and_swap (rtx operands[])
+@@ -30470,13 +30500,31 @@ arm_split_compare_and_swap (rtx operands[])
      }
    else
      {
@@ -4824,10 +4878,17 @@ index a6dc1156994..128e481e89c 100644
    if ((flags & (ISA_3_1_MASKS_SERVER & ~ISA_3_0_MASKS_SERVER)) != 0)
      return "power10";
 diff --git a/gcc/cp/ChangeLog b/gcc/cp/ChangeLog
-index b576f9a3678..71d26dacdaa 100644
+index b576f9a3678..af7cb07df79 100644
 --- a/gcc/cp/ChangeLog
 +++ b/gcc/cp/ChangeLog
-@@ -1,3 +1,295 @@
+@@ -1,3 +1,302 @@
++2021-06-01  Jason Merrill  <jason@redhat.com>
++
++	PR c++/100797
++	PR c++/95719
++	* call.c (build_over_call): Adjust base_binfo in
++	resolves_to_fixed_type_p case.
++
 +2021-05-20  Jason Merrill  <jason@redhat.com>
 +
 +	PR c++/100489
@@ -5124,7 +5185,7 @@ index b576f9a3678..71d26dacdaa 100644
  
  	* GCC 10.3.0 released.
 diff --git a/gcc/cp/call.c b/gcc/cp/call.c
-index aa8d84fa90c..c403243be50 100644
+index aa8d84fa90c..87598974b6b 100644
 --- a/gcc/cp/call.c
 +++ b/gcc/cp/call.c
 @@ -1434,7 +1434,9 @@ standard_conversion (tree to, tree from, tree expr, bool c_cast_p,
@@ -5194,7 +5255,74 @@ index aa8d84fa90c..c403243be50 100644
      {
        conv_expr = build1 (IMPLICIT_CONV_EXPR, convs->type, expr);
        if (convs->kind != ck_ref_bind)
-@@ -10423,7 +10447,8 @@ build_new_method_call_1 (tree instance, tree fns, vec<tree, va_gc> **args,
+@@ -8738,19 +8762,6 @@ build_over_call (struct z_candidate *cand, int flags, tsubst_flags_t complain)
+ 	  || CLASSTYPE_FINAL (TYPE_METHOD_BASETYPE (TREE_TYPE (fn))))
+ 	flags |= LOOKUP_NONVIRTUAL;
+ 
+-      /* If we know the dynamic type of the object, look up the final overrider
+-	 in the BINFO.  */
+-      if (DECL_VINDEX (fn) && (flags & LOOKUP_NONVIRTUAL) == 0
+-	  && resolves_to_fixed_type_p (arg))
+-	{
+-	  tree binfo = cand->conversion_path;
+-	  if (BINFO_TYPE (binfo) != DECL_CONTEXT (fn))
+-	    binfo = lookup_base (binfo, DECL_CONTEXT (fn), ba_unique,
+-				 NULL, complain);
+-	  fn = lookup_vfn_in_binfo (DECL_VINDEX (fn), binfo);
+-	  flags |= LOOKUP_NONVIRTUAL;
+-	}
+-
+       /* [class.mfct.nonstatic]: If a nonstatic member function of a class
+ 	 X is called for an object that is not of type X, or of a type
+ 	 derived from X, the behavior is undefined.
+@@ -8760,10 +8771,6 @@ build_over_call (struct z_candidate *cand, int flags, tsubst_flags_t complain)
+       gcc_assert (TYPE_PTR_P (parmtype));
+       /* Convert to the base in which the function was declared.  */
+       gcc_assert (cand->conversion_path != NULL_TREE);
+-      converted_arg = build_base_path (PLUS_EXPR,
+-				       arg,
+-				       cand->conversion_path,
+-				       1, complain);
+       /* Check that the base class is accessible.  */
+       if (!accessible_base_p (TREE_TYPE (argtype),
+ 			      BINFO_TYPE (cand->conversion_path), true))
+@@ -8778,10 +8785,33 @@ build_over_call (struct z_candidate *cand, int flags, tsubst_flags_t complain)
+       /* If fn was found by a using declaration, the conversion path
+ 	 will be to the derived class, not the base declaring fn. We
+ 	 must convert from derived to base.  */
+-      base_binfo = lookup_base (TREE_TYPE (TREE_TYPE (converted_arg)),
++      base_binfo = lookup_base (cand->conversion_path,
+ 				TREE_TYPE (parmtype), ba_unique,
+ 				NULL, complain);
+-      converted_arg = build_base_path (PLUS_EXPR, converted_arg,
++
++      /* If we know the dynamic type of the object, look up the final overrider
++	 in the BINFO.  */
++      if (DECL_VINDEX (fn) && (flags & LOOKUP_NONVIRTUAL) == 0
++	  && resolves_to_fixed_type_p (arg))
++	{
++	  tree ov = lookup_vfn_in_binfo (DECL_VINDEX (fn), base_binfo);
++
++	  /* And unwind base_binfo to match.  If we don't find the type we're
++	     looking for in BINFO_INHERITANCE_CHAIN, we're looking at diamond
++	     inheritance; for now do a normal virtual call in that case.  */
++	  tree octx = DECL_CONTEXT (ov);
++	  tree obinfo = base_binfo;
++	  while (obinfo && !SAME_BINFO_TYPE_P (BINFO_TYPE (obinfo), octx))
++	    obinfo = BINFO_INHERITANCE_CHAIN (obinfo);
++	  if (obinfo)
++	    {
++	      fn = ov;
++	      base_binfo = obinfo;
++	      flags |= LOOKUP_NONVIRTUAL;
++	    }
++	}
++
++      converted_arg = build_base_path (PLUS_EXPR, arg,
+ 				       base_binfo, 1, complain);
+ 
+       argarray[j++] = converted_arg;
+@@ -10423,7 +10453,8 @@ build_new_method_call_1 (tree instance, tree fns, vec<tree, va_gc> **args,
  		  tree a = instance;
  		  if (TREE_THIS_VOLATILE (a))
  		    a = build_this (a);
@@ -6381,10 +6509,19 @@ index 991b26f3341..c4bffd0f199 100644
  					target, tmode, modifier, as);
        /* FALLTHRU */
 diff --git a/gcc/fortran/ChangeLog b/gcc/fortran/ChangeLog
-index aa5932be872..de53e5e9a43 100644
+index aa5932be872..2e2c07d9b75 100644
 --- a/gcc/fortran/ChangeLog
 +++ b/gcc/fortran/ChangeLog
-@@ -1,3 +1,56 @@
+@@ -1,3 +1,65 @@
++2021-05-28  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2021-05-17  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/98411
++	* trans-decl.c (gfc_finish_var_decl): Add check for explicit SAVE
++	attribute.
++
 +2021-05-05  Harald Anlauf  <anlauf@gmx.de>
 +
 +	Backported from master:
@@ -6620,6 +6757,18 @@ index 3175999dd4a..41ef75a0e0c 100644
  	  if ((allow_sections && gfc_peek_ascii_char () == '(')
  	      || (allow_derived && gfc_peek_ascii_char () == '%'))
  	    {
+diff --git a/gcc/fortran/trans-decl.c b/gcc/fortran/trans-decl.c
+index 529417fa8aa..bca15a51d99 100644
+--- a/gcc/fortran/trans-decl.c
++++ b/gcc/fortran/trans-decl.c
+@@ -737,6 +737,7 @@ gfc_finish_var_decl (tree decl, gfc_symbol * sym)
+   /* Keep variables larger than max-stack-var-size off stack.  */
+   if (!(sym->ns->proc_name && sym->ns->proc_name->attr.recursive)
+       && !sym->attr.automatic
++      && sym->attr.save != SAVE_EXPLICIT
+       && INTEGER_CST_P (DECL_SIZE_UNIT (decl))
+       && !gfc_can_put_var_on_stack (DECL_SIZE_UNIT (decl))
+ 	 /* Put variable length auto array pointers always into stack.  */
 diff --git a/gcc/fortran/trans-expr.c b/gcc/fortran/trans-expr.c
 index c2321a9ff5f..e35f3147a8e 100644
 --- a/gcc/fortran/trans-expr.c
@@ -7174,10 +7323,33 @@ index 99edad8a950..f33489286a9 100644
  
  #endif
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index 2913065bf31..c96f7f8d6d7 100644
+index 2913065bf31..4457c8ea3fa 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,666 @@
+@@ -1,3 +1,689 @@
++2021-06-01  Alex Coplan  <alex.coplan@arm.com>
++
++	Backported from master:
++	2021-05-11  Alex Coplan  <alex.coplan@arm.com>
++
++	PR target/99725
++	* gcc.target/arm/cmse/pr99725.c: New test.
++
++2021-06-01  Jason Merrill  <jason@redhat.com>
++
++	PR c++/100797
++	PR c++/95719
++	* g++.dg/inherit/virtual15.C: New test.
++	* g++.dg/inherit/virtual15a.C: New test.
++
++2021-05-28  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2021-05-17  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/98411
++	* gfortran.dg/pr98411.f90: New test.
++
 +2021-05-25  Alex Coplan  <alex.coplan@arm.com>
 +
 +	Backported from master:
@@ -8925,6 +9097,55 @@ index 00000000000..1f9d23845b4
 +  (b ? (x = 2) : y) = 1; // { dg-warning "using value of simple assignment" "" { target c++20 } }
 +  (b ? x : (y = 5)) = 1; // { dg-warning "using value of simple assignment" "" { target c++20 } }
 +}
+diff --git a/gcc/testsuite/g++.dg/inherit/virtual15.C b/gcc/testsuite/g++.dg/inherit/virtual15.C
+new file mode 100644
+index 00000000000..ebd8e3ad29b
+--- /dev/null
++++ b/gcc/testsuite/g++.dg/inherit/virtual15.C
+@@ -0,0 +1,18 @@
++// PR c++/100797
++// { dg-do run }
++
++bool ok = false;
++struct S1 { virtual ~S1() {} };
++struct S2 { virtual void f1() = 0; };
++struct S3: S1, S2 {
++    void f1() { f2(); }
++    virtual void f2() = 0;
++};
++struct S4: S3 {
++  void f2() { ok = true; }
++  using S2::f1;
++};
++int main() {
++  S4().f1();
++  if (!ok) __builtin_abort ();
++}
+diff --git a/gcc/testsuite/g++.dg/inherit/virtual15a.C b/gcc/testsuite/g++.dg/inherit/virtual15a.C
+new file mode 100644
+index 00000000000..6139385192d
+--- /dev/null
++++ b/gcc/testsuite/g++.dg/inherit/virtual15a.C
+@@ -0,0 +1,19 @@
++// PR c++/100797 plus diamond inheritance
++// { dg-do run }
++
++bool ok = false;
++struct S1 { virtual ~S1() {} };
++struct S2 { virtual void f1() = 0; };
++struct S3: S1, virtual S2 {
++    void f1() { f2(); }
++    virtual void f2() = 0;
++};
++struct SX: virtual S2 { };
++struct S4: SX, S3 {
++  void f2() { ok = true; }
++  using S2::f1;
++};
++int main() {
++  S4().f1();
++  if (!ok) __builtin_abort ();
++}
 diff --git a/gcc/testsuite/g++.dg/lookup/using66.C b/gcc/testsuite/g++.dg/lookup/using66.C
 new file mode 100644
 index 00000000000..02383bbea3e
@@ -10321,6 +10542,17 @@ index 00000000000..50d432db9b8
 +#include "pr99929_1.c"
 +
 +/* { dg-final { scan-assembler {\tptrue\tp[0-7].[bhsd], vl1\n} } } */
+diff --git a/gcc/testsuite/gcc.target/arm/cmse/pr99725.c b/gcc/testsuite/gcc.target/arm/cmse/pr99725.c
+new file mode 100644
+index 00000000000..284da184f96
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/arm/cmse/pr99725.c
+@@ -0,0 +1,5 @@
++/* { dg-do compile } */
++/* { dg-additional-options "-mcmse -g" } */
++typedef int __attribute__((cmse_nonsecure_call)) (*t)();
++t f;
++void g() { f(); }
 diff --git a/gcc/testsuite/gcc.target/arm/mve/intrinsics/vldrdq_gather_base_wb_s64.c b/gcc/testsuite/gcc.target/arm/mve/intrinsics/vldrdq_gather_base_wb_s64.c
 index 7420d0198e7..a9b1f81b62d 100644
 --- a/gcc/testsuite/gcc.target/arm/mve/intrinsics/vldrdq_gather_base_wb_s64.c
@@ -10817,6 +11049,28 @@ index 00000000000..1131e8167b1
 +  y% a = sqrt (x% a) + z - w + root (x% a)
 +  y% a = real_root (x% a)
 +end program test
+diff --git a/gcc/testsuite/gfortran.dg/pr98411.f90 b/gcc/testsuite/gfortran.dg/pr98411.f90
+new file mode 100644
+index 00000000000..249afaea419
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/pr98411.f90
+@@ -0,0 +1,16 @@
++! { dg-do compile }
++! { dg-options "-Wall -fautomatic -fmax-stack-var-size=100" }
++! PR fortran/98411 - Pointless warning for static variables 
++
++module try
++  implicit none
++  integer, save :: a(1000)
++contains
++  subroutine initmodule
++    real, save :: b(1000)
++    logical    :: c(1000) ! { dg-warning "moved from stack to static storage" }
++    a(1) = 42
++    b(2) = 3.14
++    c(3) = .true.
++  end subroutine initmodule
++end module try
 diff --git a/gcc/testsuite/gnat.dg/derived_type7.adb b/gcc/testsuite/gnat.dg/derived_type7.adb
 new file mode 100644
 index 00000000000..61e7abaa1d7
