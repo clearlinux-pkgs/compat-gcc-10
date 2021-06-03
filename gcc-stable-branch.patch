@@ -32,7 +32,8 @@ François Dumont (3):
       libstdc++: Fix unordered containers move constructors noexcept qualification
       libstdc++: [_GLIBCXX_DEBUG] Fix management of __dp_sign_max_size [PR 99402]
 
-GCC Administrator (55):
+GCC Administrator (56):
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -267,8 +268,14 @@ Tobias Burnus (3):
       OpenACC: Fix integer-type issue with collapse/tile [PR97880]
       Fortran/OpenMP: Fix var-list expr parsing with array/dt
 
-Uros Bizjak (1):
+Uros Bizjak (2):
       i386: Fix atomic FP peepholes [PR100182]
+      i386: Change abs<MMXMODEI:mode>2 to an expander.
+
+Vladimir N. Makarov (3):
+      [PR97969] LRA: Transform pattern `plus (plus (hard reg, const),	pseudo)` after elimination
+      [PR98722] LRA: Check that target has no 3-op add insn to transform 2 plus expression.
+      [PR98777] LRA: Use preliminary created pseudo for in LRA elimination subpass
 
 YiFei Zhu (2):
       bpf: align function entry point to 64 bits
@@ -1691,10 +1698,47 @@ index 0719d810258..a9368325816 100644
 -10.3.0
 +10.3.1
 diff --git a/gcc/ChangeLog b/gcc/ChangeLog
-index 3b1384e707f..1e957985333 100644
+index 3b1384e707f..5d6698fbc34 100644
 --- a/gcc/ChangeLog
 +++ b/gcc/ChangeLog
-@@ -1,3 +1,611 @@
+@@ -1,3 +1,648 @@
++2021-06-02  Vladimir N. Makarov  <vmakarov@redhat.com>
++
++	Backported from master:
++	2021-01-21  Vladimir N. Makarov  <vmakarov@redhat.com>
++
++	PR rtl-optimization/98777
++	* lra-int.h (lra_pmode_pseudo): New extern.
++	* lra.c (lra_pmode_pseudo): New global.
++	(lra): Set it up.
++	* lra-eliminations.c (eliminate_regs_in_insn): Use it.
++
++2021-06-02  Vladimir N. Makarov  <vmakarov@redhat.com>
++
++	Backported from master:
++	2021-01-20  Vladimir N. Makarov  <vmakarov@redhat.com>
++
++	PR rtl-optimization/98722
++	* lra-eliminations.c (eliminate_regs_in_insn): Check that target
++	has no 3-op add insn to transform insns containing two pluses.
++
++2021-06-02  Vladimir N. Makarov  <vmakarov@redhat.com>
++
++	Backported from master:
++	2021-01-12  Vladimir N. Makarov  <vmakarov@redhat.com>
++
++	PR target/97969
++	* lra-eliminations.c (eliminate_regs_in_insn): Add transformation
++	of pattern 'plus (plus (hard reg, const), pseudo)'.
++
++2021-06-02  Uros Bizjak  <ubizjak@gmail.com>
++
++	Backported from master:
++	2021-06-02  Uroš Bizjak  <ubizjak@gmail.com>
++
++	* config/i386/sse.md (abs<MMXMODEI:mode>2):
++	Change define_insn to define_expand.
++
 +2021-06-01  Alex Coplan  <alex.coplan@arm.com>
 +
 +	Backported from master:
@@ -4629,6 +4673,19 @@ index 2f838840e96..06ad1b2274e 100644
  	{
  	  /* The resulting diff will be a multiple of 16 lower than 255,
  	     i.e. at most 240 as required by the unwind data structure.  */
+diff --git a/gcc/config/i386/sse.md b/gcc/config/i386/sse.md
+index bf01e1d7426..04fc0426ed6 100644
+--- a/gcc/config/i386/sse.md
++++ b/gcc/config/i386/sse.md
+@@ -16927,7 +16927,7 @@
+    (set (attr "prefix_rex") (symbol_ref "x86_extended_reg_mentioned_p (insn)"))
+    (set_attr "mode" "DI,TI")])
+ 
+-(define_insn "abs<mode>2"
++(define_expand "abs<mode>2"
+   [(set (match_operand:MMXMODEI 0 "register_operand")
+ 	(abs:MMXMODEI
+ 	  (match_operand:MMXMODEI 1 "register_operand")))]
 diff --git a/gcc/config/i386/sync.md b/gcc/config/i386/sync.md
 index 502d5673789..545295dd3b1 100644
 --- a/gcc/config/i386/sync.md
@@ -6952,6 +7009,89 @@ index 7cc479b3042..f390c9ffed1 100644
      case LABEL_REF:
        return label_ref_label (x) == label_ref_label (y);
      case SYMBOL_REF:
+diff --git a/gcc/lra-eliminations.c b/gcc/lra-eliminations.c
+index cf745dc6a26..7c70cc00f1f 100644
+--- a/gcc/lra-eliminations.c
++++ b/gcc/lra-eliminations.c
+@@ -885,7 +885,7 @@ eliminate_regs_in_insn (rtx_insn *insn, bool replace_p, bool first_p,
+ 			poly_int64 update_sp_offset)
+ {
+   int icode = recog_memoized (insn);
+-  rtx old_set = single_set (insn);
++  rtx set, old_set = single_set (insn);
+   bool validate_p;
+   int i;
+   rtx substed_operand[MAX_RECOG_OPERANDS];
+@@ -1038,6 +1038,35 @@ eliminate_regs_in_insn (rtx_insn *insn, bool replace_p, bool first_p,
+   for (i = 0; i < static_id->n_dups; i++)
+     *id->dup_loc[i] = substed_operand[(int) static_id->dup_num[i]];
+ 
++  /* Transform plus (plus (hard reg, const), pseudo) to plus (plus (pseudo,
++     const), hard reg) in order to keep insn containing eliminated register
++     after all reloads calculating its offset.  This permits to keep register
++     pressure under control and helps to avoid LRA cycling in patalogical
++     cases.  */
++  if (! replace_p && (set = single_set (insn)) != NULL
++      && GET_CODE (SET_SRC (set)) == PLUS
++      && GET_CODE (XEXP (SET_SRC (set), 0)) == PLUS)
++    {
++      rtx reg1, reg2, op1, op2;
++      
++      reg1 = op1 = XEXP (XEXP (SET_SRC (set), 0), 0);
++      reg2 = op2 = XEXP (SET_SRC (set), 1);
++      if (GET_CODE (reg1) == SUBREG)
++	reg1 = SUBREG_REG (reg1);
++      if (GET_CODE (reg2) == SUBREG)
++	reg2 = SUBREG_REG (reg2);
++      if (REG_P (reg1) && REG_P (reg2)
++	  && REGNO (reg1) < FIRST_PSEUDO_REGISTER
++	  && REGNO (reg2) >= FIRST_PSEUDO_REGISTER
++	  && GET_MODE (reg1) == Pmode
++	  && !have_addptr3_insn (lra_pmode_pseudo, reg1,
++				 XEXP (XEXP (SET_SRC (set), 0), 1)))
++	{
++	  XEXP (XEXP (SET_SRC (set), 0), 0) = op2;
++	  XEXP (SET_SRC (set), 1) = op1;
++	}
++    }
++
+   /* If we had a move insn but now we don't, re-recognize it.
+      This will cause spurious re-recognition if the old move had a
+      PARALLEL since the new one still will, but we can't call
+diff --git a/gcc/lra-int.h b/gcc/lra-int.h
+index 01fcbfa2664..c24a98fc244 100644
+--- a/gcc/lra-int.h
++++ b/gcc/lra-int.h
+@@ -326,6 +326,7 @@ extern void lra_register_new_scratch_op (rtx_insn *, int, int);
+ extern int lra_new_regno_start;
+ extern int lra_constraint_new_regno_start;
+ extern int lra_bad_spill_regno_start;
++extern rtx lra_pmode_pseudo;
+ extern bitmap_head lra_inheritance_pseudos;
+ extern bitmap_head lra_split_regs;
+ extern bitmap_head lra_subreg_reload_pseudos;
+diff --git a/gcc/lra.c b/gcc/lra.c
+index 3543ce3993c..2d40471a4a1 100644
+--- a/gcc/lra.c
++++ b/gcc/lra.c
+@@ -2306,6 +2306,9 @@ int lra_constraint_new_regno_start;
+    it is possible.  */
+ int lra_bad_spill_regno_start;
+ 
++/* A pseudo of Pmode.  */
++rtx lra_pmode_pseudo;
++
+ /* Inheritance pseudo regnos before the new spill pass.	 */
+ bitmap_head lra_inheritance_pseudos;
+ 
+@@ -2366,6 +2369,7 @@ lra (FILE *f)
+ 
+   lra_dump_file = f;
+   lra_asm_error_p = false;
++  lra_pmode_pseudo = gen_reg_rtx (Pmode);
+   
+   timevar_push (TV_LRA);
+ 
 diff --git a/gcc/lto-streamer.h b/gcc/lto-streamer.h
 index 03440f0254c..7ac3b63fd33 100644
 --- a/gcc/lto-streamer.h
@@ -7323,10 +7463,34 @@ index 99edad8a950..f33489286a9 100644
  
  #endif
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index 2913065bf31..4457c8ea3fa 100644
+index 2913065bf31..96678b88823 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,689 @@
+@@ -1,3 +1,713 @@
++2021-06-02  Vladimir N. Makarov  <vmakarov@redhat.com>
++
++	Backported from master:
++	2021-01-21  Vladimir N. Makarov  <vmakarov@redhat.com>
++
++	PR rtl-optimization/98777
++	* gcc.target/riscv/pr98777.c: New.
++
++2021-06-02  Vladimir N. Makarov  <vmakarov@redhat.com>
++
++	Backported from master:
++	2021-01-20  Vladimir N. Makarov  <vmakarov@redhat.com>
++
++	PR rtl-optimization/98722
++	* g++.target/s390/pr98722.C: New.
++
++2021-06-02  Vladimir N. Makarov  <vmakarov@redhat.com>
++
++	Backported from master:
++	2021-01-12  Vladimir N. Makarov  <vmakarov@redhat.com>
++
++	PR target/97969
++	* gcc.target/arm/pr97969.c: New.
++
 +2021-06-01  Alex Coplan  <alex.coplan@arm.com>
 +
 +	Backported from master:
@@ -9540,6 +9704,24 @@ index 00000000000..61a58a7fcf4
 +#include <arm_sve.h>
 +bool a;
 +int main() { a = svaddv(svptrue_b8(), svdup_s8(0)); }
+diff --git a/gcc/testsuite/g++.target/s390/pr98722.C b/gcc/testsuite/g++.target/s390/pr98722.C
+new file mode 100644
+index 00000000000..64edaf3de21
+--- /dev/null
++++ b/gcc/testsuite/g++.target/s390/pr98722.C
+@@ -0,0 +1,12 @@
++// { dg-do compile }
++// { dg-options "-Og -fno-tree-fre -fno-split-wide-types" }
++struct B {
++  virtual void Method();
++};
++typedef void (B::*fn_type_a)();
++
++int main() {
++  fn_type_a f(&B::Method);
++  B b;
++  (b.*f)();
++}
 diff --git a/gcc/testsuite/gcc.c-torture/compile/pr96796.c b/gcc/testsuite/gcc.c-torture/compile/pr96796.c
 new file mode 100644
 index 00000000000..8808e62fe77
@@ -10664,6 +10846,66 @@ index 00000000000..cde1b2d9d36
 +  __asm__ ("" : : : "r9");
 +  return 1;
 +}
+diff --git a/gcc/testsuite/gcc.target/arm/pr97969.c b/gcc/testsuite/gcc.target/arm/pr97969.c
+new file mode 100644
+index 00000000000..714a1d18870
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/arm/pr97969.c
+@@ -0,0 +1,54 @@
++/* { dg-do compile } */
++/* { dg-options "-std=c99 -fno-omit-frame-pointer -mthumb -w -Os" } */
++
++typedef a[23];
++enum { b };
++typedef struct {
++  int c;
++  char *e;
++  char f
++} d;
++typedef enum { g = 1 } h;
++typedef struct {
++  h i;
++  int j
++} k;
++typedef struct {
++  a l;
++  int a;
++  int m;
++  int n;
++  int o;
++  short p;
++  int q;
++  k r;
++  char e;
++  char *s;
++  d t;
++  d *u;
++  short v;
++  int w
++} aa;
++c(char x, int y, char z, int ab) {
++  aa ac;
++  ac.r.i = 0;
++  d ad;
++  ac.t = ad;
++  ac.u = 0;
++  ae(&ac.v, 0, 0);
++  ac.w = 0;
++  af(&ac, x + y, z, z + ab);
++  if (ag(0))
++    return 0;
++  if (x)
++    ac.s = z + ab;
++  else
++    ac.s = x + y;
++  ac.o |= g;
++  if (!setjmp()) {
++    ah(ac);
++    ai(b);
++    ac.e = z + ab;
++    aj(ac);
++  }
++}
 diff --git a/gcc/testsuite/gcc.target/arm/pr99977.c b/gcc/testsuite/gcc.target/arm/pr99977.c
 new file mode 100644
 index 00000000000..db330e4a4a3
@@ -10867,6 +11109,43 @@ index 00000000000..c487fbc403e
 +
 +  __trampoline_setup (tramp, SIZE, 0, 0);
 +  return 0;
++}
+diff --git a/gcc/testsuite/gcc.target/riscv/pr98777.c b/gcc/testsuite/gcc.target/riscv/pr98777.c
+new file mode 100644
+index 00000000000..ea2c2f9ca64
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/riscv/pr98777.c
+@@ -0,0 +1,31 @@
++/* { dg-do compile } */
++/* { dg-options "-fstrict-aliasing -O" } */
++
++typedef struct {
++  _Complex e;
++  _Complex f;
++  _Complex g;
++  _Complex h;
++  _Complex i;
++  _Complex j;
++  _Complex k;
++  _Complex l;
++  _Complex m;
++  _Complex n;
++  _Complex o;
++  _Complex p;
++} Scl16;
++
++Scl16 g1sScl16, g2sScl16, g3sScl16, g4sScl16, g5sScl16, g6sScl16, g7sScl16,
++    g8sScl16, g9sScl16, g10sScl16, g11sScl16, g12sScl16, g13sScl16, g14sScl16,
++    g15sScl16, g16sScl16;
++
++void testvaScl16();
++
++void
++testitScl16() {
++  testvaScl16(g10sScl16, g11sScl16, g12sScl16, g13sScl16, g14sScl16, g1sScl16,
++              g2sScl16, g3sScl16, g4sScl16, g5sScl16, g6sScl16, g7sScl16,
++              g8sScl16, g9sScl16, g10sScl16, g11sScl16, g12sScl16, g13sScl16,
++              g14sScl16, g15sScl16, g16sScl16);
 +}
 diff --git a/gcc/testsuite/gdc.dg/pr98457.d b/gcc/testsuite/gdc.dg/pr98457.d
 new file mode 100644
