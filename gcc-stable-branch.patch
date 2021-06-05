@@ -1,4 +1,4 @@
-Alex Coplan (8):
+Alex Coplan (9):
       aarch64: Fix SVE ACLE builtins with LTO [PR99216]
       arm: Fix PCS for SFmode -> SImode libcalls [PR99748]
       arm: Various MVE vec_duplicate fixes [PR99647]
@@ -7,6 +7,7 @@ Alex Coplan (8):
       arm: Fix ICEs with compare-and-swap and -march=armv8-m.base [PR99977]
       arm: Fix wrong code with MVE V2DImode loads and stores [PR99960]
       arm: Avoid emitting bogus CFA adjusts for CMSE nonsecure calls [PR99725]
+      arm: Fix ICE with CMSE nonsecure calls on Armv8.1-M [PR100333]
 
 Andre Vieira (1):
       arm: Fix testisms introduced with fix for pr target/95646
@@ -32,7 +33,8 @@ François Dumont (3):
       libstdc++: Fix unordered containers move constructors noexcept qualification
       libstdc++: [_GLIBCXX_DEBUG] Fix management of __dp_sign_max_size [PR 99402]
 
-GCC Administrator (57):
+GCC Administrator (58):
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -97,14 +99,16 @@ Geng Qi (1):
 Hafiz Abid Qadeer (1):
       [OpenACC] Fix an ICE where a loop with GT condition is collapsed.
 
-Harald Anlauf (4):
+Harald Anlauf (5):
       PR fortran/63797 - Bogus ambiguous reference to 'sqrt'
       PR fortran/100154 - ICE in gfc_conv_procedure_call, at fortran/trans-expr.c:6131
       PR fortran/100274 - ICE in gfc_conv_procedure_call, at fortran/trans-expr.c:6131
       PR fortran/98411 - Pointless warning for static variables
+      Fortran - ICE in inline_matmul_assign
 
-Iain Buclaw (1):
+Iain Buclaw (2):
       d: Fix ICE in when formating a string with '%' or '`' characters (PR98457)
+      d: Fix ICE in gimplify_var_or_parm_decl, at gimplify.c:2755 (PR100882)
 
 Jakub Jelinek (19):
       rs6000: Fix up libgcc ABI when built with --with-long-double-format=ieee [PR97653]
@@ -1705,10 +1709,19 @@ index 0719d810258..a9368325816 100644
 -10.3.0
 +10.3.1
 diff --git a/gcc/ChangeLog b/gcc/ChangeLog
-index 3b1384e707f..5d6698fbc34 100644
+index 3b1384e707f..67cb619d8b3 100644
 --- a/gcc/ChangeLog
 +++ b/gcc/ChangeLog
-@@ -1,3 +1,648 @@
+@@ -1,3 +1,657 @@
++2021-06-04  Alex Coplan  <alex.coplan@arm.com>
++
++	Backported from master:
++	2021-05-19  Alex Coplan  <alex.coplan@arm.com>
++
++	PR target/100333
++	* config/arm/arm.md (nonsecure_call_internal): Always ensure
++	callee's address is in a register.
++
 +2021-06-02  Vladimir N. Makarov  <vmakarov@redhat.com>
 +
 +	Backported from master:
@@ -3758,6 +3771,40 @@ index db37e2b8e71..8f8386c5770 100644
      }
  
    arm_emit_store_exclusive (mode, neg_bval, mem, newval, use_release);
+diff --git a/gcc/config/arm/arm.md b/gcc/config/arm/arm.md
+index 55ba92fe39a..a8ee9e1afab 100644
+--- a/gcc/config/arm/arm.md
++++ b/gcc/config/arm/arm.md
+@@ -8579,18 +8579,21 @@
+ 	      (use (match_operand 2 "" ""))
+ 	      (clobber (reg:SI LR_REGNUM))])]
+   "use_cmse"
+-  "
+   {
++    rtx addr = XEXP (operands[0], 0);
++    rtx tmp = REG_P (addr) ? addr : force_reg (SImode, addr);
++
+     if (!TARGET_HAVE_FPCXT_CMSE)
+       {
+-	rtx tmp =
+-	  copy_to_suggested_reg (XEXP (operands[0], 0),
+-				 gen_rtx_REG (SImode, R4_REGNUM),
+-				 SImode);
+-
+-	operands[0] = replace_equiv_address (operands[0], tmp);
++	rtx r4 = gen_rtx_REG (SImode, R4_REGNUM);
++	emit_move_insn (r4, tmp);
++	tmp = r4;
+       }
+-  }")
++
++    if (tmp != addr)
++      operands[0] = replace_equiv_address (operands[0], tmp);
++  }
++)
+ 
+ (define_insn "*call_reg_armv5"
+   [(call (mem:SI (match_operand:SI 0 "s_register_operand" "r"))
 diff --git a/gcc/config/arm/arm_mve.h b/gcc/config/arm/arm_mve.h
 index 449219e90fc..1132c7cf87d 100644
 --- a/gcc/config/arm/arm_mve.h
@@ -6333,10 +6380,24 @@ index 53e9603868d..5ecedef0bb4 100644
        return DEBUG_IMPLICIT_PTR_DECL (x)
  	     == DEBUG_IMPLICIT_PTR_DECL (y);
 diff --git a/gcc/d/ChangeLog b/gcc/d/ChangeLog
-index 8bc729ae32d..afe5976027b 100644
+index 8bc729ae32d..f59978bbdfd 100644
 --- a/gcc/d/ChangeLog
 +++ b/gcc/d/ChangeLog
-@@ -1,3 +1,14 @@
+@@ -1,3 +1,28 @@
++2021-06-04  Iain Buclaw  <ibuclaw@gdcproject.org>
++
++	Backported from master:
++	2021-06-04  Iain Buclaw  <ibuclaw@gdcproject.org>
++
++	PR d/100882
++	* d-codegen.cc (build_assign): Construct initializations inside
++	TARGET_EXPR_INITIAL.
++	(compound_expr): Remove intermediate expressions that have no
++	side-effects.
++	(return_expr): Construct returns inside TARGET_EXPR_INITIAL.
++	* expr.cc (ExprVisitor::visit (CallExp *)): Remove useless assignment
++	to TARGET_EXPR_SLOT.
++
 +2021-04-19  Iain Buclaw  <ibuclaw@gdcproject.org>
 +
 +	Backported from master:
@@ -6351,6 +6412,84 @@ index 8bc729ae32d..afe5976027b 100644
  2021-04-08  Release Manager
  
  	* GCC 10.3.0 released.
+diff --git a/gcc/d/d-codegen.cc b/gcc/d/d-codegen.cc
+index 8042f03f369..54fee00eb5b 100644
+--- a/gcc/d/d-codegen.cc
++++ b/gcc/d/d-codegen.cc
+@@ -1269,6 +1269,7 @@ component_ref (tree object, tree field)
+ tree
+ build_assign (tree_code code, tree lhs, tree rhs)
+ {
++  tree result;
+   tree init = stabilize_expr (&lhs);
+   init = compound_expr (init, stabilize_expr (&rhs));
+ 
+@@ -1287,22 +1288,27 @@ build_assign (tree_code code, tree lhs, tree rhs)
+   if (TREE_CODE (rhs) == TARGET_EXPR)
+     {
+       /* If CODE is not INIT_EXPR, can't initialize LHS directly,
+-	 since that would cause the LHS to be constructed twice.
+-	 So we force the TARGET_EXPR to be expanded without a target.  */
++	 since that would cause the LHS to be constructed twice.  */
+       if (code != INIT_EXPR)
+ 	{
+ 	  init = compound_expr (init, rhs);
+-	  rhs = TARGET_EXPR_SLOT (rhs);
++	  result = build_assign (code, lhs, TARGET_EXPR_SLOT (rhs));
+ 	}
+       else
+ 	{
+ 	  d_mark_addressable (lhs);
+-	  rhs = TARGET_EXPR_INITIAL (rhs);
++	  TARGET_EXPR_INITIAL (rhs) = build_assign (code, lhs,
++						    TARGET_EXPR_INITIAL (rhs));
++	  result = rhs;
+ 	}
+     }
++  else
++    {
++      /* Simple assignment.  */
++      result = fold_build2_loc (input_location, code,
++				TREE_TYPE (lhs), lhs, rhs);
++    }
+ 
+-  tree result = fold_build2_loc (input_location, code,
+-				 TREE_TYPE (lhs), lhs, rhs);
+   return compound_expr (init, result);
+ }
+ 
+@@ -1424,6 +1430,11 @@ compound_expr (tree arg0, tree arg1)
+   if (arg0 == NULL_TREE || !TREE_SIDE_EFFECTS (arg0))
+     return arg1;
+ 
++  /* Remove intermediate expressions that have no side-effects.  */
++  while (TREE_CODE (arg0) == COMPOUND_EXPR
++	 && !TREE_SIDE_EFFECTS (TREE_OPERAND (arg0, 1)))
++    arg0 = TREE_OPERAND (arg0, 0);
++
+   if (TREE_CODE (arg1) == TARGET_EXPR)
+     {
+       /* If the rhs is a TARGET_EXPR, then build the compound expression
+@@ -1444,6 +1455,19 @@ compound_expr (tree arg0, tree arg1)
+ tree
+ return_expr (tree ret)
+ {
++  /* Same as build_assign, the DECL_RESULT assignment replaces the temporary
++     in TARGET_EXPR_SLOT.  */
++  if (ret != NULL_TREE && TREE_CODE (ret) == TARGET_EXPR)
++    {
++      tree exp = TARGET_EXPR_INITIAL (ret);
++      tree init = stabilize_expr (&exp);
++
++      exp = fold_build1_loc (input_location, RETURN_EXPR, void_type_node, exp);
++      TARGET_EXPR_INITIAL (ret) = compound_expr (init, exp);
++
++      return ret;
++    }
++
+   return fold_build1_loc (input_location, RETURN_EXPR,
+ 			  void_type_node, ret);
+ }
 diff --git a/gcc/d/d-diagnostic.cc b/gcc/d/d-diagnostic.cc
 index 6af35f71c31..dbe6bc1bb7b 100644
 --- a/gcc/d/d-diagnostic.cc
@@ -6456,6 +6595,27 @@ index 6af35f71c31..dbe6bc1bb7b 100644
        else
  	xformat = xasprintf ("%s", format);
  
+diff --git a/gcc/d/expr.cc b/gcc/d/expr.cc
+index ad2255e1cd1..2e70bf3a8e7 100644
+--- a/gcc/d/expr.cc
++++ b/gcc/d/expr.cc
+@@ -1870,15 +1870,10 @@ public:
+       exp = d_convert (build_ctype (e->type), exp);
+ 
+     /* If this call was found to be a constructor for a temporary with a
+-       cleanup, then move the call inside the TARGET_EXPR.  The original
+-       initializer is turned into an assignment, to keep its side effect.  */
++       cleanup, then move the call inside the TARGET_EXPR.  */
+     if (cleanup != NULL_TREE)
+       {
+ 	tree init = TARGET_EXPR_INITIAL (cleanup);
+-	tree slot = TARGET_EXPR_SLOT (cleanup);
+-	d_mark_addressable (slot);
+-	init = build_assign (INIT_EXPR, slot, init);
+-
+ 	TARGET_EXPR_INITIAL (cleanup) = compound_expr (init, exp);
+ 	exp = cleanup;
+       }
 diff --git a/gcc/doc/cpp.texi b/gcc/doc/cpp.texi
 index 33f876ab706..b24b5f4444e 100644
 --- a/gcc/doc/cpp.texi
@@ -6573,10 +6733,20 @@ index 991b26f3341..c4bffd0f199 100644
  					target, tmode, modifier, as);
        /* FALLTHRU */
 diff --git a/gcc/fortran/ChangeLog b/gcc/fortran/ChangeLog
-index aa5932be872..2e2c07d9b75 100644
+index aa5932be872..237e27bafa9 100644
 --- a/gcc/fortran/ChangeLog
 +++ b/gcc/fortran/ChangeLog
-@@ -1,3 +1,65 @@
+@@ -1,3 +1,75 @@
++2021-06-04  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2021-06-04  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/99839
++	* frontend-passes.c (inline_matmul_assign): Do not inline matmul
++	if the assignment to the resulting array if it is not of canonical
++	type (real/integer/complex/logical).
++
 +2021-05-28  Harald Anlauf  <anlauf@gmx.de>
 +
 +	Backported from master:
@@ -6722,6 +6892,30 @@ index ca6f582625d..ff87a0ceff8 100644
      return false;
  
    return true;
+diff --git a/gcc/fortran/frontend-passes.c b/gcc/fortran/frontend-passes.c
+index 5e768b12854..14c23dc3033 100644
+--- a/gcc/fortran/frontend-passes.c
++++ b/gcc/fortran/frontend-passes.c
+@@ -3919,6 +3919,19 @@ inline_matmul_assign (gfc_code **c, int *walk_subtrees,
+   if (m_case == none)
+     return 0;
+ 
++  /* We only handle assignment to numeric or logical variables.  */
++  switch(expr1->ts.type)
++    {
++    case BT_INTEGER:
++    case BT_LOGICAL:
++    case BT_REAL:
++    case BT_COMPLEX:
++      break;
++
++    default:
++      return 0;
++    }
++
+   ns = insert_block ();
+ 
+   /* Assign the type of the zero expression for initializing the resulting
 diff --git a/gcc/fortran/interface.c b/gcc/fortran/interface.c
 index 70219a537b9..1744a82798e 100644
 --- a/gcc/fortran/interface.c
@@ -7470,10 +7664,37 @@ index 99edad8a950..f33489286a9 100644
  
  #endif
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index 2913065bf31..96678b88823 100644
+index 2913065bf31..43c85a04dce 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,713 @@
+@@ -1,3 +1,740 @@
++2021-06-04  Iain Buclaw  <ibuclaw@gdcproject.org>
++
++	Backported from master:
++	2021-06-04  Iain Buclaw  <ibuclaw@gdcproject.org>
++
++	PR d/100882
++	* gdc.dg/pr100882a.d: New test.
++	* gdc.dg/pr100882b.d: New test.
++	* gdc.dg/pr100882c.d: New test.
++	* gdc.dg/pr100882d.d: New test.
++
++2021-06-04  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2021-06-04  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/99839
++	* gfortran.dg/inline_matmul_25.f90: New test.
++
++2021-06-04  Alex Coplan  <alex.coplan@arm.com>
++
++	Backported from master:
++	2021-05-19  Alex Coplan  <alex.coplan@arm.com>
++
++	PR target/100333
++	* gcc.target/arm/cmse/pr100333.c: New test.
++
 +2021-06-02  Vladimir N. Makarov  <vmakarov@redhat.com>
 +
 +	Backported from master:
@@ -10731,6 +10952,19 @@ index 00000000000..50d432db9b8
 +#include "pr99929_1.c"
 +
 +/* { dg-final { scan-assembler {\tptrue\tp[0-7].[bhsd], vl1\n} } } */
+diff --git a/gcc/testsuite/gcc.target/arm/cmse/pr100333.c b/gcc/testsuite/gcc.target/arm/cmse/pr100333.c
+new file mode 100644
+index 00000000000..d8e3d809f73
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/arm/cmse/pr100333.c
+@@ -0,0 +1,7 @@
++/* { dg-do compile } */
++/* { dg-additional-options "-mcmse" } */
++typedef void __attribute__((cmse_nonsecure_call)) t(void);
++t g;
++void f() {
++  g();
++}
 diff --git a/gcc/testsuite/gcc.target/arm/cmse/pr99725.c b/gcc/testsuite/gcc.target/arm/cmse/pr99725.c
 new file mode 100644
 index 00000000000..284da184f96
@@ -11154,6 +11388,130 @@ index 00000000000..ea2c2f9ca64
 +              g8sScl16, g9sScl16, g10sScl16, g11sScl16, g12sScl16, g13sScl16,
 +              g14sScl16, g15sScl16, g16sScl16);
 +}
+diff --git a/gcc/testsuite/gdc.dg/pr100882a.d b/gcc/testsuite/gdc.dg/pr100882a.d
+new file mode 100644
+index 00000000000..d94baff97ac
+--- /dev/null
++++ b/gcc/testsuite/gdc.dg/pr100882a.d
+@@ -0,0 +1,21 @@
++// https://gcc.gnu.org/bugzilla/show_bug.cgi?id=100882
++// { dg-additional-options "-fmain" }
++// { dg-do run }
++
++__gshared int counter = 0;
++struct S100882
++{
++    this(int) { counter++; }
++    ~this() { counter++; }
++}
++static S100882 s;
++static this()
++{
++    s = cast(shared) S100882(0);
++    assert(counter == 2);
++}
++
++auto test100882()
++{
++    return cast(shared) S100882(0);
++}
+diff --git a/gcc/testsuite/gdc.dg/pr100882b.d b/gcc/testsuite/gdc.dg/pr100882b.d
+new file mode 100644
+index 00000000000..de92ab3bef1
+--- /dev/null
++++ b/gcc/testsuite/gdc.dg/pr100882b.d
+@@ -0,0 +1,35 @@
++// https://gcc.gnu.org/bugzilla/show_bug.cgi?id=100882
++// { dg-do compile }
++
++struct AllocatorList(Factory)
++{
++    Factory factory;
++    auto make(size_t n) { return factory(n); }
++    this(Factory plant)
++    {
++        factory = plant;
++    }
++}
++
++struct Region
++{
++    ~this()
++    {
++    }
++}
++
++auto mmapRegionList()
++{
++    struct Factory
++    {
++        this(size_t )
++        {
++        }
++        auto opCall(size_t )
++        {
++            return Region();
++        }
++    }
++    auto shop = Factory();
++    AllocatorList!Factory(shop);
++}
+diff --git a/gcc/testsuite/gdc.dg/pr100882c.d b/gcc/testsuite/gdc.dg/pr100882c.d
+new file mode 100644
+index 00000000000..deaa4b44a16
+--- /dev/null
++++ b/gcc/testsuite/gdc.dg/pr100882c.d
+@@ -0,0 +1,19 @@
++// https://gcc.gnu.org/bugzilla/show_bug.cgi?id=100882
++// { dg-do compile }
++
++auto iota(int, int)
++{
++    struct Result
++    {
++        this(int)
++        {
++        }
++    }
++    return Result();
++}
++
++auto iota(int end)
++{
++    int begin;
++    return iota(begin, end);
++}
+diff --git a/gcc/testsuite/gdc.dg/pr100882d.d b/gcc/testsuite/gdc.dg/pr100882d.d
+new file mode 100644
+index 00000000000..f4e6e4d3651
+--- /dev/null
++++ b/gcc/testsuite/gdc.dg/pr100882d.d
+@@ -0,0 +1,25 @@
++// https://gcc.gnu.org/bugzilla/show_bug.cgi?id=100882
++// { dg-do compile }
++
++struct CowArray
++{
++    this(this)
++    {
++    }
++}
++
++struct Tuple
++{
++    CowArray expand;
++}
++
++auto tuple(CowArray)
++{
++    return Tuple();
++}
++
++auto parseCharTerm()
++{
++    CowArray set;
++    return tuple(set);
++}
 diff --git a/gcc/testsuite/gdc.dg/pr98457.d b/gcc/testsuite/gdc.dg/pr98457.d
 new file mode 100644
 index 00000000000..bc0d8af5d4a
@@ -11236,6 +11594,21 @@ index 00000000000..5e9d5b214b2
 +!$omp target depend(out: y (2)) nowait
 +!$omp end target
 +
++end
+diff --git a/gcc/testsuite/gfortran.dg/inline_matmul_25.f90 b/gcc/testsuite/gfortran.dg/inline_matmul_25.f90
+new file mode 100644
+index 00000000000..df8ad06c123
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/inline_matmul_25.f90
+@@ -0,0 +1,9 @@
++! { dg-do compile }
++! { dg-options "-ffrontend-optimize" }
++! PR fortran/99839 - ICE in inline_matmul_assign
++
++program p
++  real :: x(3, 3) = 1.0
++  class(*), allocatable :: z(:, :)
++  z = matmul(x, x)
 +end
 diff --git a/gcc/testsuite/gfortran.dg/pr100154.f90 b/gcc/testsuite/gfortran.dg/pr100154.f90
 new file mode 100644
