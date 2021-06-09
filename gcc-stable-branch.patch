@@ -33,7 +33,11 @@ François Dumont (3):
       libstdc++: Fix unordered containers move constructors noexcept qualification
       libstdc++: [_GLIBCXX_DEBUG] Fix management of __dp_sign_max_size [PR 99402]
 
-GCC Administrator (58):
+GCC Administrator (62):
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -205,7 +209,7 @@ Martin Sebor (1):
 Michael Meissner (1):
       Backport fix for PR target/98952
 
-Patrick Palka (13):
+Patrick Palka (14):
       c++: Fix deduction with reference NTTP [PR83476]
       c++: Fix tsubsting CLASS_PLACEHOLDER_TEMPLATE [PR95434]
       c++: ICE in dependent_type_p with constrained auto [PR97052]
@@ -219,6 +223,7 @@ Patrick Palka (13):
       libstdc++: Implement P2259R1 changes [PR95983]
       libstdc++: Implement proposed resolution for LWG 3532
       libstdc++: Implement LWG 3517/3520 for join_view/transform_view
+      c++: tsubst_function_decl and excess arg levels [PR100102]
 
 Philippe Blain (1):
       libstdc++: Install libstdc++*-gdb.py more robustly [PR 99453]
@@ -4989,10 +4994,19 @@ index a6dc1156994..128e481e89c 100644
    if ((flags & (ISA_3_1_MASKS_SERVER & ~ISA_3_0_MASKS_SERVER)) != 0)
      return "power10";
 diff --git a/gcc/cp/ChangeLog b/gcc/cp/ChangeLog
-index b576f9a3678..af7cb07df79 100644
+index b576f9a3678..60fb0a323b4 100644
 --- a/gcc/cp/ChangeLog
 +++ b/gcc/cp/ChangeLog
-@@ -1,3 +1,302 @@
+@@ -1,3 +1,311 @@
++2021-06-07  Patrick Palka  <ppalka@redhat.com>
++
++	Backported from master:
++	2021-06-04  Patrick Palka  <ppalka@redhat.com>
++
++	PR c++/100102
++	* pt.c (tsubst_function_decl): Remove old code for reducing
++	args when it has excess levels.
++
 +2021-06-01  Jason Merrill  <jason@redhat.com>
 +
 +	PR c++/100797
@@ -6023,7 +6037,7 @@ index 1f4a28ff7c0..f48c856fa94 100644
  		       && DECL_INITIAL (decl))
  		/* Add DECL to the queue of NSDMI to be parsed later.  */
 diff --git a/gcc/cp/pt.c b/gcc/cp/pt.c
-index d329c0128ba..5a957141ba3 100644
+index d329c0128ba..7ce9ac234f8 100644
 --- a/gcc/cp/pt.c
 +++ b/gcc/cp/pt.c
 @@ -63,7 +63,6 @@ static GTY(()) struct pending_template *last_pending_template;
@@ -6185,7 +6199,53 @@ index d329c0128ba..5a957141ba3 100644
      }
  
    gcc_assert (len >= 0);
-@@ -14216,6 +14277,19 @@ enclosing_instantiation_of (tree otctx)
+@@ -13750,45 +13811,6 @@ tsubst_function_decl (tree t, tree args, tsubst_flags_t complain,
+ 	  if (tree spec = retrieve_specialization (gen_tmpl, argvec, hash))
+ 	    return spec;
+ 	}
+-
+-      /* We can see more levels of arguments than parameters if
+-	 there was a specialization of a member template, like
+-	 this:
+-
+-	 template <class T> struct S { template <class U> void f(); }
+-	 template <> template <class U> void S<int>::f(U);
+-
+-	 Here, we'll be substituting into the specialization,
+-	 because that's where we can find the code we actually
+-	 want to generate, but we'll have enough arguments for
+-	 the most general template.
+-
+-	 We also deal with the peculiar case:
+-
+-	 template <class T> struct S {
+-	   template <class U> friend void f();
+-	 };
+-	 template <class U> void f() {}
+-	 template S<int>;
+-	 template void f<double>();
+-
+-	 Here, the ARGS for the instantiation of will be {int,
+-	 double}.  But, we only need as many ARGS as there are
+-	 levels of template parameters in CODE_PATTERN.  We are
+-	 careful not to get fooled into reducing the ARGS in
+-	 situations like:
+-
+-	 template <class T> struct S { template <class U> void f(U); }
+-	 template <class T> template <> void S<T>::f(int) {}
+-
+-	 which we can spot because the pattern will be a
+-	 specialization in this case.  */
+-      int args_depth = TMPL_ARGS_DEPTH (args);
+-      int parms_depth =
+-	TMPL_PARMS_DEPTH (DECL_TEMPLATE_PARMS (DECL_TI_TEMPLATE (t)));
+-
+-      if (args_depth > parms_depth && !DECL_TEMPLATE_SPECIALIZATION (t))
+-	args = get_innermost_template_args (args, parms_depth);
+     }
+   else
+     {
+@@ -14216,6 +14238,19 @@ enclosing_instantiation_of (tree otctx)
  		  || instantiated_lambda_fn_p (tctx));
         tctx = decl_function_context (tctx))
      ++lambda_count;
@@ -6205,7 +6265,7 @@ index d329c0128ba..5a957141ba3 100644
    for (; fn; fn = decl_function_context (fn))
      {
        tree ofn = fn;
-@@ -15486,6 +15560,8 @@ tsubst (tree t, tree args, tsubst_flags_t complain, tree in_decl)
+@@ -15486,6 +15521,8 @@ tsubst (tree t, tree args, tsubst_flags_t complain, tree in_decl)
  		    else if (tree pl = CLASS_PLACEHOLDER_TEMPLATE (t))
  		      {
  			pl = tsubst_copy (pl, args, complain, in_decl);
@@ -6214,7 +6274,7 @@ index d329c0128ba..5a957141ba3 100644
  			CLASS_PLACEHOLDER_TEMPLATE (r) = pl;
  		      }
  		  }
-@@ -19223,8 +19299,13 @@ tsubst_lambda_expr (tree t, tree args, tsubst_flags_t complain, tree in_decl)
+@@ -19223,8 +19260,13 @@ tsubst_lambda_expr (tree t, tree args, tsubst_flags_t complain, tree in_decl)
  	 the purposes of template argument deduction. */
        complain = tf_warning_or_error;
  
@@ -6230,7 +6290,7 @@ index d329c0128ba..5a957141ba3 100644
  
        finish_lambda_function (body);
  
-@@ -21670,8 +21751,10 @@ static bool uses_deducible_template_parms (tree type);
+@@ -21670,8 +21712,10 @@ static bool uses_deducible_template_parms (tree type);
  static bool
  deducible_expression (tree expr)
  {
@@ -6243,7 +6303,7 @@ index d329c0128ba..5a957141ba3 100644
      expr = TREE_OPERAND (expr, 0);
    return (TREE_CODE (expr) == TEMPLATE_PARM_INDEX);
  }
-@@ -27964,7 +28047,9 @@ make_constrained_placeholder_type (tree type, tree con, tree args)
+@@ -27964,7 +28008,9 @@ make_constrained_placeholder_type (tree type, tree con, tree args)
    tree expr = tmpl;
    if (TREE_CODE (con) == FUNCTION_DECL)
      expr = ovl_make (tmpl);
@@ -6253,7 +6313,7 @@ index d329c0128ba..5a957141ba3 100644
  
    PLACEHOLDER_TYPE_CONSTRAINTS (type) = expr;
  
-@@ -28727,7 +28812,8 @@ alias_ctad_tweaks (tree tmpl, tree uguides)
+@@ -28727,7 +28773,8 @@ alias_ctad_tweaks (tree tmpl, tree uguides)
  	  unsigned len = TREE_VEC_LENGTH (ftparms);
  	  tree targs = make_tree_vec (len);
  	  int err = unify (ftparms, targs, ret, utype, UNIFY_ALLOW_NONE, false);
@@ -6263,7 +6323,7 @@ index d329c0128ba..5a957141ba3 100644
  
  	  /* The number of parms for f' is the number of parms for A plus
  	     non-deduced parms of f.  */
-@@ -28760,7 +28846,7 @@ alias_ctad_tweaks (tree tmpl, tree uguides)
+@@ -28760,7 +28807,7 @@ alias_ctad_tweaks (tree tmpl, tree uguides)
  	     guideness, and explicit-specifier.  */
  	  tree g = tsubst_decl (DECL_TEMPLATE_RESULT (f), targs, complain);
  	  if (g == error_mark_node)
@@ -6272,7 +6332,7 @@ index d329c0128ba..5a957141ba3 100644
  	  DECL_USE_TEMPLATE (g) = 0;
  	  fprime = build_template_decl (g, gtparms, false);
  	  DECL_TEMPLATE_RESULT (fprime) = g;
-@@ -28774,7 +28860,7 @@ alias_ctad_tweaks (tree tmpl, tree uguides)
+@@ -28774,7 +28821,7 @@ alias_ctad_tweaks (tree tmpl, tree uguides)
  	  if (ci)
  	    ci = tsubst_constraint_info (ci, targs, complain, in_decl);
  	  if (ci == error_mark_node)
@@ -6281,7 +6341,7 @@ index d329c0128ba..5a957141ba3 100644
  
  	  /* Add a constraint that the return type matches the instantiation of
  	     A with the same template arguments.  */
-@@ -28788,7 +28874,10 @@ alias_ctad_tweaks (tree tmpl, tree uguides)
+@@ -28788,7 +28835,10 @@ alias_ctad_tweaks (tree tmpl, tree uguides)
  	    }
  
  	  if (ci)
@@ -7664,10 +7724,19 @@ index 99edad8a950..f33489286a9 100644
  
  #endif
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index 2913065bf31..43c85a04dce 100644
+index 2913065bf31..8fcd592114b 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,740 @@
+@@ -1,3 +1,749 @@
++2021-06-07  Patrick Palka  <ppalka@redhat.com>
++
++	Backported from master:
++	2021-06-04  Patrick Palka  <ppalka@redhat.com>
++
++	PR c++/100102
++	* g++.dg/cpp0x/alias-decl-72.C: New test.
++	* g++.dg/cpp0x/alias-decl-72a.C: New test.
++
 +2021-06-04  Iain Buclaw  <ibuclaw@gdcproject.org>
 +
 +	Backported from master:
@@ -8572,6 +8641,36 @@ index 00000000000..f7b990b3f4b
 +{
 +  f<char> ();
 +}
+diff --git a/gcc/testsuite/g++.dg/cpp0x/alias-decl-72.C b/gcc/testsuite/g++.dg/cpp0x/alias-decl-72.C
+new file mode 100644
+index 00000000000..8009756dcba
+--- /dev/null
++++ b/gcc/testsuite/g++.dg/cpp0x/alias-decl-72.C
+@@ -0,0 +1,9 @@
++// PR c++/100102
++// { dg-do compile { target c++11 } }
++
++template<int()> struct ratio;
++template<class T, class U> struct duration {
++  static constexpr int _S_gcd();
++  template<class> using __is_harmonic = ratio<_S_gcd>;
++  using type = __is_harmonic<int>;
++};
+diff --git a/gcc/testsuite/g++.dg/cpp0x/alias-decl-72a.C b/gcc/testsuite/g++.dg/cpp0x/alias-decl-72a.C
+new file mode 100644
+index 00000000000..a4443e18f9d
+--- /dev/null
++++ b/gcc/testsuite/g++.dg/cpp0x/alias-decl-72a.C
+@@ -0,0 +1,9 @@
++// PR c++/100102
++// { dg-do compile { target c++11 } }
++
++template<int> struct ratio;
++template<class T> struct duration {
++  static constexpr int _S_gcd();
++  template<class> using __is_harmonic = ratio<(duration::_S_gcd)()>;
++  using type = __is_harmonic<int>;
++};
 diff --git a/gcc/testsuite/g++.dg/cpp0x/alias-decl-equiv1.C b/gcc/testsuite/g++.dg/cpp0x/alias-decl-equiv1.C
 new file mode 100644
 index 00000000000..ae27c43bc0a
