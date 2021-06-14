@@ -33,7 +33,11 @@ François Dumont (3):
       libstdc++: Fix unordered containers move constructors noexcept qualification
       libstdc++: [_GLIBCXX_DEBUG] Fix management of __dp_sign_max_size [PR 99402]
 
-GCC Administrator (63):
+GCC Administrator (67):
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -111,11 +115,13 @@ Harald Anlauf (5):
       PR fortran/98411 - Pointless warning for static variables
       Fortran - ICE in inline_matmul_assign
 
-Iain Buclaw (4):
+Iain Buclaw (6):
       d: Fix ICE in when formating a string with '%' or '`' characters (PR98457)
       d: Fix ICE in gimplify_var_or_parm_decl, at gimplify.c:2755 (PR100882)
       d: Respect explicit align(N) type alignment (PR100935)
       d: TypeInfo error when using slice copy on Structs (PR100964)
+      d: Fix ICE in TypeInfoDeclaration, at dmd/declaration.c (PR100967)
+      d: foreach over a tuple doesn't work on 16-bit targets (PR100999)
 
 Jakub Jelinek (19):
       rs6000: Fix up libgcc ABI when built with --with-long-double-format=ieee [PR97653]
@@ -212,7 +218,7 @@ Martin Sebor (1):
 Michael Meissner (1):
       Backport fix for PR target/98952
 
-Patrick Palka (14):
+Patrick Palka (21):
       c++: Fix deduction with reference NTTP [PR83476]
       c++: Fix tsubsting CLASS_PLACEHOLDER_TEMPLATE [PR95434]
       c++: ICE in dependent_type_p with constrained auto [PR97052]
@@ -227,6 +233,13 @@ Patrick Palka (14):
       libstdc++: Implement proposed resolution for LWG 3532
       libstdc++: Implement LWG 3517/3520 for join_view/transform_view
       c++: tsubst_function_decl and excess arg levels [PR100102]
+      libstdc++: Implement missing P0896R4 changes to reverse_iterator [PR100639]
+      libstdc++: Fix miscellaneous issues with elements_view::_Sentinel [PR100631]
+      libstdc++: Fix access issue in elements_view::_Sentinel [PR100631]
+      libstdc++: Implement LWG 3391 changes to move/counted_iterator::base()
+      libstdc++: Implement LWG 3533 changes to foo_view::iterator::base()
+      libstdc++: Fix access issue in iota_view::_Sentinel [PR100690]
+      libstdc++: Avoid hard error in ranges::unique_copy [PR100770]
 
 Philippe Blain (1):
       libstdc++: Install libstdc++*-gdb.py more robustly [PR 99453]
@@ -6443,10 +6456,50 @@ index 53e9603868d..5ecedef0bb4 100644
        return DEBUG_IMPLICIT_PTR_DECL (x)
  	     == DEBUG_IMPLICIT_PTR_DECL (y);
 diff --git a/gcc/d/ChangeLog b/gcc/d/ChangeLog
-index 8bc729ae32d..87e6e09867f 100644
+index 8bc729ae32d..4ba0ef8ff94 100644
 --- a/gcc/d/ChangeLog
 +++ b/gcc/d/ChangeLog
-@@ -1,3 +1,46 @@
+@@ -1,3 +1,86 @@
++2021-06-11  Iain Buclaw  <ibuclaw@gdcproject.org>
++
++	Backported from master:
++	2021-06-11  Iain Buclaw  <ibuclaw@gdcproject.org>
++
++	PR d/100999
++	* dmd/cond.c (lowerArrayAggregate): Run CTFE interpret on foreach
++	input range.
++	(createTupleType): Don't generate typeinfo when disabled.
++	(lowerNonArrayAggregate): Suppress errors when running type semantic.
++	(staticForeachPrepare): Don't run CTFE interpret from here.
++	* dmd/dinterpret.c (ctfeInterpret): Add more shortcut cases.
++	* dmd/expression.c (resolvePropertiesX): Remove early error.
++	(Expression::checkPostblit): Don't generate typeinfo when type is
++	missing from library.
++	* dmd/expressionsem.c (ExpressionSemanticVisitor): Set type of
++	DotTemplateExp as void.
++	* dmd/statementsem.c (StatementSemanticVisitor::declareVariable):
++	Don't override index type.
++	(StatementSemanticVisitor::makeTupleForeachBody): Check index type is
++	integral and index range fits type size.
++	(StatementSemanticVisitor::visit (ForeachStatement*)): Adjust index
++	range before testing.
++
++2021-06-10  Iain Buclaw  <ibuclaw@gdcproject.org>
++
++	Backported from master:
++	2021-06-10  Iain Buclaw  <ibuclaw@gdcproject.org>
++
++	PR d/100967
++	* d-frontend.cc (getTypeInfoType): Move TypeInfo checks to
++	check_typeinfo_type and call new function.
++	* d-tree.h (check_typeinfo_type): Declare.
++	* typeinfo.cc: Include dmd/scope.h.
++	(create_frontend_tinfo_types): Generate front-end types even if Object
++	is missing.
++	(build_typeinfo): Move TypeInfo checks to check_typeinfo_type and call
++	new function.
++	(check_typeinfo_type): New function.
++
 +2021-06-09  Iain Buclaw  <ibuclaw@gdcproject.org>
 +
 +	Backported from master:
@@ -6676,17 +6729,172 @@ index 6af35f71c31..dbe6bc1bb7b 100644
        else
  	xformat = xasprintf ("%s", format);
  
+diff --git a/gcc/d/d-frontend.cc b/gcc/d/d-frontend.cc
+index ec08d62f53e..f8df264e7fe 100644
+--- a/gcc/d/d-frontend.cc
++++ b/gcc/d/d-frontend.cc
+@@ -614,39 +614,8 @@ eval_builtin (Loc loc, FuncDeclaration *fd, Expressions *arguments)
+ Type *
+ getTypeInfoType (Loc loc, Type *type, Scope *sc)
+ {
+-  if (!global.params.useTypeInfo)
+-    {
+-      /* Even when compiling without RTTI we should still be able to evaluate
+-	 TypeInfo at compile-time, just not at run-time.  */
+-      if (!sc || !(sc->flags & SCOPEctfe))
+-	{
+-	  static int warned = 0;
+-
+-	  if (!warned)
+-	    {
+-	      error_at (make_location_t (loc),
+-			"%<object.TypeInfo%> cannot be used with %<-fno-rtti%>");
+-	      warned = 1;
+-	    }
+-	}
+-    }
+-
+-  if (Type::dtypeinfo == NULL
+-      || (Type::dtypeinfo->storage_class & STCtemp))
+-    {
+-      /* If TypeInfo has not been declared, warn about each location once.  */
+-      static Loc warnloc;
+-
+-      if (!loc.equals (warnloc))
+-	{
+-	  error_at (make_location_t (loc),
+-		    "%<object.TypeInfo%> could not be found, "
+-		    "but is implicitly used");
+-	  warnloc = loc;
+-	}
+-    }
+-
+   gcc_assert (type->ty != Terror);
++  check_typeinfo_type (loc, sc);
+   create_typeinfo (type, sc ? sc->_module->importedFrom : NULL);
+   return type->vtinfo->type;
+ }
+diff --git a/gcc/d/d-tree.h b/gcc/d/d-tree.h
+index 4d039adb0fa..7d2e100a5c6 100644
+--- a/gcc/d/d-tree.h
++++ b/gcc/d/d-tree.h
+@@ -655,6 +655,7 @@ extern tree layout_typeinfo (TypeInfoDeclaration *);
+ extern tree layout_classinfo (ClassDeclaration *);
+ extern tree get_typeinfo_decl (TypeInfoDeclaration *);
+ extern tree get_classinfo_decl (ClassDeclaration *);
++extern void check_typeinfo_type (const Loc &, Scope *);
+ extern tree build_typeinfo (const Loc &, Type *);
+ extern void create_typeinfo (Type *, Module *);
+ extern void create_tinfo_types (Module *);
+diff --git a/gcc/d/dmd/cond.c b/gcc/d/dmd/cond.c
+index b021f62c29b..54cd897d2fa 100644
+--- a/gcc/d/dmd/cond.c
++++ b/gcc/d/dmd/cond.c
+@@ -114,6 +114,7 @@ static void lowerArrayAggregate(StaticForeach *sfe, Scope *sc)
+         sfe->aggrfe->aggr = new TupleExp(aggr->loc, es);
+         sfe->aggrfe->aggr = semantic(sfe->aggrfe->aggr, sc);
+         sfe->aggrfe->aggr = sfe->aggrfe->aggr->optimize(WANTvalue);
++        sfe->aggrfe->aggr = sfe->aggrfe->aggr->ctfeInterpret();
+     }
+     else
+     {
+@@ -200,7 +201,8 @@ static TypeStruct *createTupleType(Loc loc, Expressions *e)
+     Type *ty = new TypeTypeof(loc, new TupleExp(loc, e));
+     sdecl->members->push(new VarDeclaration(loc, ty, fid, NULL));
+     TypeStruct *r = (TypeStruct *)sdecl->type;
+-    r->vtinfo = TypeInfoStructDeclaration::create(r); // prevent typeinfo from going to object file
++    if (global.params.useTypeInfo && Type::dtypeinfo)
++        r->vtinfo = TypeInfoStructDeclaration::create(r); // prevent typeinfo from going to object file
+     return r;
+ }
+ 
+@@ -314,15 +316,25 @@ static void lowerNonArrayAggregate(StaticForeach *sfe, Scope *sc)
+     Identifier *idres = Identifier::generateId("__res");
+     VarDeclaration *vard = new VarDeclaration(aloc, aty, idres, NULL);
+     Statements *s2 = new Statements();
+-    s2->push(new ExpStatement(aloc, vard));
+-    Expression *catass = new CatAssignExp(aloc, new IdentifierExp(aloc, idres), res[1]);
+-    s2->push(createForeach(sfe, aloc, pparams[1], new ExpStatement(aloc, catass)));
+-    s2->push(new ReturnStatement(aloc, new IdentifierExp(aloc, idres)));
++
++    // Run 'typeof' gagged to avoid duplicate errors and if it fails just create
++    // an empty foreach to expose them.
++    unsigned olderrors = global.startGagging();
++    ety = ety->semantic(aloc, sc);
++    if (global.endGagging(olderrors))
++        s2->push(createForeach(sfe, aloc, pparams[1], NULL));
++    else
++    {
++        s2->push(new ExpStatement(aloc, vard));
++        Expression *catass = new CatAssignExp(aloc, new IdentifierExp(aloc, idres), res[1]);
++        s2->push(createForeach(sfe, aloc, pparams[1], new ExpStatement(aloc, catass)));
++        s2->push(new ReturnStatement(aloc, new IdentifierExp(aloc, idres)));
++    }
+ 
+     Expression *aggr;
+     Type *indexty;
+ 
+-    if (sfe->rangefe && (indexty = ety->semantic(aloc, sc))->isintegral())
++    if (sfe->rangefe && (indexty = ety)->isintegral())
+     {
+         sfe->rangefe->lwr->type = indexty;
+         sfe->rangefe->upr->type = indexty;
+@@ -386,11 +398,6 @@ void staticForeachPrepare(StaticForeach *sfe, Scope *sc)
+         sfe->aggrfe->aggr = semantic(sfe->aggrfe->aggr, sc);
+         sc = sc->endCTFE();
+         sfe->aggrfe->aggr = sfe->aggrfe->aggr->optimize(WANTvalue);
+-        Type *tab = sfe->aggrfe->aggr->type->toBasetype();
+-        if (tab->ty != Ttuple)
+-        {
+-            sfe->aggrfe->aggr = sfe->aggrfe->aggr->ctfeInterpret();
+-        }
+     }
+ 
+     if (sfe->aggrfe && sfe->aggrfe->aggr->type->toBasetype()->ty == Terror)
+diff --git a/gcc/d/dmd/dinterpret.c b/gcc/d/dmd/dinterpret.c
+index 8a02aa8d31d..214a73cd8bb 100644
+--- a/gcc/d/dmd/dinterpret.c
++++ b/gcc/d/dmd/dinterpret.c
+@@ -645,7 +645,16 @@ Expression *ctfeInterpret(Expression *e)
+     case TOKfloat64:
+     case TOKcomplex80:
+     case TOKnull:
++    case TOKvoid:
+     case TOKstring:
++    case TOKthis:
++    case TOKsuper:
++    case TOKtype:
++    case TOKtypeid:
++    case TOKtemplate:   // non-eponymous template/instance
++    case TOKscope:      // ditto
++    case TOKdottd:      // ditto, e.e1 doesn't matter here
++    case TOKdot:        // ditto
+         if (e->type->ty == Terror)
+             return new ErrorExp();
+         /* fall through */
 diff --git a/gcc/d/dmd/expression.c b/gcc/d/dmd/expression.c
-index c639fd10aae..92ec6ed328e 100644
+index c639fd10aae..6d28e24e35c 100644
 --- a/gcc/d/dmd/expression.c
 +++ b/gcc/d/dmd/expression.c
-@@ -2655,8 +2655,11 @@ bool Expression::checkPostblit(Scope *sc, Type *t)
+@@ -459,11 +459,6 @@ Expression *resolvePropertiesX(Scope *sc, Expression *e1, Expression *e2 = NULL)
+             if (checkUnsafeAccess(sc, e1, true, true))
+                 return new ErrorExp();
+         }
+-        else if (e1->op == TOKdot)
+-        {
+-            e1->error("expression has no value");
+-            return new ErrorExp();
+-        }
+         else if (e1->op == TOKcall)
+         {
+             CallExp *ce = (CallExp *)e1;
+@@ -2655,8 +2650,11 @@ bool Expression::checkPostblit(Scope *sc, Type *t)
      t = t->baseElemOf();
      if (t->ty == Tstruct)
      {
 -        // Bugzilla 11395: Require TypeInfo generation for array concatenation
 -        semanticTypeInfo(sc, t);
-+        if (global.params.useTypeInfo)
++        if (global.params.useTypeInfo && Type::dtypeinfo)
 +        {
 +            // Bugzilla 11395: Require TypeInfo generation for array concatenation
 +            semanticTypeInfo(sc, t);
@@ -6694,6 +6902,29 @@ index c639fd10aae..92ec6ed328e 100644
  
          StructDeclaration *sd = ((TypeStruct *)t)->sym;
          if (sd->postblit)
+diff --git a/gcc/d/dmd/expressionsem.c b/gcc/d/dmd/expressionsem.c
+index 5ec4683848e..5096754e55f 100644
+--- a/gcc/d/dmd/expressionsem.c
++++ b/gcc/d/dmd/expressionsem.c
+@@ -2506,11 +2506,18 @@ public:
+ 
+     void visit(DotTemplateExp *e)
+     {
++        if (e->type)
++        {
++            result = e;
++            return;
++        }
+         if (Expression *ex = unaSemantic(e, sc))
+         {
+             result = ex;
+             return;
+         }
++        // 'void' like TemplateExp
++        e->type = Type::tvoid;
+         result = e;
+     }
+ 
 diff --git a/gcc/d/dmd/mtype.c b/gcc/d/dmd/mtype.c
 index c11772a7740..0ec577d0c1e 100644
 --- a/gcc/d/dmd/mtype.c
@@ -6710,6 +6941,68 @@ index c11772a7740..0ec577d0c1e 100644
      }
      else if (ident == Id::_init)
      {
+diff --git a/gcc/d/dmd/statementsem.c b/gcc/d/dmd/statementsem.c
+index 26e5950518a..765e9c3b8c9 100644
+--- a/gcc/d/dmd/statementsem.c
++++ b/gcc/d/dmd/statementsem.c
+@@ -568,9 +568,6 @@ public:
+             else
+             {
+                 e = resolveProperties(sc, e);
+-                type = e->type;
+-                if (paramtype)
+-                    type = paramtype;
+                 Initializer *ie = new ExpInitializer(Loc(), e);
+                 VarDeclaration *v = new VarDeclaration(loc, type, ident, ie);
+                 if (storageClass & STCref)
+@@ -651,22 +648,23 @@ public:
+                 }
+             }
+             p->type = p->type->semantic(loc, sc);
+-            TY keyty = p->type->ty;
+-            if (keyty != Tint32 && keyty != Tuns32)
++
++            if (!p->type->isintegral())
+             {
+-                if (global.params.isLP64)
+-                {
+-                    if (keyty != Tint64 && keyty != Tuns64)
+-                    {
+-                        fs->error("foreach: key type must be int or uint, long or ulong, not %s", p->type->toChars());
+-                        return false;
+-                    }
+-                }
+-                else
+-                {
+-                    fs->error("foreach: key type must be int or uint, not %s", p->type->toChars());
+-                    return false;
+-                }
++                fs->error("foreach: key cannot be of non-integral type `%s`",
++                          p->type->toChars());
++                return false;
++            }
++
++            unsigned length = te ? te->exps->dim : tuple->arguments->dim;
++            IntRange dimrange = IntRange(SignExtendedNumber(length)).cast(Type::tsize_t);
++            // https://issues.dlang.org/show_bug.cgi?id=12504
++            dimrange.imax = SignExtendedNumber(dimrange.imax.value-1);
++            if (!IntRange::fromType(p->type).contains(dimrange))
++            {
++                fs->error("index type `%s` cannot cover index range 0..%llu",
++			  p->type->toChars(), (ulonglong)length);
++                return false;
+             }
+             Initializer *ie = new ExpInitializer(Loc(), new IntegerExp(k));
+             VarDeclaration *var = new VarDeclaration(loc, p->type, p->ident, ie);
+@@ -1079,6 +1077,8 @@ public:
+                             {
+                                 TypeSArray *ta =  (TypeSArray *)tab;
+                                 IntRange dimrange = getIntRange(ta->dim);
++                                // https://issues.dlang.org/show_bug.cgi?id=12504
++                                dimrange.imax = SignExtendedNumber(dimrange.imax.value-1);
+                                 if (!IntRange::fromType(var->type).contains(dimrange))
+                                 {
+                                     fs->error("index type '%s' cannot cover index range 0..%llu", p->type->toChars(), ta->dim->toInteger());
 diff --git a/gcc/d/expr.cc b/gcc/d/expr.cc
 index ad2255e1cd1..2e70bf3a8e7 100644
 --- a/gcc/d/expr.cc
@@ -6731,6 +7024,83 @@ index ad2255e1cd1..2e70bf3a8e7 100644
  	TARGET_EXPR_INITIAL (cleanup) = compound_expr (init, exp);
  	exp = cleanup;
        }
+diff --git a/gcc/d/typeinfo.cc b/gcc/d/typeinfo.cc
+index 6aa4f64a713..973729d3d8a 100644
+--- a/gcc/d/typeinfo.cc
++++ b/gcc/d/typeinfo.cc
+@@ -27,6 +27,7 @@ along with GCC; see the file COPYING3.  If not see
+ #include "dmd/identifier.h"
+ #include "dmd/module.h"
+ #include "dmd/mtype.h"
++#include "dmd/scope.h"
+ #include "dmd/template.h"
+ #include "dmd/target.h"
+ 
+@@ -244,8 +245,8 @@ create_tinfo_types (Module *mod)
+ static void
+ create_frontend_tinfo_types (void)
+ {
+-  /* If there's no Object class defined, then neither can TypeInfo be.  */
+-  if (object_module == NULL || ClassDeclaration::object == NULL)
++  /* If there's no object module, then neither can there be TypeInfo.  */
++  if (object_module == NULL)
+     return;
+ 
+   /* Create all frontend TypeInfo classes declarations.  We rely on all
+@@ -1370,16 +1371,19 @@ get_classinfo_decl (ClassDeclaration *decl)
+   return decl->csym;
+ }
+ 
+-/* Returns typeinfo reference for TYPE.  */
++/* Performs sanity checks on the `object.TypeInfo' type, raising an error if
++   RTTI is disabled, or the type is missing.  */
+ 
+-tree
+-build_typeinfo (const Loc &loc, Type *type)
++void
++check_typeinfo_type (const Loc &loc, Scope *sc)
+ {
+   if (!global.params.useTypeInfo)
+     {
+       static int warned = 0;
+ 
+-      if (!warned)
++      /* Even when compiling without RTTI we should still be able to evaluate
++	 TypeInfo at compile-time, just not at run-time.  */
++      if (!warned && (!sc || !(sc->flags & SCOPEctfe)))
+ 	{
+ 	  error_at (make_location_t (loc),
+ 		    "%<object.TypeInfo%> cannot be used with %<-fno-rtti%>");
+@@ -1387,7 +1391,29 @@ build_typeinfo (const Loc &loc, Type *type)
+ 	}
+     }
+ 
++  if (Type::dtypeinfo == NULL
++      || (Type::dtypeinfo->storage_class & STCtemp))
++    {
++      /* If TypeInfo has not been declared, warn about each location once.  */
++      static Loc warnloc;
++
++      if (!warnloc.equals (loc))
++	{
++	  error_at (make_location_t (loc),
++		    "%<object.TypeInfo%> could not be found, "
++		    "but is implicitly used");
++	  warnloc = loc;
++	}
++    }
++}
++
++/* Returns typeinfo reference for TYPE.  */
++
++tree
++build_typeinfo (const Loc &loc, Type *type)
++{
+   gcc_assert (type->ty != Terror);
++  check_typeinfo_type (loc, NULL);
+   create_typeinfo (type, NULL);
+   return build_address (get_typeinfo_decl (type->vtinfo));
+ }
 diff --git a/gcc/doc/cpp.texi b/gcc/doc/cpp.texi
 index 33f876ab706..b24b5f4444e 100644
 --- a/gcc/doc/cpp.texi
@@ -7779,10 +8149,49 @@ index 99edad8a950..f33489286a9 100644
  
  #endif
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index 2913065bf31..a0ae394f40a 100644
+index 2913065bf31..786cec910a4 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,765 @@
+@@ -1,3 +1,804 @@
++2021-06-11  Iain Buclaw  <ibuclaw@gdcproject.org>
++
++	Backported from master:
++	2021-06-11  Iain Buclaw  <ibuclaw@gdcproject.org>
++
++	PR d/100999
++	* gdc.test/compilable/staticforeach.d: Add new tests.
++	* gdc.test/fail_compilation/diag16976.d: Likewise.
++	* gdc.test/fail_compilation/fail117.d: Likewise.
++	* gdc.test/fail_compilation/fail238_m32.d: Likewise.
++	* gdc.test/fail_compilation/fail238_m64.d: Likewise.
++	* gdc.test/fail_compilation/fail7424b.d: Likewise.
++	* gdc.test/fail_compilation/fail7424c.d: Likewise.
++	* gdc.test/fail_compilation/fail7424d.d: Likewise.
++	* gdc.test/fail_compilation/fail7424e.d: Likewise.
++	* gdc.test/fail_compilation/fail7424f.d: Likewise.
++	* gdc.test/fail_compilation/fail7424g.d: Likewise.
++	* gdc.test/fail_compilation/fail7424h.d: Likewise.
++	* gdc.test/fail_compilation/fail7424i.d: Likewise.
++	* gdc.test/fail_compilation/fail9766.d: Likewise.
++	* gdc.test/fail_compilation/ice9406.d: Likewise.
++	* gdc.test/compilable/extra-files/minimal/object.d: New file.
++	* gdc.test/compilable/interpret5.d: New test.
++	* gdc.test/compilable/minimal3.d: New test.
++	* gdc.test/compilable/test21742.d: New test.
++	* gdc.test/compilable/test22006.d: New test.
++	* gdc.test/fail_compilation/b12504.d: New test.
++	* gdc.test/fail_compilation/fail22006.d: New test.
++	* gdc.test/fail_compilation/test21927.d: New test.
++	* gdc.test/fail_compilation/test21939.d: New test.
++
++2021-06-10  Iain Buclaw  <ibuclaw@gdcproject.org>
++
++	Backported from master:
++	2021-06-10  Iain Buclaw  <ibuclaw@gdcproject.org>
++
++	PR d/100967
++	* gdc.dg/pr100967.d: New test.
++
 +2021-06-09  Iain Buclaw  <ibuclaw@gdcproject.org>
 +
 +	Backported from master:
@@ -11682,6 +12091,23 @@ index 00000000000..f4e6e4d3651
 +    CowArray set;
 +    return tuple(set);
 +}
+diff --git a/gcc/testsuite/gdc.dg/pr100967.d b/gcc/testsuite/gdc.dg/pr100967.d
+new file mode 100644
+index 00000000000..582ad582676
+--- /dev/null
++++ b/gcc/testsuite/gdc.dg/pr100967.d
+@@ -0,0 +1,11 @@
++// https://gcc.gnu.org/bugzilla/show_bug.cgi?id=100967
++// { dg-do compile }
++
++module object; // { dg-error "class object.TypeInfo missing or corrupt object.d" }
++
++extern(C) int main()
++{
++    int[int] aa;
++    aa[0] = 1;  // { dg-error ".object.TypeInfo. could not be found, but is implicitly used" }
++    return 0;
++}
 diff --git a/gcc/testsuite/gdc.dg/pr98457.d b/gcc/testsuite/gdc.dg/pr98457.d
 new file mode 100644
 index 00000000000..bc0d8af5d4a
@@ -11746,6 +12172,609 @@ index 74c80be3b95..3f48b042bde 100644
 +    A[10] b;
 +    b[] = a[];
 +}
+diff --git a/gcc/testsuite/gdc.test/compilable/extra-files/minimal/object.d b/gcc/testsuite/gdc.test/compilable/extra-files/minimal/object.d
+new file mode 100644
+index 00000000000..c7060b0d96c
+--- /dev/null
++++ b/gcc/testsuite/gdc.test/compilable/extra-files/minimal/object.d
+@@ -0,0 +1 @@
++module object;
+diff --git a/gcc/testsuite/gdc.test/compilable/interpret5.d b/gcc/testsuite/gdc.test/compilable/interpret5.d
+new file mode 100644
+index 00000000000..ce13a5ab182
+--- /dev/null
++++ b/gcc/testsuite/gdc.test/compilable/interpret5.d
+@@ -0,0 +1,30 @@
++// https://issues.dlang.org/show_bug.cgi?id=21927
++/*
++TEST_OUTPUT:
++---
++T1(Args...)
++T1!()
++T2(Args2...)
++T2!()
++this.T2(Args2...)
++this.T2!()
++---
++*/
++template T1(Args...) {}
++
++pragma(msg, T1);    // TOK.template_
++pragma(msg, T1!()); // TOK.scope_
++
++struct S
++{
++    template T2(Args2...) {}
++
++    pragma(msg, S.T2);    // TOK.template_
++    pragma(msg, S.T2!()); // TOK.scope_
++
++    void fun()
++    {
++        pragma(msg, this.T2);    // TOK.dotTemplateDeclaration
++        pragma(msg, this.T2!()); // TOK.dot
++    }
++}
+diff --git a/gcc/testsuite/gdc.test/compilable/minimal3.d b/gcc/testsuite/gdc.test/compilable/minimal3.d
+new file mode 100644
+index 00000000000..e8106b62003
+--- /dev/null
++++ b/gcc/testsuite/gdc.test/compilable/minimal3.d
+@@ -0,0 +1,36 @@
++// DFLAGS:
++// REQUIRED_ARGS: -defaultlib=
++// EXTRA_SOURCES: extra-files/minimal/object.d
++
++/**********************************************/
++// https://issues.dlang.org/show_bug.cgi?id=19234
++void issue19234()
++{
++    static struct A {}
++    A[10] a;
++    A[10] b;
++    b[] = a[];
++}
++
++/**********************************************/
++// https://issues.dlang.org/show_bug.cgi?id=22005
++void issue22005()
++{
++    enum int[4] foo = [1,2,3,4];
++    static foreach (i, e; foo)
++    {
++    }
++}
++
++/**********************************************/
++// https://issues.dlang.org/show_bug.cgi?id=22006
++void issue22006()
++{
++    alias size_t = typeof(int.sizeof);
++    alias AliasSeq(T...) = T;
++
++    foreach (size_t i, e; [0, 1, 2, 3]) { }
++    static foreach (size_t i, e; [0, 1, 2, 3]) { }
++    foreach (size_t i, e; AliasSeq!(0, 1, 2, 3)) { }
++    static foreach (size_t i, e; AliasSeq!(0, 1, 2, 3)) { }
++}
+diff --git a/gcc/testsuite/gdc.test/compilable/staticforeach.d b/gcc/testsuite/gdc.test/compilable/staticforeach.d
+index 48d06b418d3..8a54f32de57 100644
+--- a/gcc/testsuite/gdc.test/compilable/staticforeach.d
++++ b/gcc/testsuite/gdc.test/compilable/staticforeach.d
+@@ -115,6 +115,8 @@ bug17688
+ T
+ foo2
+ T2
++TestStaticForeach2
++issue22007
+ 1 2 '3'
+ 2 3 '4'
+ 0 1
+@@ -840,3 +842,39 @@ struct T2{
+         struct S{}
+ }
+ static assert(is(__traits(parent,T2.S)==T2));
++
++struct TestStaticForeach2
++{
++static:
++    // StringExp
++    char[] test(string str)()
++    {
++        char[] s;
++        static foreach (c; str)
++        {
++            s ~= c;
++        }
++        return s;
++    }
++    static assert(test!"tёstñ" == ['t', '\xd1', '\x91', 's', 't', '\xc3', '\xb1']);
++
++    static foreach (c; "")
++    {
++        static assert(0);
++    }
++
++    // NullExp
++    enum int[] a = null;
++    static foreach (c; a)
++    {
++        static assert(0);
++    }
++}
++
++//https://issues.dlang.org/show_bug.cgi?id=22007
++void issue22007()
++{
++    immutable int[32] array = 1;
++    foreach (size_t a, int b; array) {}
++    static foreach (size_t a, int b; array) { }
++}
+diff --git a/gcc/testsuite/gdc.test/compilable/test21742.d b/gcc/testsuite/gdc.test/compilable/test21742.d
+new file mode 100644
+index 00000000000..b8f5df4b46d
+--- /dev/null
++++ b/gcc/testsuite/gdc.test/compilable/test21742.d
+@@ -0,0 +1,13 @@
++// https://issues.dlang.org/show_bug.cgi?id=21742
++
++int foo()() { return 0; }
++
++struct B
++{
++    int foo()() { return 0; }
++}
++
++static assert(is(typeof(foo) == void));
++
++// failed, gagged error: expression B().foo()() has no type
++static assert(is(typeof(B().foo) == void));
+diff --git a/gcc/testsuite/gdc.test/compilable/test22006.d b/gcc/testsuite/gdc.test/compilable/test22006.d
+new file mode 100644
+index 00000000000..913dd859012
+--- /dev/null
++++ b/gcc/testsuite/gdc.test/compilable/test22006.d
+@@ -0,0 +1,14 @@
++// https://issues.dlang.org/show_bug.cgi?id=22006
++void test22006()
++{
++    alias AliasSeq(TList...) = TList;
++    {
++        alias aseq = AliasSeq!(0, 1, 2, 3);
++        static foreach (ubyte i; 0 .. aseq.length) {}
++        static foreach (ubyte i, x; aseq) {}
++    }
++    {
++        static foreach (ubyte i; 0 .. [0, 1, 2, 3].length) {}
++        static foreach (ubyte i, x; [0, 1, 2, 3]) {}
++    }
++}
+diff --git a/gcc/testsuite/gdc.test/fail_compilation/b12504.d b/gcc/testsuite/gdc.test/fail_compilation/b12504.d
+new file mode 100644
+index 00000000000..0bb104eded7
+--- /dev/null
++++ b/gcc/testsuite/gdc.test/fail_compilation/b12504.d
+@@ -0,0 +1,64 @@
++/*
++TEST_OUTPUT:
++---
++fail_compilation/b12504.d(26): Error: cannot implicitly convert expression `257$?:32=u|64=LU$` of type `$?:32=uint|64=ulong$` to `ubyte`
++fail_compilation/b12504.d(27): Error: index type `ubyte` cannot cover index range 0..257
++fail_compilation/b12504.d(31): Error: cannot implicitly convert expression `129$?:32=u|64=LU$` of type `$?:32=uint|64=ulong$` to `byte`
++fail_compilation/b12504.d(32): Error: index type `byte` cannot cover index range 0..129
++fail_compilation/b12504.d(36): Error: cannot implicitly convert expression `65537$?:32=u|64=LU$` of type `$?:32=uint|64=ulong$` to `ushort`
++fail_compilation/b12504.d(37): Error: index type `ushort` cannot cover index range 0..65537
++fail_compilation/b12504.d(41): Error: cannot implicitly convert expression `32769$?:32=u|64=LU$` of type `$?:32=uint|64=ulong$` to `short`
++fail_compilation/b12504.d(42): Error: index type `short` cannot cover index range 0..32769
++fail_compilation/b12504.d(46): Error: cannot implicitly convert expression `257$?:32=u|64=LU$` of type `$?:32=uint|64=ulong$` to `ubyte`
++fail_compilation/b12504.d(47): Error: index type `ubyte` cannot cover index range 0..257
++fail_compilation/b12504.d(51): Error: cannot implicitly convert expression `129$?:32=u|64=LU$` of type `$?:32=uint|64=ulong$` to `byte`
++fail_compilation/b12504.d(52): Error: index type `byte` cannot cover index range 0..129
++fail_compilation/b12504.d(56): Error: cannot implicitly convert expression `65537$?:32=u|64=LU$` of type `$?:32=uint|64=ulong$` to `ushort`
++fail_compilation/b12504.d(57): Error: index type `ushort` cannot cover index range 0..65537
++fail_compilation/b12504.d(61): Error: cannot implicitly convert expression `32769$?:32=u|64=LU$` of type `$?:32=uint|64=ulong$` to `short`
++fail_compilation/b12504.d(62): Error: index type `short` cannot cover index range 0..32769
++---
++*/
++void main()
++{
++    {
++        int[0xFF + 2] sta;
++        foreach (ubyte i; 0 .. sta.length) {}
++        foreach (ubyte i, x; sta) {}
++    }
++    {
++        int[0x7F + 2] sta;
++        foreach (byte i; 0 .. sta.length) {}
++        foreach (byte i, x; sta) {}
++    }
++    {
++        int[0xFFFF + 2] sta;
++        foreach (ushort i; 0 .. sta.length) {}
++        foreach (ushort i, x; sta) {}
++    }
++    {
++        int[0x7FFF + 2] sta;
++        foreach (short i; 0 .. sta.length) {}
++        foreach (short i, x; sta) {}
++    }
++    {
++        immutable int[0xFF + 2] sta;
++        static foreach (ubyte i; 0 .. sta.length) {}
++        static foreach (ubyte i, x; sta) {}
++    }
++    {
++        immutable int[0x7F + 2] sta;
++        static foreach (byte i; 0 .. sta.length) {}
++        static foreach (byte i, x; sta) {}
++    }
++    {
++        immutable int[0xFFFF + 2] sta;
++        static foreach (ushort i; 0 .. sta.length) {}
++        static foreach (ushort i, x; sta) {}
++    }
++    {
++        immutable int[0x7FFF + 2] sta;
++        static foreach (short i; 0 .. sta.length) {}
++        static foreach (short i, x; sta) {}
++    }
++}
+diff --git a/gcc/testsuite/gdc.test/fail_compilation/diag16976.d b/gcc/testsuite/gdc.test/fail_compilation/diag16976.d
+index ebfb72b493c..1dbacfd3e54 100644
+--- a/gcc/testsuite/gdc.test/fail_compilation/diag16976.d
++++ b/gcc/testsuite/gdc.test/fail_compilation/diag16976.d
+@@ -1,21 +1,37 @@
+ /* TEST_OUTPUT:
+ ---
+-fail_compilation/diag16976.d(28): Error: foreach: key cannot be of non-integral type `float`
+-fail_compilation/diag16976.d(29): Error: foreach: key cannot be of non-integral type `float`
+-fail_compilation/diag16976.d(30): Error: foreach: key cannot be of non-integral type `float`
+-fail_compilation/diag16976.d(31): Error: foreach: key cannot be of non-integral type `float`
+-fail_compilation/diag16976.d(32): Error: foreach: key cannot be of non-integral type `float`
+-fail_compilation/diag16976.d(33): Error: foreach: key cannot be of non-integral type `float`
+-fail_compilation/diag16976.d(34): Error: foreach: key cannot be of non-integral type `float`
+-fail_compilation/diag16976.d(35): Error: foreach: key cannot be of non-integral type `float`
+-fail_compilation/diag16976.d(36): Error: foreach: key cannot be of non-integral type `float`
+-fail_compilation/diag16976.d(37): Error: foreach: key cannot be of non-integral type `float`
+-fail_compilation/diag16976.d(38): Error: foreach: key cannot be of non-integral type `float`
+-fail_compilation/diag16976.d(39): Error: foreach: key cannot be of non-integral type `float`
+-fail_compilation/diag16976.d(40): Error: foreach: key cannot be of non-integral type `float`
+-fail_compilation/diag16976.d(41): Error: foreach: key cannot be of non-integral type `float`
+-fail_compilation/diag16976.d(42): Error: foreach: key cannot be of non-integral type `float`
+-fail_compilation/diag16976.d(43): Error: foreach: key cannot be of non-integral type `float`
++fail_compilation/diag16976.d(44): Error: foreach: key cannot be of non-integral type `float`
++fail_compilation/diag16976.d(45): Error: foreach: key cannot be of non-integral type `float`
++fail_compilation/diag16976.d(46): Error: foreach: key cannot be of non-integral type `float`
++fail_compilation/diag16976.d(47): Error: foreach: key cannot be of non-integral type `float`
++fail_compilation/diag16976.d(48): Error: foreach: key cannot be of non-integral type `float`
++fail_compilation/diag16976.d(49): Error: foreach: key cannot be of non-integral type `float`
++fail_compilation/diag16976.d(50): Error: foreach: key cannot be of non-integral type `float`
++fail_compilation/diag16976.d(51): Error: foreach: key cannot be of non-integral type `float`
++fail_compilation/diag16976.d(52): Error: foreach: key cannot be of non-integral type `float`
++fail_compilation/diag16976.d(53): Error: foreach: key cannot be of non-integral type `float`
++fail_compilation/diag16976.d(54): Error: foreach: key cannot be of non-integral type `float`
++fail_compilation/diag16976.d(55): Error: foreach: key cannot be of non-integral type `float`
++fail_compilation/diag16976.d(56): Error: foreach: key cannot be of non-integral type `float`
++fail_compilation/diag16976.d(57): Error: foreach: key cannot be of non-integral type `float`
++fail_compilation/diag16976.d(58): Error: foreach: key cannot be of non-integral type `float`
++fail_compilation/diag16976.d(59): Error: foreach: key cannot be of non-integral type `float`
++fail_compilation/diag16976.d(65): Error: foreach: key cannot be of non-integral type `float`
++fail_compilation/diag16976.d(66): Error: foreach: key cannot be of non-integral type `float`
++fail_compilation/diag16976.d(67): Error: foreach: key cannot be of non-integral type `float`
++fail_compilation/diag16976.d(68): Error: foreach: key cannot be of non-integral type `float`
++fail_compilation/diag16976.d(69): Error: foreach: key cannot be of non-integral type `float`
++fail_compilation/diag16976.d(70): Error: foreach: key cannot be of non-integral type `float`
++fail_compilation/diag16976.d(71): Error: foreach: key cannot be of non-integral type `float`
++fail_compilation/diag16976.d(72): Error: foreach: key cannot be of non-integral type `float`
++fail_compilation/diag16976.d(73): Error: foreach: key cannot be of non-integral type `float`
++fail_compilation/diag16976.d(74): Error: foreach: key cannot be of non-integral type `float`
++fail_compilation/diag16976.d(75): Error: foreach: key cannot be of non-integral type `float`
++fail_compilation/diag16976.d(76): Error: foreach: key cannot be of non-integral type `float`
++fail_compilation/diag16976.d(77): Error: foreach: key cannot be of non-integral type `float`
++fail_compilation/diag16976.d(78): Error: foreach: key cannot be of non-integral type `float`
++fail_compilation/diag16976.d(79): Error: foreach: key cannot be of non-integral type `float`
++fail_compilation/diag16976.d(80): Error: foreach: key cannot be of non-integral type `float`
+ ---
+ */
+ 
+@@ -41,4 +57,25 @@ void main()
+     foreach_reverse(float f, dchar i; sta) {}
+     foreach_reverse(float f, dchar i; str) {}
+     foreach_reverse(float f, dchar i; chr) {}
++
++    immutable int[]  idyn = [1,2,3,4,5];
++    immutable int[5] ista = [1,2,3,4,5];
++    immutable char[]  istr = ['1','2','3','4','5'];
++    immutable char[5] ichr = ['1','2','3','4','5'];
++    static foreach(float f, i; idyn) {}
++    static foreach(float f, i; ista) {}
++    static foreach(float f, i; istr) {}
++    static foreach(float f, i; ichr) {}
++    static foreach(float f, dchar i; idyn) {}
++    static foreach(float f, dchar i; ista) {}
++    static foreach(float f, dchar i; istr) {}
++    static foreach(float f, dchar i; ichr) {}
++    static foreach_reverse(float f, i; idyn) {}
++    static foreach_reverse(float f, i; ista) {}
++    static foreach_reverse(float f, i; istr) {}
++    static foreach_reverse(float f, i; ichr) {}
++    static foreach_reverse(float f, dchar i; idyn) {}
++    static foreach_reverse(float f, dchar i; ista) {}
++    static foreach_reverse(float f, dchar i; istr) {}
++    static foreach_reverse(float f, dchar i; ichr) {}
+ }
+diff --git a/gcc/testsuite/gdc.test/fail_compilation/fail117.d b/gcc/testsuite/gdc.test/fail_compilation/fail117.d
+index f39a48db67c..9279d54276c 100644
+--- a/gcc/testsuite/gdc.test/fail_compilation/fail117.d
++++ b/gcc/testsuite/gdc.test/fail_compilation/fail117.d
+@@ -1,8 +1,10 @@
+ /*
+ TEST_OUTPUT:
+ ---
+-fail_compilation/fail117.d(35): Error: expression has no value
+-fail_compilation/fail117.d(36): Error: expression has no value
++fail_compilation/fail117.d(37): Error: expression `foo.mixin MGettor!(a) geta;
++` is `void` and has no value
++fail_compilation/fail117.d(38): Error: expression `foo.mixin MGettor!(b) getb;
++` is `void` and has no value
+ ---
+ */
+ 
+diff --git a/gcc/testsuite/gdc.test/fail_compilation/fail22006.d b/gcc/testsuite/gdc.test/fail_compilation/fail22006.d
+new file mode 100644
+index 00000000000..89bbc289414
+--- /dev/null
++++ b/gcc/testsuite/gdc.test/fail_compilation/fail22006.d
+@@ -0,0 +1,22 @@
++/*
++TEST_OUTPUT:
++---
++fail_compilation/fail22006.d(15): Error: cannot implicitly convert expression `4$?:32=u|64=LU$` of type `$?:32=uint|64=ulong$` to `bool`
++fail_compilation/fail22006.d(16): Error: index type `bool` cannot cover index range 0..4
++fail_compilation/fail22006.d(19): Error: cannot implicitly convert expression `4$?:32=u|64=LU$` of type `$?:32=uint|64=ulong$` to `bool`
++fail_compilation/fail22006.d(20): Error: index type `bool` cannot cover index range 0..4
++---
++*/
++void test22006()
++{
++    alias AliasSeq(TList...) = TList;
++    {
++        alias aseq = AliasSeq!(0, 1, 2, 3);
++        static foreach (bool i; 0 .. aseq.length) {}
++        static foreach (bool i, x; aseq) {}
++    }
++    {
++        static foreach (bool i; 0 .. [0, 1, 2, 3].length) {}
++        static foreach (bool i, x; [0, 1, 2, 3]) {}
++    }
++}
+diff --git a/gcc/testsuite/gdc.test/fail_compilation/fail238_m32.d b/gcc/testsuite/gdc.test/fail_compilation/fail238_m32.d
+index cb565ba2d39..a312dc07290 100644
+--- a/gcc/testsuite/gdc.test/fail_compilation/fail238_m32.d
++++ b/gcc/testsuite/gdc.test/fail_compilation/fail238_m32.d
+@@ -3,10 +3,10 @@
+ TEST_OUTPUT:
+ ---
+ fail_compilation/fail238_m32.d(21): Error: cannot implicitly convert expression `"a"` of type `string` to `uint`
+-fail_compilation/fail238_m32.d(24): Error: cannot interpret X!() at compile time
+-fail_compilation/fail238_m32.d(29): Error: template instance fail238_m32.A!"a" error instantiating
+-fail_compilation/fail238_m32.d(35):        instantiated from here: M!(q)
+-fail_compilation/fail238_m32.d(35):        while evaluating pragma(msg, M!(q))
++fail_compilation/fail238_m32.d(24): Error: cannot implicitly convert expression `X!()` of type `void` to `const(string)`
++fail_compilation/fail238_m32.d(29): Error: template instance `fail238_m32.A!"a"` error instantiating
++fail_compilation/fail238_m32.d(35):        instantiated from here: `M!(q)`
++fail_compilation/fail238_m32.d(35):        while evaluating `pragma(msg, M!(q))`
+ ---
+ */
+ 
+diff --git a/gcc/testsuite/gdc.test/fail_compilation/fail238_m64.d b/gcc/testsuite/gdc.test/fail_compilation/fail238_m64.d
+index 08837b2a554..dc7a50ea546 100644
+--- a/gcc/testsuite/gdc.test/fail_compilation/fail238_m64.d
++++ b/gcc/testsuite/gdc.test/fail_compilation/fail238_m64.d
+@@ -3,10 +3,10 @@
+ TEST_OUTPUT:
+ ---
+ fail_compilation/fail238_m64.d(21): Error: cannot implicitly convert expression `"a"` of type `string` to `ulong`
+-fail_compilation/fail238_m64.d(24): Error: cannot interpret X!() at compile time
+-fail_compilation/fail238_m64.d(29): Error: template instance fail238_m64.A!"a" error instantiating
+-fail_compilation/fail238_m64.d(35):        instantiated from here: M!(q)
+-fail_compilation/fail238_m64.d(35):        while evaluating pragma(msg, M!(q))
++fail_compilation/fail238_m64.d(24): Error: cannot implicitly convert expression `X!()` of type `void` to `const(string)`
++fail_compilation/fail238_m64.d(29): Error: template instance `fail238_m64.A!"a"` error instantiating
++fail_compilation/fail238_m64.d(35):        instantiated from here: `M!(q)`
++fail_compilation/fail238_m64.d(35):        while evaluating `pragma(msg, M!(q))`
+ ---
+ */
+ 
+diff --git a/gcc/testsuite/gdc.test/fail_compilation/fail7424b.d b/gcc/testsuite/gdc.test/fail_compilation/fail7424b.d
+index d358b60c7db..737958ca6a3 100644
+--- a/gcc/testsuite/gdc.test/fail_compilation/fail7424b.d
++++ b/gcc/testsuite/gdc.test/fail_compilation/fail7424b.d
+@@ -1,3 +1,9 @@
++/*
++TEST_OUTPUT:
++---
++fail_compilation/fail7424b.d(10): Error: expression `this.g()()` is `void` and has no value
++---
++*/
+ struct S7424b
+ {
+     @property int g()() { return 0; }
+diff --git a/gcc/testsuite/gdc.test/fail_compilation/fail7424c.d b/gcc/testsuite/gdc.test/fail_compilation/fail7424c.d
+index c0671786ce5..e804d72100b 100644
+--- a/gcc/testsuite/gdc.test/fail_compilation/fail7424c.d
++++ b/gcc/testsuite/gdc.test/fail_compilation/fail7424c.d
+@@ -1,3 +1,9 @@
++/*
++TEST_OUTPUT:
++---
++fail_compilation/fail7424c.d(10): Error: expression `this.g()()` is `void` and has no value
++---
++*/
+ struct S7424c
+ {
+     @property int g()() { return 0; }
+diff --git a/gcc/testsuite/gdc.test/fail_compilation/fail7424d.d b/gcc/testsuite/gdc.test/fail_compilation/fail7424d.d
+index a981be6a39c..5ef9463aeb2 100644
+--- a/gcc/testsuite/gdc.test/fail_compilation/fail7424d.d
++++ b/gcc/testsuite/gdc.test/fail_compilation/fail7424d.d
+@@ -1,3 +1,9 @@
++/*
++TEST_OUTPUT:
++---
++fail_compilation/fail7424d.d(10): Error: expression `this.g()()` is `void` and has no value
++---
++*/
+ struct S7424d
+ {
+     @property int g()() immutable { return 0; }
+diff --git a/gcc/testsuite/gdc.test/fail_compilation/fail7424e.d b/gcc/testsuite/gdc.test/fail_compilation/fail7424e.d
+index 4dfda623e3b..ddf4ded953a 100644
+--- a/gcc/testsuite/gdc.test/fail_compilation/fail7424e.d
++++ b/gcc/testsuite/gdc.test/fail_compilation/fail7424e.d
+@@ -1,3 +1,9 @@
++/*
++TEST_OUTPUT:
++---
++fail_compilation/fail7424e.d(10): Error: expression `this.g()()` is `void` and has no value
++---
++*/
+ struct S7424e
+ {
+     @property int g()() immutable { return 0; }
+diff --git a/gcc/testsuite/gdc.test/fail_compilation/fail7424f.d b/gcc/testsuite/gdc.test/fail_compilation/fail7424f.d
+index e72a05b5649..751b6259d31 100644
+--- a/gcc/testsuite/gdc.test/fail_compilation/fail7424f.d
++++ b/gcc/testsuite/gdc.test/fail_compilation/fail7424f.d
+@@ -1,3 +1,9 @@
++/*
++TEST_OUTPUT:
++---
++fail_compilation/fail7424f.d(10): Error: expression `this.g()()` is `void` and has no value
++---
++*/
+ struct S7424f
+ {
+     @property int g()() shared { return 0; }
+diff --git a/gcc/testsuite/gdc.test/fail_compilation/fail7424g.d b/gcc/testsuite/gdc.test/fail_compilation/fail7424g.d
+index 059f586a480..d4fa4635d8d 100644
+--- a/gcc/testsuite/gdc.test/fail_compilation/fail7424g.d
++++ b/gcc/testsuite/gdc.test/fail_compilation/fail7424g.d
+@@ -1,3 +1,9 @@
++/*
++TEST_OUTPUT:
++---
++fail_compilation/fail7424g.d(10): Error: expression `this.g()()` is `void` and has no value
++---
++*/
+ struct S7424g
+ {
+     @property int g()() { return 0; }
+diff --git a/gcc/testsuite/gdc.test/fail_compilation/fail7424h.d b/gcc/testsuite/gdc.test/fail_compilation/fail7424h.d
+index fd22b2efde0..56184a5f5a1 100644
+--- a/gcc/testsuite/gdc.test/fail_compilation/fail7424h.d
++++ b/gcc/testsuite/gdc.test/fail_compilation/fail7424h.d
+@@ -1,3 +1,9 @@
++/*
++TEST_OUTPUT:
++---
++fail_compilation/fail7424h.d(10): Error: expression `this.g()()` is `void` and has no value
++---
++*/
+ struct S7424g
+ {
+     @property int g()() { return 0; }
+diff --git a/gcc/testsuite/gdc.test/fail_compilation/fail7424i.d b/gcc/testsuite/gdc.test/fail_compilation/fail7424i.d
+index 2871e932140..37042f741f3 100644
+--- a/gcc/testsuite/gdc.test/fail_compilation/fail7424i.d
++++ b/gcc/testsuite/gdc.test/fail_compilation/fail7424i.d
+@@ -1,3 +1,9 @@
++/*
++TEST_OUTPUT:
++---
++fail_compilation/fail7424i.d(10): Error: expression `this.g()()` is `void` and has no value
++---
++*/
+ struct S7424g
+ {
+     @property int g()() immutable { return 0; }
+diff --git a/gcc/testsuite/gdc.test/fail_compilation/fail9766.d b/gcc/testsuite/gdc.test/fail_compilation/fail9766.d
+index d75d1bc44e7..58cabe3825b 100644
+--- a/gcc/testsuite/gdc.test/fail_compilation/fail9766.d
++++ b/gcc/testsuite/gdc.test/fail_compilation/fail9766.d
+@@ -1,7 +1,8 @@
+ /*
+ TEST_OUTPUT:
+ ---
+-fail_compilation/fail9766.d(14): Error: cannot interpret Foo!int at compile time
++fail_compilation/fail9766.d(14): Error: integer constant expression expected instead of `Foo!int`
++fail_compilation/fail9766.d(14): Error: alignment must be an integer positive power of 2, not Foo!int
+ fail_compilation/fail9766.d(17): Error: alignment must be an integer positive power of 2, not -1
+ fail_compilation/fail9766.d(20): Error: alignment must be an integer positive power of 2, not 0
+ fail_compilation/fail9766.d(23): Error: alignment must be an integer positive power of 2, not 3
+@@ -9,6 +10,7 @@ fail_compilation/fail9766.d(26): Error: alignment must be an integer positive po
+ ---
+ */
+ 
++#line 12
+ template Foo(T) {}
+ 
+ align(Foo!int)
+diff --git a/gcc/testsuite/gdc.test/fail_compilation/ice9406.d b/gcc/testsuite/gdc.test/fail_compilation/ice9406.d
+index d8c0837699a..c1807a0f542 100644
+--- a/gcc/testsuite/gdc.test/fail_compilation/ice9406.d
++++ b/gcc/testsuite/gdc.test/fail_compilation/ice9406.d
+@@ -1,7 +1,8 @@
+ /*
+ TEST_OUTPUT:
+ ---
+-fail_compilation/ice9406.d(21): Error: expression has no value
++fail_compilation/ice9406.d(22): Error: `s1.mixin Mixin!() t1;
++` has no effect
+ ---
+ */
+ 
+diff --git a/gcc/testsuite/gdc.test/fail_compilation/test21927.d b/gcc/testsuite/gdc.test/fail_compilation/test21927.d
+new file mode 100644
+index 00000000000..fa23285e8b0
+--- /dev/null
++++ b/gcc/testsuite/gdc.test/fail_compilation/test21927.d
+@@ -0,0 +1,20 @@
++// https://issues.dlang.org/show_bug.cgi?id=21927
++/*
++TEST_OUTPUT:
++---
++fail_compilation/test21927.d(17): Error: invalid `foreach` aggregate `this.T2(Args2...)`
++fail_compilation/test21927.d(18): Error: invalid `foreach` aggregate `this.T2!()`
++---
++*/
++
++struct S
++{
++    template T2(Args2...) {}
++
++    void fun()
++    {
++        // original test case
++        static foreach (p; this.T2) {} // ICE
++        static foreach (p; this.T2!()) {} // ICE
++    }
++}
+diff --git a/gcc/testsuite/gdc.test/fail_compilation/test21939.d b/gcc/testsuite/gdc.test/fail_compilation/test21939.d
+new file mode 100644
+index 00000000000..cb755ef2679
+--- /dev/null
++++ b/gcc/testsuite/gdc.test/fail_compilation/test21939.d
+@@ -0,0 +1,9 @@
++// https://issues.dlang.org/show_bug.cgi?id=21939
++/*
++TEST_OUTPUT:
++---
++fail_compilation/test21939.d(9): Error: invalid `foreach` aggregate `Object`, define `opApply()`, range primitives, or use `.tupleof`
++---
++*/
++
++static foreach (a; Object) {}
 diff --git a/gcc/testsuite/gfortran.dg/argument_checking_25.f90 b/gcc/testsuite/gfortran.dg/argument_checking_25.f90
 new file mode 100644
 index 00000000000..e699160fee1
@@ -15485,6 +16514,56 @@ index 00000000000..1d415cdcf76
 +
 +  return 0;
 +}
+diff --git a/libphobos/ChangeLog b/libphobos/ChangeLog
+index 053809c0ea7..f47e999cc94 100644
+--- a/libphobos/ChangeLog
++++ b/libphobos/ChangeLog
+@@ -1,3 +1,12 @@
++2021-06-11  Iain Buclaw  <ibuclaw@gdcproject.org>
++
++	Backported from master:
++	2021-06-11  Iain Buclaw  <ibuclaw@gdcproject.org>
++
++	PR d/100999
++	* src/std/typecons.d (template Proxy): Check for field or property
++	functions as the else branch.
++
+ 2021-04-08  Release Manager
+ 
+ 	* GCC 10.3.0 released.
+diff --git a/libphobos/src/std/typecons.d b/libphobos/src/std/typecons.d
+index a63227cee8b..e0a9ad6c519 100644
+--- a/libphobos/src/std/typecons.d
++++ b/libphobos/src/std/typecons.d
+@@ -5933,13 +5933,7 @@ mixin template Proxy(alias a)
+             // built-in type field, manifest constant, and static non-mutable field
+             enum opDispatch = mixin("a."~name);
+         }
+-        else static if (is(typeof(mixin("a."~name))) || __traits(getOverloads, a, name).length != 0)
+-        {
+-            // field or property function
+-            @property auto ref opDispatch(this X)()                { return mixin("a."~name);        }
+-            @property auto ref opDispatch(this X, V)(auto ref V v) { return mixin("a."~name~" = v"); }
+-        }
+-        else
++        else static if (__traits(isTemplate, mixin("a."~name)))
+         {
+             // member template
+             template opDispatch(T...)
+@@ -5948,6 +5942,13 @@ mixin template Proxy(alias a)
+                 auto ref opDispatch(this X, Args...)(auto ref Args args){ return mixin("a."~name~targs~"(args)"); }
+             }
+         }
++        else
++        {
++            // field or property function
++            @property auto ref opDispatch(this X)()                { return mixin("a."~name);        }
++            @property auto ref opDispatch(this X, V)(auto ref V v) { return mixin("a."~name~" = v"); }
++        }
++
+     }
+ 
+     import std.traits : isArray;
 diff --git a/libsanitizer/ChangeLog b/libsanitizer/ChangeLog
 index ceea82c4f70..4306e67dc66 100644
 --- a/libsanitizer/ChangeLog
@@ -15638,10 +16717,99 @@ index 304b3a01a08..ac88fbe074e 100644
    UnmapOrDie(oldstack.ss_sp, oldstack.ss_size);
  }
 diff --git a/libstdc++-v3/ChangeLog b/libstdc++-v3/ChangeLog
-index fdd63cbff1a..0d662c65df1 100644
+index fdd63cbff1a..ab9d809d77b 100644
 --- a/libstdc++-v3/ChangeLog
 +++ b/libstdc++-v3/ChangeLog
-@@ -1,3 +1,637 @@
+@@ -1,3 +1,726 @@
++2021-06-10  Patrick Palka  <ppalka@redhat.com>
++
++	Backported from master:
++	2021-06-03  Patrick Palka  <ppalka@redhat.com>
++
++	PR libstdc++/100770
++	* include/bits/ranges_algo.h (__detail::__can_reread_output):
++	Factor out this concept from ...
++	(__unique_copy_fn::operator()): ... here.  Use the concept
++	throughout.
++	* testsuite/std/ranges/range.cc: Remove now ill-formed use
++	of range_value_t on an output_range.
++	* testsuite/util/testsuite_iterators.h (output_iterator_wrapper):
++	Define value_type, pointer and reference member types to void.
++
++2021-06-10  Patrick Palka  <ppalka@redhat.com>
++
++	Backported from master:
++	2021-05-21  Patrick Palka  <ppalka@redhat.com>
++
++	PR libstdc++/100690
++	* include/std/ranges (iota_view::_Sentinel::_M_distance_from):
++	Split out this member function from ...
++	(iota_view::_Sentinel::operator-): ... here, for sake of access
++	control.
++	* testsuite/std/ranges/iota/iota_view.cc (test05): New test.
++
++2021-06-10  Patrick Palka  <ppalka@redhat.com>
++
++	Backported from master:
++	2021-05-06  Patrick Palka  <ppalka@redhat.com>
++
++	* include/std/ranges (filter_view::_Iterator::base): Make the
++	const& overload unconstrained and return a const reference as
++	per LWG 3533.  Make unconditionally noexcept.
++	(transform_view::_Iterator::base): Likewise.
++	(elements_view::_Iterator::base): Likewise.
++
++2021-06-10  Patrick Palka  <ppalka@redhat.com>
++
++	Backported from master:
++	2021-05-06  Patrick Palka  <ppalka@redhat.com>
++
++	* include/bits/stl_iterator.h (move_iterator::base): Make the
++	const& overload unconstrained and return a const reference as
++	per LWG 3391.  Make unconditionally noexcept.
++	(counted_iterator::base): Likewise.
++	* testsuite/24_iterators/move_iterator/lwg3391.cc: New test.
++	* testsuite/24_iterators/move_iterator/move_only.cc: Adjust
++	has_member_base concept to decay-copy the result of base().
++
++2021-06-10  Patrick Palka  <ppalka@redhat.com>
++
++	Backported from master:
++	2021-05-18  Patrick Palka  <ppalka@redhat.com>
++
++	PR libstdc++/100631
++	* include/std/ranges (elements_view::_Sentinel::operator-): Use
++	_M_distance_from in the other operator- overload too.
++	* testsuite/std/ranges/adaptors/elements.cc (test06): Augment test.
++
++2021-06-10  Patrick Palka  <ppalka@redhat.com>
++
++	Backported from master:
++	2021-05-18  Patrick Palka  <ppalka@redhat.com>
++
++	PR libstdc++/100631
++	* include/std/ranges (elements_view::_Iterator): Also befriend
++	_Sentinel<!_Const>.
++	(elements_view::_Sentinel::_M_equal): Templatize.
++	(elements_view::_Sentinel::_M_distance_from): Split out from ...
++	(elements_view::_Sentinel::operator-): ... here.  Depend on
++	_Base2 instead of _Base in the return type.
++	* testsuite/std/ranges/adaptors/elements.cc (test06, test07):
++	New tests.
++
++2021-06-10  Patrick Palka  <ppalka@redhat.com>
++
++	Backported from master:
++	2021-05-20  Patrick Palka  <ppalka@redhat.com>
++
++	PR libstdc++/100639
++	* include/bits/stl_iterator.h (reverse_iterator::difference_type):
++	In C++20 mode, define in terms of iter_difference_t as per P0896R4.
++	(reverse_iterator::reference): Likewise, but with iter_reference_t.
++	(reverse_iterator::value_type): Likewise, but with iter_value_t.
++	* testsuite/std/ranges/adaptors/reverse.cc (test08): New test.
++	* testsuite/24_iterators/reverse_iterator/100639.cc: New test.
++
 +2021-06-03  Jonathan Wakely  <jwakely@redhat.com>
 +
 +	Backported from master:
@@ -17512,6 +18680,54 @@ index c93d1e37f34..bf46f366486 100644
  
  } // namespace ranges
  #endif // library concepts
+diff --git a/libstdc++-v3/include/bits/ranges_algo.h b/libstdc++-v3/include/bits/ranges_algo.h
+index 095730974cd..92ab045aa6a 100644
+--- a/libstdc++-v3/include/bits/ranges_algo.h
++++ b/libstdc++-v3/include/bits/ranges_algo.h
+@@ -1395,6 +1395,13 @@ namespace ranges
+ 
+   inline constexpr __unique_fn unique{};
+ 
++  namespace __detail
++  {
++    template<typename _Out, typename _Tp>
++      concept __can_reread_output = input_iterator<_Out>
++	&& same_as<_Tp, iter_value_t<_Out>>;
++  }
++
+   template<typename _Iter, typename _Out>
+     using unique_copy_result = in_out_result<_Iter, _Out>;
+ 
+@@ -1406,8 +1413,7 @@ namespace ranges
+ 	       projected<_Iter, _Proj>> _Comp = ranges::equal_to>
+       requires indirectly_copyable<_Iter, _Out>
+ 	&& (forward_iterator<_Iter>
+-	    || (input_iterator<_Out>
+-		&& same_as<iter_value_t<_Iter>, iter_value_t<_Out>>)
++	    || __detail::__can_reread_output<_Out, iter_value_t<_Iter>>
+ 	    || indirectly_copyable_storable<_Iter, _Out>)
+       constexpr unique_copy_result<_Iter, _Out>
+       operator()(_Iter __first, _Sent __last, _Out __result,
+@@ -1431,8 +1437,7 @@ namespace ranges
+ 		}
+ 	    return {__next, std::move(++__result)};
+ 	  }
+-	else if constexpr (input_iterator<_Out>
+-			   && same_as<iter_value_t<_Iter>, iter_value_t<_Out>>)
++	else if constexpr (__detail::__can_reread_output<_Out, iter_value_t<_Iter>>)
+ 	  {
+ 	    *__result = *__first;
+ 	    while (++__first != __last)
+@@ -1466,8 +1471,7 @@ namespace ranges
+ 	       projected<iterator_t<_Range>, _Proj>> _Comp = ranges::equal_to>
+       requires indirectly_copyable<iterator_t<_Range>, _Out>
+ 	&& (forward_iterator<iterator_t<_Range>>
+-	    || (input_iterator<_Out>
+-		&& same_as<range_value_t<_Range>, iter_value_t<_Out>>)
++	    || __detail::__can_reread_output<_Out, range_value_t<_Range>>
+ 	    || indirectly_copyable_storable<iterator_t<_Range>, _Out>)
+       constexpr unique_copy_result<borrowed_iterator_t<_Range>, _Out>
+       operator()(_Range&& __r, _Out __result,
 diff --git a/libstdc++-v3/include/bits/refwrap.h b/libstdc++-v3/include/bits/refwrap.h
 index 717aa01629c..4b84ac7f039 100644
 --- a/libstdc++-v3/include/bits/refwrap.h
@@ -18089,10 +19305,35 @@ index 3959dd7899d..2d7f7e11b3f 100644
  #if __cplusplus >= 201103L
        // Constant-time, nothrow move assignment when source object's memory
 diff --git a/libstdc++-v3/include/bits/stl_iterator.h b/libstdc++-v3/include/bits/stl_iterator.h
-index d950e896928..3ffd23219cf 100644
+index d950e896928..244f72d64b3 100644
 --- a/libstdc++-v3/include/bits/stl_iterator.h
 +++ b/libstdc++-v3/include/bits/stl_iterator.h
-@@ -369,7 +369,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+@@ -136,11 +136,11 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+ 
+     public:
+       typedef _Iterator					iterator_type;
+-      typedef typename __traits_type::difference_type	difference_type;
+       typedef typename __traits_type::pointer		pointer;
++#if __cplusplus <= 201703L
++      typedef typename __traits_type::difference_type	difference_type;
+       typedef typename __traits_type::reference		reference;
+-
+-#if __cplusplus > 201703L && __cpp_lib_concepts
++#else
+       using iterator_concept
+ 	= conditional_t<random_access_iterator<_Iterator>,
+ 			random_access_iterator_tag,
+@@ -148,6 +148,9 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+       using iterator_category
+ 	= __detail::__clamp_iter_cat<typename __traits_type::iterator_category,
+ 				     random_access_iterator_tag>;
++      using value_type = iter_value_t<_Iterator>;
++      using difference_type = iter_difference_t<_Iterator>;
++      using reference = iter_reference_t<_Iterator>;
+ #endif
+ 
+       /**
+@@ -369,7 +372,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
          { return __t.operator->(); }
      };
  
@@ -18101,7 +19342,7 @@ index d950e896928..3ffd23219cf 100644
    /**
     *  @param  __x  A %reverse_iterator.
     *  @param  __y  A %reverse_iterator.
-@@ -503,7 +503,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+@@ -503,7 +506,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
  		const reverse_iterator<_IteratorR>& __y)
      { return __y.base() <=> __x.base(); }
  #endif // C++20
@@ -18110,7 +19351,7 @@ index d950e896928..3ffd23219cf 100644
  
  #if __cplusplus < 201103L
    template<typename _Iterator>
-@@ -932,7 +932,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+@@ -932,7 +935,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
      { return insert_iterator<_Container>(__x, __i); }
  #endif
  
@@ -18119,7 +19360,7 @@ index d950e896928..3ffd23219cf 100644
  
  _GLIBCXX_END_NAMESPACE_VERSION
  } // namespace
-@@ -1270,6 +1270,24 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+@@ -1270,6 +1273,24 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
      };
  #endif // C++20
  
@@ -18144,7 +19385,7 @@ index d950e896928..3ffd23219cf 100644
    // 24.4.3  Move iterators
    /**
     *  Class template move_iterator is an iterator adapter with the same
-@@ -1281,13 +1299,14 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+@@ -1281,13 +1302,14 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     */
    template<typename _Iterator>
      class move_iterator
@@ -18162,7 +19403,7 @@ index d950e896928..3ffd23219cf 100644
        using __base_ref = typename __traits_type::reference;
  #endif
  
-@@ -1296,8 +1315,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+@@ -1296,8 +1318,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
  
  #if __cplusplus > 201703L && __cpp_lib_concepts
        using iterator_concept = input_iterator_tag;
@@ -18172,6 +19413,20 @@ index d950e896928..3ffd23219cf 100644
        using value_type = iter_value_t<_Iterator>;
        using difference_type = iter_difference_t<_Iterator>;
        using pointer = _Iterator;
+@@ -1341,11 +1362,8 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+       base() const
+       { return _M_current; }
+ #else
+-      constexpr iterator_type
+-      base() const &
+-#if __cpp_lib_concepts
+-	requires copy_constructible<iterator_type>
+-#endif
++      constexpr const iterator_type&
++      base() const & noexcept
+       { return _M_current; }
+ 
+       constexpr iterator_type
 @@ -1612,6 +1630,10 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
  	    || is_reference_v<iter_reference_t<_It>>
  	    || constructible_from<iter_value_t<_It>, iter_reference_t<_It>>);
@@ -18318,7 +19573,20 @@ index d950e896928..3ffd23219cf 100644
  
        constexpr counted_iterator() = default;
  
-@@ -2028,6 +2116,11 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+@@ -2003,10 +2091,8 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+ 	  return *this;
+ 	}
+ 
+-      constexpr _It
+-      base() const &
+-      noexcept(is_nothrow_copy_constructible_v<_It>)
+-      requires copy_constructible<_It>
++      constexpr const _It&
++      base() const & noexcept
+       { return _M_current; }
+ 
+       constexpr _It
+@@ -2028,6 +2114,11 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
        requires __detail::__dereferenceable<const _It>
        { return *_M_current; }
  
@@ -18330,7 +19598,7 @@ index d950e896928..3ffd23219cf 100644
        constexpr counted_iterator&
        operator++()
        {
-@@ -2170,20 +2263,17 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+@@ -2170,20 +2261,17 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
        iter_difference_t<_It> _M_length = 0;
      };
  
@@ -21745,7 +23013,7 @@ index 9a80adf3a5a..97ff1cee4e6 100644
    // Standard basic_ostream manipulators
  
 diff --git a/libstdc++-v3/include/std/ranges b/libstdc++-v3/include/std/ranges
-index 8e00222c2e8..caca68ac0c0 100644
+index 8e00222c2e8..907f2824bbe 100644
 --- a/libstdc++-v3/include/std/ranges
 +++ b/libstdc++-v3/include/std/ranges
 @@ -222,11 +222,6 @@ namespace ranges
@@ -21815,7 +23083,33 @@ index 8e00222c2e8..caca68ac0c0 100644
  	using value_type = _Winc;
  	using difference_type = __detail::__iota_diff_t<_Winc>;
  
-@@ -973,7 +966,7 @@ namespace views
+@@ -823,6 +816,10 @@ namespace ranges
+ 	_M_equal(const _Iterator& __x) const
+ 	{ return __x._M_value == _M_bound; }
+ 
++	constexpr auto
++	_M_distance_from(const _Iterator& __x) const
++	{ return _M_bound - __x._M_value; }
++
+ 	_Bound _M_bound = _Bound();
+ 
+       public:
+@@ -839,12 +836,12 @@ namespace ranges
+ 	friend constexpr iter_difference_t<_Winc>
+ 	operator-(const _Iterator& __x, const _Sentinel& __y)
+ 	  requires sized_sentinel_for<_Bound, _Winc>
+-	{ return __x._M_value - __y._M_bound; }
++	{ return -__y._M_distance_from(__x); }
+ 
+ 	friend constexpr iter_difference_t<_Winc>
+ 	operator-(const _Sentinel& __x, const _Iterator& __y)
+ 	  requires sized_sentinel_for<_Bound, _Winc>
+-	{ return -(__y - __x); }
++	{ return __x._M_distance_from(__y); }
+       };
+ 
+       _Winc _M_value = _Winc();
+@@ -973,7 +970,7 @@ namespace views
        {
  	if (_M_stream != nullptr)
  	  *_M_stream >> _M_object;
@@ -21824,7 +23118,7 @@ index 8e00222c2e8..caca68ac0c0 100644
        }
  
        constexpr default_sentinel_t
-@@ -994,8 +987,8 @@ namespace views
+@@ -994,8 +991,8 @@ namespace views
  	_Iterator() = default;
  
  	constexpr explicit
@@ -21835,7 +23129,7 @@ index 8e00222c2e8..caca68ac0c0 100644
  	{ }
  
  	_Iterator(const _Iterator&) = delete;
-@@ -1292,65 +1285,50 @@ namespace views
+@@ -1292,65 +1289,50 @@ namespace views
  
    } // namespace views
  
@@ -21923,7 +23217,7 @@ index 8e00222c2e8..caca68ac0c0 100644
  	return { std::move(__first1), std::move(__first2) };
        }
    } // namespace __detail
-@@ -1429,7 +1407,32 @@ namespace views
+@@ -1429,7 +1411,32 @@ namespace views
  	  _M_offset = __it - ranges::begin(__r);
  	}
        };
@@ -21956,7 +23250,7 @@ index 8e00222c2e8..caca68ac0c0 100644
    } // namespace __detail
  
    template<input_range _Vp,
-@@ -1440,7 +1443,7 @@ namespace views
+@@ -1440,7 +1447,7 @@ namespace views
      private:
        struct _Sentinel;
  
@@ -21965,7 +23259,7 @@ index 8e00222c2e8..caca68ac0c0 100644
        {
        private:
  	static constexpr auto
-@@ -1454,18 +1457,6 @@ namespace views
+@@ -1454,18 +1461,6 @@ namespace views
  	    return input_iterator_tag{};
  	}
  
@@ -21984,7 +23278,7 @@ index 8e00222c2e8..caca68ac0c0 100644
  	friend filter_view;
  
  	using _Vp_iter = iterator_t<_Vp>;
-@@ -1475,16 +1466,16 @@ namespace views
+@@ -1475,21 +1470,20 @@ namespace views
  
        public:
  	using iterator_concept = decltype(_S_iter_concept());
@@ -22003,8 +23297,15 @@ index 8e00222c2e8..caca68ac0c0 100644
 +	    _M_parent(__parent)
  	{ }
  
+-	constexpr _Vp_iter
+-	base() const &
+-	  requires copyable<_Vp_iter>
++	constexpr const _Vp_iter&
++	base() const & noexcept
+ 	{ return _M_current; }
+ 
  	constexpr _Vp_iter
-@@ -1574,8 +1565,8 @@ namespace views
+@@ -1574,8 +1568,8 @@ namespace views
  	_Sentinel() = default;
  
  	constexpr explicit
@@ -22015,7 +23316,7 @@ index 8e00222c2e8..caca68ac0c0 100644
  	{ }
  
  	constexpr sentinel_t<_Vp>
-@@ -1615,23 +1606,23 @@ namespace views
+@@ -1615,23 +1609,23 @@ namespace views
        begin()
        {
  	if (_M_cached_begin._M_has_value())
@@ -22043,19 +23344,19 @@ index 8e00222c2e8..caca68ac0c0 100644
        }
      };
  
-@@ -1656,36 +1647,26 @@ namespace views
+@@ -1656,36 +1650,26 @@ namespace views
      {
      private:
        template<bool _Const>
 -	struct _Sentinel;
 +	using _Base = __detail::__maybe_const_t<_Const, _Vp>;
-+
-+      template<bool _Const>
-+	struct __iter_cat
-+	{ };
  
        template<bool _Const>
 -	struct _Iterator
++	struct __iter_cat
++	{ };
++
++      template<bool _Const>
 +	requires forward_range<_Base<_Const>>
 +	struct __iter_cat<_Const>
  	{
@@ -22090,7 +23391,7 @@ index 8e00222c2e8..caca68ac0c0 100644
  		if constexpr (derived_from<_Cat, contiguous_iterator_tag>)
  		  return random_access_iterator_tag{};
  		else
-@@ -1694,6 +1675,32 @@ namespace views
+@@ -1694,6 +1678,32 @@ namespace views
  	    else
  	      return input_iterator_tag{};
  	  }
@@ -22123,7 +23424,7 @@ index 8e00222c2e8..caca68ac0c0 100644
  
  	  using _Base_iter = iterator_t<_Base>;
  
-@@ -1702,7 +1709,7 @@ namespace views
+@@ -1702,7 +1712,7 @@ namespace views
  
  	public:
  	  using iterator_concept = decltype(_S_iter_concept());
@@ -22132,7 +23433,7 @@ index 8e00222c2e8..caca68ac0c0 100644
  	  using value_type
  	    = remove_cvref_t<invoke_result_t<_Fp&, range_reference_t<_Base>>>;
  	  using difference_type = range_difference_t<_Base>;
-@@ -1710,9 +1717,9 @@ namespace views
+@@ -1710,9 +1720,9 @@ namespace views
  	  _Iterator() = default;
  
  	  constexpr
@@ -22144,7 +23445,19 @@ index 8e00222c2e8..caca68ac0c0 100644
  	  { }
  
  	  constexpr
-@@ -1825,17 +1832,17 @@ namespace views
+@@ -1722,9 +1732,8 @@ namespace views
+ 	    : _M_current(std::move(__i._M_current)), _M_parent(__i._M_parent)
+ 	  { }
+ 
+-	  constexpr _Base_iter
+-	  base() const &
+-	    requires copyable<_Base_iter>
++	  constexpr const _Base_iter&
++	  base() const & noexcept
+ 	  { return _M_current; }
+ 
+ 	  constexpr _Base_iter
+@@ -1825,17 +1834,17 @@ namespace views
  	  friend constexpr _Iterator
  	  operator+(_Iterator __i, difference_type __n)
  	    requires random_access_range<_Base>
@@ -22165,7 +23478,7 @@ index 8e00222c2e8..caca68ac0c0 100644
  
  	  // _GLIBCXX_RESOLVE_LIB_DEFECTS
  	  // 3483. transform_view::iterator's difference is overconstrained
-@@ -1853,12 +1860,6 @@ namespace views
+@@ -1853,12 +1862,6 @@ namespace views
  	      return *__i;
  	  }
  
@@ -22178,7 +23491,7 @@ index 8e00222c2e8..caca68ac0c0 100644
  	  friend _Iterator<!_Const>;
  	  template<bool> friend struct _Sentinel;
  	};
-@@ -1868,7 +1869,7 @@ namespace views
+@@ -1868,7 +1871,7 @@ namespace views
  	{
  	private:
  	  using _Parent = __detail::__maybe_const_t<_Const, transform_view>;
@@ -22187,7 +23500,7 @@ index 8e00222c2e8..caca68ac0c0 100644
  
  	  template<bool _Const2>
  	    constexpr auto
-@@ -1946,13 +1947,13 @@ namespace views
+@@ -1946,13 +1949,13 @@ namespace views
  
        constexpr _Iterator<false>
        begin()
@@ -22203,7 +23516,7 @@ index 8e00222c2e8..caca68ac0c0 100644
  
        constexpr _Sentinel<false>
        end()
-@@ -1960,7 +1961,7 @@ namespace views
+@@ -1960,7 +1963,7 @@ namespace views
  
        constexpr _Iterator<false>
        end() requires common_range<_Vp>
@@ -22212,7 +23525,7 @@ index 8e00222c2e8..caca68ac0c0 100644
  
        constexpr _Sentinel<true>
        end() const
-@@ -1972,7 +1973,7 @@ namespace views
+@@ -1972,7 +1975,7 @@ namespace views
        end() const
  	requires common_range<const _Vp>
  	  && regular_invocable<const _Fp&, range_reference_t<const _Vp>>
@@ -22221,7 +23534,7 @@ index 8e00222c2e8..caca68ac0c0 100644
  
        constexpr auto
        size() requires sized_range<_Vp>
-@@ -2127,14 +2128,14 @@ namespace views
+@@ -2127,14 +2130,14 @@ namespace views
        size() requires sized_range<_Vp>
        {
  	auto __n = ranges::size(_M_base);
@@ -22238,7 +23551,7 @@ index 8e00222c2e8..caca68ac0c0 100644
        }
      };
  
-@@ -2438,18 +2439,62 @@ namespace views
+@@ -2438,18 +2441,62 @@ namespace views
      private:
        using _InnerRange = range_reference_t<_Vp>;
  
@@ -22304,7 +23617,7 @@ index 8e00222c2e8..caca68ac0c0 100644
  
  	  constexpr void
  	  _M_satisfy()
-@@ -2489,30 +2534,8 @@ namespace views
+@@ -2489,30 +2536,8 @@ namespace views
  	      return input_iterator_tag{};
  	  }
  
@@ -22337,7 +23650,7 @@ index 8e00222c2e8..caca68ac0c0 100644
  
  	  _Outer_iter _M_outer = _Outer_iter();
  	  _Inner_iter _M_inner = _Inner_iter();
-@@ -2520,7 +2543,7 @@ namespace views
+@@ -2520,7 +2545,7 @@ namespace views
  
  	public:
  	  using iterator_concept = decltype(_S_iter_concept());
@@ -22346,7 +23659,7 @@ index 8e00222c2e8..caca68ac0c0 100644
  	  using value_type = range_value_t<range_reference_t<_Base>>;
  	  using difference_type
  	    = common_type_t<range_difference_t<_Base>,
-@@ -2529,9 +2552,9 @@ namespace views
+@@ -2529,9 +2554,9 @@ namespace views
  	  _Iterator() = default;
  
  	  constexpr
@@ -22358,7 +23671,7 @@ index 8e00222c2e8..caca68ac0c0 100644
  	  { _M_satisfy(); }
  
  	  constexpr
-@@ -2558,7 +2581,7 @@ namespace views
+@@ -2558,7 +2583,7 @@ namespace views
  	  constexpr _Iterator&
  	  operator++()
  	  {
@@ -22367,7 +23680,7 @@ index 8e00222c2e8..caca68ac0c0 100644
  	      if constexpr (_S_ref_is_glvalue)
  		return *_M_outer;
  	      else
-@@ -2629,6 +2652,7 @@ namespace views
+@@ -2629,6 +2654,7 @@ namespace views
  	  friend constexpr void
  	  iter_swap(const _Iterator& __x, const _Iterator& __y)
  	    noexcept(noexcept(ranges::iter_swap(__x._M_inner, __y._M_inner)))
@@ -22375,7 +23688,7 @@ index 8e00222c2e8..caca68ac0c0 100644
  	  { return ranges::iter_swap(__x._M_inner, __y._M_inner); }
  
  	  friend _Iterator<!_Const>;
-@@ -2640,7 +2664,7 @@ namespace views
+@@ -2640,7 +2666,7 @@ namespace views
  	{
  	private:
  	  using _Parent = __detail::__maybe_const_t<_Const, join_view>;
@@ -22384,7 +23697,7 @@ index 8e00222c2e8..caca68ac0c0 100644
  
  	  template<bool _Const2>
  	    constexpr bool
-@@ -2653,8 +2677,8 @@ namespace views
+@@ -2653,8 +2679,8 @@ namespace views
  	  _Sentinel() = default;
  
  	  constexpr explicit
@@ -22395,7 +23708,7 @@ index 8e00222c2e8..caca68ac0c0 100644
  	  { }
  
  	  constexpr
-@@ -2702,7 +2726,7 @@ namespace views
+@@ -2702,7 +2728,7 @@ namespace views
  	constexpr bool __use_const
  	  = (__detail::__simple_view<_Vp>
  	     && is_reference_v<range_reference_t<_Vp>>);
@@ -22404,7 +23717,7 @@ index 8e00222c2e8..caca68ac0c0 100644
        }
  
        constexpr auto
-@@ -2710,7 +2734,7 @@ namespace views
+@@ -2710,7 +2736,7 @@ namespace views
  	requires input_range<const _Vp>
  	  && is_reference_v<range_reference_t<const _Vp>>
        {
@@ -22413,7 +23726,7 @@ index 8e00222c2e8..caca68ac0c0 100644
        }
  
        constexpr auto
-@@ -2719,10 +2743,10 @@ namespace views
+@@ -2719,10 +2745,10 @@ namespace views
  	if constexpr (forward_range<_Vp> && is_reference_v<_InnerRange>
  		      && forward_range<_InnerRange>
  		      && common_range<_Vp> && common_range<_InnerRange>)
@@ -22426,7 +23739,7 @@ index 8e00222c2e8..caca68ac0c0 100644
        }
  
        constexpr auto
-@@ -2735,9 +2759,9 @@ namespace views
+@@ -2735,9 +2761,9 @@ namespace views
  		      && forward_range<range_reference_t<const _Vp>>
  		      && common_range<const _Vp>
  		      && common_range<range_reference_t<const _Vp>>)
@@ -22438,7 +23751,7 @@ index 8e00222c2e8..caca68ac0c0 100644
        }
      };
  
-@@ -2765,6 +2789,35 @@ namespace views
+@@ -2765,6 +2791,35 @@ namespace views
  	&& requires
  	   { typename __require_constant<remove_reference_t<_Range>::size()>; }
  	&& (remove_reference_t<_Range>::size() <= 1);
@@ -22474,7 +23787,7 @@ index 8e00222c2e8..caca68ac0c0 100644
    }
  
    template<input_range _Vp, forward_range _Pattern>
-@@ -2775,15 +2828,19 @@ namespace views
+@@ -2775,15 +2830,19 @@ namespace views
      class split_view : public view_interface<split_view<_Vp, _Pattern>>
      {
      private:
@@ -22495,7 +23808,7 @@ index 8e00222c2e8..caca68ac0c0 100644
  
  	  constexpr bool
  	  __at_end() const
-@@ -2822,7 +2879,7 @@ namespace views
+@@ -2822,7 +2881,7 @@ namespace views
  	  using iterator_concept = conditional_t<forward_range<_Base>,
  						 forward_iterator_tag,
  						 input_iterator_tag>;
@@ -22504,7 +23817,7 @@ index 8e00222c2e8..caca68ac0c0 100644
  	  using difference_type = range_difference_t<_Base>;
  
  	  struct value_type : view_interface<value_type>
-@@ -2856,14 +2913,14 @@ namespace views
+@@ -2856,14 +2915,14 @@ namespace views
  	  _OuterIter() = default;
  
  	  constexpr explicit
@@ -22523,7 +23836,7 @@ index 8e00222c2e8..caca68ac0c0 100644
  	      _M_current(std::move(__current))
  	  { }
  
-@@ -2881,21 +2938,31 @@ namespace views
+@@ -2881,21 +2940,31 @@ namespace views
  	  constexpr _OuterIter&
  	  operator++()
  	  {
@@ -22559,7 +23872,7 @@ index 8e00222c2e8..caca68ac0c0 100644
  		} while (++__current() != __end);
  	    return *this;
  	  }
-@@ -2928,9 +2995,10 @@ namespace views
+@@ -2928,9 +2997,10 @@ namespace views
  
        template<bool _Const>
  	struct _InnerIter
@@ -22571,7 +23884,7 @@ index 8e00222c2e8..caca68ac0c0 100644
  
  	  constexpr bool
  	  __at_end() const
-@@ -2964,17 +3032,6 @@ namespace views
+@@ -2964,17 +3034,6 @@ namespace views
  	      }
  	  }
  
@@ -22589,7 +23902,7 @@ index 8e00222c2e8..caca68ac0c0 100644
  	  constexpr auto&
  	  _M_i_current() noexcept
  	  { return _M_i.__current(); }
-@@ -2989,7 +3046,7 @@ namespace views
+@@ -2989,7 +3048,7 @@ namespace views
  	public:
  	  using iterator_concept
  	    = typename _OuterIter<_Const>::iterator_concept;
@@ -22598,7 +23911,7 @@ index 8e00222c2e8..caca68ac0c0 100644
  	  using value_type = range_value_t<_Base>;
  	  using difference_type = range_difference_t<_Base>;
  
-@@ -3018,7 +3075,7 @@ namespace views
+@@ -3018,7 +3077,7 @@ namespace views
  	  constexpr decltype(auto)
  	  operator++(int)
  	  {
@@ -22607,7 +23920,7 @@ index 8e00222c2e8..caca68ac0c0 100644
  	      {
  		auto __tmp = *this;
  		++*this;
-@@ -3089,25 +3146,25 @@ namespace views
+@@ -3089,25 +3148,25 @@ namespace views
        {
  	if constexpr (forward_range<_Vp>)
  	  return _OuterIter<__detail::__simple_view<_Vp>>{
@@ -22637,7 +23950,7 @@ index 8e00222c2e8..caca68ac0c0 100644
        }
  
        constexpr auto
-@@ -3116,7 +3173,7 @@ namespace views
+@@ -3116,7 +3175,7 @@ namespace views
  	if constexpr (forward_range<_Vp>
  		      && forward_range<const _Vp>
  		      && common_range<const _Vp>)
@@ -22646,7 +23959,7 @@ index 8e00222c2e8..caca68ac0c0 100644
  	else
  	  return default_sentinel;
        }
-@@ -3388,6 +3445,10 @@ namespace views
+@@ -3388,6 +3447,10 @@ namespace views
  	{ std::get<_Nm>(__t) }
  	  -> convertible_to<const tuple_element_t<_Nm, _Tp>&>;
        };
@@ -22657,7 +23970,7 @@ index 8e00222c2e8..caca68ac0c0 100644
    }
  
    template<input_range _Vp, size_t _Nm>
-@@ -3395,6 +3456,7 @@ namespace views
+@@ -3395,6 +3458,7 @@ namespace views
        && __detail::__has_tuple_element<range_value_t<_Vp>, _Nm>
        && __detail::__has_tuple_element<remove_reference_t<range_reference_t<_Vp>>,
  				       _Nm>
@@ -22665,7 +23978,18 @@ index 8e00222c2e8..caca68ac0c0 100644
      class elements_view : public view_interface<elements_view<_Vp, _Nm>>
      {
      public:
-@@ -3446,21 +3508,75 @@ namespace views
+@@ -3405,8 +3469,8 @@ namespace views
+ 	: _M_base(std::move(base))
+       { }
+ 
+-      constexpr _Vp
+-      base() const& requires copy_constructible<_Vp>
++      constexpr const _Vp&
++      base() const & noexcept
+       { return _M_base; }
+ 
+       constexpr _Vp
+@@ -3446,21 +3510,75 @@ namespace views
        { return ranges::size(_M_base); }
  
      private:
@@ -22745,7 +24069,7 @@ index 8e00222c2e8..caca68ac0c0 100644
  	  using value_type
  	    = remove_cvref_t<tuple_element_t<_Nm, range_value_t<_Base>>>;
  	  using difference_type = range_difference_t<_Base>;
-@@ -3488,8 +3604,8 @@ namespace views
+@@ -3488,8 +3606,8 @@ namespace views
  	  { return std::move(_M_current); }
  
  	  constexpr decltype(auto)
@@ -22756,7 +24080,7 @@ index 8e00222c2e8..caca68ac0c0 100644
  
  	  constexpr _Iterator&
  	  operator++()
-@@ -3499,7 +3615,7 @@ namespace views
+@@ -3499,7 +3617,7 @@ namespace views
  	  }
  
  	  constexpr void
@@ -22765,7 +24089,7 @@ index 8e00222c2e8..caca68ac0c0 100644
  	  { ++_M_current; }
  
  	  constexpr _Iterator
-@@ -3544,7 +3660,7 @@ namespace views
+@@ -3544,7 +3662,7 @@ namespace views
  	  constexpr decltype(auto)
  	  operator[](difference_type __n) const
  	    requires random_access_range<_Base>
@@ -22774,15 +24098,54 @@ index 8e00222c2e8..caca68ac0c0 100644
  
  	  friend constexpr bool
  	  operator==(const _Iterator& __x, const _Iterator& __y)
-@@ -3612,7 +3728,7 @@ namespace views
- 	  _M_equal(const _Iterator<_Const>& __x) const
- 	  { return __x._M_current == _M_end; }
+@@ -3601,18 +3719,24 @@ namespace views
+ 	    requires sized_sentinel_for<iterator_t<_Base>, iterator_t<_Base>>
+ 	  { return __x._M_current - __y._M_current; }
+ 
+-	  friend _Sentinel<_Const>;
++	  template <bool> friend struct _Sentinel;
+ 	};
+ 
+       template<bool _Const>
+ 	struct _Sentinel
+ 	{
+ 	private:
+-	  constexpr bool
+-	  _M_equal(const _Iterator<_Const>& __x) const
+-	  { return __x._M_current == _M_end; }
++	  template<bool _Const2>
++	    constexpr bool
++	    _M_equal(const _Iterator<_Const2>& __x) const
++	    { return __x._M_current == _M_end; }
  
 -	  using _Base = __detail::__maybe_const_t<_Const, _Vp>;
++	  template<bool _Const2>
++	    constexpr auto
++	    _M_distance_from(const _Iterator<_Const2>& __i) const
++	    { return _M_end - __i._M_current; }
++
 +	  using _Base = elements_view::_Base<_Const>;
  	  sentinel_t<_Base> _M_end = sentinel_t<_Base>();
  
  	public:
+@@ -3646,14 +3770,14 @@ namespace views
+ 	    requires sized_sentinel_for<sentinel_t<_Base>, iterator_t<_Base2>>
+ 	    friend constexpr range_difference_t<_Base2>
+ 	    operator-(const _Iterator<_Const2>& __x, const _Sentinel& __y)
+-	    { return __x._M_current - __y._M_end; }
++	    { return -__y._M_distance_from(__x); }
+ 
+ 	  template<bool _Const2,
+ 		   typename _Base2 = __detail::__maybe_const_t<_Const2, _Vp>>
+ 	    requires sized_sentinel_for<sentinel_t<_Base>, iterator_t<_Base2>>
+-	    friend constexpr range_difference_t<_Base>
++	    friend constexpr range_difference_t<_Base2>
+ 	    operator-(const _Sentinel& __x, const _Iterator<_Const2>& __y)
+-	    { return __x._M_end - __y._M_current; }
++	    { return __x._M_distance_from(__y); }
+ 
+ 	  friend _Sentinel<!_Const>;
+ 	};
 diff --git a/libstdc++-v3/include/std/ratio b/libstdc++-v3/include/std/ratio
 index 83c8c792793..293ed9a8e7c 100644
 --- a/libstdc++-v3/include/std/ratio
@@ -24809,6 +26172,68 @@ index fbe116be2fd..8962e869123 100644
      struct iterator_traits<counted_iterator<I>>;
  
    struct unreachable_sentinel_t;
+diff --git a/libstdc++-v3/testsuite/24_iterators/move_iterator/lwg3391.cc b/libstdc++-v3/testsuite/24_iterators/move_iterator/lwg3391.cc
+new file mode 100644
+index 00000000000..18e015777cd
+--- /dev/null
++++ b/libstdc++-v3/testsuite/24_iterators/move_iterator/lwg3391.cc
+@@ -0,0 +1,37 @@
++// Copyright (C) 2021 Free Software Foundation, Inc.
++//
++// This file is part of the GNU ISO C++ Library.  This library is free
++// software; you can redistribute it and/or modify it under the
++// terms of the GNU General Public License as published by the
++// Free Software Foundation; either version 3, or (at your option)
++// any later version.
++
++// This library is distributed in the hope that it will be useful,
++// but WITHOUT ANY WARRANTY; without even the implied warranty of
++// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++// GNU General Public License for more details.
++
++// You should have received a copy of the GNU General Public License along
++// with this library; see the file COPYING3.  If not see
++// <http://www.gnu.org/licenses/>.
++
++// { dg-options "-std=gnu++2a" }
++// { dg-do compile { target c++2a } }
++
++// Verify LWG 3391 changes.
++
++#include <iterator>
++#include <ranges>
++
++#include <testsuite_iterators.h>
++
++using __gnu_test::test_range;
++using __gnu_test::input_iterator_wrapper_nocopy;
++
++void
++test01()
++{
++  extern test_range<int, input_iterator_wrapper_nocopy> rx;
++  auto v = rx | std::views::take(5);
++  std::ranges::begin(v) != std::ranges::end(v);
++}
+diff --git a/libstdc++-v3/testsuite/24_iterators/move_iterator/move_only.cc b/libstdc++-v3/testsuite/24_iterators/move_iterator/move_only.cc
+index eaf307ddf60..7f4dda11e11 100644
+--- a/libstdc++-v3/testsuite/24_iterators/move_iterator/move_only.cc
++++ b/libstdc++-v3/testsuite/24_iterators/move_iterator/move_only.cc
+@@ -43,7 +43,13 @@ template<> struct std::iterator_traits<move_only_iterator>
+ static_assert(std::input_iterator<move_only_iterator>);
+ 
+ template<typename T>
+-  concept has_member_base = requires (T t) { std::forward<T>(t).base(); };
++  concept has_member_base = requires (T t) {
++    // LWG 3391 made the const& overload of move_iterator::base()
++    // unconstrained and return a const reference.  So rather than checking
++    // whether base() is valid (which is now trivially true in an unevaluated
++    // context), the below now checks whether decay-copying base() is valid.
++    [](auto){}(std::forward<T>(t).base());
++  };
+ 
+ using move_only_move_iterator = std::move_iterator<move_only_iterator>;
+ 
 diff --git a/libstdc++-v3/testsuite/24_iterators/range_operations/100768.cc b/libstdc++-v3/testsuite/24_iterators/range_operations/100768.cc
 new file mode 100644
 index 00000000000..bbcfcece5ff
@@ -25053,6 +26478,49 @@ index 429d48f41de..a6121af8e97 100644
  }
  
  int
+diff --git a/libstdc++-v3/testsuite/24_iterators/reverse_iterator/100639.cc b/libstdc++-v3/testsuite/24_iterators/reverse_iterator/100639.cc
+new file mode 100644
+index 00000000000..358d91dfef1
+--- /dev/null
++++ b/libstdc++-v3/testsuite/24_iterators/reverse_iterator/100639.cc
+@@ -0,0 +1,37 @@
++// Copyright (C) 2021 Free Software Foundation, Inc.
++//
++// This file is part of the GNU ISO C++ Library.  This library is free
++// software; you can redistribute it and/or modify it under the
++// terms of the GNU General Public License as published by the
++// Free Software Foundation; either version 3, or (at your option)
++// any later version.
++
++// This library is distributed in the hope that it will be useful,
++// but WITHOUT ANY WARRANTY; without even the implied warranty of
++// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++// GNU General Public License for more details.
++
++// You should have received a copy of the GNU General Public License along
++// with this library; see the file COPYING3.  If not see
++// <http://www.gnu.org/licenses/>.
++
++// { dg-options "-std=c++2a" }
++// { dg-do compile { target c++2a } }
++
++// PR libstdc++/100639
++
++#include <iterator>
++#include <ranges>
++
++void
++test01()
++{
++  using iter = std::ranges::iterator_t<std::ranges::iota_view<long long>>;
++  using riter = std::reverse_iterator<iter>;
++  static_assert(std::same_as<std::iter_reference_t<iter>,
++			     std::iter_reference_t<riter>>);
++  static_assert(std::same_as<std::iter_value_t<iter>,
++			     std::iter_value_t<riter>>);
++  static_assert(std::same_as<std::iter_difference_t<iter>,
++			     std::iter_difference_t<riter>>);
++}
 diff --git a/libstdc++-v3/testsuite/25_algorithms/copy/debug/99402.cc b/libstdc++-v3/testsuite/25_algorithms/copy/debug/99402.cc
 new file mode 100644
 index 00000000000..041d222d079
@@ -25231,7 +26699,7 @@ index 00000000000..d992318259d
 +  static_assert(std::ranges::range<decltype(v)>);
 +}
 diff --git a/libstdc++-v3/testsuite/std/ranges/adaptors/elements.cc b/libstdc++-v3/testsuite/std/ranges/adaptors/elements.cc
-index 94dd7c94505..7718178b3cf 100644
+index 94dd7c94505..1ad05361d00 100644
 --- a/libstdc++-v3/testsuite/std/ranges/adaptors/elements.cc
 +++ b/libstdc++-v3/testsuite/std/ranges/adaptors/elements.cc
 @@ -76,6 +76,9 @@ struct X
@@ -25244,7 +26712,7 @@ index 94dd7c94505..7718178b3cf 100644
    // LWG 3483
    std::pair<int, X> x[3];
    __gnu_test::test_forward_range<std::pair<int, X>> r(x);
-@@ -89,10 +92,26 @@ test03()
+@@ -89,10 +92,58 @@ test03()
    VERIFY( (next(b_const, 2) - b_const) == 2 );
  }
  
@@ -25263,6 +26731,36 @@ index 94dd7c94505..7718178b3cf 100644
 +  VERIFY( r2[0] == 1 && r2[1] == 3 );
 +}
 +
++void
++test06()
++{
++  // PR libstdc++/100631
++  auto r = views::iota(0)
++    | views::filter([](int){ return true; })
++    | views::take(42)
++    | views::reverse
++    | views::transform([](int) { return std::make_pair(42, "hello"); })
++    | views::take(42)
++    | views::keys;
++  auto b = r.begin();
++  auto e = r.end();
++  VERIFY( e - b == 42 );
++  VERIFY( b - e == -42 );
++}
++
++void
++test07()
++{
++  // PR libstdc++/100631 comment #2
++  auto r = views::iota(0)
++    | views::transform([](int) { return std::make_pair(42, "hello"); })
++    | views::keys;
++  auto b = ranges::cbegin(r);
++  auto e = ranges::end(r);
++  b.base() == e.base();
++  b == e;
++}
++
  int
  main()
  {
@@ -25270,6 +26768,8 @@ index 94dd7c94505..7718178b3cf 100644
    test02();
    test03();
 +  test05();
++  test06();
++  test07();
  }
 diff --git a/libstdc++-v3/testsuite/std/ranges/adaptors/join.cc b/libstdc++-v3/testsuite/std/ranges/adaptors/join.cc
 index 8bbea9a6b25..9c0231b704b 100644
@@ -25297,6 +26797,32 @@ index 8bbea9a6b25..9c0231b704b 100644
    test07();
    test08();
 +  test10();
+ }
+diff --git a/libstdc++-v3/testsuite/std/ranges/adaptors/reverse.cc b/libstdc++-v3/testsuite/std/ranges/adaptors/reverse.cc
+index 37d003d11f0..cacaa275335 100644
+--- a/libstdc++-v3/testsuite/std/ranges/adaptors/reverse.cc
++++ b/libstdc++-v3/testsuite/std/ranges/adaptors/reverse.cc
+@@ -149,6 +149,15 @@ void test06()
+   static_assert( std::ranges::range<const V> );
+ }
+ 
++void
++test08()
++{
++  // PR libstdc++/100639
++  auto v = views::iota(1701ll, 3000ll) | views::reverse | views::take(5);
++  for (auto x : v)
++    ;
++}
++
+ int
+ main()
+ {
+@@ -158,4 +167,5 @@ main()
+   test04();
+   test05();
+   test06();
++  test08();
  }
 diff --git a/libstdc++-v3/testsuite/std/ranges/adaptors/split.cc b/libstdc++-v3/testsuite/std/ranges/adaptors/split.cc
 index fe895827fc5..661b55dca2c 100644
@@ -25340,6 +26866,33 @@ index 41a7d3b3321..e834c24a723 100644
    // LWG 3483
    Y y[3];
    __gnu_test::test_forward_range<Y> r(y);
+diff --git a/libstdc++-v3/testsuite/std/ranges/iota/iota_view.cc b/libstdc++-v3/testsuite/std/ranges/iota/iota_view.cc
+index 65d166fbd3b..76888ac7959 100644
+--- a/libstdc++-v3/testsuite/std/ranges/iota/iota_view.cc
++++ b/libstdc++-v3/testsuite/std/ranges/iota/iota_view.cc
+@@ -77,6 +77,16 @@ test04()
+   VERIFY( it == v.end() );
+ }
+ 
++void
++test05()
++{
++  // PR libstdc++/100690
++  int x[] = {42, 42, 42};
++  auto r = std::views::iota(std::ranges::begin(x), std::ranges::cbegin(x) + 3);
++  VERIFY( r.end() - r.begin() == 3 );
++  VERIFY( r.begin() - r.end() == -3 );
++}
++
+ int
+ main()
+ {
+@@ -84,4 +94,5 @@ main()
+   test02();
+   test03();
+   test04();
++  test05();
+ }
 diff --git a/libstdc++-v3/testsuite/std/ranges/p2259.cc b/libstdc++-v3/testsuite/std/ranges/p2259.cc
 new file mode 100644
 index 00000000000..1b422e44f16
@@ -25437,6 +26990,20 @@ index 00000000000..1b422e44f16
 +  auto i = std::counted_iterator{v.begin(), 5};
 +  static_assert(std::random_access_iterator<decltype(i)>);
 +}
+diff --git a/libstdc++-v3/testsuite/std/ranges/range.cc b/libstdc++-v3/testsuite/std/ranges/range.cc
+index cf349de8735..5548e93d6cd 100644
+--- a/libstdc++-v3/testsuite/std/ranges/range.cc
++++ b/libstdc++-v3/testsuite/std/ranges/range.cc
+@@ -75,9 +75,6 @@ static_assert( same_as<std::ranges::range_difference_t<C>,
+ static_assert( same_as<std::ranges::range_difference_t<O>,
+ 		       std::ptrdiff_t> );
+ 
+-static_assert( same_as<std::ranges::range_value_t<O>,
+-		       char> );
+-
+ static_assert( same_as<std::ranges::range_reference_t<I>,
+ 		       char&> );
+ static_assert( same_as<std::ranges::range_reference_t<O>,
 diff --git a/libstdc++-v3/testsuite/std/ranges/subrange/lwg3282_neg.cc b/libstdc++-v3/testsuite/std/ranges/subrange/lwg3282_neg.cc
 index 5c2f1de45ad..3d21774c966 100644
 --- a/libstdc++-v3/testsuite/std/ranges/subrange/lwg3282_neg.cc
@@ -25460,6 +27027,19 @@ index 5c2f1de45ad..3d21774c966 100644
 +  // { dg-prune-output "template constraint failure" }
 +  // { dg-prune-output "unsatisfied constraints" }
 +}
+diff --git a/libstdc++-v3/testsuite/util/testsuite_iterators.h b/libstdc++-v3/testsuite/util/testsuite_iterators.h
+index 60eba26eab4..8c4b8b7c6cc 100644
+--- a/libstdc++-v3/testsuite/util/testsuite_iterators.h
++++ b/libstdc++-v3/testsuite/util/testsuite_iterators.h
+@@ -122,7 +122,7 @@ namespace __gnu_test
+    */
+   template<class T>
+   struct output_iterator_wrapper
+-  : public std::iterator<std::output_iterator_tag, T, std::ptrdiff_t, T*, T&>
++  : public std::iterator<std::output_iterator_tag, void, std::ptrdiff_t, void, void>
+   {
+   protected:
+     output_iterator_wrapper() : ptr(0), SharedInfo(0)
 diff --git a/maintainer-scripts/ChangeLog b/maintainer-scripts/ChangeLog
 index 2be23318cd4..982fdf70563 100644
 --- a/maintainer-scripts/ChangeLog
