@@ -33,7 +33,15 @@ François Dumont (3):
       libstdc++: Fix unordered containers move constructors noexcept qualification
       libstdc++: [_GLIBCXX_DEBUG] Fix management of __dp_sign_max_size [PR 99402]
 
-GCC Administrator (67):
+GCC Administrator (75):
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -108,12 +116,13 @@ Geng Qi (1):
 Hafiz Abid Qadeer (1):
       [OpenACC] Fix an ICE where a loop with GT condition is collapsed.
 
-Harald Anlauf (5):
+Harald Anlauf (6):
       PR fortran/63797 - Bogus ambiguous reference to 'sqrt'
       PR fortran/100154 - ICE in gfc_conv_procedure_call, at fortran/trans-expr.c:6131
       PR fortran/100274 - ICE in gfc_conv_procedure_call, at fortran/trans-expr.c:6131
       PR fortran/98411 - Pointless warning for static variables
       Fortran - ICE in inline_matmul_assign
+      Fortran - ICE in gfc_check_do_variable, at fortran/parse.c:4446
 
 Iain Buclaw (6):
       d: Fix ICE in when formating a string with '%' or '`' characters (PR98457)
@@ -144,7 +153,7 @@ Jakub Jelinek (19):
       nvptx: Fix up nvptx build against latest libstdc++ [PR100375]
       libcpp: Fix up pragma preprocessing [PR100450]
 
-Jason Merrill (19):
+Jason Merrill (20):
       c++: lambda pack init-capture within generic lambda
       c++: NRV in lambda in template [PR91217]
       c++: PMF template parm and noexcept [PR90664]
@@ -164,8 +173,9 @@ Jason Merrill (19):
       c++: constexpr and volatile member function [PR80456]
       c++: designated init with anonymous union [PR100489]
       c++: 'this' adjustment for devirtualized call
+      c++: constexpr and array[0] [PR101029]
 
-Jonathan Wakely (27):
+Jonathan Wakely (41):
       libstdc++: Fix Doxygen warning about ambiguous file name
       maintainer-scripts: Disable multilib when generating libstdc++ docs
       libstdc++: Fix doxygen markup for group close commands
@@ -193,6 +203,23 @@ Jonathan Wakely (27):
       libstdc++: Fix installation of python hooks [PR 99453]
       libstdc++: Change [range.iter.op] functions to function objects [PR 100768]
       libstdc++: Fix return value of std::ranges::advance [PR 100833]
+      libstdc++: Fix std::any constraints [PR101034]
+      libstdc++: Fix constraint on std::optional assignment [PR 100982]
+      libstdc++: Adjust expected errors in tests when compiled as C++20
+      libstdc++: Simplify constexpr checks in std::char_traits [PR 91488]
+      libstdc++: Implement proposed resolution to LWG 3548
+      libstdc++: Fix missing members in std::allocator<void>
+      libstdc++: Reject std::make_shared<T[]> [PR 99006]
+      libstdc++: Do not use deduced return type for std::visit [PR 100384]
+      libstdc++: Fix undefined behaviour in testsuite
+      libstdc++: Fix null dereference in pb_ds containers
+      libstdc++: Fix undefined behaviour in std::string
+      libstdc++: Fix null dereferences in std::promise
+      libstdc++: Remove unused helpers for std::variant
+      libstdc++: Replace incorrect static assertion in std::reduce [PR95833]
+
+José Rui Faustino de Sousa (1):
+      Fortran: Fix double function call with -fcheck=pointer [PR]
 
 Marek Polacek (12):
       c++: ICE when late parsing noexcept/NSDMI [PR98333]
@@ -207,6 +234,9 @@ Marek Polacek (12):
       c++: Fix two issues with auto function parameter [PR99806]
       c++: ICE with real-to-int conversion in template [PR97973]
       c++: Use FOR_EACH_VEC_ELT instead of range-based for loop.
+
+Marius Hillenbrand (1):
+      IBM Z: Fix vector intrinsics vec_double and vec_floate
 
 Martin Liska (2):
       Sync gcc-changelog scripts.
@@ -241,10 +271,15 @@ Patrick Palka (21):
       libstdc++: Fix access issue in iota_view::_Sentinel [PR100690]
       libstdc++: Avoid hard error in ranges::unique_copy [PR100770]
 
+Peter Bergner (3):
+      rs6000: MMA test case ICEs using -O3 [PR99842]
+      rs6000: Add new __builtin_vsx_build_pair and __builtin_mma_build_acc built-ins
+      rs6000: MMA builtin usage ICEs when used in a #pragma omp parallel and using -fopenmp [PR100777]
+
 Philippe Blain (1):
       libstdc++: Install libstdc++*-gdb.py more robustly [PR 99453]
 
-Richard Biener (15):
+Richard Biener (20):
       Increment BASE-VER after release
       testsuite/100176 - fix struct-layout-1_generate.c compile
       middle-end/98726 - fix VECTOR_CST element access
@@ -260,6 +295,11 @@ Richard Biener (15):
       tree-optimization/100566 - fix another predication issue in VN
       Update mpfr version to 3.1.6
       rtl-optimization/80960 - avoid creating garbage RTL in DSE
+      tree-optimization/100492 - avoid irreducible regions in loop distribution
+      middle-end/100509 - avoid folding constant to aggregate type
+      ipa/100513 - fix SSA_NAME_DEF_STMT corruption in IPA param manip
+      ipa/100791 - copy fntype when processing __builtin_va_arg_pack
+      tree-optimization/100934 - properly mark irreducible regions for DOM
 
 Richard Earnshaw (2):
       arm: fix UB due to missing mode check [PR100311]
@@ -281,9 +321,12 @@ Roman Zhuykov (1):
 Segher Boessenkool (1):
       rs6000: Fix cpu selection w/ isel (PR100108)
 
-Srinath Parvathaneni (2):
+Srinath Parvathaneni (5):
       arm: Do not clobber callee saved registers with CMSE.
       arm: Remove duplicate definitions from arm_mve.h (pr100419).
+      arm: Fix the mve multilib for the broken cmse support (pr99939).
+      arm: Fix polymorphic variants failing with undefined reference to `__ARM_undef` error.
+      arm: Fix multilib mapping for CDE extensions [PR100856].
 
 Stefan Schulze Frielinghaus (1):
       PR rtl-optimization/100263: Ensure register can change mode
@@ -1730,10 +1773,137 @@ index 0719d810258..a9368325816 100644
 -10.3.0
 +10.3.1
 diff --git a/gcc/ChangeLog b/gcc/ChangeLog
-index 3b1384e707f..67cb619d8b3 100644
+index 3b1384e707f..95f56fa1497 100644
 --- a/gcc/ChangeLog
 +++ b/gcc/ChangeLog
-@@ -1,3 +1,657 @@
+@@ -1,3 +1,784 @@
++2021-06-18  Srinath Parvathaneni  <srinath.parvathaneni@arm.com>
++
++	Backported from master:
++	2021-06-18  Srinath Parvathaneni  <srinath.parvathaneni@arm.com>
++
++	PR target/100856
++	* common/config/arm/arm-common.c (arm_canon_arch_option_1): New function
++	derived from arm_canon_arch.
++	(arm_canon_arch_option): Call it.
++	(arm_canon_arch_multilib_option): New function.
++	* config/arm/arm-cpus.in (IGNORE_FOR_MULTILIB): New fgroup.
++	* config/arm/arm.h (arm_canon_arch_multilib_option): New prototype.
++	(CANON_ARCH_MULTILIB_SPEC_FUNCTION): New macro.
++	(MULTILIB_ARCH_CANONICAL_SPECS): New macro.
++	(DRIVER_SELF_SPECS): Add MULTILIB_ARCH_CANONICAL_SPECS.
++	* config/arm/arm.opt (mlibarch): New option.
++	* config/arm/t-rmprofile (MULTILIB_MATCHES): For armv8*-m, replace use
++	of march on RHS with mlibarch.
++
++2021-06-18  Srinath Parvathaneni  <srinath.parvathaneni@arm.com>
++
++	Backported from master:
++	2021-06-11  Srinath Parvathaneni  <srinath.parvathaneni@arm.com>
++
++	PR target/101016
++	* config/arm/arm_mve.h (__arm_vld1q): Change __ARM_mve_coerce(p0,
++	int8_t const *) to __ARM_mve_coerce1(p0, int8_t *) in the argument for
++	the polymorphic variants matching code.
++	(__arm_vld1q_z): Likewise.
++	(__arm_vld2q): Likewise.
++	(__arm_vld4q): Likewise.
++	(__arm_vldrbq_gather_offset): Likewise.
++	(__arm_vldrbq_gather_offset_z): Likewise.
++
++2021-06-18  Peter Bergner  <bergner@linux.ibm.com>
++
++	Backported from master:
++	2021-06-14  Peter Bergner  <bergner@linux.ibm.com>
++
++	PR target/100777
++	* config/rs6000/rs6000-call.c (rs6000_gimple_fold_mma_builtin): Use
++	create_tmp_reg_or_ssa_name().
++
++2021-06-18  Peter Bergner  <bergner@linux.ibm.com>
++
++	Backported from master:
++	2021-06-10  Peter Bergner  <bergner@linux.ibm.com>
++
++	* config/rs6000/rs6000-builtin.def (build_pair): New built-in.
++	(build_acc): Likewise.
++	* config/rs6000/rs6000-call.c (mma_expand_builtin): Swap assemble
++	source operands in little-endian mode.
++	(rs6000_gimple_fold_mma_builtin): Handle VSX_BUILTIN_BUILD_PAIR.
++	(mma_init_builtins): Likewise.
++	* config/rs6000/rs6000.c (rs6000_split_multireg_move): Handle endianness
++	ordering for the MMA assemble and build source operands.
++	* doc/extend.texi (__builtin_vsx_build_acc, __builtin_mma_build_pair):
++	Document.
++	(__builtin_mma_assemble_acc, __builtin_mma_assemble_pair): Remove
++	documentation.
++
++2021-06-18  Peter Bergner  <bergner@linux.ibm.com>
++
++	Backported from master:
++	2021-05-31  Peter Bergner  <bergner@linux.ibm.com>
++
++	PR target/99842
++	* config/rs6000/predicates.md(mma_assemble_input_operand): Allow
++	indexed form addresses.
++
++2021-06-17  Marius Hillenbrand  <mhillen@linux.ibm.com>
++
++	Backported from master:
++	2021-06-17  Marius Hillenbrand  <mhillen@linux.ibm.com>
++
++	PR target/100871
++	* config/s390/vecintrin.h (vec_doublee): Fix to use
++	  __builtin_s390_vflls.
++	(vec_floate): Fix to use __builtin_s390_vflrd.
++
++2021-06-16  Richard Biener  <rguenther@suse.de>
++
++	Backported from master:
++	2021-06-14  Richard Biener  <rguenther@suse.de>
++
++	PR tree-optimization/100934
++	* tree-ssa-dom.c (pass_dominator::execute): Properly
++	mark irreducible regions.
++
++2021-06-16  Richard Biener  <rguenther@suse.de>
++
++	Backported from master:
++	2021-05-28  Richard Biener  <rguenther@suse.de>
++
++	PR ipa/100791
++	* tree-inline.c (copy_bb): When processing __builtin_va_arg_pack
++	copy fntype from original call.
++
++2021-06-16  Richard Biener  <rguenther@suse.de>
++
++	Backported from master:
++	2021-05-11  Richard Biener  <rguenther@suse.de>
++
++	PR ipa/100513
++	* ipa-param-manipulation.c
++	(ipa_param_body_adjustments::modify_call_stmt): Avoid
++	altering SSA_NAME_DEF_STMT by adjusting the calls LHS
++	via gimple_call_lhs_ptr.
++
++2021-06-16  Richard Biener  <rguenther@suse.de>
++
++	Backported from master:
++	2021-05-11  Richard Biener  <rguenther@suse.de>
++
++	PR middle-end/100509
++	* gimple-fold.c (fold_gimple_assign): Only call
++	get_symbol_constant_value on register type symbols.
++
++2021-06-16  Richard Biener  <rguenther@suse.de>
++
++	Backported from master:
++	2021-05-10  Richard Biener  <rguenther@suse.de>
++
++	PR tree-optimization/100492
++	* tree-loop-distribution.c (find_seed_stmts_for_distribution):
++	Find nothing when the loop contains an irreducible region.
++
 +2021-06-04  Alex Coplan  <alex.coplan@arm.com>
 +
 +	Backported from master:
@@ -3239,6 +3409,89 @@ index 35505cc5311..bc3f5166669 100644
      return const0_rtx;
  
    /* If VAROP is a NEG of something known to be zero or 1 and CONSTOP is
+diff --git a/gcc/common/config/arm/arm-common.c b/gcc/common/config/arm/arm-common.c
+index 78a779c9350..a4b3e86ad52 100644
+--- a/gcc/common/config/arm/arm-common.c
++++ b/gcc/common/config/arm/arm-common.c
+@@ -590,9 +590,15 @@ public:
+    The options array consists of couplets of information where the
+    first item in each couplet is the string describing which option
+    name was selected (arch, cpu, fpu) and the second is the value
+-   passed for that option.  */
+-const char *
+-arm_canon_arch_option (int argc, const char **argv)
++   passed for that option.
++
++   arch_for_multilib is boolean variable taking value true or false.
++   arch_for_multilib is false when the canonical representation is for -march
++   option and it is true when canonical representation is for -mlibarch option.
++   On passing arch_for_multilib true the canonical string generated will be
++   without the compiler options which are not required for multilib linking.  */
++static const char *
++arm_canon_arch_option_1 (int argc, const char **argv, bool arch_for_multilib)
+ {
+   const char *arch = NULL;
+   const char *cpu = NULL;
+@@ -657,8 +663,8 @@ arm_canon_arch_option (int argc, const char **argv)
+   /* First build up a bitmap describing the target architecture.  */
+   if (arch)
+     {
+-      selected_arch = arm_parse_arch_option_name (all_architectures,
+-						  "-march", arch);
++      selected_arch = arm_parse_arch_option_name (all_architectures, "-march",
++						  arch, !arch_for_multilib);
+ 
+       if (selected_arch == NULL)
+ 	return "";
+@@ -666,6 +672,15 @@ arm_canon_arch_option (int argc, const char **argv)
+       arm_initialize_isa (target_isa, selected_arch->common.isa_bits);
+       arm_parse_option_features (target_isa, &selected_arch->common,
+ 				 strchr (arch, '+'));
++      if (arch_for_multilib)
++	{
++	  const enum isa_feature removable_bits[] = {ISA_IGNORE_FOR_MULTILIB,
++						     isa_nobit};
++	  sbitmap isa_bits = sbitmap_alloc (isa_num_bits);
++	  arm_initialize_isa (isa_bits, removable_bits);
++	  bitmap_and_compl (target_isa, target_isa, isa_bits);
++	}
++
+       if (fpu && strcmp (fpu, "auto") != 0)
+ 	{
+ 	  /* We assume that architectures do not have any FPU bits
+@@ -682,7 +697,8 @@ arm_canon_arch_option (int argc, const char **argv)
+   else if (cpu)
+     {
+       const cpu_option *selected_cpu
+-	= arm_parse_cpu_option_name (all_cores, "-mcpu", cpu);
++	= arm_parse_cpu_option_name (all_cores, "-mcpu", cpu,
++				     !arch_for_multilib);
+ 
+       if (selected_cpu == NULL)
+ 	return "";
+@@ -1032,3 +1048,22 @@ arm_asm_auto_mfpu (int argc, const char **argv)
+ #define TARGET_EXCEPT_UNWIND_INFO  arm_except_unwind_info
+ 
+ struct gcc_targetm_common targetm_common = TARGETM_COMMON_INITIALIZER;
++
++/* Returns a canonical representation of the -march option from the current
++   -march string (if given) and other options on the command line that might
++   affect the architecture.  */
++const char *
++arm_canon_arch_option (int argc, const char **argv)
++{
++  return arm_canon_arch_option_1 (argc, argv, false);
++}
++
++/* Returns a canonical representation of the -mlibarch option from the current
++   -march string (if given) and other options on the command line that might
++   affect the architecture after removing the compiler extension options which
++   are not required for multilib linking.  */
++const char *
++arm_canon_arch_multilib_option (int argc, const char **argv)
++{
++  return arm_canon_arch_option_1 (argc, argv, true);
++}
 diff --git a/gcc/config/aarch64/aarch64-bti-insert.c b/gcc/config/aarch64/aarch64-bti-insert.c
 index 98026695fdb..d0035c735a3 100644
 --- a/gcc/config/aarch64/aarch64-bti-insert.c
@@ -3634,6 +3887,19 @@ index 0a7145281fa..ff5b23d71b1 100644
      UNSPEC_COND_CMPEQ_WIDE ; Used in aarch64-sve.md.
      UNSPEC_COND_CMPGE_WIDE ; Used in aarch64-sve.md.
      UNSPEC_COND_CMPGT_WIDE ; Used in aarch64-sve.md.
+diff --git a/gcc/config/arm/arm-cpus.in b/gcc/config/arm/arm-cpus.in
+index db0b93f6bb7..5abcad4c35d 100644
+--- a/gcc/config/arm/arm-cpus.in
++++ b/gcc/config/arm/arm-cpus.in
+@@ -324,6 +324,8 @@ define implied vfp_base MVE MVE_FP ALL_FP
+ # need to ignore it for matching purposes.
+ define fgroup ALL_QUIRKS   quirk_no_volatile_ce quirk_armv6kz quirk_cm3_ldrd xscale quirk_no_asmcpu
+ 
++define fgroup IGNORE_FOR_MULTILIB cdecp0 cdecp1 cdecp2 cdecp3 cdecp4 cdecp5 cdecp6 cdecp7
++
+ # Architecture entries
+ # format:
+ # begin arch <name>
 diff --git a/gcc/config/arm/arm.c b/gcc/config/arm/arm.c
 index db37e2b8e71..8f8386c5770 100644
 --- a/gcc/config/arm/arm.c
@@ -3792,6 +4058,56 @@ index db37e2b8e71..8f8386c5770 100644
      }
  
    arm_emit_store_exclusive (mode, neg_bval, mem, newval, use_release);
+diff --git a/gcc/config/arm/arm.h b/gcc/config/arm/arm.h
+index 30e1d6dc994..2922dfe677c 100644
+--- a/gcc/config/arm/arm.h
++++ b/gcc/config/arm/arm.h
+@@ -2357,10 +2357,14 @@ extern const char *host_detect_local_cpu (int argc, const char **argv);
+ #endif
+ 
+ const char *arm_canon_arch_option (int argc, const char **argv);
++const char *arm_canon_arch_multilib_option (int argc, const char **argv);
+ 
+ #define CANON_ARCH_SPEC_FUNCTION		\
+   { "canon_arch", arm_canon_arch_option },
+ 
++#define CANON_ARCH_MULTILIB_SPEC_FUNCTION		\
++  { "canon_arch_multilib", arm_canon_arch_multilib_option },
++
+ const char *arm_be8_option (int argc, const char **argv);
+ #define BE8_SPEC_FUNCTION			\
+   { "be8_linkopt", arm_be8_option },
+@@ -2369,6 +2373,7 @@ const char *arm_be8_option (int argc, const char **argv);
+   MCPU_MTUNE_NATIVE_FUNCTIONS			\
+   ASM_CPU_SPEC_FUNCTIONS			\
+   CANON_ARCH_SPEC_FUNCTION			\
++  CANON_ARCH_MULTILIB_SPEC_FUNCTION		\
+   TARGET_MODE_SPEC_FUNCTIONS			\
+   BE8_SPEC_FUNCTION
+ 
+@@ -2389,12 +2394,22 @@ const char *arm_be8_option (int argc, const char **argv);
+   "                     %{mfloat-abi=*: abi %*}"	\
+   "                     %<march=*) "
+ 
++/* Generate a canonical string to represent the architecture selected ignoring
++   the options not required for multilib linking.  */
++#define MULTILIB_ARCH_CANONICAL_SPECS				\
++  "-mlibarch=%:canon_arch_multilib(%{mcpu=*: cpu %*} "		\
++  "				   %{march=*: arch %*} "	\
++  "				   %{mfpu=*: fpu %*} "		\
++  "				   %{mfloat-abi=*: abi %*}"	\
++  "				   %<mlibarch=*) "
++
+ /* Complete set of specs for the driver.  Commas separate the
+    individual rules so that any option suppression (%<opt...)is
+    completed before starting subsequent rules.  */
+ #define DRIVER_SELF_SPECS			\
+   MCPU_MTUNE_NATIVE_SPECS,			\
+   TARGET_MODE_SPECS,				\
++  MULTILIB_ARCH_CANONICAL_SPECS,		\
+   ARCH_CANONICAL_SPECS
+ 
+ #define TARGET_SUPPORTS_WIDE_INT 1
 diff --git a/gcc/config/arm/arm.md b/gcc/config/arm/arm.md
 index 55ba92fe39a..a8ee9e1afab 100644
 --- a/gcc/config/arm/arm.md
@@ -3826,10 +4142,107 @@ index 55ba92fe39a..a8ee9e1afab 100644
  
  (define_insn "*call_reg_armv5"
    [(call (mem:SI (match_operand:SI 0 "s_register_operand" "r"))
+diff --git a/gcc/config/arm/arm.opt b/gcc/config/arm/arm.opt
+index cd3d8e1beac..43c2c745457 100644
+--- a/gcc/config/arm/arm.opt
++++ b/gcc/config/arm/arm.opt
+@@ -90,6 +90,12 @@ Specify the name of the target architecture.
+ EnumValue
+ Enum(arm_arch) String(native) Value(-1) DriverOnly
+ 
++; Set to the name of target architecture which is required for
++; multilib linking.  This option is undocumented becuase it
++; should not be used by the users.
++mlibarch=
++Target RejectNegative JoinedOrMissing NoDWARFRecord DriverOnly Undocumented
++
+ marm
+ Target Report RejectNegative Negative(mthumb) InverseMask(THUMB)
+ Generate code in 32 bit ARM state.
 diff --git a/gcc/config/arm/arm_mve.h b/gcc/config/arm/arm_mve.h
-index 449219e90fc..1132c7cf87d 100644
+index 449219e90fc..4aa3787ca53 100644
 --- a/gcc/config/arm/arm_mve.h
 +++ b/gcc/config/arm/arm_mve.h
+@@ -37559,47 +37559,47 @@ extern void *__ARM_undef;
+ 
+ #define __arm_vld1q(p0) (\
+   _Generic( (int (*)[__ARM_mve_typeid(p0)])0, \
+-  int (*)[__ARM_mve_type_int8_t_ptr]: __arm_vld1q_s8 (__ARM_mve_coerce(p0, int8_t const *)), \
+-  int (*)[__ARM_mve_type_int16_t_ptr]: __arm_vld1q_s16 (__ARM_mve_coerce(p0, int16_t const *)), \
+-  int (*)[__ARM_mve_type_int32_t_ptr]: __arm_vld1q_s32 (__ARM_mve_coerce(p0, int32_t const *)), \
+-  int (*)[__ARM_mve_type_uint8_t_ptr]: __arm_vld1q_u8 (__ARM_mve_coerce(p0, uint8_t const *)), \
+-  int (*)[__ARM_mve_type_uint16_t_ptr]: __arm_vld1q_u16 (__ARM_mve_coerce(p0, uint16_t const *)), \
+-  int (*)[__ARM_mve_type_uint32_t_ptr]: __arm_vld1q_u32 (__ARM_mve_coerce(p0, uint32_t const *)), \
+-  int (*)[__ARM_mve_type_float16_t_ptr]: __arm_vld1q_f16 (__ARM_mve_coerce(p0, float16_t const *)), \
+-  int (*)[__ARM_mve_type_float32_t_ptr]: __arm_vld1q_f32 (__ARM_mve_coerce(p0, float32_t const *))))
++  int (*)[__ARM_mve_type_int8_t_ptr]: __arm_vld1q_s8 (__ARM_mve_coerce1(p0, int8_t *)), \
++  int (*)[__ARM_mve_type_int16_t_ptr]: __arm_vld1q_s16 (__ARM_mve_coerce1(p0, int16_t *)), \
++  int (*)[__ARM_mve_type_int32_t_ptr]: __arm_vld1q_s32 (__ARM_mve_coerce1(p0, int32_t *)), \
++  int (*)[__ARM_mve_type_uint8_t_ptr]: __arm_vld1q_u8 (__ARM_mve_coerce1(p0, uint8_t *)), \
++  int (*)[__ARM_mve_type_uint16_t_ptr]: __arm_vld1q_u16 (__ARM_mve_coerce1(p0, uint16_t *)), \
++  int (*)[__ARM_mve_type_uint32_t_ptr]: __arm_vld1q_u32 (__ARM_mve_coerce1(p0, uint32_t *)), \
++  int (*)[__ARM_mve_type_float16_t_ptr]: __arm_vld1q_f16 (__ARM_mve_coerce1(p0, float16_t *)), \
++  int (*)[__ARM_mve_type_float32_t_ptr]: __arm_vld1q_f32 (__ARM_mve_coerce1(p0, float32_t *))))
+ 
+ #define __arm_vld1q_z(p0,p1) ( \
+   _Generic( (int (*)[__ARM_mve_typeid(p0)])0, \
+-  int (*)[__ARM_mve_type_int8_t_ptr]: __arm_vld1q_z_s8 (__ARM_mve_coerce(p0, int8_t const *), p1), \
+-  int (*)[__ARM_mve_type_int16_t_ptr]: __arm_vld1q_z_s16 (__ARM_mve_coerce(p0, int16_t const *), p1), \
+-  int (*)[__ARM_mve_type_int32_t_ptr]: __arm_vld1q_z_s32 (__ARM_mve_coerce(p0, int32_t const *), p1), \
+-  int (*)[__ARM_mve_type_uint8_t_ptr]: __arm_vld1q_z_u8 (__ARM_mve_coerce(p0, uint8_t const *), p1), \
+-  int (*)[__ARM_mve_type_uint16_t_ptr]: __arm_vld1q_z_u16 (__ARM_mve_coerce(p0, uint16_t const *), p1), \
+-  int (*)[__ARM_mve_type_uint32_t_ptr]: __arm_vld1q_z_u32 (__ARM_mve_coerce(p0, uint32_t const *), p1), \
+-  int (*)[__ARM_mve_type_float16_t_ptr]: __arm_vld1q_z_f16 (__ARM_mve_coerce(p0, float16_t const *), p1), \
+-  int (*)[__ARM_mve_type_float32_t_ptr]: __arm_vld1q_z_f32 (__ARM_mve_coerce(p0, float32_t const *), p1)))
++  int (*)[__ARM_mve_type_int8_t_ptr]: __arm_vld1q_z_s8 (__ARM_mve_coerce1(p0, int8_t *), p1), \
++  int (*)[__ARM_mve_type_int16_t_ptr]: __arm_vld1q_z_s16 (__ARM_mve_coerce1(p0, int16_t *), p1), \
++  int (*)[__ARM_mve_type_int32_t_ptr]: __arm_vld1q_z_s32 (__ARM_mve_coerce1(p0, int32_t *), p1), \
++  int (*)[__ARM_mve_type_uint8_t_ptr]: __arm_vld1q_z_u8 (__ARM_mve_coerce1(p0, uint8_t *), p1), \
++  int (*)[__ARM_mve_type_uint16_t_ptr]: __arm_vld1q_z_u16 (__ARM_mve_coerce1(p0, uint16_t *), p1), \
++  int (*)[__ARM_mve_type_uint32_t_ptr]: __arm_vld1q_z_u32 (__ARM_mve_coerce1(p0, uint32_t *), p1), \
++  int (*)[__ARM_mve_type_float16_t_ptr]: __arm_vld1q_z_f16 (__ARM_mve_coerce1(p0, float16_t *), p1), \
++  int (*)[__ARM_mve_type_float32_t_ptr]: __arm_vld1q_z_f32 (__ARM_mve_coerce1(p0, float32_t *), p1)))
+ 
+ #define __arm_vld2q(p0) ( \
+   _Generic( (int (*)[__ARM_mve_typeid(p0)])0, \
+-  int (*)[__ARM_mve_type_int8_t_ptr]: __arm_vld2q_s8 (__ARM_mve_coerce(p0, int8_t const *)), \
+-  int (*)[__ARM_mve_type_int16_t_ptr]: __arm_vld2q_s16 (__ARM_mve_coerce(p0, int16_t const *)), \
+-  int (*)[__ARM_mve_type_int32_t_ptr]: __arm_vld2q_s32 (__ARM_mve_coerce(p0, int32_t const *)), \
+-  int (*)[__ARM_mve_type_uint8_t_ptr]: __arm_vld2q_u8 (__ARM_mve_coerce(p0, uint8_t const *)), \
+-  int (*)[__ARM_mve_type_uint16_t_ptr]: __arm_vld2q_u16 (__ARM_mve_coerce(p0, uint16_t const *)), \
+-  int (*)[__ARM_mve_type_uint32_t_ptr]: __arm_vld2q_u32 (__ARM_mve_coerce(p0, uint32_t const *)), \
+-  int (*)[__ARM_mve_type_float16_t_ptr]: __arm_vld2q_f16 (__ARM_mve_coerce(p0, float16_t const *)), \
+-  int (*)[__ARM_mve_type_float32_t_ptr]: __arm_vld2q_f32 (__ARM_mve_coerce(p0, float32_t const *))))
++  int (*)[__ARM_mve_type_int8_t_ptr]: __arm_vld2q_s8 (__ARM_mve_coerce1(p0, int8_t *)), \
++  int (*)[__ARM_mve_type_int16_t_ptr]: __arm_vld2q_s16 (__ARM_mve_coerce1(p0, int16_t *)), \
++  int (*)[__ARM_mve_type_int32_t_ptr]: __arm_vld2q_s32 (__ARM_mve_coerce1(p0, int32_t *)), \
++  int (*)[__ARM_mve_type_uint8_t_ptr]: __arm_vld2q_u8 (__ARM_mve_coerce1(p0, uint8_t *)), \
++  int (*)[__ARM_mve_type_uint16_t_ptr]: __arm_vld2q_u16 (__ARM_mve_coerce1(p0, uint16_t *)), \
++  int (*)[__ARM_mve_type_uint32_t_ptr]: __arm_vld2q_u32 (__ARM_mve_coerce1(p0, uint32_t *)), \
++  int (*)[__ARM_mve_type_float16_t_ptr]: __arm_vld2q_f16 (__ARM_mve_coerce1(p0, float16_t *)), \
++  int (*)[__ARM_mve_type_float32_t_ptr]: __arm_vld2q_f32 (__ARM_mve_coerce1(p0, float32_t *))))
+ 
+ #define __arm_vld4q(p0) ( \
+   _Generic( (int (*)[__ARM_mve_typeid(p0)])0, \
+-  int (*)[__ARM_mve_type_int8_t_ptr]: __arm_vld4q_s8 (__ARM_mve_coerce(p0, int8_t const *)), \
+-  int (*)[__ARM_mve_type_int16_t_ptr]: __arm_vld4q_s16 (__ARM_mve_coerce(p0, int16_t const *)), \
+-  int (*)[__ARM_mve_type_int32_t_ptr]: __arm_vld4q_s32 (__ARM_mve_coerce(p0, int32_t const *)), \
+-  int (*)[__ARM_mve_type_uint8_t_ptr]: __arm_vld4q_u8 (__ARM_mve_coerce(p0, uint8_t const *)), \
+-  int (*)[__ARM_mve_type_uint16_t_ptr]: __arm_vld4q_u16 (__ARM_mve_coerce(p0, uint16_t const *)), \
+-  int (*)[__ARM_mve_type_uint32_t_ptr]: __arm_vld4q_u32 (__ARM_mve_coerce(p0, uint32_t const *)), \
+-  int (*)[__ARM_mve_type_float16_t_ptr]: __arm_vld4q_f16 (__ARM_mve_coerce(p0, float16_t const *)), \
+-  int (*)[__ARM_mve_type_float32_t_ptr]: __arm_vld4q_f32 (__ARM_mve_coerce(p0, float32_t const *))))
++  int (*)[__ARM_mve_type_int8_t_ptr]: __arm_vld4q_s8 (__ARM_mve_coerce1(p0, int8_t *)), \
++  int (*)[__ARM_mve_type_int16_t_ptr]: __arm_vld4q_s16 (__ARM_mve_coerce1(p0, int16_t *)), \
++  int (*)[__ARM_mve_type_int32_t_ptr]: __arm_vld4q_s32 (__ARM_mve_coerce1(p0, int32_t *)), \
++  int (*)[__ARM_mve_type_uint8_t_ptr]: __arm_vld4q_u8 (__ARM_mve_coerce1(p0, uint8_t *)), \
++  int (*)[__ARM_mve_type_uint16_t_ptr]: __arm_vld4q_u16 (__ARM_mve_coerce1(p0, uint16_t *)), \
++  int (*)[__ARM_mve_type_uint32_t_ptr]: __arm_vld4q_u32 (__ARM_mve_coerce1(p0, uint32_t *)), \
++  int (*)[__ARM_mve_type_float16_t_ptr]: __arm_vld4q_f16 (__ARM_mve_coerce1(p0, float16_t *)), \
++  int (*)[__ARM_mve_type_float32_t_ptr]: __arm_vld4q_f32 (__ARM_mve_coerce1(p0, float32_t *))))
+ 
+ #define __arm_vldrhq_gather_offset(p0,p1) ({ __typeof(p1) __p1 = (p1); \
+   _Generic( (int (*)[__ARM_mve_typeid(p0)][__ARM_mve_typeid(__p1)])0, \
 @@ -37802,33 +37802,19 @@ extern void *__ARM_undef;
    int (*)[__ARM_mve_type_uint32x4_t]: __arm_vstrwq_scatter_base_p_u32(p0, p1, __ARM_mve_coerce(__p2, uint32x4_t), p3), \
    int (*)[__ARM_mve_type_float32x4_t]: __arm_vstrwq_scatter_base_p_f32(p0, p1, __ARM_mve_coerce(__p2, float32x4_t), p3));})
@@ -4014,10 +4427,17 @@ index 449219e90fc..1132c7cf87d 100644
  #define __arm_vstrwq_scatter_base(p0,p1,p2) ({ __typeof(p2) __p2 = (p2); \
    _Generic( (int (*)[__ARM_mve_typeid(__p2)])0, \
    int (*)[__ARM_mve_type_int32x4_t]: __arm_vstrwq_scatter_base_s32(p0, p1, __ARM_mve_coerce(__p2, int32x4_t)), \
-@@ -39739,27 +39632,6 @@ extern void *__ARM_undef;
-   int (*)[__ARM_mve_type_uint8_t_ptr][__ARM_mve_type_uint16x8_t]: __arm_vldrbq_gather_offset_u16 (__ARM_mve_coerce(p0, uint8_t const *), __ARM_mve_coerce(__p1, uint16x8_t)), \
-   int (*)[__ARM_mve_type_uint8_t_ptr][__ARM_mve_type_uint32x4_t]: __arm_vldrbq_gather_offset_u32 (__ARM_mve_coerce(p0, uint8_t const *), __ARM_mve_coerce(__p1, uint32x4_t)));})
+@@ -39732,46 +39625,26 @@ extern void *__ARM_undef;
  
+ #define __arm_vldrbq_gather_offset(p0,p1) ({ __typeof(p1) __p1 = (p1); \
+   _Generic( (int (*)[__ARM_mve_typeid(p0)][__ARM_mve_typeid(__p1)])0, \
+-  int (*)[__ARM_mve_type_int8_t_ptr][__ARM_mve_type_uint8x16_t]: __arm_vldrbq_gather_offset_s8 (__ARM_mve_coerce(p0, int8_t const *), __ARM_mve_coerce(__p1, uint8x16_t)), \
+-  int (*)[__ARM_mve_type_int8_t_ptr][__ARM_mve_type_uint16x8_t]: __arm_vldrbq_gather_offset_s16 (__ARM_mve_coerce(p0, int8_t const *), __ARM_mve_coerce(__p1, uint16x8_t)), \
+-  int (*)[__ARM_mve_type_int8_t_ptr][__ARM_mve_type_uint32x4_t]: __arm_vldrbq_gather_offset_s32 (__ARM_mve_coerce(p0, int8_t const *), __ARM_mve_coerce(__p1, uint32x4_t)), \
+-  int (*)[__ARM_mve_type_uint8_t_ptr][__ARM_mve_type_uint8x16_t]: __arm_vldrbq_gather_offset_u8 (__ARM_mve_coerce(p0, uint8_t const *), __ARM_mve_coerce(__p1, uint8x16_t)), \
+-  int (*)[__ARM_mve_type_uint8_t_ptr][__ARM_mve_type_uint16x8_t]: __arm_vldrbq_gather_offset_u16 (__ARM_mve_coerce(p0, uint8_t const *), __ARM_mve_coerce(__p1, uint16x8_t)), \
+-  int (*)[__ARM_mve_type_uint8_t_ptr][__ARM_mve_type_uint32x4_t]: __arm_vldrbq_gather_offset_u32 (__ARM_mve_coerce(p0, uint8_t const *), __ARM_mve_coerce(__p1, uint32x4_t)));})
+-
 -#define __arm_vstrbq_p(p0,p1,p2) ({ __typeof(p0) __p0 = (p0); \
 -  __typeof(p1) __p1 = (p1); \
 -  _Generic( (int (*)[__ARM_mve_typeid(__p0)][__ARM_mve_typeid(__p1)])0, \
@@ -4038,11 +4458,37 @@ index 449219e90fc..1132c7cf87d 100644
 -  int (*)[__ARM_mve_type_uint8_t_ptr][__ARM_mve_type_uint8x16_t][__ARM_mve_type_uint8x16_t]: __arm_vstrbq_scatter_offset_p_u8 (__ARM_mve_coerce(__p0, uint8_t *), __ARM_mve_coerce(__p1, uint8x16_t), __ARM_mve_coerce(__p2, uint8x16_t), p3), \
 -  int (*)[__ARM_mve_type_uint8_t_ptr][__ARM_mve_type_uint16x8_t][__ARM_mve_type_uint16x8_t]: __arm_vstrbq_scatter_offset_p_u16 (__ARM_mve_coerce(__p0, uint8_t *), __ARM_mve_coerce(__p1, uint16x8_t), __ARM_mve_coerce(__p2, uint16x8_t), p3), \
 -  int (*)[__ARM_mve_type_uint8_t_ptr][__ARM_mve_type_uint32x4_t][__ARM_mve_type_uint32x4_t]: __arm_vstrbq_scatter_offset_p_u32 (__ARM_mve_coerce(__p0, uint8_t *), __ARM_mve_coerce(__p1, uint32x4_t), __ARM_mve_coerce(__p2, uint32x4_t), p3));})
--
++  int (*)[__ARM_mve_type_int8_t_ptr][__ARM_mve_type_uint8x16_t]: __arm_vldrbq_gather_offset_s8 (__ARM_mve_coerce1(p0, int8_t *), __ARM_mve_coerce(__p1, uint8x16_t)), \
++  int (*)[__ARM_mve_type_int8_t_ptr][__ARM_mve_type_uint16x8_t]: __arm_vldrbq_gather_offset_s16 (__ARM_mve_coerce1(p0, int8_t *), __ARM_mve_coerce(__p1, uint16x8_t)), \
++  int (*)[__ARM_mve_type_int8_t_ptr][__ARM_mve_type_uint32x4_t]: __arm_vldrbq_gather_offset_s32 (__ARM_mve_coerce1(p0, int8_t *), __ARM_mve_coerce(__p1, uint32x4_t)), \
++  int (*)[__ARM_mve_type_uint8_t_ptr][__ARM_mve_type_uint8x16_t]: __arm_vldrbq_gather_offset_u8 (__ARM_mve_coerce1(p0, uint8_t *), __ARM_mve_coerce(__p1, uint8x16_t)), \
++  int (*)[__ARM_mve_type_uint8_t_ptr][__ARM_mve_type_uint16x8_t]: __arm_vldrbq_gather_offset_u16 (__ARM_mve_coerce1(p0, uint8_t *), __ARM_mve_coerce(__p1, uint16x8_t)), \
++  int (*)[__ARM_mve_type_uint8_t_ptr][__ARM_mve_type_uint32x4_t]: __arm_vldrbq_gather_offset_u32 (__ARM_mve_coerce1(p0, uint8_t *), __ARM_mve_coerce(__p1, uint32x4_t)));})
+ 
  #define __arm_vstrwq_scatter_base_p(p0,p1,p2,p3) ({ __typeof(p2) __p2 = (p2); \
    _Generic( (int (*)[__ARM_mve_typeid(__p2)])0, \
    int (*)[__ARM_mve_type_int32x4_t]: __arm_vstrwq_scatter_base_p_s32 (p0, p1, __ARM_mve_coerce(__p2, int32x4_t), p3), \
-@@ -39915,34 +39787,6 @@ extern void *__ARM_undef;
+   int (*)[__ARM_mve_type_uint32x4_t]: __arm_vstrwq_scatter_base_p_u32 (p0, p1, __ARM_mve_coerce(__p2, uint32x4_t), p3));})
+ 
+-#define __arm_vld1q(p0) (_Generic( (int (*)[__ARM_mve_typeid(p0)])0, \
+-  int (*)[__ARM_mve_type_int8_t_ptr]: __arm_vld1q_s8 (__ARM_mve_coerce(p0, int8_t const *)), \
+-  int (*)[__ARM_mve_type_int16_t_ptr]: __arm_vld1q_s16 (__ARM_mve_coerce(p0, int16_t const *)), \
+-  int (*)[__ARM_mve_type_int32_t_ptr]: __arm_vld1q_s32 (__ARM_mve_coerce(p0, int32_t const *)), \
+-  int (*)[__ARM_mve_type_uint8_t_ptr]: __arm_vld1q_u8 (__ARM_mve_coerce(p0, uint8_t const *)), \
+-  int (*)[__ARM_mve_type_uint16_t_ptr]: __arm_vld1q_u16 (__ARM_mve_coerce(p0, uint16_t const *)), \
+-  int (*)[__ARM_mve_type_uint32_t_ptr]: __arm_vld1q_u32 (__ARM_mve_coerce(p0, uint32_t const *))))
++#define __arm_vld1q(p0) (\
++  _Generic( (int (*)[__ARM_mve_typeid(p0)])0, \
++  int (*)[__ARM_mve_type_int8_t_ptr]: __arm_vld1q_s8 (__ARM_mve_coerce1(p0, int8_t *)), \
++  int (*)[__ARM_mve_type_int16_t_ptr]: __arm_vld1q_s16 (__ARM_mve_coerce1(p0, int16_t *)), \
++  int (*)[__ARM_mve_type_int32_t_ptr]: __arm_vld1q_s32 (__ARM_mve_coerce1(p0, int32_t *)), \
++  int (*)[__ARM_mve_type_uint8_t_ptr]: __arm_vld1q_u8 (__ARM_mve_coerce1(p0, uint8_t *)), \
++  int (*)[__ARM_mve_type_uint16_t_ptr]: __arm_vld1q_u16 (__ARM_mve_coerce1(p0, uint16_t *)), \
++  int (*)[__ARM_mve_type_uint32_t_ptr]: __arm_vld1q_u32 (__ARM_mve_coerce1(p0, uint32_t *))))
+ 
+ #define __arm_vldrhq_gather_offset(p0,p1) ({ __typeof(p1) __p1 = (p1); \
+   _Generic( (int (*)[__ARM_mve_typeid(p0)][__ARM_mve_typeid(__p1)])0, \
+@@ -39915,34 +39788,6 @@ extern void *__ARM_undef;
    int (*)[__ARM_mve_type_int64x2_t]: __arm_vstrdq_scatter_base_s64 (p0, p1, __ARM_mve_coerce(__p2, int64x2_t)), \
    int (*)[__ARM_mve_type_uint64x2_t]: __arm_vstrdq_scatter_base_u64 (p0, p1, __ARM_mve_coerce(__p2, uint64x2_t)));})
  
@@ -4077,12 +4523,13 @@ index 449219e90fc..1132c7cf87d 100644
  #define __arm_vstrhq_scatter_offset(p0,p1,p2) ({ __typeof(p1) __p1 = (p1); \
    __typeof(p2) __p2 = (p2); \
    _Generic( (int (*)[__ARM_mve_typeid(p0)][__ARM_mve_typeid(__p1)][__ARM_mve_typeid(__p2)])0, \
-@@ -39975,29 +39819,17 @@ extern void *__ARM_undef;
+@@ -39975,29 +39820,17 @@ extern void *__ARM_undef;
    int (*)[__ARM_mve_type_uint16_t_ptr][__ARM_mve_type_uint16x8_t][__ARM_mve_type_uint16x8_t]: __arm_vstrhq_scatter_shifted_offset_p_u16 (__ARM_mve_coerce(p0, uint16_t *), __ARM_mve_coerce(__p1, uint16x8_t), __ARM_mve_coerce(__p2, uint16x8_t), p3), \
    int (*)[__ARM_mve_type_uint16_t_ptr][__ARM_mve_type_uint32x4_t][__ARM_mve_type_uint32x4_t]: __arm_vstrhq_scatter_shifted_offset_p_u32 (__ARM_mve_coerce(p0, uint16_t *), __ARM_mve_coerce(__p1, uint32x4_t), __ARM_mve_coerce(__p2, uint32x4_t), p3));})
  
 -#define __arm_vstrwq_scatter_offset(p0,p1,p2) ({ __typeof(p1) __p1 = (p1); \
--  __typeof(p2) __p2 = (p2); \
++#define __arm_vstrwq_scatter_offset(p0,p1,p2) ({ __typeof(p0) __p0 = (p0); \
+   __typeof(p2) __p2 = (p2); \
 -  _Generic( (int (*)[__ARM_mve_typeid(p0)][__ARM_mve_typeid(__p2)])0, \
 -  int (*)[__ARM_mve_type_int32_t_ptr][__ARM_mve_type_int32x4_t]: __arm_vstrwq_scatter_offset_s32 (__ARM_mve_coerce(p0, int32_t *), __p1, __ARM_mve_coerce(__p2, int32x4_t)), \
 -  int (*)[__ARM_mve_type_uint32_t_ptr][__ARM_mve_type_uint32x4_t]: __arm_vstrwq_scatter_offset_u32 (__ARM_mve_coerce(p0, uint32_t *), __p1, __ARM_mve_coerce(__p2, uint32x4_t)));})
@@ -4094,8 +4541,7 @@ index 449219e90fc..1132c7cf87d 100644
 -  int (*)[__ARM_mve_type_uint32_t_ptr][__ARM_mve_type_uint32x4_t]: __arm_vstrwq_scatter_offset_p_u32 (__ARM_mve_coerce(p0, uint32_t *), __p1, __ARM_mve_coerce(__p2, uint32x4_t)));})
 -
 -#define __arm_vstrwq_scatter_offset_p(p0,p1,p2,p3) ({ __typeof(p1) __p1 = (p1); \
-+#define __arm_vstrwq_scatter_offset(p0,p1,p2) ({ __typeof(p0) __p0 = (p0); \
-   __typeof(p2) __p2 = (p2); \
+-  __typeof(p2) __p2 = (p2); \
 -  _Generic( (int (*)[__ARM_mve_typeid(p0)][__ARM_mve_typeid(__p2)])0, \
 -  int (*)[__ARM_mve_type_int32_t_ptr][__ARM_mve_type_int32x4_t]: __arm_vstrwq_scatter_offset_p_s32 (__ARM_mve_coerce(p0, int32_t *), __p1, __ARM_mve_coerce(__p2, int32x4_t), p3), \
 -  int (*)[__ARM_mve_type_uint32_t_ptr][__ARM_mve_type_uint32x4_t]: __arm_vstrwq_scatter_offset_p_u32 (__ARM_mve_coerce(p0, uint32_t *), __p1, __ARM_mve_coerce(__p2, uint32x4_t), p3));})
@@ -4115,7 +4561,7 @@ index 449219e90fc..1132c7cf87d 100644
  
  #define __arm_vstrwq_scatter_shifted_offset(p0,p1,p2) ({ __typeof(p1) __p1 = (p1); \
    __typeof(p2) __p2 = (p2); \
-@@ -40154,32 +39986,6 @@ extern void *__ARM_undef;
+@@ -40154,32 +39987,6 @@ extern void *__ARM_undef;
    int (*)[__ARM_mve_type_uint16x8_t][__ARM_mve_type_uint16x8_t]: __arm_veorq_x_u16 (__ARM_mve_coerce(__p1, uint16x8_t), __ARM_mve_coerce(__p2, uint16x8_t), p3), \
    int (*)[__ARM_mve_type_uint32x4_t][__ARM_mve_type_uint32x4_t]: __arm_veorq_x_u32 (__ARM_mve_coerce(__p1, uint32x4_t), __ARM_mve_coerce(__p2, uint32x4_t), p3));})
  
@@ -4148,7 +4594,74 @@ index 449219e90fc..1132c7cf87d 100644
  #define __arm_vmovlbq_x(p1,p2) ({ __typeof(p1) __p1 = (p1); \
    _Generic( (int (*)[__ARM_mve_typeid(__p1)])0, \
    int (*)[__ARM_mve_type_int8x16_t]: __arm_vmovlbq_x_s8 (__ARM_mve_coerce(__p1, int8x16_t), p2), \
-@@ -41007,13 +40813,6 @@ extern void *__ARM_undef;
+@@ -40334,29 +40141,29 @@ extern void *__ARM_undef;
+   int (*)[__ARM_mve_type_uint32x4_t]: __arm_vbrsrq_x_n_u32 (__ARM_mve_coerce(__p1, uint32x4_t), p2, p3));})
+ 
+ #define __arm_vld1q_z(p0,p1) ( _Generic( (int (*)[__ARM_mve_typeid(p0)])0, \
+-  int (*)[__ARM_mve_type_int8_t_ptr]: __arm_vld1q_z_s8 (__ARM_mve_coerce(p0, int8_t const *), p1), \
+-  int (*)[__ARM_mve_type_int16_t_ptr]: __arm_vld1q_z_s16 (__ARM_mve_coerce(p0, int16_t const *), p1), \
+-  int (*)[__ARM_mve_type_int32_t_ptr]: __arm_vld1q_z_s32 (__ARM_mve_coerce(p0, int32_t const *), p1), \
+-  int (*)[__ARM_mve_type_uint8_t_ptr]: __arm_vld1q_z_u8 (__ARM_mve_coerce(p0, uint8_t const *), p1), \
+-  int (*)[__ARM_mve_type_uint16_t_ptr]: __arm_vld1q_z_u16 (__ARM_mve_coerce(p0, uint16_t const *), p1), \
+-  int (*)[__ARM_mve_type_uint32_t_ptr]: __arm_vld1q_z_u32 (__ARM_mve_coerce(p0, uint32_t const *), p1)))
++  int (*)[__ARM_mve_type_int8_t_ptr]: __arm_vld1q_z_s8 (__ARM_mve_coerce1(p0, int8_t *), p1), \
++  int (*)[__ARM_mve_type_int16_t_ptr]: __arm_vld1q_z_s16 (__ARM_mve_coerce1(p0, int16_t *), p1), \
++  int (*)[__ARM_mve_type_int32_t_ptr]: __arm_vld1q_z_s32 (__ARM_mve_coerce1(p0, int32_t *), p1), \
++  int (*)[__ARM_mve_type_uint8_t_ptr]: __arm_vld1q_z_u8 (__ARM_mve_coerce1(p0, uint8_t *), p1), \
++  int (*)[__ARM_mve_type_uint16_t_ptr]: __arm_vld1q_z_u16 (__ARM_mve_coerce1(p0, uint16_t *), p1), \
++  int (*)[__ARM_mve_type_uint32_t_ptr]: __arm_vld1q_z_u32 (__ARM_mve_coerce1(p0, uint32_t *), p1)))
+ 
+ #define __arm_vld2q(p0) ( _Generic( (int (*)[__ARM_mve_typeid(p0)])0, \
+-  int (*)[__ARM_mve_type_int8_t_ptr]: __arm_vld2q_s8 (__ARM_mve_coerce(p0, int8_t const *)), \
+-  int (*)[__ARM_mve_type_int16_t_ptr]: __arm_vld2q_s16 (__ARM_mve_coerce(p0, int16_t const *)), \
+-  int (*)[__ARM_mve_type_int32_t_ptr]: __arm_vld2q_s32 (__ARM_mve_coerce(p0, int32_t const *)), \
+-  int (*)[__ARM_mve_type_uint8_t_ptr]: __arm_vld2q_u8 (__ARM_mve_coerce(p0, uint8_t const *)), \
+-  int (*)[__ARM_mve_type_uint16_t_ptr]: __arm_vld2q_u16 (__ARM_mve_coerce(p0, uint16_t const *)), \
+-  int (*)[__ARM_mve_type_uint32_t_ptr]: __arm_vld2q_u32 (__ARM_mve_coerce(p0, uint32_t const *))))
++  int (*)[__ARM_mve_type_int8_t_ptr]: __arm_vld2q_s8 (__ARM_mve_coerce1(p0, int8_t *)), \
++  int (*)[__ARM_mve_type_int16_t_ptr]: __arm_vld2q_s16 (__ARM_mve_coerce1(p0, int16_t *)), \
++  int (*)[__ARM_mve_type_int32_t_ptr]: __arm_vld2q_s32 (__ARM_mve_coerce1(p0, int32_t *)), \
++  int (*)[__ARM_mve_type_uint8_t_ptr]: __arm_vld2q_u8 (__ARM_mve_coerce1(p0, uint8_t *)), \
++  int (*)[__ARM_mve_type_uint16_t_ptr]: __arm_vld2q_u16 (__ARM_mve_coerce1(p0, uint16_t *)), \
++  int (*)[__ARM_mve_type_uint32_t_ptr]: __arm_vld2q_u32 (__ARM_mve_coerce1(p0, uint32_t *))))
+ 
+ 
+ #define __arm_vld4q(p0) ( _Generic( (int (*)[__ARM_mve_typeid(p0)])0, \
+-  int (*)[__ARM_mve_type_int8_t_ptr]: __arm_vld4q_s8 (__ARM_mve_coerce(p0, int8_t const *)), \
+-  int (*)[__ARM_mve_type_int16_t_ptr]: __arm_vld4q_s16 (__ARM_mve_coerce(p0, int16_t const *)), \
+-  int (*)[__ARM_mve_type_int32_t_ptr]: __arm_vld4q_s32 (__ARM_mve_coerce(p0, int32_t const *)), \
+-  int (*)[__ARM_mve_type_uint8_t_ptr]: __arm_vld4q_u8 (__ARM_mve_coerce(p0, uint8_t const *)), \
+-  int (*)[__ARM_mve_type_uint16_t_ptr]: __arm_vld4q_u16 (__ARM_mve_coerce(p0, uint16_t const *)), \
+-  int (*)[__ARM_mve_type_uint32_t_ptr]: __arm_vld4q_u32 (__ARM_mve_coerce(p0, uint32_t const *))))
++  int (*)[__ARM_mve_type_int8_t_ptr]: __arm_vld4q_s8 (__ARM_mve_coerce1(p0, int8_t *)), \
++  int (*)[__ARM_mve_type_int16_t_ptr]: __arm_vld4q_s16 (__ARM_mve_coerce1(p0, int16_t *)), \
++  int (*)[__ARM_mve_type_int32_t_ptr]: __arm_vld4q_s32 (__ARM_mve_coerce1(p0, int32_t *)), \
++  int (*)[__ARM_mve_type_uint8_t_ptr]: __arm_vld4q_u8 (__ARM_mve_coerce1(p0, uint8_t *)), \
++  int (*)[__ARM_mve_type_uint16_t_ptr]: __arm_vld4q_u16 (__ARM_mve_coerce1(p0, uint16_t *)), \
++  int (*)[__ARM_mve_type_uint32_t_ptr]: __arm_vld4q_u32 (__ARM_mve_coerce1(p0, uint32_t *))))
+ 
+ #define __arm_vgetq_lane(p0,p1) ({ __typeof(p0) __p0 = (p0); \
+   _Generic( (int (*)[__ARM_mve_typeid(__p0)])0, \
+@@ -40703,12 +40510,12 @@ extern void *__ARM_undef;
+ 
+ #define __arm_vldrbq_gather_offset_z(p0,p1,p2) ({ __typeof(p1) __p1 = (p1); \
+   _Generic( (int (*)[__ARM_mve_typeid(p0)][__ARM_mve_typeid(__p1)])0, \
+-  int (*)[__ARM_mve_type_int8_t_ptr][__ARM_mve_type_uint8x16_t]: __arm_vldrbq_gather_offset_z_s8 (__ARM_mve_coerce(p0, int8_t const *), __ARM_mve_coerce(__p1, uint8x16_t), p2), \
+-  int (*)[__ARM_mve_type_int8_t_ptr][__ARM_mve_type_uint16x8_t]: __arm_vldrbq_gather_offset_z_s16 (__ARM_mve_coerce(p0, int8_t const *), __ARM_mve_coerce(__p1, uint16x8_t), p2), \
+-  int (*)[__ARM_mve_type_int8_t_ptr][__ARM_mve_type_uint32x4_t]: __arm_vldrbq_gather_offset_z_s32 (__ARM_mve_coerce(p0, int8_t const *), __ARM_mve_coerce(__p1, uint32x4_t), p2), \
+-  int (*)[__ARM_mve_type_uint8_t_ptr][__ARM_mve_type_uint8x16_t]: __arm_vldrbq_gather_offset_z_u8 (__ARM_mve_coerce(p0, uint8_t const *), __ARM_mve_coerce(__p1, uint8x16_t), p2), \
+-  int (*)[__ARM_mve_type_uint8_t_ptr][__ARM_mve_type_uint16x8_t]: __arm_vldrbq_gather_offset_z_u16 (__ARM_mve_coerce(p0, uint8_t const *), __ARM_mve_coerce(__p1, uint16x8_t), p2), \
+-  int (*)[__ARM_mve_type_uint8_t_ptr][__ARM_mve_type_uint32x4_t]: __arm_vldrbq_gather_offset_z_u32 (__ARM_mve_coerce(p0, uint8_t const *), __ARM_mve_coerce(__p1, uint32x4_t), p2));})
++  int (*)[__ARM_mve_type_int8_t_ptr][__ARM_mve_type_uint8x16_t]: __arm_vldrbq_gather_offset_z_s8 (__ARM_mve_coerce1(p0, int8_t *), __ARM_mve_coerce(__p1, uint8x16_t), p2), \
++  int (*)[__ARM_mve_type_int8_t_ptr][__ARM_mve_type_uint16x8_t]: __arm_vldrbq_gather_offset_z_s16 (__ARM_mve_coerce1(p0, int8_t *), __ARM_mve_coerce(__p1, uint16x8_t), p2), \
++  int (*)[__ARM_mve_type_int8_t_ptr][__ARM_mve_type_uint32x4_t]: __arm_vldrbq_gather_offset_z_s32 (__ARM_mve_coerce1(p0, int8_t *), __ARM_mve_coerce(__p1, uint32x4_t), p2), \
++  int (*)[__ARM_mve_type_uint8_t_ptr][__ARM_mve_type_uint8x16_t]: __arm_vldrbq_gather_offset_z_u8 (__ARM_mve_coerce1(p0, uint8_t *), __ARM_mve_coerce(__p1, uint8x16_t), p2), \
++  int (*)[__ARM_mve_type_uint8_t_ptr][__ARM_mve_type_uint16x8_t]: __arm_vldrbq_gather_offset_z_u16 (__ARM_mve_coerce1(p0, uint8_t *), __ARM_mve_coerce(__p1, uint16x8_t), p2), \
++  int (*)[__ARM_mve_type_uint8_t_ptr][__ARM_mve_type_uint32x4_t]: __arm_vldrbq_gather_offset_z_u32 (__ARM_mve_coerce1(p0, uint8_t *), __ARM_mve_coerce(__p1, uint32x4_t), p2));})
+ 
+ #define __arm_vqrdmlahq_m(p0,p1,p2,p3) ({ __typeof(p0) __p0 = (p0); \
+   __typeof(p1) __p1 = (p1); \
+@@ -41007,13 +40814,6 @@ extern void *__ARM_undef;
    int (*)[__ARM_mve_type_int16x8_t][__ARM_mve_type_int16x8_t]: __arm_vmlsldavaxq_p_s16(__p0, __ARM_mve_coerce(__p1, int16x8_t), __ARM_mve_coerce(__p2, int16x8_t), p3), \
    int (*)[__ARM_mve_type_int32x4_t][__ARM_mve_type_int32x4_t]: __arm_vmlsldavaxq_p_s32(__p0, __ARM_mve_coerce(__p1, int32x4_t), __ARM_mve_coerce(__p2, int32x4_t), p3));})
  
@@ -4162,7 +4675,7 @@ index 449219e90fc..1132c7cf87d 100644
  #define __arm_vrmlaldavhaxq_p(p0,p1,p2,p3) __arm_vrmlaldavhaxq_p_s32(p0,p1,p2,p3)
  
  #define __arm_vrmlsldavhaq_p(p0,p1,p2,p3) __arm_vrmlsldavhaq_p_s32(p0,p1,p2,p3)
-@@ -41337,21 +41136,47 @@ extern void *__ARM_undef;
+@@ -41337,21 +41137,47 @@ extern void *__ARM_undef;
    int (*)[__ARM_mve_type_int16x8_t][__ARM_mve_type_int16x8_t][__ARM_mve_type_int16x8_t]: __arm_vqrdmladhxq_m_s16 (__ARM_mve_coerce(__p0, int16x8_t), __ARM_mve_coerce(__p1, int16x8_t), __ARM_mve_coerce(__p2, int16x8_t), p3), \
    int (*)[__ARM_mve_type_int32x4_t][__ARM_mve_type_int32x4_t][__ARM_mve_type_int32x4_t]: __arm_vqrdmladhxq_m_s32 (__ARM_mve_coerce(__p0, int32x4_t), __ARM_mve_coerce(__p1, int32x4_t), __ARM_mve_coerce(__p2, int32x4_t), p3));})
  
@@ -4191,15 +4704,15 @@ index 449219e90fc..1132c7cf87d 100644
 +  int (*)[__ARM_mve_type_int8x16_t][__ARM_mve_type_int8x16_t]: __arm_vmlsdavaxq_s8(p0, __ARM_mve_coerce(__p1, int8x16_t), __ARM_mve_coerce(__p2, int8x16_t)), \
 +  int (*)[__ARM_mve_type_int16x8_t][__ARM_mve_type_int16x8_t]: __arm_vmlsdavaxq_s16(p0, __ARM_mve_coerce(__p1, int16x8_t), __ARM_mve_coerce(__p2, int16x8_t)), \
 +  int (*)[__ARM_mve_type_int32x4_t][__ARM_mve_type_int32x4_t]: __arm_vmlsdavaxq_s32(p0, __ARM_mve_coerce(__p1, int32x4_t), __ARM_mve_coerce(__p2, int32x4_t)));})
-+
+ 
+-#define __arm_vmlsdavaq_p(p0,p1,p2,p3) ({ __typeof(p0) __p0 = (p0); \
 +#define __arm_vmlsdavq_p(p0,p1,p2) ({ __typeof(p0) __p0 = (p0); \
 +  __typeof(p1) __p1 = (p1); \
 +  _Generic( (int (*)[__ARM_mve_typeid(__p0)][__ARM_mve_typeid(__p1)])0, \
 +  int (*)[__ARM_mve_type_int8x16_t][__ARM_mve_type_int8x16_t]: __arm_vmlsdavq_p_s8 (__ARM_mve_coerce(__p0, int8x16_t), __ARM_mve_coerce(__p1, int8x16_t), p2), \
 +  int (*)[__ARM_mve_type_int16x8_t][__ARM_mve_type_int16x8_t]: __arm_vmlsdavq_p_s16 (__ARM_mve_coerce(__p0, int16x8_t), __ARM_mve_coerce(__p1, int16x8_t), p2), \
 +  int (*)[__ARM_mve_type_int32x4_t][__ARM_mve_type_int32x4_t]: __arm_vmlsdavq_p_s32 (__ARM_mve_coerce(__p0, int32x4_t), __ARM_mve_coerce(__p1, int32x4_t), p2));})
- 
--#define __arm_vmlsdavaq_p(p0,p1,p2,p3) ({ __typeof(p0) __p0 = (p0); \
++
 +#define __arm_vmlsdavxq_p(p0,p1,p2) ({ __typeof(p0) __p0 = (p0); \
    __typeof(p1) __p1 = (p1); \
 +  _Generic( (int (*)[__ARM_mve_typeid(__p0)][__ARM_mve_typeid(__p1)])0, \
@@ -4219,7 +4732,26 @@ index 449219e90fc..1132c7cf87d 100644
  
  #define __arm_vmladavaxq_p(p0,p1,p2,p3) ({ __typeof(p0) __p0 = (p0); \
    __typeof(p1) __p1 = (p1); \
-@@ -41439,8 +41264,8 @@ extern void *__ARM_undef;
+@@ -41370,12 +41196,12 @@ extern void *__ARM_undef;
+ 
+ #define __arm_vldrbq_gather_offset(p0,p1) ({ __typeof(p1) __p1 = (p1); \
+   _Generic( (int (*)[__ARM_mve_typeid(p0)][__ARM_mve_typeid(__p1)])0, \
+-  int (*)[__ARM_mve_type_int8_t_ptr][__ARM_mve_type_uint8x16_t]: __arm_vldrbq_gather_offset_s8 (__ARM_mve_coerce(p0, int8_t const *), __ARM_mve_coerce(__p1, uint8x16_t)), \
+-  int (*)[__ARM_mve_type_int8_t_ptr][__ARM_mve_type_uint16x8_t]: __arm_vldrbq_gather_offset_s16 (__ARM_mve_coerce(p0, int8_t const *), __ARM_mve_coerce(__p1, uint16x8_t)), \
+-  int (*)[__ARM_mve_type_int8_t_ptr][__ARM_mve_type_uint32x4_t]: __arm_vldrbq_gather_offset_s32 (__ARM_mve_coerce(p0, int8_t const *), __ARM_mve_coerce(__p1, uint32x4_t)), \
+-  int (*)[__ARM_mve_type_uint8_t_ptr][__ARM_mve_type_uint8x16_t]: __arm_vldrbq_gather_offset_u8 (__ARM_mve_coerce(p0, uint8_t const *), __ARM_mve_coerce(__p1, uint8x16_t)), \
+-  int (*)[__ARM_mve_type_uint8_t_ptr][__ARM_mve_type_uint16x8_t]: __arm_vldrbq_gather_offset_u16 (__ARM_mve_coerce(p0, uint8_t const *), __ARM_mve_coerce(__p1, uint16x8_t)), \
+-  int (*)[__ARM_mve_type_uint8_t_ptr][__ARM_mve_type_uint32x4_t]: __arm_vldrbq_gather_offset_u32 (__ARM_mve_coerce(p0, uint8_t const *), __ARM_mve_coerce(__p1, uint32x4_t)));})
++  int (*)[__ARM_mve_type_int8_t_ptr][__ARM_mve_type_uint8x16_t]: __arm_vldrbq_gather_offset_s8(__ARM_mve_coerce1(p0, int8_t *), __ARM_mve_coerce(__p1, uint8x16_t)), \
++  int (*)[__ARM_mve_type_int8_t_ptr][__ARM_mve_type_uint16x8_t]: __arm_vldrbq_gather_offset_s16(__ARM_mve_coerce1(p0, int8_t *), __ARM_mve_coerce(__p1, uint16x8_t)), \
++  int (*)[__ARM_mve_type_int8_t_ptr][__ARM_mve_type_uint32x4_t]: __arm_vldrbq_gather_offset_s32(__ARM_mve_coerce1(p0, int8_t *), __ARM_mve_coerce(__p1, uint32x4_t)), \
++  int (*)[__ARM_mve_type_uint8_t_ptr][__ARM_mve_type_uint8x16_t]: __arm_vldrbq_gather_offset_u8(__ARM_mve_coerce1(p0, uint8_t *), __ARM_mve_coerce(__p1, uint8x16_t)), \
++  int (*)[__ARM_mve_type_uint8_t_ptr][__ARM_mve_type_uint16x8_t]: __arm_vldrbq_gather_offset_u16(__ARM_mve_coerce1(p0, uint8_t *), __ARM_mve_coerce(__p1, uint16x8_t)), \
++  int (*)[__ARM_mve_type_uint8_t_ptr][__ARM_mve_type_uint32x4_t]: __arm_vldrbq_gather_offset_u32(__ARM_mve_coerce1(p0, uint8_t *), __ARM_mve_coerce(__p1, uint32x4_t)));})
+ 
+ #define __arm_vidupq_m(p0,p1,p2,p3) ({ __typeof(p0) __p0 = (p0); \
+  __typeof(p1) __p1 = (p1); \
+@@ -41439,8 +41265,8 @@ extern void *__ARM_undef;
  
  #define __arm_viwdupq_u16(p0,p1,p2) ({ __typeof(p0) __p0 = (p0); \
    _Generic( (int (*)[__ARM_mve_typeid(__p0)])0, \
@@ -4230,7 +4762,7 @@ index 449219e90fc..1132c7cf87d 100644
  
  #define __arm_viwdupq_u32(p0,p1,p2) ({ __typeof(p0) __p0 = (p0); \
    _Generic( (int (*)[__ARM_mve_typeid(__p0)])0, \
-@@ -41622,16 +41447,6 @@ extern void *__ARM_undef;
+@@ -41622,16 +41448,6 @@ extern void *__ARM_undef;
    int (*)[__ARM_mve_type_int_n][__ARM_mve_type_int16x8_t]: __arm_vmaxavq_p_s16 (__p0, __ARM_mve_coerce(__p1, int16x8_t), p2), \
    int (*)[__ARM_mve_type_int_n][__ARM_mve_type_int32x4_t]: __arm_vmaxavq_p_s32 (__p0, __ARM_mve_coerce(__p1, int32x4_t), p2));})
  
@@ -4247,7 +4779,7 @@ index 449219e90fc..1132c7cf87d 100644
  #define __arm_vmaxvq(p0,p1) ({ __typeof(p0) __p0 = (p0); \
    __typeof(p1) __p1 = (p1); \
    _Generic( (int (*)[__ARM_mve_typeid(__p0)][__ARM_mve_typeid(__p1)])0, \
-@@ -41666,6 +41481,16 @@ extern void *__ARM_undef;
+@@ -41666,6 +41482,16 @@ extern void *__ARM_undef;
    int (*)[__ARM_mve_type_int_n][__ARM_mve_type_int16x8_t]: __arm_vminavq_p_s16 (__p0, __ARM_mve_coerce(__p1, int16x8_t), p2), \
    int (*)[__ARM_mve_type_int_n][__ARM_mve_type_int32x4_t]: __arm_vminavq_p_s32 (__p0, __ARM_mve_coerce(__p1, int32x4_t), p2));})
  
@@ -4264,7 +4796,7 @@ index 449219e90fc..1132c7cf87d 100644
  #define __arm_vminq_x(p1,p2,p3) ({ __typeof(p1) __p1 = (p1); \
    __typeof(p2) __p2 = (p2); \
    _Generic( (int (*)[__ARM_mve_typeid(__p1)][__ARM_mve_typeid(__p2)])0, \
-@@ -41804,22 +41629,6 @@ extern void *__ARM_undef;
+@@ -41804,22 +41630,6 @@ extern void *__ARM_undef;
    int (*)[__ARM_mve_type_int16x8_t][__ARM_mve_type_int16x8_t]: __arm_vmlaldavxq_p_s16 (__ARM_mve_coerce(__p0, int16x8_t), __ARM_mve_coerce(__p1, int16x8_t), p2), \
    int (*)[__ARM_mve_type_int32x4_t][__ARM_mve_type_int32x4_t]: __arm_vmlaldavxq_p_s32 (__ARM_mve_coerce(__p0, int32x4_t), __ARM_mve_coerce(__p1, int32x4_t), p2));})
  
@@ -4287,7 +4819,7 @@ index 449219e90fc..1132c7cf87d 100644
  #define __arm_vmlsdavq(p0,p1) ({ __typeof(p0) __p0 = (p0); \
    __typeof(p1) __p1 = (p1); \
    _Generic( (int (*)[__ARM_mve_typeid(__p0)][__ARM_mve_typeid(__p1)])0, \
-@@ -41827,13 +41636,6 @@ extern void *__ARM_undef;
+@@ -41827,13 +41637,6 @@ extern void *__ARM_undef;
    int (*)[__ARM_mve_type_int16x8_t][__ARM_mve_type_int16x8_t]: __arm_vmlsdavq_s16 (__ARM_mve_coerce(__p0, int16x8_t), __ARM_mve_coerce(__p1, int16x8_t)), \
    int (*)[__ARM_mve_type_int32x4_t][__ARM_mve_type_int32x4_t]: __arm_vmlsdavq_s32 (__ARM_mve_coerce(__p0, int32x4_t), __ARM_mve_coerce(__p1, int32x4_t)));})
  
@@ -4301,7 +4833,7 @@ index 449219e90fc..1132c7cf87d 100644
  #define __arm_vmlsdavxq(p0,p1) ({ __typeof(p0) __p0 = (p0); \
    __typeof(p1) __p1 = (p1); \
    _Generic( (int (*)[__ARM_mve_typeid(__p0)][__ARM_mve_typeid(__p1)])0, \
-@@ -41841,13 +41643,6 @@ extern void *__ARM_undef;
+@@ -41841,13 +41644,6 @@ extern void *__ARM_undef;
    int (*)[__ARM_mve_type_int16x8_t][__ARM_mve_type_int16x8_t]: __arm_vmlsdavxq_s16 (__ARM_mve_coerce(__p0, int16x8_t), __ARM_mve_coerce(__p1, int16x8_t)), \
    int (*)[__ARM_mve_type_int32x4_t][__ARM_mve_type_int32x4_t]: __arm_vmlsdavxq_s32 (__ARM_mve_coerce(__p0, int32x4_t), __ARM_mve_coerce(__p1, int32x4_t)));})
  
@@ -4315,7 +4847,7 @@ index 449219e90fc..1132c7cf87d 100644
  #define __arm_vmlsldavaq(p0,p1,p2) ({ __typeof(p0) __p0 = (p0); \
    __typeof(p1) __p1 = (p1); \
    __typeof(p2) __p2 = (p2); \
-@@ -41942,13 +41737,6 @@ extern void *__ARM_undef;
+@@ -41942,13 +41738,6 @@ extern void *__ARM_undef;
    int (*)[__ARM_mve_type_uint8x16_t][__ARM_mve_type_uint8x16_t]: __arm_vmulltq_poly_x_p8 (__ARM_mve_coerce(__p1, uint8x16_t), __ARM_mve_coerce(__p2, uint8x16_t), p3), \
    int (*)[__ARM_mve_type_uint16x8_t][__ARM_mve_type_uint16x8_t]: __arm_vmulltq_poly_x_p16 (__ARM_mve_coerce(__p1, uint16x8_t), __ARM_mve_coerce(__p2, uint16x8_t), p3));})
  
@@ -4329,7 +4861,7 @@ index 449219e90fc..1132c7cf87d 100644
  #define __arm_vrmlaldavhaxq(p0,p1,p2) __arm_vrmlaldavhaxq_s32(p0,p1,p2)
  
  #define __arm_vrmlaldavhq(p0,p1) ({ __typeof(p0) __p0 = (p0); \
-@@ -41988,35 +41776,15 @@ extern void *__ARM_undef;
+@@ -41988,35 +41777,15 @@ extern void *__ARM_undef;
    int (*)[__ARM_mve_type_uint8_t_ptr][__ARM_mve_type_uint16x8_t]: __arm_vstrbq_u16 (__ARM_mve_coerce(p0, uint8_t *), __ARM_mve_coerce(__p1, uint16x8_t)), \
    int (*)[__ARM_mve_type_uint8_t_ptr][__ARM_mve_type_uint32x4_t]: __arm_vstrbq_u32 (__ARM_mve_coerce(p0, uint8_t *), __ARM_mve_coerce(__p1, uint32x4_t)));})
  
@@ -4374,7 +4906,7 @@ index 449219e90fc..1132c7cf87d 100644
  
  #define __arm_vstrdq_scatter_base(p0,p1,p2) ({ __typeof(p2) __p2 = (p2); \
    _Generic( (int (*)[__ARM_mve_typeid(__p2)])0, \
-@@ -42028,29 +41796,65 @@ extern void *__ARM_undef;
+@@ -42028,29 +41797,65 @@ extern void *__ARM_undef;
    int (*)[__ARM_mve_type_int64x2_t]: __arm_vstrdq_scatter_base_p_s64 (p0, p1, __ARM_mve_coerce(__p2, int64x2_t), p3), \
    int (*)[__ARM_mve_type_uint64x2_t]: __arm_vstrdq_scatter_base_p_u64 (p0, p1, __ARM_mve_coerce(__p2, uint64x2_t), p3));})
  
@@ -4388,25 +4920,21 @@ index 449219e90fc..1132c7cf87d 100644
 +  _Generic( (int (*)[__ARM_mve_typeid(__p0)][__ARM_mve_typeid(__p1)][__ARM_mve_typeid(__p2)])0, \
 +  int (*)[__ARM_mve_type_int_n][__ARM_mve_type_int32x4_t][__ARM_mve_type_int32x4_t]: __arm_vrmlaldavhaq_s32 (__ARM_mve_coerce(__p0, int64_t), __ARM_mve_coerce(__p1, int32x4_t), __ARM_mve_coerce(__p2, int32x4_t)), \
 +  int (*)[__ARM_mve_type_int_n][__ARM_mve_type_uint32x4_t][__ARM_mve_type_uint32x4_t]: __arm_vrmlaldavhaq_u32 (__ARM_mve_coerce(__p0, uint64_t), __ARM_mve_coerce(__p1, uint32x4_t), __ARM_mve_coerce(__p2, uint32x4_t)));})
++
++#define __arm_vrmlaldavhaq_p(p0,p1,p2,p3) ({ __typeof(p0) __p0 = (p0); \
++  __typeof(p1) __p1 = (p1); \
++  __typeof(p2) __p2 = (p2); \
++  _Generic( (int (*)[__ARM_mve_typeid(__p0)][__ARM_mve_typeid(__p1)][__ARM_mve_typeid(__p2)])0, \
++  int (*)[__ARM_mve_type_int_n][__ARM_mve_type_int32x4_t][__ARM_mve_type_int32x4_t]: __arm_vrmlaldavhaq_p_s32 (__ARM_mve_coerce(__p0, int64_t), __ARM_mve_coerce(__p1, int32x4_t), __ARM_mve_coerce(__p2, int32x4_t), p3), \
++  int (*)[__ARM_mve_type_int_n][__ARM_mve_type_uint32x4_t][__ARM_mve_type_uint32x4_t]: __arm_vrmlaldavhaq_p_u32 (__ARM_mve_coerce(__p0, uint64_t), __ARM_mve_coerce(__p1, uint32x4_t), __ARM_mve_coerce(__p2, uint32x4_t), p3));})
  
 -#define __arm_vstrdq_scatter_offset_p(p0,p1,p2,p3) ({ __typeof(p1) __p1 = (p1); \
-+#define __arm_vrmlaldavhaq_p(p0,p1,p2,p3) ({ __typeof(p0) __p0 = (p0); \
++#define __arm_vstrbq_scatter_offset(p0,p1,p2) ({ __typeof(p0) __p0 = (p0); \
 +  __typeof(p1) __p1 = (p1); \
    __typeof(p2) __p2 = (p2); \
 -  _Generic( (int (*)[__ARM_mve_typeid(p0)][__ARM_mve_typeid(__p2)])0, \
 -  int (*)[__ARM_mve_type_int64_t_ptr][__ARM_mve_type_int64x2_t]: __arm_vstrdq_scatter_offset_p_s64 (__ARM_mve_coerce(p0, int64_t *), __p1, __ARM_mve_coerce(__p2, int64x2_t), p3), \
 -  int (*)[__ARM_mve_type_uint64_t_ptr][__ARM_mve_type_uint64x2_t]: __arm_vstrdq_scatter_offset_p_u64 (__ARM_mve_coerce(p0, uint64_t *), __p1, __ARM_mve_coerce(__p2, uint64x2_t), p3));})
-+  _Generic( (int (*)[__ARM_mve_typeid(__p0)][__ARM_mve_typeid(__p1)][__ARM_mve_typeid(__p2)])0, \
-+  int (*)[__ARM_mve_type_int_n][__ARM_mve_type_int32x4_t][__ARM_mve_type_int32x4_t]: __arm_vrmlaldavhaq_p_s32 (__ARM_mve_coerce(__p0, int64_t), __ARM_mve_coerce(__p1, int32x4_t), __ARM_mve_coerce(__p2, int32x4_t), p3), \
-+  int (*)[__ARM_mve_type_int_n][__ARM_mve_type_uint32x4_t][__ARM_mve_type_uint32x4_t]: __arm_vrmlaldavhaq_p_u32 (__ARM_mve_coerce(__p0, uint64_t), __ARM_mve_coerce(__p1, uint32x4_t), __ARM_mve_coerce(__p2, uint32x4_t), p3));})
- 
--#define __arm_vstrdq_scatter_shifted_offset(p0,p1,p2) ({ __typeof(p1) __p1 = (p1); \
-+#define __arm_vstrbq_scatter_offset(p0,p1,p2) ({ __typeof(p0) __p0 = (p0); \
-+  __typeof(p1) __p1 = (p1); \
-   __typeof(p2) __p2 = (p2); \
--  _Generic( (int (*)[__ARM_mve_typeid(p0)][__ARM_mve_typeid(__p2)])0, \
--  int (*)[__ARM_mve_type_int64_t_ptr][__ARM_mve_type_int64x2_t]: __arm_vstrdq_scatter_shifted_offset_s64 (__ARM_mve_coerce(p0, int64_t *), __p1, __ARM_mve_coerce(__p2, int64x2_t)), \
--  int (*)[__ARM_mve_type_uint64_t_ptr][__ARM_mve_type_uint64x2_t]: __arm_vstrdq_scatter_shifted_offset_u64 (__ARM_mve_coerce(p0, uint64_t *), __p1, __ARM_mve_coerce(__p2, uint64x2_t)));})
 +  _Generic( (int (*)[__ARM_mve_typeid(__p0)][__ARM_mve_typeid(__p1)][__ARM_mve_typeid(__p2)])0, \
 +  int (*)[__ARM_mve_type_int8_t_ptr][__ARM_mve_type_uint8x16_t][__ARM_mve_type_int8x16_t]: __arm_vstrbq_scatter_offset_s8 (__ARM_mve_coerce(__p0, int8_t *), __ARM_mve_coerce(__p1, uint8x16_t), __ARM_mve_coerce(__p2, int8x16_t)), \
 +  int (*)[__ARM_mve_type_int8_t_ptr][__ARM_mve_type_uint16x8_t][__ARM_mve_type_int16x8_t]: __arm_vstrbq_scatter_offset_s16 (__ARM_mve_coerce(__p0, int8_t *), __ARM_mve_coerce(__p1, uint16x8_t), __ARM_mve_coerce(__p2, int16x8_t)), \
@@ -4415,13 +4943,13 @@ index 449219e90fc..1132c7cf87d 100644
 +  int (*)[__ARM_mve_type_uint8_t_ptr][__ARM_mve_type_uint16x8_t][__ARM_mve_type_uint16x8_t]: __arm_vstrbq_scatter_offset_u16 (__ARM_mve_coerce(__p0, uint8_t *), __ARM_mve_coerce(__p1, uint16x8_t), __ARM_mve_coerce(__p2, uint16x8_t)), \
 +  int (*)[__ARM_mve_type_uint8_t_ptr][__ARM_mve_type_uint32x4_t][__ARM_mve_type_uint32x4_t]: __arm_vstrbq_scatter_offset_u32 (__ARM_mve_coerce(__p0, uint8_t *), __ARM_mve_coerce(__p1, uint32x4_t), __ARM_mve_coerce(__p2, uint32x4_t)));})
  
--#define __arm_vstrdq_scatter_shifted_offset_p(p0,p1,p2,p3) ({ __typeof(p1) __p1 = (p1); \
+-#define __arm_vstrdq_scatter_shifted_offset(p0,p1,p2) ({ __typeof(p1) __p1 = (p1); \
 +#define __arm_vstrbq_scatter_offset_p(p0,p1,p2,p3) ({ __typeof(p0) __p0 = (p0); \
 +  __typeof(p1) __p1 = (p1); \
    __typeof(p2) __p2 = (p2); \
 -  _Generic( (int (*)[__ARM_mve_typeid(p0)][__ARM_mve_typeid(__p2)])0, \
--  int (*)[__ARM_mve_type_int64_t_ptr][__ARM_mve_type_int64x2_t]: __arm_vstrdq_scatter_shifted_offset_p_s64 (__ARM_mve_coerce(p0, int64_t *), __p1, __ARM_mve_coerce(__p2, int64x2_t), p3), \
--  int (*)[__ARM_mve_type_uint64_t_ptr][__ARM_mve_type_uint64x2_t]: __arm_vstrdq_scatter_shifted_offset_p_u64 (__ARM_mve_coerce(p0, uint64_t *), __p1, __ARM_mve_coerce(__p2, uint64x2_t), p3));})
+-  int (*)[__ARM_mve_type_int64_t_ptr][__ARM_mve_type_int64x2_t]: __arm_vstrdq_scatter_shifted_offset_s64 (__ARM_mve_coerce(p0, int64_t *), __p1, __ARM_mve_coerce(__p2, int64x2_t)), \
+-  int (*)[__ARM_mve_type_uint64_t_ptr][__ARM_mve_type_uint64x2_t]: __arm_vstrdq_scatter_shifted_offset_u64 (__ARM_mve_coerce(p0, uint64_t *), __p1, __ARM_mve_coerce(__p2, uint64x2_t)));})
 +  _Generic( (int (*)[__ARM_mve_typeid(__p0)][__ARM_mve_typeid(__p1)][__ARM_mve_typeid(__p2)])0, \
 +  int (*)[__ARM_mve_type_int8_t_ptr][__ARM_mve_type_uint8x16_t][__ARM_mve_type_int8x16_t]: __arm_vstrbq_scatter_offset_p_s8 (__ARM_mve_coerce(__p0, int8_t *), __ARM_mve_coerce(__p1, uint8x16_t), __ARM_mve_coerce(__p2, int8x16_t), p3), \
 +  int (*)[__ARM_mve_type_int8_t_ptr][__ARM_mve_type_uint16x8_t][__ARM_mve_type_int16x8_t]: __arm_vstrbq_scatter_offset_p_s16 (__ARM_mve_coerce(__p0, int8_t *), __ARM_mve_coerce(__p1, uint16x8_t), __ARM_mve_coerce(__p2, int16x8_t), p3), \
@@ -4429,9 +4957,13 @@ index 449219e90fc..1132c7cf87d 100644
 +  int (*)[__ARM_mve_type_uint8_t_ptr][__ARM_mve_type_uint8x16_t][__ARM_mve_type_uint8x16_t]: __arm_vstrbq_scatter_offset_p_u8 (__ARM_mve_coerce(__p0, uint8_t *), __ARM_mve_coerce(__p1, uint8x16_t), __ARM_mve_coerce(__p2, uint8x16_t), p3), \
 +  int (*)[__ARM_mve_type_uint8_t_ptr][__ARM_mve_type_uint16x8_t][__ARM_mve_type_uint16x8_t]: __arm_vstrbq_scatter_offset_p_u16 (__ARM_mve_coerce(__p0, uint8_t *), __ARM_mve_coerce(__p1, uint16x8_t), __ARM_mve_coerce(__p2, uint16x8_t), p3), \
 +  int (*)[__ARM_mve_type_uint8_t_ptr][__ARM_mve_type_uint32x4_t][__ARM_mve_type_uint32x4_t]: __arm_vstrbq_scatter_offset_p_u32 (__ARM_mve_coerce(__p0, uint8_t *), __ARM_mve_coerce(__p1, uint32x4_t), __ARM_mve_coerce(__p2, uint32x4_t), p3));})
-+
+ 
+-#define __arm_vstrdq_scatter_shifted_offset_p(p0,p1,p2,p3) ({ __typeof(p1) __p1 = (p1); \
 +#define __arm_vstrdq_scatter_offset_p(p0,p1,p2,p3) ({ __typeof(p0) __p0 = (p0); \
-+  __typeof(p2) __p2 = (p2); \
+   __typeof(p2) __p2 = (p2); \
+-  _Generic( (int (*)[__ARM_mve_typeid(p0)][__ARM_mve_typeid(__p2)])0, \
+-  int (*)[__ARM_mve_type_int64_t_ptr][__ARM_mve_type_int64x2_t]: __arm_vstrdq_scatter_shifted_offset_p_s64 (__ARM_mve_coerce(p0, int64_t *), __p1, __ARM_mve_coerce(__p2, int64x2_t), p3), \
+-  int (*)[__ARM_mve_type_uint64_t_ptr][__ARM_mve_type_uint64x2_t]: __arm_vstrdq_scatter_shifted_offset_p_u64 (__ARM_mve_coerce(p0, uint64_t *), __p1, __ARM_mve_coerce(__p2, uint64x2_t), p3));})
 +  _Generic( (int (*)[__ARM_mve_typeid(__p0)][__ARM_mve_typeid(__p2)])0, \
 +  int (*)[__ARM_mve_type_int64_t_ptr][__ARM_mve_type_int64x2_t]: __arm_vstrdq_scatter_offset_p_s64 (__ARM_mve_coerce(__p0, int64_t *), p1, __ARM_mve_coerce(__p2, int64x2_t), p3), \
 +  int (*)[__ARM_mve_type_uint64_t_ptr][__ARM_mve_type_uint64x2_t]: __arm_vstrdq_scatter_offset_p_u64 (__ARM_mve_coerce(__p0, uint64_t *), p1, __ARM_mve_coerce(__p2, uint64x2_t), p3));})
@@ -4651,6 +5183,59 @@ index 78498d052b2..0ec289a0abb 100644
  
  (define_insn_and_split "atomic_exchange<mode>"
    [(set (match_operand:QHSD 0 "s_register_operand" "=&r,&r")	;; output
+diff --git a/gcc/config/arm/t-rmprofile b/gcc/config/arm/t-rmprofile
+index 16e368f25cc..9f4d70b718a 100644
+--- a/gcc/config/arm/t-rmprofile
++++ b/gcc/config/arm/t-rmprofile
+@@ -53,10 +53,15 @@ MULTILIB_REQUIRED	+= mthumb/march=armv8.1-m.main+mve/mfloat-abi=hard
+ # Arch Matches
+ MULTILIB_MATCHES	+= march?armv6s-m=march?armv6-m
+ 
++# For all MULITIB_MATCHES for v8-m and above add mlibarch? on the right hand side
++# of = in the variant string instead of march?.  This is needed becuase all the
++# MULITIB_MATCHES variant strings are compared with mlibarch option for multilib
++# linking.
++
+ # Map all v8-m.main+dsp FP variants down to the variant without DSP.
+-MULTILIB_MATCHES	+= march?armv8-m.main=march?armv8-m.main+dsp \
++MULTILIB_MATCHES	+= march?armv8-m.main=mlibarch?armv8-m.main+dsp \
+ 			   $(foreach FP, +fp +fp.dp, \
+-			     march?armv8-m.main$(FP)=march?armv8-m.main+dsp$(FP))
++			     march?armv8-m.main$(FP)=mlibarch?armv8-m.main+dsp$(FP))
+ 
+ # For single-precision only fpv5, use the base fp libraries
+ MULTILIB_MATCHES	+= march?armv7e-m+fp=march?armv7e-m+fpv5
+@@ -65,10 +70,9 @@ MULTILIB_MATCHES	+= march?armv7e-m+fp=march?armv7e-m+fpv5
+ MULTILIB_REUSE		+= $(foreach ARCH, armv6s-m armv7-m armv7e-m armv8-m\.base armv8-m\.main, \
+ 			     mthumb/march.$(ARCH)/mfloat-abi.soft=mthumb/march.$(ARCH)/mfloat-abi.softfp)
+ 
+-
+ # Map v8.1-M to v8-M.
+-MULTILIB_MATCHES	+= march?armv8-m.main=march?armv8.1-m.main
+-MULTILIB_MATCHES	+= march?armv8-m.main=march?armv8.1-m.main+dsp
++MULTILIB_MATCHES	+= march?armv8-m.main=mlibarch?armv8.1-m.main
++MULTILIB_MATCHES	+= march?armv8-m.main=mlibarch?armv8.1-m.main+dsp
+ MULTILIB_REUSE		+= mthumb/march.armv8-m\.main/mfloat-abi.soft=mthumb/march.armv8\.1-m\.main+mve/mfloat-abi.soft
+ MULTILIB_REUSE		+= mthumb/march.armv8-m\.main/mfloat-abi.soft=mthumb/march.armv8\.1-m\.main+mve/mfloat-abi.softfp
+ 
+@@ -77,8 +81,15 @@ v8_1m_dp_variants = +fp.dp +dsp+fp.dp +fp.dp+mve +fp.dp+mve.fp
+ 
+ # Map all v8.1-m.main FP sp variants down to v8-m.
+ MULTILIB_MATCHES += $(foreach FP, $(v8_1m_sp_variants), \
+-			     march?armv8-m.main+fp=march?armv8.1-m.main$(FP))
++			     march?armv8-m.main+fp=mlibarch?armv8.1-m.main$(FP))
+ 
+ # Map all v8.1-m.main FP dp variants down to v8-m.
+ MULTILIB_MATCHES += $(foreach FP, $(v8_1m_dp_variants), \
+-			     march?armv8-m.main+fp.dp=march?armv8.1-m.main$(FP))
++			     march?armv8-m.main+fp.dp=mlibarch?armv8.1-m.main$(FP))
++
++# For all the MULTILIB_REQUIRED for v8-m and above, add MULTILIB_MATCHES which
++# maps mlibarch with march for multilib linking.
++MULTILIB_MATCHES	+= march?armv8-m.main=mlibarch?armv8-m.main
++MULTILIB_MATCHES	+= march?armv8-m.main+fp=mlibarch?armv8-m.main+fp
++MULTILIB_MATCHES	+= march?armv8-m.main+fp.dp=mlibarch?armv8-m.main+fp.dp
++MULTILIB_MATCHES	+= march?armv8.1-m.main+mve=mlibarch?armv8.1-m.main+mve
 diff --git a/gcc/config/arm/thumb1.md b/gcc/config/arm/thumb1.md
 index f0129db2c3e..46351d9f784 100644
 --- a/gcc/config/arm/thumb1.md
@@ -4996,8 +5581,124 @@ index 48135ce5b17..6f693166159 100644
 +
 +m32
 +Driver
+diff --git a/gcc/config/rs6000/predicates.md b/gcc/config/rs6000/predicates.md
+index 956f7dd5b46..fad45a6e1ac 100644
+--- a/gcc/config/rs6000/predicates.md
++++ b/gcc/config/rs6000/predicates.md
+@@ -1129,7 +1129,8 @@
+   (match_test "(mode == V16QImode
+ 		&& (vsx_register_operand (op, mode)
+ 		    || (MEM_P (op)
+-			&& quad_address_p (XEXP (op, 0), mode, false))))"))
++			&& (indexed_or_indirect_address (XEXP (op, 0), mode)
++			    || quad_address_p (XEXP (op, 0), mode, false)))))"))
+ 
+ ;; Return true if operand is an operator used in rotate-and-mask instructions.
+ (define_predicate "rotate_mask_operator"
+diff --git a/gcc/config/rs6000/rs6000-builtin.def b/gcc/config/rs6000/rs6000-builtin.def
+index 1766d325bfb..ec4ac666217 100644
+--- a/gcc/config/rs6000/rs6000-builtin.def
++++ b/gcc/config/rs6000/rs6000-builtin.def
+@@ -2779,6 +2779,7 @@ BU_MMA_M2 (DISASSEMBLE_ACC, "disassemble_acc",  QUAD, nothing)
+ BU_MMA_V2 (DISASSEMBLE_PAIR,"disassemble_pair", PAIR, nothing)
+ BU_COMPAT (VSX_BUILTIN_DISASSEMBLE_PAIR, "mma_disassemble_pair")
+ 
++BU_MMA_V3 (BUILD_PAIR,	    "build_pair",	MISC, vsx_assemble_pair)
+ BU_MMA_V3 (ASSEMBLE_PAIR,   "assemble_pair",	MISC, vsx_assemble_pair)
+ BU_COMPAT (VSX_BUILTIN_ASSEMBLE_PAIR, "mma_assemble_pair")
+ BU_MMA_3 (XVBF16GER2,	    "xvbf16ger2",	MISC, mma_xvbf16ger2)
+@@ -2811,6 +2812,7 @@ BU_MMA_3 (XVI8GER4SPP,	    "xvi8ger4spp",      QUAD, mma_xvi8ger4spp)
+ BU_MMA_3 (XVI16GER2PP,	    "xvi16ger2pp",      QUAD, mma_xvi16ger2pp)
+ BU_MMA_3 (XVI16GER2SPP,	    "xvi16ger2spp",     QUAD, mma_xvi16ger2spp)
+ 
++BU_MMA_5 (BUILD_ACC,	    "build_acc",	MISC, mma_assemble_acc)
+ BU_MMA_5 (ASSEMBLE_ACC,     "assemble_acc",	MISC, mma_assemble_acc)
+ BU_MMA_5 (PMXVF32GER,	    "pmxvf32ger",       MISC, mma_pmxvf32ger)
+ BU_MMA_5 (PMXVF64GER,	    "pmxvf64ger",       PAIR, mma_pmxvf64ger)
+diff --git a/gcc/config/rs6000/rs6000-call.c b/gcc/config/rs6000/rs6000-call.c
+index a112593878a..ec1b5966137 100644
+--- a/gcc/config/rs6000/rs6000-call.c
++++ b/gcc/config/rs6000/rs6000-call.c
+@@ -9434,12 +9434,23 @@ mma_expand_builtin (tree exp, rtx target, bool *expandedp)
+       pat = GEN_FCN (icode) (op[0], op[1]);
+       break;
+     case 3:
++      /* The ASSEMBLE builtin source operands are reversed in little-endian
++	 mode, so reorder them.  */
++      if (fcode == VSX_BUILTIN_ASSEMBLE_PAIR_INTERNAL && !WORDS_BIG_ENDIAN)
++	std::swap (op[1], op[2]);
+       pat = GEN_FCN (icode) (op[0], op[1], op[2]);
+       break;
+     case 4:
+       pat = GEN_FCN (icode) (op[0], op[1], op[2], op[3]);
+       break;
+     case 5:
++      /* The ASSEMBLE builtin source operands are reversed in little-endian
++	 mode, so reorder them.  */
++      if (fcode == MMA_BUILTIN_ASSEMBLE_ACC_INTERNAL && !WORDS_BIG_ENDIAN)
++	{
++	  std::swap (op[1], op[4]);
++	  std::swap (op[2], op[3]);
++	}
+       pat = GEN_FCN (icode) (op[0], op[1], op[2], op[3], op[4]);
+       break;
+     case 6:
+@@ -10847,7 +10858,7 @@ rs6000_gimple_fold_mma_builtin (gimple_stmt_iterator *gsi)
+       tree dst_ptr = gimple_call_arg (stmt, 0);
+       tree src_ptr = gimple_call_arg (stmt, 1);
+       tree src_type = TREE_TYPE (src_ptr);
+-      tree src = make_ssa_name (TREE_TYPE (src_type));
++      tree src = create_tmp_reg_or_ssa_name (TREE_TYPE (src_type));
+       gimplify_assign (src, build_simple_mem_ref (src_ptr), &new_seq);
+ 
+       /* If we are disassembling an accumulator/pair and our destination is
+@@ -10871,7 +10882,7 @@ rs6000_gimple_fold_mma_builtin (gimple_stmt_iterator *gsi)
+ 	{
+ 	  new_decl = rs6000_builtin_decls[MMA_BUILTIN_XXMFACC_INTERNAL];
+ 	  new_call = gimple_build_call (new_decl, 1, src);
+-	  src = make_ssa_name (vector_quad_type_node);
++	  src = create_tmp_reg_or_ssa_name (vector_quad_type_node);
+ 	  gimple_call_set_lhs (new_call, src);
+ 	  gimple_seq_add_stmt (&new_seq, new_call);
+ 	}
+@@ -10909,7 +10920,7 @@ rs6000_gimple_fold_mma_builtin (gimple_stmt_iterator *gsi)
+     {
+       /* This built-in has a pass-by-reference accumulator input, so load it
+ 	 into a temporary accumulator for use as a pass-by-value input.  */
+-      op[0] = make_ssa_name (vector_quad_type_node);
++      op[0] = create_tmp_reg_or_ssa_name (vector_quad_type_node);
+       for (unsigned i = 1; i < nopnds; i++)
+ 	op[i] = gimple_call_arg (stmt, i);
+       gimplify_assign (op[0], build_simple_mem_ref (acc), &new_seq);
+@@ -10956,10 +10967,10 @@ rs6000_gimple_fold_mma_builtin (gimple_stmt_iterator *gsi)
+       gcc_unreachable ();
+     }
+ 
+-  if (fncode == VSX_BUILTIN_ASSEMBLE_PAIR)
+-    lhs = make_ssa_name (vector_pair_type_node);
++  if (fncode == VSX_BUILTIN_BUILD_PAIR || fncode == VSX_BUILTIN_ASSEMBLE_PAIR)
++    lhs = create_tmp_reg_or_ssa_name (vector_pair_type_node);
+   else
+-    lhs = make_ssa_name (vector_quad_type_node);
++    lhs = create_tmp_reg_or_ssa_name (vector_quad_type_node);
+   gimple_call_set_lhs (new_call, lhs);
+   gimple_seq_add_stmt (&new_seq, new_call);
+   gimplify_assign (build_simple_mem_ref (acc), lhs, &new_seq);
+@@ -13226,8 +13237,10 @@ mma_init_builtins (void)
+ 	      machine_mode mode = insn_data[icode].operand[j].mode;
+ 	      if (gimple_func && mode == PXImode)
+ 		op[nopnds++] = build_pointer_type (vector_quad_type_node);
+-	      else if (gimple_func && mode == POImode
+-		       && d->code == VSX_BUILTIN_ASSEMBLE_PAIR)
++	      else if (gimple_func
++		       && mode == POImode
++		       && (d->code == VSX_BUILTIN_BUILD_PAIR
++			   || d->code == VSX_BUILTIN_ASSEMBLE_PAIR))
+ 		op[nopnds++] = build_pointer_type (vector_pair_type_node);
+ 	      else
+ 		/* MMA uses unsigned types.  */
 diff --git a/gcc/config/rs6000/rs6000.c b/gcc/config/rs6000/rs6000.c
-index a6dc1156994..128e481e89c 100644
+index a6dc1156994..8ca7f2fe543 100644
 --- a/gcc/config/rs6000/rs6000.c
 +++ b/gcc/config/rs6000/rs6000.c
 @@ -5550,7 +5550,7 @@ rs6000_machine_from_flags (void)
@@ -5009,11 +5710,45 @@ index a6dc1156994..128e481e89c 100644
  
    if ((flags & (ISA_3_1_MASKS_SERVER & ~ISA_3_0_MASKS_SERVER)) != 0)
      return "power10";
+@@ -16023,9 +16023,11 @@ rs6000_split_multireg_move (rtx dst, rtx src)
+ 		      && XINT (src, 1) == UNSPEC_MMA_ASSEMBLE_ACC);
+ 
+ 	  reg_mode = GET_MODE (XVECEXP (src, 0, 0));
+-	  for (int i = 0; i < XVECLEN (src, 0); i++)
++	  int nvecs = XVECLEN (src, 0);
++	  for (int i = 0; i < nvecs; i++)
+ 	    {
+-	      rtx dst_i = gen_rtx_REG (reg_mode, reg + i);
++	      int index = WORDS_BIG_ENDIAN ? i : nvecs - 1 - i;
++	      rtx dst_i = gen_rtx_REG (reg_mode, reg + index);
+ 	      emit_insn (gen_rtx_SET (dst_i, XVECEXP (src, 0, i)));
+ 	    }
+ 
+diff --git a/gcc/config/s390/vecintrin.h b/gcc/config/s390/vecintrin.h
+index 8ef4f44bb34..6022aded6bb 100644
+--- a/gcc/config/s390/vecintrin.h
++++ b/gcc/config/s390/vecintrin.h
+@@ -109,8 +109,8 @@ __lcbb(const void *ptr, int bndry)
+ #define vec_rint(X)   __builtin_s390_vfi((X), 0, 0)
+ #define vec_roundc(X) __builtin_s390_vfi((X), 4, 0)
+ #define vec_round(X)  __builtin_s390_vfi((X), 4, 4)
+-#define vec_doublee(X) __builtin_s390_vfll((X))
+-#define vec_floate(X) __builtin_s390_vflr((X), 0, 0)
++#define vec_doublee(X) __builtin_s390_vflls((X))
++#define vec_floate(X) __builtin_s390_vflrd((X), 0, 0)
+ #define vec_load_len_r(X,L)				\
+   (__vector unsigned char)__builtin_s390_vlrlr((L),(X))
+ #define vec_store_len_r(X,Y,L) \
 diff --git a/gcc/cp/ChangeLog b/gcc/cp/ChangeLog
-index b576f9a3678..60fb0a323b4 100644
+index b576f9a3678..4d55a7579f1 100644
 --- a/gcc/cp/ChangeLog
 +++ b/gcc/cp/ChangeLog
-@@ -1,3 +1,311 @@
+@@ -1,3 +1,316 @@
++2021-06-17  Jason Merrill  <jason@redhat.com>
++
++	PR c++/101029
++	* init.c (build_vec_init): Shortcut [0] case.
++
 +2021-06-07  Patrick Palka  <ppalka@redhat.com>
 +
 +	Backported from master:
@@ -5831,7 +6566,7 @@ index 9b535708c57..6a7569418b1 100644
  	  break;
  	}
 diff --git a/gcc/cp/init.c b/gcc/cp/init.c
-index 878099ecaad..c6b3f3bf8ce 100644
+index 878099ecaad..e4a92e26e3b 100644
 --- a/gcc/cp/init.c
 +++ b/gcc/cp/init.c
 @@ -585,16 +585,21 @@ get_nsdmi (tree member, bool in_ctor, tsubst_flags_t complain)
@@ -5873,6 +6608,21 @@ index 878099ecaad..c6b3f3bf8ce 100644
  	    }
  
  	  input_location = sloc;
+@@ -4332,6 +4339,14 @@ build_vec_init (tree base, tree maxindex, tree init,
+   else
+     ptype = atype;
+ 
++  if (integer_all_onesp (maxindex))
++    {
++      /* Shortcut zero element case to avoid unneeded constructor synthesis.  */
++      if (init && TREE_SIDE_EFFECTS (init))
++	base = build2 (COMPOUND_EXPR, ptype, init, base);
++      return base;
++    }
++
+   /* The code we are generating looks like:
+      ({
+        T* t1 = (T*) base;
 diff --git a/gcc/cp/lambda.c b/gcc/cp/lambda.c
 index dea6e114303..f143cec61d3 100644
 --- a/gcc/cp/lambda.c
@@ -7124,6 +7874,23 @@ index 33f876ab706..b24b5f4444e 100644
  
  @item __GXX_WEAK__
  This macro is defined when compiling a C++ source file.  It has the
+diff --git a/gcc/doc/extend.texi b/gcc/doc/extend.texi
+index 9c734595950..afa87d89d5f 100644
+--- a/gcc/doc/extend.texi
++++ b/gcc/doc/extend.texi
+@@ -20953,10 +20953,10 @@ void __builtin_mma_xxmtacc (__vector_quad *);
+ void __builtin_mma_xxmfacc (__vector_quad *);
+ void __builtin_mma_xxsetaccz (__vector_quad *);
+ 
+-void __builtin_mma_assemble_acc (__vector_quad *, vec_t, vec_t, vec_t, vec_t);
++void __builtin_mma_build_acc (__vector_quad *, vec_t, vec_t, vec_t, vec_t);
+ void __builtin_mma_disassemble_acc (void *, __vector_quad *);
+ 
+-void __builtin_vsx_assemble_pair (__vector_pair *, vec_t, vec_t);
++void __builtin_vsx_build_pair (__vector_pair *, vec_t, vec_t);
+ void __builtin_vsx_disassemble_pair (void *, __vector_pair *);
+ 
+ vec_t __builtin_vsx_xvcvspbf16 (vec_t);
 diff --git a/gcc/dse.c b/gcc/dse.c
 index c8dcf46ed29..ec6f7b63449 100644
 --- a/gcc/dse.c
@@ -7218,10 +7985,29 @@ index 991b26f3341..c4bffd0f199 100644
  					target, tmode, modifier, as);
        /* FALLTHRU */
 diff --git a/gcc/fortran/ChangeLog b/gcc/fortran/ChangeLog
-index aa5932be872..237e27bafa9 100644
+index aa5932be872..c2b7e672ddb 100644
 --- a/gcc/fortran/ChangeLog
 +++ b/gcc/fortran/ChangeLog
-@@ -1,3 +1,75 @@
+@@ -1,3 +1,94 @@
++2021-06-18  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2021-06-16  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/95501
++	PR fortran/95502
++	* expr.c (gfc_check_pointer_assign): Avoid NULL pointer
++	dereference.
++	* match.c (gfc_match_pointer_assignment): Likewise.
++	* parse.c (gfc_check_do_variable): Avoid comparison with NULL
++	symtree.
++
++2021-06-16  José Rui Faustino de Sousa  <jrfsousa@gmail.com>
++
++	PR fortran/82376
++	* trans-expr.c (gfc_conv_procedure_call): Evaluate function result
++	and then pass a pointer.
++
 +2021-06-04  Harald Anlauf  <anlauf@gmx.de>
 +
 +	Backported from master:
@@ -7377,6 +8163,20 @@ index ca6f582625d..ff87a0ceff8 100644
      return false;
  
    return true;
+diff --git a/gcc/fortran/expr.c b/gcc/fortran/expr.c
+index f946145eb1b..3c5246c7302 100644
+--- a/gcc/fortran/expr.c
++++ b/gcc/fortran/expr.c
+@@ -3809,6 +3809,9 @@ gfc_check_pointer_assign (gfc_expr *lvalue, gfc_expr *rvalue,
+   int proc_pointer;
+   bool same_rank;
+ 
++  if (!lvalue->symtree)
++    return false;
++
+   lhs_attr = gfc_expr_attr (lvalue);
+   if (lvalue->ts.type == BT_UNKNOWN && !lhs_attr.proc_pointer)
+     {
 diff --git a/gcc/fortran/frontend-passes.c b/gcc/fortran/frontend-passes.c
 index 5e768b12854..14c23dc3033 100644
 --- a/gcc/fortran/frontend-passes.c
@@ -7466,6 +8266,19 @@ index 6188ef86e53..efe79a9bec6 100644
  	      st, BT_INTEGER, di, OPTIONAL, INTENT_OUT);
  
    add_sym_1s ("free", GFC_ISYM_FREE, CLASS_IMPURE, BT_UNKNOWN, 0, GFC_STD_GNU,
+diff --git a/gcc/fortran/match.c b/gcc/fortran/match.c
+index e1e4c1caeb4..ef6c86af2f9 100644
+--- a/gcc/fortran/match.c
++++ b/gcc/fortran/match.c
+@@ -1409,7 +1409,7 @@ gfc_match_pointer_assignment (void)
+   gfc_matching_procptr_assignment = 0;
+ 
+   m = gfc_match (" %v =>", &lvalue);
+-  if (m != MATCH_YES)
++  if (m != MATCH_YES || !lvalue->symtree)
+     {
+       m = MATCH_NO;
+       goto cleanup;
 diff --git a/gcc/fortran/module.c b/gcc/fortran/module.c
 index 9a5b1cb7625..0c14f2a8105 100644
 --- a/gcc/fortran/module.c
@@ -7500,6 +8313,20 @@ index 3175999dd4a..41ef75a0e0c 100644
  	  if ((allow_sections && gfc_peek_ascii_char () == '(')
  	      || (allow_derived && gfc_peek_ascii_char () == '%'))
  	    {
+diff --git a/gcc/fortran/parse.c b/gcc/fortran/parse.c
+index 3e19d5fdfbe..1501abfffd2 100644
+--- a/gcc/fortran/parse.c
++++ b/gcc/fortran/parse.c
+@@ -4440,6 +4440,9 @@ gfc_check_do_variable (gfc_symtree *st)
+ {
+   gfc_state_data *s;
+ 
++  if (!st)
++    return 0;
++
+   for (s=gfc_state_stack; s; s = s->previous)
+     if (s->do_variable == st)
+       {
 diff --git a/gcc/fortran/trans-decl.c b/gcc/fortran/trans-decl.c
 index 529417fa8aa..bca15a51d99 100644
 --- a/gcc/fortran/trans-decl.c
@@ -7513,10 +8340,24 @@ index 529417fa8aa..bca15a51d99 100644
        && !gfc_can_put_var_on_stack (DECL_SIZE_UNIT (decl))
  	 /* Put variable length auto array pointers always into stack.  */
 diff --git a/gcc/fortran/trans-expr.c b/gcc/fortran/trans-expr.c
-index c2321a9ff5f..e35f3147a8e 100644
+index c2321a9ff5f..a12cd2fde5a 100644
 --- a/gcc/fortran/trans-expr.c
 +++ b/gcc/fortran/trans-expr.c
-@@ -6072,6 +6072,7 @@ gfc_conv_procedure_call (gfc_se * se, gfc_symbol * sym,
+@@ -5958,11 +5958,8 @@ gfc_conv_procedure_call (gfc_se * se, gfc_symbol * sym,
+ 			    || (!e->value.function.esym
+ 				&& e->symtree->n.sym->attr.pointer))
+ 			&& fsym && fsym->attr.target)
+-		{
+-		  gfc_conv_expr (&parmse, e);
+-		  parmse.expr = gfc_build_addr_expr (NULL_TREE, parmse.expr);
+-		}
+-
++		/* Make sure the function only gets called once.  */
++		gfc_conv_expr_reference (&parmse, e, false);
+ 	      else if (e->expr_type == EXPR_FUNCTION
+ 		       && e->symtree->n.sym->result
+ 		       && e->symtree->n.sym->result != e->symtree->n.sym
+@@ -6072,6 +6069,7 @@ gfc_conv_procedure_call (gfc_se * se, gfc_symbol * sym,
  		      bool add_clobber;
  		      add_clobber = fsym && fsym->attr.intent == INTENT_OUT
  			&& !fsym->attr.allocatable && !fsym->attr.pointer
@@ -7552,10 +8393,20 @@ index d3fef08b4b9..68d903d47ae 100644
  	  vec_safe_push (typelist, pvoid_type_node);  /* caf_token.  */
  	  vec_safe_push (typelist, gfc_array_index_type);  /* caf_offset.  */
 diff --git a/gcc/gimple-fold.c b/gcc/gimple-fold.c
-index da3536ecd4e..b8754dcc105 100644
+index da3536ecd4e..912540dc8a7 100644
 --- a/gcc/gimple-fold.c
 +++ b/gcc/gimple-fold.c
-@@ -4840,6 +4840,7 @@ static bool
+@@ -445,7 +445,8 @@ fold_gimple_assign (gimple_stmt_iterator *si)
+ 					   CONSTRUCTOR_ELTS (rhs));
+ 	  }
+ 
+-	else if (DECL_P (rhs))
++	else if (DECL_P (rhs)
++		 && is_gimple_reg_type (TREE_TYPE (rhs)))
+ 	  return get_symbol_constant_value (rhs);
+       }
+       break;
+@@ -4840,6 +4841,7 @@ static bool
  maybe_canonicalize_mem_ref_addr (tree *t, bool is_debug = false)
  {
    bool res = false;
@@ -7563,7 +8414,7 @@ index da3536ecd4e..b8754dcc105 100644
  
    if (TREE_CODE (*t) == ADDR_EXPR)
      t = &TREE_OPERAND (*t, 0);
-@@ -4952,6 +4953,8 @@ maybe_canonicalize_mem_ref_addr (tree *t, bool is_debug = false)
+@@ -4952,6 +4954,8 @@ maybe_canonicalize_mem_ref_addr (tree *t, bool is_debug = false)
        if (tem)
  	{
  	  *t = tem;
@@ -7572,6 +8423,21 @@ index da3536ecd4e..b8754dcc105 100644
  	  res = true;
  	}
      }
+diff --git a/gcc/ipa-param-manipulation.c b/gcc/ipa-param-manipulation.c
+index fbeea454084..2ec4517420e 100644
+--- a/gcc/ipa-param-manipulation.c
++++ b/gcc/ipa-param-manipulation.c
+@@ -1676,7 +1676,9 @@ ipa_param_body_adjustments::modify_call_stmt (gcall **stmt_p)
+       if (tree lhs = gimple_call_lhs (stmt))
+ 	{
+ 	  modify_expression (&lhs, false);
+-	  gimple_call_set_lhs (new_stmt, lhs);
++	  /* Avoid adjusting SSA_NAME_DEF_STMT of a SSA lhs, SSA names
++	     have not yet been remapped.  */
++	  *gimple_call_lhs_ptr (new_stmt) = lhs;
+ 	}
+       *stmt_p = new_stmt;
+       return true;
 diff --git a/gcc/jump.c b/gcc/jump.c
 index 34a8f209e20..803c297b0fc 100644
 --- a/gcc/jump.c
@@ -8149,10 +9015,115 @@ index 99edad8a950..f33489286a9 100644
  
  #endif
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index 2913065bf31..786cec910a4 100644
+index 2913065bf31..5989bf39043 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,804 @@
+@@ -1,3 +1,909 @@
++2021-06-18  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2021-06-16  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/95501
++	PR fortran/95502
++	* gfortran.dg/pr95502.f90: New test.
++
++2021-06-18  Srinath Parvathaneni  <srinath.parvathaneni@arm.com>
++
++	Backported from master:
++	2021-06-18  Srinath Parvathaneni  <srinath.parvathaneni@arm.com>
++
++	PR target/100856
++	* gcc.target/arm/acle/pr100856.c: New test.
++	* gcc.target/arm/multilib.exp: Add tests for cde options.
++
++2021-06-18  Srinath Parvathaneni  <srinath.parvathaneni@arm.com>
++
++	Backported from master:
++	2021-06-11  Srinath Parvathaneni  <srinath.parvathaneni@arm.com>
++
++	PR target/101016
++	* gcc.target/arm/mve/intrinsics/pr101016.c: New test.
++
++2021-06-18  Srinath Parvathaneni  <srinath.parvathaneni@arm.com>
++
++	Backported from master:
++	2021-06-11  Srinath Parvathaneni  <srinath.parvathaneni@arm.com>
++
++	PR target/99939
++	* gcc.target/arm/cmse/cmse-18.c: Add separate scan-assembler
++	directives check for target is v8.1-m.main+mve or not before
++	comparing the assembly output.
++	* gcc.target/arm/cmse/cmse-20.c: New test.
++
++2021-06-18  Peter Bergner  <bergner@linux.ibm.com>
++
++	Backported from master:
++	2021-06-14  Peter Bergner  <bergner@linux.ibm.com>
++
++	PR target/100777
++	* gcc.target/powerpc/pr100777.c: New test.
++
++2021-06-18  Peter Bergner  <bergner@linux.ibm.com>
++
++	Backported from master:
++	2021-06-10  Peter Bergner  <bergner@linux.ibm.com>
++
++	* gcc.target/powerpc/mma-builtin-4.c (__builtin_vsx_build_pair): Add
++	tests.  Update expected counts.
++	* gcc.target/powerpc/mma-builtin-5.c (__builtin_mma_build_acc): Add
++	tests.  Update expected counts.
++
++2021-06-18  Peter Bergner  <bergner@linux.ibm.com>
++
++	Backported from master:
++	2021-05-31  Peter Bergner  <bergner@linux.ibm.com>
++
++	PR target/99842
++	* g++.target/powerpc/pr99842.C: New.
++
++2021-06-17  Jason Merrill  <jason@redhat.com>
++
++	PR c++/101029
++	* g++.dg/ext/array4.C: New test.
++
++2021-06-16  Richard Biener  <rguenther@suse.de>
++
++	Backported from master:
++	2021-06-14  Richard Biener  <rguenther@suse.de>
++
++	PR tree-optimization/100934
++	* gcc.dg/torture/pr100934.c: New testcase.
++
++2021-06-16  Richard Biener  <rguenther@suse.de>
++
++	Backported from master:
++	2021-05-28  Richard Biener  <rguenther@suse.de>
++
++	PR ipa/100791
++	* gcc.dg/pr100791.c: New testcase.
++
++2021-06-16  Richard Biener  <rguenther@suse.de>
++
++	Backported from master:
++	2021-05-11  Richard Biener  <rguenther@suse.de>
++
++	PR middle-end/100509
++	* gcc.dg/pr100509.c: New testcase.
++
++2021-06-16  Richard Biener  <rguenther@suse.de>
++
++	Backported from master:
++	2021-05-10  Richard Biener  <rguenther@suse.de>
++
++	PR tree-optimization/100492
++	* gcc.dg/torture/pr100492.c: New testcase.
++
++2021-06-16  José Rui Faustino de Sousa  <jrfsousa@gmail.com>
++
++	PR fortran/82376
++	* gfortran.dg/PR82376.f90: New test.
++
 +2021-06-11  Iain Buclaw  <ibuclaw@gdcproject.org>
 +
 +	Backported from master:
@@ -10068,6 +11039,184 @@ index 00000000000..1f9d23845b4
 +  (b ? (x = 2) : y) = 1; // { dg-warning "using value of simple assignment" "" { target c++20 } }
 +  (b ? x : (y = 5)) = 1; // { dg-warning "using value of simple assignment" "" { target c++20 } }
 +}
+diff --git a/gcc/testsuite/g++.dg/ext/array4.C b/gcc/testsuite/g++.dg/ext/array4.C
+new file mode 100644
+index 00000000000..0068ea854e1
+--- /dev/null
++++ b/gcc/testsuite/g++.dg/ext/array4.C
+@@ -0,0 +1,172 @@
++// PR c++/101029
++// { dg-do compile { target c++11 } }
++// { dg-options "" } allow [0]
++
++template <int __v> struct integral_constant {
++  static constexpr int value = __v;
++  typedef int value_type;
++  constexpr operator value_type() { return __v; }
++};
++template <bool __v> using __bool_constant = integral_constant<__v>;
++template <bool, typename> struct conditional;
++template <typename...> struct __and_;
++template <typename _B1, typename _B2, typename _B3, typename... _Bn>
++struct __and_<_B1, _B2, _B3, _Bn...> : conditional<_B1::value, _B1> {};
++template <typename _Tp>
++constexpr integral_constant<true> __is_complete_or_unbounded(_Tp) {
++  return {};
++}
++struct Trans_NS_std_formatter;
++template <typename _Tp>
++struct is_default_constructible : integral_constant<false> {
++  static_assert(__is_complete_or_unbounded(_Tp{}), "");
++};
++template <typename _Tp, typename _Up>
++struct is_same : integral_constant<__is_same_as(_Tp, _Up)> {};
++template <bool> struct enable_if;
++template <typename _Iffalse> struct conditional<false, _Iffalse> {
++  typedef _Iffalse type;
++};
++struct pair {
++  template <typename _U1 = int, typename _U2 = int,
++            typename enable_if<__and_<is_default_constructible<_U1>, _U2,
++                                      int>::valuebool>::type>
++  pair();
++};
++
++class BucketLogger;
++struct __shared_ptr_access {
++  using element_type = BucketLogger;
++  element_type *operator->();
++};
++struct DcpProducer {
++  __shared_ptr_access logger;
++  void bufferAcknowledgement();
++};
++struct atomic {
++  atomic(long);
++};
++inline namespace v7 {
++template <bool B, class, class F>
++using conditional_t = typename conditional<B, F>::type;
++template <typename> struct basic_string_view { basic_string_view(int, int); };
++template <typename, typename> struct formatter;
++template <typename, typename>
++using has_formatter =
++    __bool_constant<__is_constructible(Trans_NS_std_formatter)>;
++struct fallback_formatter;
++template <typename Context> struct custom_value {
++  using parse_context = typename Context::parse_context_type;
++  void (*format)(const void *, parse_context &, Context &);
++};
++template <typename Context> struct value {
++  float float_value;
++  custom_value<Context> custom;
++  template <typename T> value(T) {
++    custom.format =
++        format_custom_arg<T, conditional_t<has_formatter<T, Context>::value,
++                                           typename Context::formatter_type<T>,
++                                           fallback_formatter>>;
++  }
++  template <typename, typename Formatter>
++  static void format_custom_arg(const void *arg,
++                                typename Context::parse_context_type &,
++                                Context &ctx) {
++    Formatter f;
++    f.format(*static_cast<const int *>(arg), ctx);
++  }
++};
++enum { max_packed_args };
++template <typename Context> struct basic_format_arg { value<Context> value_; };
++template <typename Visitor, typename Context>
++void visit_format_arg(Visitor vis, Context arg) {
++  vis(arg.value_.float_value);
++}
++template <typename Context, typename T> basic_format_arg<Context> make_arg(T);
++struct basic_format_context {
++  using char_type = int;
++  using parse_context_type = int;
++  template <typename T> using formatter_type = formatter<T, char_type>;
++};
++struct format_arg_store {
++  using value_type = conditional_t<max_packed_args, basic_format_context,
++                                   basic_format_arg<basic_format_context>>;
++  value_type data_;
++};
++template <typename... Args, typename S>
++auto make_args_checked(S, Args... args) -> format_arg_store {
++  return {args...};
++}
++struct basic_format_specs {};
++template <typename Char, typename OutputIt, typename T>
++void write(OutputIt, T, Char) {
++  if (is_same<T, float>())
++    ;
++}
++struct arg_formatter_base {
++  using iterator = int;
++  using format_specs = basic_format_specs;
++  iterator out_;
++  template <typename T> void operator()(T value) {
++    auto specs = format_specs();
++    write(out_, value, specs);
++  }
++};
++struct arg_formatter : arg_formatter_base {
++  using context_type = basic_format_context;
++  arg_formatter(context_type, int *, format_specs *);
++};
++template <typename T, typename> struct formatter {
++  template <typename FormatContext> void format(T val, FormatContext ctx) {
++    using af = arg_formatter;
++    basic_format_arg<FormatContext> __trans_tmp_2 = make_arg<FormatContext>(val);
++    visit_format_arg(af(ctx, nullptr, &specs_), __trans_tmp_2);
++  }
++  basic_format_specs specs_;
++};
++} // namespace v7
++namespace level {
++enum level_enum { warn };
++}
++struct BucketLogger {
++  template <typename S, typename... Args>
++  void log(level::level_enum, const S &, Args &&...);
++  template <typename... Args> void warn(const char *, const Args &...);
++};
++namespace v7 {
++struct fallback_formatter : formatter<basic_string_view<int>, int> {
++  template <typename OutputIt> void format(int, OutputIt ctx) {
++    basic_string_view<int> str(0, 0);
++    formatter::format(str, ctx);
++  }
++};
++} // namespace v7
++template <typename S, typename... Args>
++void BucketLogger::log(level::level_enum, const S &fmt, Args &&...args) {
++  make_args_checked(fmt, args...);
++}
++template <typename... Args>
++void BucketLogger::warn(const char *fmt, const Args &...args) {
++  log(level::warn, fmt, args...);
++}
++template <class KeyT> struct AtomicHashArray {
++  static void create();
++  atomic isFull_;
++  atomic numErases_;
++  pair cells_[0];
++  AtomicHashArray(int, KeyT, KeyT, KeyT, double, unsigned);
++};
++template <class KeyT>
++AtomicHashArray<KeyT>::AtomicHashArray(int, KeyT, KeyT, KeyT, double, unsigned)
++    : isFull_(0), numErases_(0) {}
++template <class KeyT> void AtomicHashArray<KeyT>::create() {
++  int c_4, capacity;
++  double c_3;
++  char c_2, c_1, c_0;
++  AtomicHashArray(capacity, c_0, c_1, c_2, c_3, c_4);
++}
++int bufferAcknowledgement_vbucket;
++void DcpProducer::bufferAcknowledgement() {
++  logger->warn("", bufferAcknowledgement_vbucket);
++}
++void (*makeStreamsMap_p)() = AtomicHashArray<char>::create;
 diff --git a/gcc/testsuite/g++.dg/inherit/virtual15.C b/gcc/testsuite/g++.dg/inherit/virtual15.C
 new file mode 100644
 index 00000000000..ebd8e3ad29b
@@ -10511,6 +11660,200 @@ index 00000000000..61a58a7fcf4
 +#include <arm_sve.h>
 +bool a;
 +int main() { a = svaddv(svptrue_b8(), svdup_s8(0)); }
+diff --git a/gcc/testsuite/g++.target/powerpc/pr99842.C b/gcc/testsuite/g++.target/powerpc/pr99842.C
+new file mode 100644
+index 00000000000..922450e2c21
+--- /dev/null
++++ b/gcc/testsuite/g++.target/powerpc/pr99842.C
+@@ -0,0 +1,188 @@
++/* PR target/99842 */
++/* { dg-require-effective-target power10_ok } */
++/* { dg-options "-O3 -mdejagnu-cpu=power10 -Wno-return-type" } */
++
++/* Verify we do not ICE on the following noisy creduced test case.  */
++
++enum { a, b, c, d };
++template <typename> struct e;
++template <typename g, typename h, typename k> struct e<g(h, k)> {
++  typedef h f;
++};
++template <typename> struct ac;
++template <typename ab> struct ac<const ab> : ac<ab> {};
++template <typename> struct l;
++template <typename, int, int m, int = 0, int = a, int = m> class n;
++template <typename> class o;
++template <typename, typename, typename> class ag;
++template <typename, typename, int = c> class af;
++template <typename> struct ad;
++template <typename ab> struct an {
++  typedef n<typename ab ::ah, ac<ab>::ai, ac<ab>::aj> f;
++};
++template <typename al> struct am { typedef o<al> f; };
++template <typename al, typename = typename ac<al>::ao,
++          typename = typename ac<al>::av>
++struct ak;
++template <typename al, typename ao> struct ak<al, ao, int> {
++  typedef typename am<al>::f f;
++};
++template <typename, typename, typename> struct aq;
++template <typename ar, typename as> struct aq<ar, ar, as> { typedef ar at; };
++template <typename ap> ap bf(const typename ad<ap>::f *);
++template <typename ap, int> ap aw(typename ad<ap>::f *ax) { return bf<ap>(ax); }
++typedef __attribute__((altivec(vector__))) double au;
++template <> struct ad<au> { typedef double f; };
++template <> au bf(const double *ax) { return __builtin_vec_vsx_ld(0, ax); }
++template <typename> struct az {};
++template <typename al> class o : public l<al> {
++public:
++  typedef typename ac<al>::ah ah;
++  template <typename ay> al &operator+=(const o<ay> &);
++};
++template <typename> struct l {};
++template <typename ba, typename bb, int bd> struct ac<af<ba, bb, bd>> {
++  typedef typename ba::ah ah;
++  enum { ai, aj };
++};
++template <typename, typename, int bd>
++class af
++    : public ak<
++          af<ag<int, const n<double, -1, -1, 3>, const n<double, -1, -1, 3>>,
++             n<double, -1, 1, 3>, bd>,
++          int, int>::f {};
++template <typename, typename, typename> struct be;
++template <typename bj, typename bg, typename g> void bi(bj, bg bm, g) {
++  typename an<bg>::f bk(bm);
++}
++template <typename bj, typename bg, typename g> void bl(bj, bg bm, g bp) {
++  be<bj, bg, g>::bn(a, bm, bp);
++}
++template <typename, typename, typename, typename> struct bo;
++class bs {
++public:
++  bs(double *, int);
++  double &operator()(int, int) { return bq[br]; }
++  template <typename bw, int> bw bt(int i, int j) {
++    double &bu = operator()(i, j);
++    return aw<bw, b>(&bu);
++  }
++  double *bq;
++  int br;
++};
++class ca : public bs {
++public:
++  ca(double *by, int bz) : bs(by, bz) {}
++};
++template <typename al> class ce : public am<al>::f {
++protected:
++  template <typename ay> void cb(l<ay>) {
++    af<ag<int, const n<double, -1, -1, 3>, const n<double, -1, -1, 3>>,
++       n<double, -1, 1, 3>>
++        cc;
++    bl(0, cc, az<typename ay::ah>());
++  }
++  template <typename> void ch(long);
++  template <typename ay> void ch(l<ay> cf) { cb(cf); }
++};
++template <typename cg, int aa, int m, int cl, int ci, int cj>
++struct ac<n<cg, aa, m, cl, ci, cj>> {
++  typedef cg ah;
++  typedef int av;
++};
++template <typename cg, int, int m, int, int, int>
++class n : public ce<n<cg, m, c>> {
++public:
++  template <typename ab> n(ab p) { n::template ch<ab>(p); }
++};
++template <typename bc, typename ba, typename bb> struct ac<ag<bc, ba, bb>> {
++  typedef ba ao;
++  typedef typename e<bc(typename ba::ah, typename bb::ah)>::f ah;
++  typedef typename aq<typename ac<ba>::av, typename ac<bb>::av, bc>::at av;
++};
++template <typename> class cm;
++template <typename, typename r, typename cs>
++class ag
++    : public cm<typename aq<typename ac<r>::av, typename ac<cs>::av, int>::at> {
++};
++template <typename>
++class cm : public ak<ag<int, n<double, 1, 1>, n<double, 1, 1>>>::f {};
++template <typename al>
++template <typename ay>
++al &o<al>::operator+=(const o<ay> &) {
++  af<ag<int, const n<double, -1, -1, 3>, const n<double, -1, -1, 3>>,
++     n<double, -1, 1, 3>>
++      co;
++  bi(0, co, int());
++}
++enum { cp };
++template <int> struct cq;
++template <typename> struct cr {
++  enum { q };
++  enum { ae = cq<q>::at };
++};
++template <> struct cq<cp> {
++  enum { at = d };
++};
++struct t {
++  template <typename ba, typename bb, typename s> static void bn(ba, bb, s) {
++    typedef typename bb::ah x;
++    x u;
++    bo<long, ca, x, ca>::bn(0, 0, ca(0, 0), ca(&u, 1), 0, 0, 0);
++  }
++};
++template <typename, typename bb, int = cr<bb>::ae> struct cu;
++template <typename cd, typename ba, typename bb, int ct, typename ah>
++struct be<cd, af<ba, bb, ct>, az<ah>> {
++  static void bn(cd, af<ba, bb> bm, az<ah>) {
++    ag<int, const n<double, -1, -1, 3>, const n<double, -1, -1, 3>> da;
++    cu<ba, bb>::cv(c, da, bm);
++  }
++};
++template <typename al> struct cw {
++  template <typename bj>
++  static void
++  cv(bj, ag<int, const n<double, -1, -1, 3>, const n<double, -1, -1, 3>>,
++     n<double, -1, 1, 3> bx) {
++    double alpha;
++    ag<int, const n<double, -1, -1, 3>, const n<double, -1, -1, 3>> bh;
++    al::cx(c, bh, bx, alpha);
++  }
++};
++template <typename ba, typename bb> struct cu<ba, bb, d> : cw<cu<ba, bb>> {
++  template <typename s> static void cx(s, ba, bb bx, typename af<ba, bb>::ah) {
++    ba cz;
++    t::bn(cz, bx, c);
++  }
++};
++template <typename dj, typename, bool>
++void db(__vector_quad *, __vector_pair &, dj);
++template <typename, typename, typename, typename, typename, typename, int>
++void dc(ca alhs) {
++  typedef au dj;
++  typedef au dd;
++  ca bh(alhs);
++  enum { de };
++  __vector_quad df, dg;
++  int j;
++  dd v;
++  __vector_pair dh;
++  __builtin_mma_assemble_pair(
++      &dh, (__attribute__((altivec(vector__))) char)bh.bt<dj, de>(0, j),
++      (__attribute__((altivec(vector__))) char)bh.bt<dj, de>(0, j));
++  db<dj, dd, true>(&df, dh, v);
++  __vector_pair di;
++  __builtin_mma_assemble_pair(
++      &di, (__attribute__((altivec(vector__))) char)bh.bt<dj, de>(0, j),
++      (__attribute__((altivec(vector__))) char)bh.bt<dj, de>(0, j));
++  db<dj, dd, true>(&dg, di, v);
++}
++template <typename bv, typename w, typename cy> struct bo<bv, w, double, cy> {
++  static void bn(bv, bv, w bh, cy, double, bv, double) {
++    dc<bv, double, w, double, cy, double, d>(bh);
++  }
++};
++void dm() {
++  n<double, 1, 1> dk(1), y(0);
++  y += dk;
++}
 diff --git a/gcc/testsuite/g++.target/s390/pr98722.C b/gcc/testsuite/g++.target/s390/pr98722.C
 new file mode 100644
 index 00000000000..64edaf3de21
@@ -10862,6 +12205,21 @@ index 00000000000..b32163441a3
 +
 +  vorbis_synthesis_lapout ();
 +}
+diff --git a/gcc/testsuite/gcc.dg/pr100509.c b/gcc/testsuite/gcc.dg/pr100509.c
+new file mode 100644
+index 00000000000..9405e2a27df
+--- /dev/null
++++ b/gcc/testsuite/gcc.dg/pr100509.c
+@@ -0,0 +1,9 @@
++/* { dg-do compile } */
++/* { dg-options "-O" } */
++
++struct X {
++  int a;
++};
++const int a = 0;
++static struct X A __attribute__((alias("a")));
++void foo() { struct X b = A; }
 diff --git a/gcc/testsuite/gcc.dg/pr100563.c b/gcc/testsuite/gcc.dg/pr100563.c
 new file mode 100644
 index 00000000000..f6a5fcd3a47
@@ -10877,6 +12235,21 @@ index 00000000000..f6a5fcd3a47
 +  unsigned long long d = e();
 +  f(b >= d);
 +}
+diff --git a/gcc/testsuite/gcc.dg/pr100791.c b/gcc/testsuite/gcc.dg/pr100791.c
+new file mode 100644
+index 00000000000..96cf34f14a4
+--- /dev/null
++++ b/gcc/testsuite/gcc.dg/pr100791.c
+@@ -0,0 +1,9 @@
++/* { dg-do compile } */
++/* { dg-options "" } */
++
++static inline int __attribute__((__always_inline__))
++foo ()
++{
++  return log_bad_request(0, __builtin_va_arg_pack()); /* { dg-warning "implicit" } */
++}
++void log_bad_request() { foo (0); } /* { dg-warning "conflicting types" } */
 diff --git a/gcc/testsuite/gcc.dg/pr99830.c b/gcc/testsuite/gcc.dg/pr99830.c
 new file mode 100644
 index 00000000000..75226f5c3a9
@@ -11030,6 +12403,38 @@ index 00000000000..3d1767513f3
 +  v(1);
 +  return 0;
 +}
+diff --git a/gcc/testsuite/gcc.dg/torture/pr100492.c b/gcc/testsuite/gcc.dg/torture/pr100492.c
+new file mode 100644
+index 00000000000..75229c8813b
+--- /dev/null
++++ b/gcc/testsuite/gcc.dg/torture/pr100492.c
+@@ -0,0 +1,26 @@
++/* { dg-do run } */
++/* { dg-additional-options "-ftree-loop-distribution" } */
++
++extern void abort (void);
++
++signed char a, c;
++int b, d, *e = &d, g;
++signed static char f;
++int main() {
++  int h = 0;
++  int a_ = a;
++  for (; a_ < 1; a = ++a_) {
++    int *i[5], **j = &i[4], ***k[3][2] = {{&j}}, ****l = &k[2][1], *****m = &l;
++    char *n = &c;
++    f = *e = g = 0;
++    for (; g < 2; g++) {
++      for (b = 0; b < 3; b++)
++        h = (h && (*n = 0)) == 0;
++      if (g)
++        break;
++    }
++  }
++  if (f != 0)
++    abort ();
++  return 0;
++}
 diff --git a/gcc/testsuite/gcc.dg/torture/pr100566.c b/gcc/testsuite/gcc.dg/torture/pr100566.c
 new file mode 100644
 index 00000000000..ed856913639
@@ -11070,6 +12475,33 @@ index 00000000000..ed856913639
 +  bar ();
 +  if (c != 1)
 +    __builtin_abort ();
++  return 0;
++}
+diff --git a/gcc/testsuite/gcc.dg/torture/pr100934.c b/gcc/testsuite/gcc.dg/torture/pr100934.c
+new file mode 100644
+index 00000000000..43b78849895
+--- /dev/null
++++ b/gcc/testsuite/gcc.dg/torture/pr100934.c
+@@ -0,0 +1,21 @@
++/* { dg-do run } */
++
++int a, b, c, d, e;
++int main()
++{
++  int f = 0, g = 0;
++  for (; f < 2; f++)
++    {
++      int h, i;
++      for (h = 0; h < 2; h++)
++	{
++	  b = e = g ? a % g : 0;
++	  c = d;
++	  for (i = 0; i < 1; i++)
++	    g = 0;
++	  for (; g < 2; g++)
++	    ;
++	}
++    }
 +  return 0;
 +}
 diff --git a/gcc/testsuite/gcc.dg/torture/pr96513.c b/gcc/testsuite/gcc.dg/torture/pr96513.c
@@ -11531,6 +12963,67 @@ index 00000000000..50d432db9b8
 +#include "pr99929_1.c"
 +
 +/* { dg-final { scan-assembler {\tptrue\tp[0-7].[bhsd], vl1\n} } } */
+diff --git a/gcc/testsuite/gcc.target/arm/acle/pr100856.c b/gcc/testsuite/gcc.target/arm/acle/pr100856.c
+new file mode 100644
+index 00000000000..5bc030e2e46
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/arm/acle/pr100856.c
+@@ -0,0 +1,10 @@
++/* { dg-do run } */
++/* { dg-require-effective-target arm_v8_1m_main_cde_mve_ok } */
++/* { dg-add-options arm_v8_1m_main_cde_mve } */
++
++#include "arm_cde.h"
++
++int main()
++{
++  return 0;
++}
+diff --git a/gcc/testsuite/gcc.target/arm/cmse/cmse-18.c b/gcc/testsuite/gcc.target/arm/cmse/cmse-18.c
+index e1ff09257b7..db7d975a90e 100644
+--- a/gcc/testsuite/gcc.target/arm/cmse/cmse-18.c
++++ b/gcc/testsuite/gcc.target/arm/cmse/cmse-18.c
+@@ -8,4 +8,5 @@ void bar(f func, int a)
+   func(a);
+ }
+ 
+-/* { dg-final { scan-rtl-dump "call unspec\\\[\\\[r4:SI\\\]\\\]" "final" } } */
++/* { dg-final { scan-rtl-dump "call unspec\\\[\\\[r4:SI\\\]\\\]" "final" { target { ! arm_v8_1m_mve_ok } } } } */
++/* { dg-final { scan-rtl-dump "call unspec\\\[\\\[r\[0-7\]:SI\\\]\\\]" "final" { target { arm_v8_1m_mve_ok } } } } */
+diff --git a/gcc/testsuite/gcc.target/arm/cmse/cmse-20.c b/gcc/testsuite/gcc.target/arm/cmse/cmse-20.c
+new file mode 100644
+index 00000000000..08e89bff637
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/arm/cmse/cmse-20.c
+@@ -0,0 +1,28 @@
++/* This test is executed only if the execution engine supports CMSE instructions.  */
++/* { dg-options "--save-temps -mcmse -Wl,--section-start,.gnu.sgstubs=0x00400000" } */
++
++#include <arm_cmse.h>
++#include <stdlib.h>
++#include <stdio.h>
++
++void __attribute__((cmse_nonsecure_entry))
++secure_fun (int a, int *p)
++{
++  void *b = cmse_check_address_range ((void *)p, a, 1);
++
++  if (b == NULL)
++   __builtin_abort ();
++  printf("%d", *((int *)b));
++}
++
++int
++main (void)
++{
++  int *ptr;
++  int size = 1;
++  ptr = (int *) calloc (1, sizeof(int *));
++  *ptr = 1315852292;
++  secure_fun (size, ptr);
++  free (ptr);
++  return 0;
++}
 diff --git a/gcc/testsuite/gcc.target/arm/cmse/pr100333.c b/gcc/testsuite/gcc.target/arm/cmse/pr100333.c
 new file mode 100644
 index 00000000000..d8e3d809f73
@@ -11555,6 +13048,272 @@ index 00000000000..284da184f96
 +typedef int __attribute__((cmse_nonsecure_call)) (*t)();
 +t f;
 +void g() { f(); }
+diff --git a/gcc/testsuite/gcc.target/arm/multilib.exp b/gcc/testsuite/gcc.target/arm/multilib.exp
+index 6aba29ede95..82355464839 100644
+--- a/gcc/testsuite/gcc.target/arm/multilib.exp
++++ b/gcc/testsuite/gcc.target/arm/multilib.exp
+@@ -840,6 +840,119 @@ if {[multilib_config "rmprofile"] } {
+ 	{-mcpu=cortex-m55+nomve+nofp -mfpu=auto -mfloat-abi=softfp} "thumb/v8-m.main/nofp"
+ 	{-mcpu=cortex-m55+nodsp+nofp -mfpu=auto -mfloat-abi=soft} "thumb/v8-m.main/nofp"
+ 	{-mcpu=cortex-m55+nodsp+nofp -mfpu=auto -mfloat-abi=softfp} "thumb/v8-m.main/nofp"
++	{-march=armv8-m.main+cdecp0 -mfpu=auto -mfloat-abi=soft} "thumb/v8-m.main/nofp"
++	{-march=armv8-m.main+fp+cdecp0 -mfpu=auto -mfloat-abi=soft} "thumb/v8-m.main/nofp"
++	{-march=armv8-m.main+fp.dp+cdecp0 -mfpu=auto -mfloat-abi=soft} "thumb/v8-m.main/nofp"
++	{-march=armv8-m.main+fp+dsp+cdecp0 -mfpu=auto -mfloat-abi=soft} "thumb/v8-m.main/nofp"
++	{-march=armv8-m.main+fp.dp+dsp+cdecp0 -mfpu=auto -mfloat-abi=soft} "thumb/v8-m.main/nofp"
++	{-march=armv8-m.main+cdecp0 -mfpu=vfpv3xd -mfloat-abi=soft} "thumb/v8-m.main/nofp"
++	{-march=armv8-m.main+fp+cdecp0 -mfpu=vfpv3xd -mfloat-abi=soft} "thumb/v8-m.main/nofp"
++	{-march=armv8-m.main+fp.dp+cdecp0 -mfpu=vfpv3xd -mfloat-abi=soft} "thumb/v8-m.main/nofp"
++	{-march=armv8-m.main+fp+dsp+cdecp0 -mfpu=vfpv3xd -mfloat-abi=soft} "thumb/v8-m.main/nofp"
++	{-march=armv8-m.main+fp.dp+dsp+cdecp0 -mfpu=vfpv3xd -mfloat-abi=soft} "thumb/v8-m.main/nofp"
++	{-march=armv8-m.main+cdecp0 -mfpu=vfpv3xd-fp16 -mfloat-abi=soft} "thumb/v8-m.main/nofp"
++	{-march=armv8-m.main+fp+cdecp0 -mfpu=vfpv3xd-fp16 -mfloat-abi=soft} "thumb/v8-m.main/nofp"
++	{-march=armv8-m.main+fp.dp+cdecp0 -mfpu=vfpv3xd-fp16 -mfloat-abi=soft} "thumb/v8-m.main/nofp"
++	{-march=armv8-m.main+fp+dsp+cdecp0 -mfpu=vfpv3xd-fp16 -mfloat-abi=soft} "thumb/v8-m.main/nofp"
++	{-march=armv8-m.main+fp.dp+dsp+cdecp0 -mfpu=vfpv3xd-fp16 -mfloat-abi=soft} "thumb/v8-m.main/nofp"
++	{-march=armv8-m.main+cdecp0 -mfpu=fpv4-sp-d16 -mfloat-abi=soft} "thumb/v8-m.main/nofp"
++	{-march=armv8-m.main+fp+cdecp0 -mfpu=fpv4-sp-d16 -mfloat-abi=soft} "thumb/v8-m.main/nofp"
++	{-march=armv8-m.main+fp.dp+cdecp0 -mfpu=fpv4-sp-d16 -mfloat-abi=soft} "thumb/v8-m.main/nofp"
++	{-march=armv8-m.main+fp+dsp+cdecp0 -mfpu=fpv4-sp-d16 -mfloat-abi=soft} "thumb/v8-m.main/nofp"
++	{-march=armv8-m.main+fp.dp+dsp+cdecp0 -mfpu=fpv4-sp-d16 -mfloat-abi=soft} "thumb/v8-m.main/nofp"
++	{-march=armv8-m.main+cdecp0 -mfpu=fpv5-sp-d16 -mfloat-abi=soft} "thumb/v8-m.main/nofp"
++	{-march=armv8-m.main+fp+cdecp0 -mfpu=fpv5-sp-d16 -mfloat-abi=soft} "thumb/v8-m.main/nofp"
++	{-march=armv8-m.main+fp.dp+cdecp0 -mfpu=fpv5-sp-d16 -mfloat-abi=soft} "thumb/v8-m.main/nofp"
++	{-march=armv8-m.main+fp+dsp+cdecp0 -mfpu=fpv5-sp-d16 -mfloat-abi=soft} "thumb/v8-m.main/nofp"
++	{-march=armv8-m.main+fp.dp+dsp+cdecp0 -mfpu=fpv5-sp-d16 -mfloat-abi=soft} "thumb/v8-m.main/nofp"
++	{-march=armv8-m.main+cdecp0 -mfpu=fpv5-d16 -mfloat-abi=soft} "thumb/v8-m.main/nofp"
++	{-march=armv8-m.main+fp+cdecp0 -mfpu=fpv5-d16 -mfloat-abi=soft} "thumb/v8-m.main/nofp"
++	{-march=armv8-m.main+fp.dp+cdecp0 -mfpu=fpv5-d16 -mfloat-abi=soft} "thumb/v8-m.main/nofp"
++	{-march=armv8-m.main+fp+dsp+cdecp0 -mfpu=fpv5-d16 -mfloat-abi=soft} "thumb/v8-m.main/nofp"
++	{-march=armv8-m.main+fp.dp+dsp+cdecp0 -mfpu=fpv5-d16 -mfloat-abi=soft} "thumb/v8-m.main/nofp"
++	{-march=armv8-m.main+fp+cdecp0 -mfpu=auto -mfloat-abi=hard} "thumb/v8-m.main+fp/hard"
++	{-march=armv8-m.main+fp.dp+cdecp0 -mfpu=auto -mfloat-abi=hard} "thumb/v8-m.main+dp/hard"
++	{-march=armv8-m.main+fp+dsp+cdecp0 -mfpu=auto -mfloat-abi=hard} "thumb/v8-m.main+fp/hard"
++	{-march=armv8-m.main+fp.dp+dsp+cdecp0 -mfpu=auto -mfloat-abi=hard} "thumb/v8-m.main+dp/hard"
++	{-march=armv8-m.main+cdecp0 -mfpu=vfpv3xd -mfloat-abi=hard} "thumb/v8-m.main+fp/hard"
++	{-march=armv8-m.main+fp+cdecp0 -mfpu=vfpv3xd -mfloat-abi=hard} "thumb/v8-m.main+fp/hard"
++	{-march=armv8-m.main+fp.dp+cdecp0 -mfpu=vfpv3xd -mfloat-abi=hard} "thumb/v8-m.main+dp/hard"
++	{-march=armv8-m.main+fp+dsp+cdecp0 -mfpu=vfpv3xd -mfloat-abi=hard} "thumb/v8-m.main+fp/hard"
++	{-march=armv8-m.main+fp.dp+dsp+cdecp0 -mfpu=vfpv3xd -mfloat-abi=hard} "thumb/v8-m.main+dp/hard"
++	{-march=armv8-m.main+cdecp0 -mfpu=vfpv3xd-fp16 -mfloat-abi=hard} "thumb/v8-m.main+fp/hard"
++	{-march=armv8-m.main+fp+cdecp0 -mfpu=vfpv3xd-fp16 -mfloat-abi=hard} "thumb/v8-m.main+fp/hard"
++	{-march=armv8-m.main+fp.dp+cdecp0 -mfpu=vfpv3xd-fp16 -mfloat-abi=hard} "thumb/v8-m.main+dp/hard"
++	{-march=armv8-m.main+fp+dsp+cdecp0 -mfpu=vfpv3xd-fp16 -mfloat-abi=hard} "thumb/v8-m.main+fp/hard"
++	{-march=armv8-m.main+fp.dp+dsp+cdecp0 -mfpu=vfpv3xd-fp16 -mfloat-abi=hard} "thumb/v8-m.main+dp/hard"
++	{-march=armv8-m.main+cdecp0 -mfpu=fpv4-sp-d16 -mfloat-abi=hard} "thumb/v8-m.main+fp/hard"
++	{-march=armv8-m.main+fp+cdecp0 -mfpu=fpv4-sp-d16 -mfloat-abi=hard} "thumb/v8-m.main+fp/hard"
++	{-march=armv8-m.main+fp.dp+cdecp0 -mfpu=fpv4-sp-d16 -mfloat-abi=hard} "thumb/v8-m.main+dp/hard"
++	{-march=armv8-m.main+fp+dsp+cdecp0 -mfpu=fpv4-sp-d16 -mfloat-abi=hard} "thumb/v8-m.main+fp/hard"
++	{-march=armv8-m.main+fp.dp+dsp+cdecp0 -mfpu=fpv4-sp-d16 -mfloat-abi=hard} "thumb/v8-m.main+dp/hard"
++	{-march=armv8-m.main+cdecp0 -mfpu=fpv5-sp-d16 -mfloat-abi=hard} "thumb/v8-m.main+fp/hard"
++	{-march=armv8-m.main+fp+cdecp0 -mfpu=fpv5-sp-d16 -mfloat-abi=hard} "thumb/v8-m.main+fp/hard"
++	{-march=armv8-m.main+fp.dp+cdecp0 -mfpu=fpv5-sp-d16 -mfloat-abi=hard} "thumb/v8-m.main+dp/hard"
++	{-march=armv8-m.main+fp+dsp+cdecp0 -mfpu=fpv5-sp-d16 -mfloat-abi=hard} "thumb/v8-m.main+fp/hard"
++	{-march=armv8-m.main+fp.dp+dsp+cdecp0 -mfpu=fpv5-sp-d16 -mfloat-abi=hard} "thumb/v8-m.main+dp/hard"
++	{-march=armv8-m.main+cdecp0 -mfpu=fpv5-d16 -mfloat-abi=hard} "thumb/v8-m.main+dp/hard"
++	{-march=armv8-m.main+fp+cdecp0 -mfpu=fpv5-d16 -mfloat-abi=hard} "thumb/v8-m.main+dp/hard"
++	{-march=armv8-m.main+fp.dp+cdecp0 -mfpu=fpv5-d16 -mfloat-abi=hard} "thumb/v8-m.main+dp/hard"
++	{-march=armv8-m.main+fp+dsp+cdecp0 -mfpu=fpv5-d16 -mfloat-abi=hard} "thumb/v8-m.main+dp/hard"
++	{-march=armv8-m.main+fp.dp+dsp+cdecp0 -mfpu=fpv5-d16 -mfloat-abi=hard} "thumb/v8-m.main+dp/hard"
++	{-march=armv8-m.main+cdecp0 -mfpu=auto -mfloat-abi=softfp} "thumb/v8-m.main/nofp"
++	{-march=armv8-m.main+fp+cdecp0 -mfpu=auto -mfloat-abi=softfp} "thumb/v8-m.main+fp/softfp"
++	{-march=armv8-m.main+fp.dp+cdecp0 -mfpu=auto -mfloat-abi=softfp} "thumb/v8-m.main+dp/softfp"
++	{-march=armv8-m.main+fp+dsp+cdecp0 -mfpu=auto -mfloat-abi=softfp} "thumb/v8-m.main+fp/softfp"
++	{-march=armv8-m.main+fp.dp+dsp+cdecp0 -mfpu=auto -mfloat-abi=softfp} "thumb/v8-m.main+dp/softfp"
++	{-march=armv8-m.main+cdecp0 -mfpu=vfpv3xd -mfloat-abi=softfp} "thumb/v8-m.main+fp/softfp"
++	{-march=armv8-m.main+fp+cdecp0 -mfpu=vfpv3xd -mfloat-abi=softfp} "thumb/v8-m.main+fp/softfp"
++	{-march=armv8-m.main+fp.dp+cdecp0 -mfpu=vfpv3xd -mfloat-abi=softfp} "thumb/v8-m.main+dp/softfp"
++	{-march=armv8-m.main+fp+dsp+cdecp0 -mfpu=vfpv3xd -mfloat-abi=softfp} "thumb/v8-m.main+fp/softfp"
++	{-march=armv8-m.main+fp.dp+dsp+cdecp0 -mfpu=vfpv3xd -mfloat-abi=softfp} "thumb/v8-m.main+dp/softfp"
++	{-march=armv8-m.main+cdecp0 -mfpu=vfpv3xd-fp16 -mfloat-abi=softfp} "thumb/v8-m.main+fp/softfp"
++	{-march=armv8-m.main+fp+cdecp0 -mfpu=vfpv3xd-fp16 -mfloat-abi=softfp} "thumb/v8-m.main+fp/softfp"
++	{-march=armv8-m.main+fp.dp+cdecp0 -mfpu=vfpv3xd-fp16 -mfloat-abi=softfp} "thumb/v8-m.main+dp/softfp"
++	{-march=armv8-m.main+fp+dsp+cdecp0 -mfpu=vfpv3xd-fp16 -mfloat-abi=softfp} "thumb/v8-m.main+fp/softfp"
++	{-march=armv8-m.main+fp.dp+dsp+cdecp0 -mfpu=vfpv3xd-fp16 -mfloat-abi=softfp} "thumb/v8-m.main+dp/softfp"
++	{-march=armv8-m.main+cdecp0 -mfpu=fpv4-sp-d16 -mfloat-abi=softfp} "thumb/v8-m.main+fp/softfp"
++	{-march=armv8-m.main+fp+cdecp0 -mfpu=fpv4-sp-d16 -mfloat-abi=softfp} "thumb/v8-m.main+fp/softfp"
++	{-march=armv8-m.main+fp.dp+cdecp0 -mfpu=fpv4-sp-d16 -mfloat-abi=softfp} "thumb/v8-m.main+dp/softfp"
++	{-march=armv8-m.main+fp+dsp+cdecp0 -mfpu=fpv4-sp-d16 -mfloat-abi=softfp} "thumb/v8-m.main+fp/softfp"
++	{-march=armv8-m.main+fp.dp+dsp+cdecp0 -mfpu=fpv4-sp-d16 -mfloat-abi=softfp} "thumb/v8-m.main+dp/softfp"
++	{-march=armv8-m.main+cdecp0 -mfpu=fpv5-sp-d16 -mfloat-abi=softfp} "thumb/v8-m.main+fp/softfp"
++	{-march=armv8-m.main+fp+cdecp0 -mfpu=fpv5-sp-d16 -mfloat-abi=softfp} "thumb/v8-m.main+fp/softfp"
++	{-march=armv8-m.main+fp.dp+cdecp0 -mfpu=fpv5-sp-d16 -mfloat-abi=softfp} "thumb/v8-m.main+dp/softfp"
++	{-march=armv8-m.main+fp+dsp+cdecp0 -mfpu=fpv5-sp-d16 -mfloat-abi=softfp} "thumb/v8-m.main+fp/softfp"
++	{-march=armv8-m.main+fp.dp+dsp+cdecp0 -mfpu=fpv5-sp-d16 -mfloat-abi=softfp} "thumb/v8-m.main+dp/softfp"
++	{-march=armv8-m.main+cdecp0 -mfpu=fpv5-d16 -mfloat-abi=softfp} "thumb/v8-m.main+dp/softfp"
++	{-march=armv8-m.main+fp+cdecp0 -mfpu=fpv5-d16 -mfloat-abi=softfp} "thumb/v8-m.main+dp/softfp"
++	{-march=armv8-m.main+fp.dp+cdecp0 -mfpu=fpv5-d16 -mfloat-abi=softfp} "thumb/v8-m.main+dp/softfp"
++	{-march=armv8-m.main+fp+dsp+cdecp0 -mfpu=fpv5-d16 -mfloat-abi=softfp} "thumb/v8-m.main+dp/softfp"
++	{-march=armv8-m.main+fp.dp+dsp+cdecp0 -mfpu=fpv5-d16 -mfloat-abi=softfp} "thumb/v8-m.main+dp/softfp"
++	{-march=armv8.1-m.main+cdecp0 -mfpu=auto -mfloat-abi=soft} "thumb/v8-m.main/nofp"
++	{-march=armv8.1-m.main+dsp+cdecp0 -mfpu=auto -mfloat-abi=soft} "thumb/v8-m.main/nofp"
++	{-march=armv8.1-m.main+dsp+fp+cdecp0 -mfpu=auto -mfloat-abi=soft} "thumb/v8-m.main/nofp"
++	{-march=armv8.1-m.main+dsp+fp.dp+cdecp0 -mfpu=auto -mfloat-abi=soft} "thumb/v8-m.main/nofp"
++	{-march=armv8.1-m.main+cdecp0 -mfpu=auto -mfloat-abi=softfp} "thumb/v8-m.main/nofp"
++	{-march=armv8.1-m.main+dsp+cdecp0 -mfpu=auto -mfloat-abi=softfp} "thumb/v8-m.main/nofp"
++	{-march=armv8.1-m.main+dsp+fp+cdecp0 -mfpu=auto -mfloat-abi=softfp} "thumb/v8-m.main+fp/softfp"
++	{-march=armv8.1-m.main+dsp+fp.dp+cdecp0 -mfpu=auto -mfloat-abi=softfp} "thumb/v8-m.main+dp/softfp"
++	{-march=armv8.1-m.main+dsp+fp+cdecp0 -mfpu=auto -mfloat-abi=hard} "thumb/v8-m.main+fp/hard"
++	{-march=armv8.1-m.main+dsp+fp.dp+cdecp0 -mfpu=auto -mfloat-abi=hard} "thumb/v8-m.main+dp/hard"
++	{-march=armv8.1-m.main+mve+cdecp0 -mfpu=auto -mfloat-abi=soft} "thumb/v8-m.main/nofp"
++	{-march=armv8.1-m.main+mve.fp+cdecp0 -mfpu=auto -mfloat-abi=soft} "thumb/v8-m.main/nofp"
++	{-march=armv8.1-m.main+mve+cdecp0 -mfpu=auto -mfloat-abi=softfp} "thumb/v8-m.main/nofp"
++	{-march=armv8.1-m.main+mve.fp+cdecp0 -mfpu=auto -mfloat-abi=softfp} "thumb/v8-m.main+fp/softfp"
++	{-march=armv8.1-m.main+mve+cdecp0 -mfpu=auto -mfloat-abi=hard} "thumb/v8.1-m.main+mve/hard"
++	{-march=armv8.1-m.main+mve+fp+cdecp0 -mfpu=auto -mfloat-abi=hard} "thumb/v8-m.main+fp/hard"
++	{-march=armv8.1-m.main+mve+fp+cdecp0 -mfpu=auto -mfloat-abi=softfp} "thumb/v8-m.main+fp/softfp"
++	{-march=armv8.1-m.main+mve.fp+cdecp0 -mfpu=auto -mfloat-abi=hard} "thumb/v8-m.main+fp/hard"
++	{-march=armv8.1-m.main+mve+fp.dp+cdecp0 -mfpu=auto -mfloat-abi=soft} "thumb/v8-m.main/nofp"
++	{-march=armv8.1-m.main+mve.fp+fp.dp+cdecp0 -mfpu=auto -mfloat-abi=soft} "thumb/v8-m.main/nofp"
++	{-march=armv8.1-m.main+mve+fp.dp+cdecp0 -mfpu=auto -mfloat-abi=softfp} "thumb/v8-m.main+dp/softfp"
++	{-march=armv8.1-m.main+mve.fp+fp.dp+cdecp0 -mfpu=auto -mfloat-abi=softfp} "thumb/v8-m.main+dp/softfp"
++	{-march=armv8.1-m.main+mve+fp.dp+cdecp0 -mfpu=auto -mfloat-abi=hard} "thumb/v8-m.main+dp/hard"
++	{-march=armv8.1-m.main+mve.fp+fp.dp+cdecp0 -mfpu=auto -mfloat-abi=hard} "thumb/v8-m.main+dp/hard"
+     } {
+ 	check_multi_dir $opts $dir
+     }
+diff --git a/gcc/testsuite/gcc.target/arm/mve/intrinsics/pr101016.c b/gcc/testsuite/gcc.target/arm/mve/intrinsics/pr101016.c
+new file mode 100644
+index 00000000000..b12786d04f5
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/arm/mve/intrinsics/pr101016.c
+@@ -0,0 +1,136 @@
++/* { dg-require-effective-target arm_v8_1m_mve_fp_ok } */
++/* { dg-add-options arm_v8_1m_mve_fp } */
++
++#include "arm_mve.h"
++
++void
++foo (void)
++{
++  mve_pred16_t p;
++  int8x16_t a;
++  int8_t a1[10];
++  int16x8_t b;
++  int16_t b1[10];
++  int32x4_t c;
++  int32_t c1[10];
++  uint8x16_t ua;
++  uint8_t ua1[10];
++  uint16x8_t ub;
++  uint16_t ub1[10];
++  uint32x4_t uc;
++  uint32_t uc1[10];
++  float16x8_t fb;
++  float16_t fb1[10];
++  float32x4_t fc;
++  float32_t fc1[10];
++
++  fb = vld1q (fb1);
++  fc = vld1q (fc1);
++  b = vld1q (b1);
++  c = vld1q (c1);
++  a = vld1q (a1);
++  ub = vld1q (ub1);
++  uc = vld1q (uc1);
++  ua = vld1q (ua1);
++  fb = vld1q_z (fb1, p);
++  fc = vld1q_z (fc1, p);
++  b = vld1q_z (b1, p);
++  c = vld1q_z (c1, p);
++  a = vld1q_z (a1, p);
++  ub = vld1q_z (ub1, p);
++  uc = vld1q_z (uc1, p);
++  ua = vld1q_z (ua1, p);
++}
++
++void
++foo1 (void)
++{
++  mve_pred16_t p;
++  int8x16x2_t a;
++  int8_t a1[10];
++  int16x8x2_t b;
++  int16_t b1[10];
++  int32x4x2_t c;
++  int32_t c1[10];
++  uint8x16x2_t ua;
++  uint8_t ua1[10];
++  uint16x8x2_t ub;
++  uint16_t ub1[10];
++  uint32x4x2_t uc;
++  uint32_t uc1[10];
++  float16x8x2_t fb;
++  float16_t fb1[10];
++  float32x4x2_t fc;
++  float32_t fc1[10];
++
++  fb = vld2q (fb1);
++  fc = vld2q (fc1);
++  b = vld2q (b1);
++  c = vld2q (c1);
++  a = vld2q (a1);
++  ub = vld2q (ub1);
++  uc = vld2q (uc1);
++  ua = vld2q (ua1);
++}
++
++void
++foo2 (void)
++{
++  mve_pred16_t p;
++  int8x16x4_t a;
++  int8_t a1[10];
++  int16x8x4_t b;
++  int16_t b1[10];
++  int32x4x4_t c;
++  int32_t c1[10];
++  uint8x16x4_t ua;
++  uint8_t ua1[10];
++  uint16x8x4_t ub;
++  uint16_t ub1[10];
++  uint32x4x4_t uc;
++  uint32_t uc1[10];
++  float16x8x4_t fb;
++  float16_t fb1[10];
++  float32x4x4_t fc;
++  float32_t fc1[10];
++
++  fb = vld4q (fb1);
++  fc = vld4q (fc1);
++  b = vld4q (b1);
++  c = vld4q (c1);
++  a = vld4q (a1);
++  ub = vld4q (ub1);
++  uc = vld4q (uc1);
++  ua = vld4q (ua1);
++}
++
++void
++foo3 (void)
++{
++  mve_pred16_t p;
++  int16x8_t a;
++  uint16x8_t ua;
++  int8_t a1[10];
++  uint8_t ua1[10];
++  uint16x8_t offset_a;
++  int8x16_t b;
++  uint8x16_t ub;
++  uint8x16_t offset_b;
++  int32x4_t c;
++  uint32x4_t uc;
++  uint32x4_t offset_c;
++
++  a = vldrbq_gather_offset (a1, offset_a);
++  ua = vldrbq_gather_offset (ua1, offset_a);
++  b = vldrbq_gather_offset (a1, offset_b);
++  ub = vldrbq_gather_offset (ua1, offset_b);
++  c = vldrbq_gather_offset (a1, offset_c);
++  uc = vldrbq_gather_offset (ua1, offset_c);
++  a = vldrbq_gather_offset_z (a1, offset_a, p);
++  ua = vldrbq_gather_offset_z (ua1, offset_a, p);
++  b = vldrbq_gather_offset_z (a1, offset_b, p);
++  ub = vldrbq_gather_offset_z (ua1, offset_b, p);
++  c = vldrbq_gather_offset_z (a1, offset_c, p);
++  uc = vldrbq_gather_offset_z (ua1, offset_c, p);
++}
++/* { dg-final { scan-assembler-not "__ARM_undef" } } */
 diff --git a/gcc/testsuite/gcc.target/arm/mve/intrinsics/vldrdq_gather_base_wb_s64.c b/gcc/testsuite/gcc.target/arm/mve/intrinsics/vldrdq_gather_base_wb_s64.c
 index 7420d0198e7..a9b1f81b62d 100644
 --- a/gcc/testsuite/gcc.target/arm/mve/intrinsics/vldrdq_gather_base_wb_s64.c
@@ -11895,6 +13654,111 @@ index 00000000000..6d1b2305a76
 +  if (x != 0x100000001)
 +    __builtin_abort ();
 +  return 0;
++}
+diff --git a/gcc/testsuite/gcc.target/powerpc/mma-builtin-4.c b/gcc/testsuite/gcc.target/powerpc/mma-builtin-4.c
+index 3bedf531de0..a9fb0107d12 100644
+--- a/gcc/testsuite/gcc.target/powerpc/mma-builtin-4.c
++++ b/gcc/testsuite/gcc.target/powerpc/mma-builtin-4.c
+@@ -20,6 +20,14 @@ foo2 (__vector_pair *dst, vec_t *src)
+   *dst = pair;
+ }
+ 
++void
++foo3 (__vector_pair *dst, vec_t *src)
++{
++  __vector_pair pair;
++  __builtin_vsx_build_pair (&pair, src[4], src[0]);
++  *dst = pair;
++}
++
+ void
+ bar (vec_t *dst, __vector_pair *src)
+ {
+@@ -54,8 +62,12 @@ bar2 (vec_t *dst, __vector_pair *src)
+ #  error "__has_builtin (__builtin_mma_disassemble_pair) failed"
+ #endif
+ 
+-/* { dg-final { scan-assembler-times {\mlxv\M} 4 } } */
++#if !__has_builtin (__builtin_vsx_build_pair)
++#  error "__has_builtin (__builtin_vsx_build_pair) failed"
++#endif
++
++/* { dg-final { scan-assembler-times {\mlxv\M} 6 } } */
+ /* { dg-final { scan-assembler-times {\mlxvp\M} 2 } } */
+ /* { dg-final { scan-assembler-times {\mstxv\M} 4 } } */
+-/* { dg-final { scan-assembler-times {\mstxvp\M} 2 } } */
++/* { dg-final { scan-assembler-times {\mstxvp\M} 3 } } */
+ 
+diff --git a/gcc/testsuite/gcc.target/powerpc/mma-builtin-5.c b/gcc/testsuite/gcc.target/powerpc/mma-builtin-5.c
+index 43b6d3ac91e..00503b7343d 100644
+--- a/gcc/testsuite/gcc.target/powerpc/mma-builtin-5.c
++++ b/gcc/testsuite/gcc.target/powerpc/mma-builtin-5.c
+@@ -12,6 +12,14 @@ foo (__vector_quad *dst, vec_t *src)
+   *dst = acc;
+ }
+ 
++void
++foo2 (__vector_quad *dst, vec_t *src)
++{
++  __vector_quad acc;
++  __builtin_mma_build_acc (&acc, src[12], src[8], src[4], src[0]);
++  *dst = acc;
++}
++
+ void
+ bar (vec_t *dst, __vector_quad *src)
+ {
+@@ -23,9 +31,17 @@ bar (vec_t *dst, __vector_quad *src)
+   dst[12] = res[3];
+ }
+ 
+-/* { dg-final { scan-assembler-times {\mlxv\M} 4 } } */
++#if !__has_builtin (__builtin_mma_assemble_acc)
++#  error "__has_builtin (__builtin_mma_assemble_acc) failed"
++#endif
++
++#if !__has_builtin (__builtin_mma_build_acc)
++#  error "__has_builtin (__builtin_mma_build_acc) failed"
++#endif
++
++/* { dg-final { scan-assembler-times {\mlxv\M} 8 } } */
+ /* { dg-final { scan-assembler-times {\mlxvp\M} 2 } } */
+ /* { dg-final { scan-assembler-times {\mstxv\M} 4 } } */
+-/* { dg-final { scan-assembler-times {\mstxvp\M} 2 } } */
+-/* { dg-final { scan-assembler-times {\mxxmfacc\M} 2 } } */
+-/* { dg-final { scan-assembler-times {\mxxmtacc\M} 2 } } */
++/* { dg-final { scan-assembler-times {\mstxvp\M} 4 } } */
++/* { dg-final { scan-assembler-times {\mxxmfacc\M} 3 } } */
++/* { dg-final { scan-assembler-times {\mxxmtacc\M} 3 } } */
+diff --git a/gcc/testsuite/gcc.target/powerpc/pr100777.c b/gcc/testsuite/gcc.target/powerpc/pr100777.c
+new file mode 100644
+index 00000000000..15742f67d8c
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/powerpc/pr100777.c
+@@ -0,0 +1,24 @@
++/* PR target/100777 */
++/* { dg-require-effective-target power10_ok } */
++/* { dg-require-effective-target fopenmp } */
++/* { dg-options "-O1 -mdejagnu-cpu=power10 -fopenmp" } */
++
++/* Verify we do not ICE on the following.  */
++
++void
++foo (__vector_quad *dst)
++{
++#pragma omp parallel
++  {
++    __builtin_mma_xxsetaccz (dst);
++  }
++}
++
++void
++bar (__vector_quad *dst, __vector_quad *src)
++{
++#pragma omp parallel
++  {
++    __builtin_mma_disassemble_acc (dst, src);
++  }
 +}
 diff --git a/gcc/testsuite/gcc.target/powerpc/pr98952.c b/gcc/testsuite/gcc.target/powerpc/pr98952.c
 new file mode 100644
@@ -12775,6 +14639,71 @@ index 00000000000..cb755ef2679
 +*/
 +
 +static foreach (a; Object) {}
+diff --git a/gcc/testsuite/gfortran.dg/PR82376.f90 b/gcc/testsuite/gfortran.dg/PR82376.f90
+new file mode 100644
+index 00000000000..07143ab7e82
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/PR82376.f90
+@@ -0,0 +1,59 @@
++! { dg-do compile }
++! { dg-options "-fdump-tree-original -fcheck=pointer" }
++!
++! Test the fix for PR82376. The pointer check was doubling up the call
++! to new. The fix reduces the count of 'new' from 5 to 4.
++!
++! Contributed by José Rui Faustino de Sousa  <jrfsousa@gmail.com>
++!
++program main_p
++
++  integer, parameter :: n = 10
++
++  type :: foo_t
++    integer, pointer :: v =>null()
++  end type foo_t
++
++  integer, save :: pcnt = 0
++
++  type(foo_t) :: int
++  integer     :: i
++
++  do i = 1, n
++    call init(int, i)
++    if(.not.associated(int%v)) stop 1
++    if(int%v/=i) stop 2
++    if(pcnt/=i) stop 3
++  end do
++
++contains
++
++  function new(data) result(this)
++    integer, target, intent(in) :: data
++
++    integer, pointer :: this
++
++    nullify(this)
++    this => data
++    pcnt = pcnt + 1
++    return
++  end function new
++
++  subroutine init(this, data)
++    type(foo_t), intent(out) :: this
++    integer,     intent(in)  :: data
++
++    call set(this, new(data))
++    return
++  end subroutine init
++
++  subroutine set(this, that)
++    type(foo_t),     intent(inout) :: this
++    integer, target, intent(in)    :: that
++
++    this%v => that
++    return
++  end subroutine set
++
++end program main_p
++! { dg-final { scan-tree-dump-times "new" 4 "original" } }
 diff --git a/gcc/testsuite/gfortran.dg/argument_checking_25.f90 b/gcc/testsuite/gfortran.dg/argument_checking_25.f90
 new file mode 100644
 index 00000000000..e699160fee1
@@ -12956,6 +14885,20 @@ index 00000000000..1131e8167b1
 +  y% a = sqrt (x% a) + z - w + root (x% a)
 +  y% a = real_root (x% a)
 +end program test
+diff --git a/gcc/testsuite/gfortran.dg/pr95502.f90 b/gcc/testsuite/gfortran.dg/pr95502.f90
+new file mode 100644
+index 00000000000..d40fd9a5508
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/pr95502.f90
+@@ -0,0 +1,8 @@
++! { dg-do compile }
++! PR fortran/95502 - ICE in gfc_check_do_variable, at fortran/parse.c:4446
++
++program p
++  integer, pointer :: z
++  nullify (z%kind)  ! { dg-error "in variable definition context" }
++  z%kind => NULL()  ! { dg-error "constant expression" }
++end
 diff --git a/gcc/testsuite/gfortran.dg/pr98411.f90 b/gcc/testsuite/gfortran.dg/pr98411.f90
 new file mode 100644
 index 00000000000..249afaea419
@@ -13373,8 +15316,20 @@ index 2cb54def860..2a4da7a7a18 100644
    if (dump_enabled_p ())
      {
        if (waw_or_war_p)
+diff --git a/gcc/tree-inline.c b/gcc/tree-inline.c
+index efde5d15872..9c6f61a583a 100644
+--- a/gcc/tree-inline.c
++++ b/gcc/tree-inline.c
+@@ -2132,6 +2132,7 @@ copy_bb (copy_body_data *id, basic_block bb,
+ 		 GF_CALL_VA_ARG_PACK.  */
+ 	      gimple_call_copy_flags (new_call, call_stmt);
+ 	      gimple_call_set_va_arg_pack (new_call, false);
++	      gimple_call_set_fntype (new_call, gimple_call_fntype (call_stmt));
+ 	      /* location includes block.  */
+ 	      gimple_set_location (new_call, gimple_location (stmt));
+ 	      gimple_call_set_lhs (new_call, gimple_call_lhs (call_stmt));
 diff --git a/gcc/tree-loop-distribution.c b/gcc/tree-loop-distribution.c
-index 888af48946f..4d7bc44f921 100644
+index 888af48946f..3a5f03b3e54 100644
 --- a/gcc/tree-loop-distribution.c
 +++ b/gcc/tree-loop-distribution.c
 @@ -115,6 +115,7 @@ along with GCC; see the file COPYING3.  If not see
@@ -13440,6 +15395,37 @@ index 888af48946f..4d7bc44f921 100644
    for (int i = 0; i < rpo_num; i++)
      bb_top_order_index[rpo[i]] = i;
  
+@@ -3181,6 +3202,16 @@ find_seed_stmts_for_distribution (class loop *loop, vec<gimple *> *work_list)
+   /* Initialize the worklist with stmts we seed the partitions with.  */
+   for (unsigned i = 0; i < loop->num_nodes; ++i)
+     {
++      /* In irreducible sub-regions we don't know how to redirect
++	 conditions, so fail.  See PR100492.  */
++      if (bbs[i]->flags & BB_IRREDUCIBLE_LOOP)
++	{
++	  if (dump_file && (dump_flags & TDF_DETAILS))
++	    fprintf (dump_file, "loop %d contains an irreducible region.\n",
++		     loop->num);
++	  work_list->truncate (0);
++	  break;
++	}
+       for (gphi_iterator gsi = gsi_start_phis (bbs[i]);
+ 	   !gsi_end_p (gsi); gsi_next (&gsi))
+ 	{
+diff --git a/gcc/tree-ssa-dom.c b/gcc/tree-ssa-dom.c
+index 864c984f636..c0d77b5f46c 100644
+--- a/gcc/tree-ssa-dom.c
++++ b/gcc/tree-ssa-dom.c
+@@ -695,7 +695,8 @@ pass_dominator::execute (function *fun)
+      gcc.dg/tree-ssa/pr21417.c can't be threaded if loop preheader is
+      missing.  We should improve jump threading in future then
+      LOOPS_HAVE_PREHEADERS won't be needed here.  */
+-  loop_optimizer_init (LOOPS_HAVE_PREHEADERS | LOOPS_HAVE_SIMPLE_LATCHES);
++  loop_optimizer_init (LOOPS_HAVE_PREHEADERS | LOOPS_HAVE_SIMPLE_LATCHES
++		       | LOOPS_HAVE_MARKED_IRREDUCIBLE_REGIONS);
+ 
+   /* Initialize the value-handle array.  */
+   threadedge_initialize_values ();
 diff --git a/gcc/tree-ssa-phiopt.c b/gcc/tree-ssa-phiopt.c
 index b1e0dce93d8..9ed26a3d45f 100644
 --- a/gcc/tree-ssa-phiopt.c
@@ -14225,10 +16211,21 @@ index 8a390d0857b..1dce2292522 100644
  
  /* Given two virtual locations *LOC0 and *LOC1, return the first
 diff --git a/libgcc/ChangeLog b/libgcc/ChangeLog
-index 1f9de3d5091..f6fad502605 100644
+index 1f9de3d5091..9b8ece2dcfe 100644
 --- a/libgcc/ChangeLog
 +++ b/libgcc/ChangeLog
-@@ -1,3 +1,25 @@
+@@ -1,3 +1,36 @@
++2021-06-18  Srinath Parvathaneni  <srinath.parvathaneni@arm.com>
++
++	Backported from master:
++	2021-06-11  Srinath Parvathaneni  <srinath.parvathaneni@arm.com>
++
++	PR target/99939
++	* config/arm/cmse_nonsecure_call.S: Add	__ARM_FEATURE_MVE
++	macro.
++	* config/arm/t-arm: To link cmse.o and cmse_nonsecure_call.o
++	on passing -mcmse option.
++
 +2021-04-27  Michael Meissner  <meissner@linux.ibm.com>
 +
 +	PR target/98952
@@ -14254,6 +16251,53 @@ index 1f9de3d5091..f6fad502605 100644
  2021-04-08  Release Manager
  
  	* GCC 10.3.0 released.
+diff --git a/libgcc/config/arm/cmse_nonsecure_call.S b/libgcc/config/arm/cmse_nonsecure_call.S
+index 5ba28692d6b..b1954b8714d 100644
+--- a/libgcc/config/arm/cmse_nonsecure_call.S
++++ b/libgcc/config/arm/cmse_nonsecure_call.S
+@@ -25,7 +25,7 @@
+ 
+ .syntax unified
+ #ifdef __ARM_PCS_VFP
+-# if __ARM_FP & 0x8
++# if (__ARM_FP & 0x8) || (__ARM_FEATURE_MVE & 1)
+ 	.fpu fpv5-d16
+ # else
+ 	.fpu fpv4-sp-d16
+@@ -59,7 +59,7 @@ vmov	    s24, s25, r5, r5
+ vmov	    s26, s27, r5, r5
+ vmov	    s28, s29, r5, r5
+ vmov	    s30, s31, r5, r5
+-#elif __ARM_FP & 0x08
++#elif (__ARM_FP & 0x8) || (__ARM_FEATURE_MVE & 1)
+ vmov.f64    d9, d8
+ vmov.f64    d10, d8
+ vmov.f64    d11, d8
+diff --git a/libgcc/config/arm/t-arm b/libgcc/config/arm/t-arm
+index 3625a2590be..c1553d4e5d8 100644
+--- a/libgcc/config/arm/t-arm
++++ b/libgcc/config/arm/t-arm
+@@ -3,18 +3,17 @@ LIB1ASMFUNCS = _thumb1_case_sqi _thumb1_case_uqi _thumb1_case_shi \
+ 	_thumb1_case_uhi _thumb1_case_si _speculation_barrier
+ 
+ HAVE_CMSE:=$(findstring __ARM_FEATURE_CMSE,$(shell $(gcc_compile_bare) -dM -E - </dev/null))
+-HAVE_V81M:=$(findstring armv8.1-m.main,$(gcc_compile_bare))
+ ifeq ($(shell $(gcc_compile_bare) -E -mcmse - </dev/null >/dev/null 2>/dev/null; echo $$?),0)
+ CMSE_OPTS:=-mcmse
+ endif
+ 
+ ifdef HAVE_CMSE
+-ifndef HAVE_V81M
++
+ libgcc-objects += cmse.o cmse_nonsecure_call.o
+ 
+ cmse.o: $(srcdir)/config/arm/cmse.c
+ 	$(gcc_compile) -c $(CMSE_OPTS) $<
++
+ cmse_nonsecure_call.o: $(srcdir)/config/arm/cmse_nonsecure_call.S
+ 		       $(gcc_compile) -c $<
+ endif
+-endif
 diff --git a/libgcc/config/rs6000/t-linux b/libgcc/config/rs6000/t-linux
 index 72e9c2770a6..500210ddaf2 100644
 --- a/libgcc/config/rs6000/t-linux
@@ -16514,6 +18558,37 @@ index 00000000000..1d415cdcf76
 +
 +  return 0;
 +}
+diff --git a/libitm/ChangeLog b/libitm/ChangeLog
+index 97ead0843e9..3be0ec8af29 100644
+--- a/libitm/ChangeLog
++++ b/libitm/ChangeLog
+@@ -1,3 +1,11 @@
++2021-06-18  Jonathan Wakely  <jwakely@redhat.com>
++
++	Backported from master:
++	2021-06-17  Jonathan Wakely  <jwakely@redhat.com>
++
++	PR libstdc++/91488
++	* testsuite/libitm.c++/libstdc++-pr91488.C: New test.
++
+ 2021-04-08  Release Manager
+ 
+ 	* GCC 10.3.0 released.
+diff --git a/libitm/testsuite/libitm.c++/libstdc++-pr91488.C b/libitm/testsuite/libitm.c++/libstdc++-pr91488.C
+new file mode 100644
+index 00000000000..e9e82bd1ce2
+--- /dev/null
++++ b/libitm/testsuite/libitm.c++/libstdc++-pr91488.C
+@@ -0,0 +1,9 @@
++// PR libstdc++/91488 "inlining failed in call to always_inline"
++// { dg-do run }
++// { dg-additional-options "-O1" }
++
++#include <string>
++
++int main() {
++    return std::char_traits<char>::length("");
++}
 diff --git a/libphobos/ChangeLog b/libphobos/ChangeLog
 index 053809c0ea7..f47e999cc94 100644
 --- a/libphobos/ChangeLog
@@ -16717,10 +18792,182 @@ index 304b3a01a08..ac88fbe074e 100644
    UnmapOrDie(oldstack.ss_sp, oldstack.ss_size);
  }
 diff --git a/libstdc++-v3/ChangeLog b/libstdc++-v3/ChangeLog
-index fdd63cbff1a..ab9d809d77b 100644
+index fdd63cbff1a..cee2dadba6d 100644
 --- a/libstdc++-v3/ChangeLog
 +++ b/libstdc++-v3/ChangeLog
-@@ -1,3 +1,726 @@
+@@ -1,3 +1,898 @@
++2021-06-18  Jonathan Wakely  <jwakely@redhat.com>
++
++	Backported from master:
++	2021-06-18  Jonathan Wakely  <jwakely@redhat.com>
++
++	PR libstdc++/95833
++	* include/std/numeric (reduce(Iter, Iter, T, BinaryOp)): Replace
++	incorrect static_assert with ones matching the 'Mandates'
++	conditions in the standard.
++	* testsuite/26_numerics/reduce/95833.cc: New test.
++
++2021-06-18  Jonathan Wakely  <jwakely@redhat.com>
++
++	* include/std/variant (__same_types, __check_visitor_results):
++	Remove.
++
++2021-06-18  Jonathan Wakely  <jwakely@redhat.com>
++
++	Backported from master:
++	2021-05-04  Jonathan Wakely  <jwakely@redhat.com>
++
++	* include/std/future (promise::set_value): Check for existence
++	of shared state before dereferncing it.
++	(promise::set_exception, promise::set_value_at_thread_exit)
++	(promise::set_exception_at_thread_exit): Likewise.
++	(promise<R&>::set_value, promise<R&>::set_exception)
++	(promise<R&>::set_value_at_thread_exit)
++	(promise<R&>::set_exception_at_thread_exit): Likewise.
++	(promise<void>::set_value, promise<void>::set_exception)
++	(promise<void>::set_value_at_thread_exit)
++	(promise<void>::set_exception_at_thread_exit): Likewise.
++	* testsuite/30_threads/promise/members/at_thread_exit2.cc:
++	Remove unused variable.
++
++2021-06-18  Jonathan Wakely  <jwakely@redhat.com>
++
++	Backported from master:
++	2021-05-04  Jonathan Wakely  <jwakely@redhat.com>
++
++	* include/bits/basic_string.h (basic_string(const CharT*, const A&)):
++	Do not do arithmetic on null pointer.
++
++2021-06-18  Jonathan Wakely  <jwakely@redhat.com>
++
++	Backported from master:
++	2021-05-04  Jonathan Wakely  <jwakely@redhat.com>
++
++	* include/ext/pb_ds/detail/cc_hash_table_map_/cc_ht_map_.hpp
++	(find_key_pointer(key_const_reference, false_type))
++	(find_key_pointer(key_const_reference, true_type)): Do not
++	dereference null pointer.
++
++2021-06-18  Jonathan Wakely  <jwakely@redhat.com>
++
++	Backported from master:
++	2021-05-04  Jonathan Wakely  <jwakely@redhat.com>
++
++	* testsuite/20_util/from_chars/3.cc: Use unsigned type to avoid
++	overflow.
++	* testsuite/24_iterators/reverse_iterator/2.cc: Do not add
++	non-zero value to null pointer.
++	* testsuite/25_algorithms/copy_backward/move_iterators/69478.cc:
++	Use past-the-end iterator for result.
++	* testsuite/25_algorithms/move_backward/69478.cc: Likewise.
++	* testsuite/25_algorithms/move_backward/93872.cc: Likewise.
++
++2021-06-18  Jonathan Wakely  <jwakely@redhat.com>
++
++	Backported from master:
++	2021-05-04  Jonathan Wakely  <jwakely@redhat.com>
++
++	PR libstdc++/100384
++	* include/std/variant (__get_t): New alias template yielding the
++	return type of std::get<N> on a variant.
++	(__visit_result_t): New alias template yielding the result of
++	std::visit.
++	(__same_types): Move into namespace __detail::__variant.
++	(__check_visitor_results): Likewise. Use __invoke_result_t and
++	__get_t.
++	(__check_visitor_result): Remove.
++	(visit): Use __visit_result_t for return type.
++	* testsuite/20_util/variant/100384.cc: New test.
++
++2021-06-18  Jonathan Wakely  <jwakely@redhat.com>
++
++	Backported from master:
++	2021-04-22  Jonathan Wakely  <jwakely@redhat.com>
++
++	PR libstdc++/99006
++	* include/bits/shared_ptr.h (allocate_shared): Assert that _Tp
++	is not an array type.
++	* include/bits/shared_ptr_base.h (__allocate_shared): Likewise.
++	* testsuite/20_util/shared_ptr/creation/99006.cc: New test.
++
++2021-06-18  Jonathan Wakely  <jwakely@redhat.com>
++
++	Backported from master:
++	2021-05-11  Jonathan Wakely  <jwakely@redhat.com>
++
++	* include/bits/allocator.h (allocator<void>) [C++20]: Add
++	missing noexcept to constructor. Restore missing POCMA and
++	is_always_equal_traits.
++	* include/bits/memoryfwd.h (allocator_traits): Declare.
++	* include/ext/malloc_allocator.h (malloc_allocator::allocate):
++	Add nodiscard attribute. Add static assertion for LWG 3307.
++	* include/ext/new_allocator.h (new_allocator::allocate): Add
++	static assertion for LWG 3307.
++	* testsuite/20_util/allocator/void.cc: Check that converting
++	constructor is noexcept. Check for propagation traits and
++	size_type and difference_type. Check that pointer and
++	const_pointer are gone in C++20.
++
++2021-06-18  Jonathan Wakely  <jwakely@redhat.com>
++
++	Backported from master:
++	2021-05-10  Jonathan Wakely  <jwakely@redhat.com>
++
++	* include/bits/shared_ptr_base.h (__shared_count(unique_ptr&&)):
++	Initialize a non-reference deleter from an rvalue, as per LWG
++	3548.
++	(__shared_ptr::_UniqCompatible): Add missing constraint.
++	* testsuite/20_util/shared_ptr/cons/lwg3548.cc: New test.
++	* testsuite/20_util/shared_ptr/cons/unique_ptr_deleter.cc: Check
++	constraints.
++
++2021-06-18  Jonathan Wakely  <jwakely@redhat.com>
++
++	Backported from master:
++	2021-06-17  Jonathan Wakely  <jwakely@redhat.com>
++
++	PR libstdc++/91488
++	* include/bits/basic_string.h (__cpp_lib_constexpr_string): Only
++	define C++20 value when std::is_constant_evaluated is available.
++	* include/bits/char_traits.h (__cpp_lib_constexpr_char_traits):
++	Likewise.
++	(__constant_string_p, __constant_array_p): Give external
++	linkage.
++	* include/std/version (__cpp_lib_constexpr_char_traits)
++	(__cpp_lib_constexpr_string): Only define C++20 values when
++	is_constant_evaluated is available.
++
++2021-06-14  Jonathan Wakely  <jwakely@redhat.com>
++
++	Backported from master:
++	2021-05-10  Jonathan Wakely  <jwakely@redhat.com>
++
++	* testsuite/20_util/scoped_allocator/69293_neg.cc: Add dg-error
++	for additional errors in C++20.
++	* testsuite/20_util/uses_allocator/69293_neg.cc: Likewise.
++	* testsuite/20_util/uses_allocator/cons_neg.cc: Likewise.
++
++2021-06-14  Jonathan Wakely  <jwakely@redhat.com>
++
++	Backported from master:
++	2021-06-09  Jonathan Wakely  <jwakely@redhat.com>
++
++	PR libstdc++/100982
++	* include/std/optional (optional::operator=(const optional<U>&)):
++	Fix value category used in is_assignable check.
++	* testsuite/20_util/optional/assignment/100982.cc: New test.
++
++2021-06-14  Jonathan Wakely  <jwakely@redhat.com>
++
++	Backported from master:
++	2021-06-14  Jonathan Wakely  <jwakely@redhat.com>
++
++	PR libstdc++/101034
++	* include/std/any (any(in_place_t<T>, initializer_list<U>, A&&...))
++	(any::emplace<T>(initializer_list<U>, A&&...)): Fix constraint
++	to use lvalue.
++	* testsuite/20_util/any/cons/101034.cc: New test.
++
 +2021-06-10  Patrick Palka  <ppalka@redhat.com>
 +
 +	Backported from master:
@@ -17486,6 +19733,96 @@ index 86d8ed221ff..4fcaa533f46 100644
         *  @param  __a  An allocator.
         *  @param  __p  Pointer to memory of suitable size and alignment for Tp
         *  @param  __args Constructor arguments.
+diff --git a/libstdc++-v3/include/bits/allocator.h b/libstdc++-v3/include/bits/allocator.h
+index d224aa3ec5e..8c538954caf 100644
+--- a/libstdc++-v3/include/bits/allocator.h
++++ b/libstdc++-v3/include/bits/allocator.h
+@@ -60,6 +60,13 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+    *  @{
+    */
+ 
++  // Since C++20 the primary template should be used for allocator<void>,
++  // but then it would have a non-trivial default ctor and dtor, which
++  // would be an ABI change. So C++20 still uses the allocator<void> explicit
++  // specialization, with the historical ABI properties, but with the same
++  // members that are present in the primary template.
++
++#if ! _GLIBCXX_INLINE_VERSION
+   /// allocator<void> specialization.
+   template<>
+     class allocator<void>
+@@ -68,28 +75,37 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+       typedef void        value_type;
+       typedef size_t      size_type;
+       typedef ptrdiff_t   difference_type;
++
+ #if __cplusplus <= 201703L
++      // These were removed for C++20.
+       typedef void*       pointer;
+       typedef const void* const_pointer;
+ 
+       template<typename _Tp1>
+ 	struct rebind
+ 	{ typedef allocator<_Tp1> other; };
+-#else
+-      allocator() = default;
+-
+-      template<typename _Up>
+-	constexpr
+-	allocator(const allocator<_Up>&) { }
+-#endif // ! C++20
++#endif
+ 
+-#if __cplusplus >= 201103L && __cplusplus <= 201703L
++#if __cplusplus >= 201103L
+       // _GLIBCXX_RESOLVE_LIB_DEFECTS
+       // 2103. std::allocator propagate_on_container_move_assignment
+       typedef true_type propagate_on_container_move_assignment;
+ 
+       typedef true_type is_always_equal;
+ 
++#if __cplusplus > 201703L
++      allocator() = default;
++
++      template<typename _Up>
++	constexpr
++	allocator(const allocator<_Up>&) noexcept { }
++
++      // No allocate member because it's ill-formed by LWG 3307.
++      // No deallocate member because it would be undefined to call it
++      // with any pointer which wasn't obtained from allocate.
++
++#else // ! C++20
++      // allocator_traits<allocator<void>> uses construct and destroy.
+       template<typename _Up, typename... _Args>
+ 	void
+ 	construct(_Up* __p, _Args&&... __args)
+@@ -101,11 +117,13 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+ 	destroy(_Up* __p)
+ 	noexcept(std::is_nothrow_destructible<_Up>::value)
+ 	{ __p->~_Up(); }
+-#endif // C++11 to C++17
++#endif // C++17
++#endif // C++11
+     };
++#endif // ! _GLIBCXX_INLINE_VERSION
+ 
+   /**
+-   * @brief  The @a standard allocator, as per [20.4].
++   * @brief  The @a standard allocator, as per C++03 [20.4.1].
+    *
+    *  See https://gcc.gnu.org/onlinedocs/libstdc++/manual/memory.html#std.util.memory.allocator
+    *  for further details.
+@@ -119,7 +137,9 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+       typedef _Tp        value_type;
+       typedef size_t     size_type;
+       typedef ptrdiff_t  difference_type;
++
+ #if __cplusplus <= 201703L
++      // These were removed for C++20.
+       typedef _Tp*       pointer;
+       typedef const _Tp* const_pointer;
+       typedef _Tp&       reference;
 diff --git a/libstdc++-v3/include/bits/atomic_base.h b/libstdc++-v3/include/bits/atomic_base.h
 index 41d5928e482..fe2a2453265 100644
 --- a/libstdc++-v3/include/bits/atomic_base.h
@@ -17552,10 +19889,10 @@ index 2771756bbc9..5b23240573f 100644
        /**
         *  @brief  Returns the error state of the stream buffer.
 diff --git a/libstdc++-v3/include/bits/basic_string.h b/libstdc++-v3/include/bits/basic_string.h
-index 0b893bcea85..2125df2d476 100644
+index 0b893bcea85..03f2f12d6b9 100644
 --- a/libstdc++-v3/include/bits/basic_string.h
 +++ b/libstdc++-v3/include/bits/basic_string.h
-@@ -48,11 +48,18 @@
+@@ -48,11 +48,19 @@
  # include <string_view>
  #endif
  
@@ -17564,18 +19901,33 @@ index 0b893bcea85..2125df2d476 100644
  {
  _GLIBCXX_BEGIN_NAMESPACE_VERSION
  
-+#if __cplusplus == 201703L
++#ifdef __cpp_lib_is_constant_evaluated
++// Support P1032R1 in C++20 (but not P0980R1 yet).
++# define __cpp_lib_constexpr_string 201811L
++#elif __cplusplus >= 201703L
 +// Support P0426R1 changes to char_traits in C++17.
 +# define __cpp_lib_constexpr_string 201611L
 +#elif __cplusplus > 201703L
-+// Also support P1032R1 in C++20 (but not P0980R1 yet).
-+# define __cpp_lib_constexpr_string 201811L
 +#endif
 +
  #if _GLIBCXX_USE_CXX11_ABI
  _GLIBCXX_BEGIN_NAMESPACE_CXX11
    /**
-@@ -4672,10 +4679,9 @@ _GLIBCXX_END_NAMESPACE_CXX11
+@@ -524,7 +532,12 @@ _GLIBCXX_BEGIN_NAMESPACE_CXX11
+ #endif
+       basic_string(const _CharT* __s, const _Alloc& __a = _Alloc())
+       : _M_dataplus(_M_local_data(), __a)
+-      { _M_construct(__s, __s ? __s + traits_type::length(__s) : __s+npos); }
++      {
++	const _CharT* __end = __s ? __s + traits_type::length(__s)
++	  // We just need a non-null pointer here to get an exception:
++	  : reinterpret_cast<const _CharT*>(__alignof__(_CharT));
++	_M_construct(__s, __end, random_access_iterator_tag());
++      }
+ 
+       /**
+        *  @brief  Construct string as multiple characters.
+@@ -4672,10 +4685,9 @@ _GLIBCXX_END_NAMESPACE_CXX11
  
        /**
         *  @brief  Insert a string_view.
@@ -17589,6 +19941,46 @@ index 0b893bcea85..2125df2d476 100644
         *  @param __n    The number of characters to insert.
         *  @return  Reference to this string.
        */
+diff --git a/libstdc++-v3/include/bits/char_traits.h b/libstdc++-v3/include/bits/char_traits.h
+index c798f844a73..962507c14e5 100644
+--- a/libstdc++-v3/include/bits/char_traits.h
++++ b/libstdc++-v3/include/bits/char_traits.h
+@@ -237,12 +237,12 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+ 
+ #if __cplusplus >= 201703L
+ 
+-#if __cplusplus == 201703L
+-// Unofficial macro indicating P0426R1 support
+-# define __cpp_lib_constexpr_char_traits 201611L
+-#else
+-// Also support P1032R1 in C++20
++#ifdef __cpp_lib_is_constant_evaluated
++// Unofficial macro indicating P1032R1 support in C++20
+ # define __cpp_lib_constexpr_char_traits 201811L
++#else
++// Unofficial macro indicating P0426R1 support in C++17
++# define __cpp_lib_constexpr_char_traits 201611L
+ #endif
+ 
+   /**
+@@ -253,7 +253,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+    *  Assumes that _CharT is a built-in character type.
+    */
+   template<typename _CharT>
+-    static _GLIBCXX_ALWAYS_INLINE constexpr bool
++    _GLIBCXX_ALWAYS_INLINE constexpr bool
+     __constant_string_p(const _CharT* __s)
+     {
+ #ifdef _GLIBCXX_HAVE_BUILTIN_IS_CONSTANT_EVALUATED
+@@ -276,7 +276,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+    *  Assumes that _CharT is a built-in character type.
+    */
+   template<typename _CharT>
+-    static _GLIBCXX_ALWAYS_INLINE constexpr bool
++    _GLIBCXX_ALWAYS_INLINE constexpr bool
+     __constant_char_array_p(const _CharT* __a, size_t __n)
+     {
+ #ifdef _GLIBCXX_HAVE_BUILTIN_IS_CONSTANT_EVALUATED
 diff --git a/libstdc++-v3/include/bits/forward_list.h b/libstdc++-v3/include/bits/forward_list.h
 index 49b2a973718..fd08bb83f51 100644
 --- a/libstdc++-v3/include/bits/forward_list.h
@@ -18207,6 +20599,30 @@ index 579cd59e59a..845a1d6570a 100644
  
  _GLIBCXX_END_NAMESPACE_VERSION
  } // namespace
+diff --git a/libstdc++-v3/include/bits/memoryfwd.h b/libstdc++-v3/include/bits/memoryfwd.h
+index af1a1c69c64..8f7a5a96250 100644
+--- a/libstdc++-v3/include/bits/memoryfwd.h
++++ b/libstdc++-v3/include/bits/memoryfwd.h
+@@ -63,15 +63,16 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+   template<typename>
+     class allocator;
+ 
+-#if __cplusplus <= 201703L
+   template<>
+     class allocator<void>;
+-#endif
+ 
+ #if __cplusplus >= 201103L
+-  /// Declare uses_allocator so it can be specialized in \<queue\> etc.
++  /// Declare uses_allocator so it can be specialized in `<queue>` etc.
+   template<typename, typename>
+     struct uses_allocator;
++
++  template<typename>
++    struct allocator_traits;
+ #endif
+ 
+   /// @} group memory
 diff --git a/libstdc++-v3/include/bits/random.h b/libstdc++-v3/include/bits/random.h
 index cba11299360..2bcac1b41b1 100644
 --- a/libstdc++-v3/include/bits/random.h
@@ -19082,7 +21498,7 @@ index 0fc3ed41078..93ef4c66f38 100644
  _GLIBCXX_END_NAMESPACE_VERSION
  } // namespace std
 diff --git a/libstdc++-v3/include/bits/shared_ptr.h b/libstdc++-v3/include/bits/shared_ptr.h
-index 0c393e23132..0baec4e0882 100644
+index 0c393e23132..af7a696adb0 100644
 --- a/libstdc++-v3/include/bits/shared_ptr.h
 +++ b/libstdc++-v3/include/bits/shared_ptr.h
 @@ -661,7 +661,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
@@ -19094,7 +21510,16 @@ index 0c393e23132..0baec4e0882 100644
  
    /**
     * @brief  A non-owning observer for a pointer owned by a shared_ptr
-@@ -888,8 +888,8 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+@@ -856,6 +856,8 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+     inline shared_ptr<_Tp>
+     allocate_shared(const _Alloc& __a, _Args&&... __args)
+     {
++      static_assert(!is_array<_Tp>::value, "make_shared<T[]> not supported");
++
+       return shared_ptr<_Tp>(_Sp_alloc_shared_tag<_Alloc>{__a},
+ 			     std::forward<_Args>(__args)...);
+     }
+@@ -888,8 +890,8 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
        }
      };
  
@@ -19160,10 +21585,38 @@ index 13eb7f44a82..ce2e260702d 100644
  _GLIBCXX_END_NAMESPACE_VERSION
  } // namespace
 diff --git a/libstdc++-v3/include/bits/shared_ptr_base.h b/libstdc++-v3/include/bits/shared_ptr_base.h
-index ff578e66117..f0232c36be9 100644
+index ff578e66117..792d8344664 100644
 --- a/libstdc++-v3/include/bits/shared_ptr_base.h
 +++ b/libstdc++-v3/include/bits/shared_ptr_base.h
-@@ -1362,7 +1362,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+@@ -716,8 +716,11 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+ 	  using _Alloc_traits = allocator_traits<_Alloc>;
+ 	  _Alloc __a;
+ 	  _Sp_cd_type* __mem = _Alloc_traits::allocate(__a, 1);
++	  // _GLIBCXX_RESOLVE_LIB_DEFECTS
++	  // 3548. shared_ptr construction from unique_ptr should move
++	  // (not copy) the deleter
+ 	  _Alloc_traits::construct(__a, __mem, __r.release(),
+-				   __r.get_deleter());  // non-throwing
++				   std::forward<_Del>(__r.get_deleter()));
+ 	  _M_pi = __mem;
+ 	}
+ 
+@@ -1104,9 +1107,11 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+       // Constraint for construction from unique_ptr:
+       template<typename _Yp, typename _Del, typename _Res = void,
+ 	       typename _Ptr = typename unique_ptr<_Yp, _Del>::pointer>
+-	using _UniqCompatible = typename enable_if<__and_<
+-	  __sp_compatible_with<_Yp*, _Tp*>, is_convertible<_Ptr, element_type*>
+-	  >::value, _Res>::type;
++	using _UniqCompatible = __enable_if_t<__and_<
++	  __sp_compatible_with<_Yp*, _Tp*>,
++	  is_convertible<_Ptr, element_type*>,
++	  is_move_constructible<_Del>
++	  >::value, _Res>;
+ 
+       // Constraint for assignment from unique_ptr:
+       template<typename _Yp, typename _Del>
+@@ -1362,7 +1367,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
  	bool
  	owner_before(__weak_ptr<_Tp1, _Lp> const& __rhs) const noexcept
  	{ return _M_refcount._M_less(__rhs._M_refcount); }
@@ -19172,6 +21625,15 @@ index ff578e66117..f0232c36be9 100644
  
      protected:
        // This constructor is non-standard, it is used by allocate_shared.
+@@ -1865,6 +1870,8 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+     inline __shared_ptr<_Tp, _Lp>
+     __allocate_shared(const _Alloc& __a, _Args&&... __args)
+     {
++      static_assert(!is_array<_Tp>::value, "make_shared<T[]> not supported");
++
+       return __shared_ptr<_Tp, _Lp>(_Sp_alloc_shared_tag<_Alloc>{__a},
+ 				    std::forward<_Args>(__args)...);
+     }
 diff --git a/libstdc++-v3/include/bits/slice_array.h b/libstdc++-v3/include/bits/slice_array.h
 index de33342e252..d875fc225b3 100644
 --- a/libstdc++-v3/include/bits/slice_array.h
@@ -22121,6 +24583,53 @@ index 4c47348373b..725fee4e71a 100644
  
  } // namespace v1
  } // namespace net
+diff --git a/libstdc++-v3/include/ext/malloc_allocator.h b/libstdc++-v3/include/ext/malloc_allocator.h
+index 366c766f25b..8de833f3641 100644
+--- a/libstdc++-v3/include/ext/malloc_allocator.h
++++ b/libstdc++-v3/include/ext/malloc_allocator.h
+@@ -99,9 +99,15 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+ 
+       // NB: __n is permitted to be 0.  The C++ standard says nothing
+       // about what the return value is when __n == 0.
+-      _Tp*
++      _GLIBCXX_NODISCARD _Tp*
+       allocate(size_type __n, const void* = 0)
+       {
++#if __cplusplus >= 201103L
++	 // _GLIBCXX_RESOLVE_LIB_DEFECTS
++	 // 3308. std::allocator<void>().allocate(n)
++	 static_assert(sizeof(_Tp) != 0, "cannot allocate incomplete types");
++#endif
++
+ 	if (__n > this->_M_max_size())
+ 	  std::__throw_bad_alloc();
+ 
+diff --git a/libstdc++-v3/include/ext/new_allocator.h b/libstdc++-v3/include/ext/new_allocator.h
+index 131718b8b2f..5375be3bbb9 100644
+--- a/libstdc++-v3/include/ext/new_allocator.h
++++ b/libstdc++-v3/include/ext/new_allocator.h
+@@ -42,7 +42,7 @@ namespace __gnu_cxx _GLIBCXX_VISIBILITY(default)
+ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+ 
+   /**
+-   *  @brief  An allocator that uses global new, as per [20.4].
++   *  @brief  An allocator that uses global new, as per C++03 [20.4.1].
+    *  @ingroup allocators
+    *
+    *  This is precisely the allocator defined in the C++ Standard.
+@@ -102,6 +102,12 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+       _GLIBCXX_NODISCARD _Tp*
+       allocate(size_type __n, const void* = static_cast<const void*>(0))
+       {
++#if __cplusplus >= 201103L
++	 // _GLIBCXX_RESOLVE_LIB_DEFECTS
++	 // 3308. std::allocator<void>().allocate(n)
++	 static_assert(sizeof(_Tp) != 0, "cannot allocate incomplete types");
++#endif
++
+ 	if (__n > this->_M_max_size())
+ 	  std::__throw_bad_alloc();
+ 
 diff --git a/libstdc++-v3/include/ext/pb_ds/assoc_container.hpp b/libstdc++-v3/include/ext/pb_ds/assoc_container.hpp
 index f497cfec53d..38286b8ac47 100644
 --- a/libstdc++-v3/include/ext/pb_ds/assoc_container.hpp
@@ -22156,6 +24665,54 @@ index f497cfec53d..38286b8ac47 100644
  } // namespace __gnu_pbds
  
  #endif
+diff --git a/libstdc++-v3/include/ext/pb_ds/detail/cc_hash_table_map_/cc_ht_map_.hpp b/libstdc++-v3/include/ext/pb_ds/detail/cc_hash_table_map_/cc_ht_map_.hpp
+index a46b23f4699..3787526a3a7 100644
+--- a/libstdc++-v3/include/ext/pb_ds/detail/cc_hash_table_map_/cc_ht_map_.hpp
++++ b/libstdc++-v3/include/ext/pb_ds/detail/cc_hash_table_map_/cc_ht_map_.hpp
+@@ -524,13 +524,16 @@ namespace __gnu_pbds
+ 
+ 	resize_base::notify_find_search_end();
+ 
+-#ifdef _GLIBCXX_DEBUG
+ 	if (p_e == 0)
+-	  PB_DS_CHECK_KEY_DOES_NOT_EXIST(r_key)
++	  {
++	    PB_DS_CHECK_KEY_DOES_NOT_EXIST(r_key)
++	    return 0;
++	  }
+ 	else
+-	  PB_DS_CHECK_KEY_EXISTS(r_key)
+-#endif
+-	return &p_e->m_value;
++	  {
++	    PB_DS_CHECK_KEY_EXISTS(r_key)
++	    return &p_e->m_value;
++	  }
+       }
+ 
+       inline pointer
+@@ -550,13 +553,16 @@ namespace __gnu_pbds
+ 
+ 	resize_base::notify_find_search_end();
+ 
+-#ifdef _GLIBCXX_DEBUG
+ 	if (p_e == 0)
+-	  PB_DS_CHECK_KEY_DOES_NOT_EXIST(r_key)
++	  {
++	    PB_DS_CHECK_KEY_DOES_NOT_EXIST(r_key)
++	    return 0;
++	  }
+ 	else
+-	  PB_DS_CHECK_KEY_EXISTS(r_key)
+-#endif
+-	return &p_e->m_value;
++	  {
++	    PB_DS_CHECK_KEY_EXISTS(r_key)
++	    return &p_e->m_value;
++	  }
+       }
+ 
+       inline bool
 diff --git a/libstdc++-v3/include/ext/pb_ds/detail/priority_queue_base_dispatch.hpp b/libstdc++-v3/include/ext/pb_ds/detail/priority_queue_base_dispatch.hpp
 index 1dc3f86c08b..9fec9a078cb 100644
 --- a/libstdc++-v3/include/ext/pb_ds/detail/priority_queue_base_dispatch.hpp
@@ -22364,9 +24921,27 @@ index 25d725015ec..bbd8c61e5d4 100644
        /**
         * @brief Resets the distribution state.
 diff --git a/libstdc++-v3/include/std/any b/libstdc++-v3/include/std/any
-index e13292296d3..d6397a08531 100644
+index e13292296d3..16723c3a304 100644
 --- a/libstdc++-v3/include/std/any
 +++ b/libstdc++-v3/include/std/any
+@@ -205,7 +205,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+     /// the contained object.
+     template <typename _Tp, typename _Up, typename... _Args,
+ 	      typename _VTp = decay_t<_Tp>, typename _Mgr = _Manager<_VTp>,
+-	      __any_constructible_t<_VTp, initializer_list<_Up>,
++	      __any_constructible_t<_VTp, initializer_list<_Up>&,
+ 				    _Args&&...> = false>
+       explicit
+       any(in_place_type_t<_Tp>, initializer_list<_Up> __il, _Args&&... __args)
+@@ -271,7 +271,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+     /// Emplace with an object created from @p __il and @p __args as
+     /// the contained object.
+     template <typename _Tp, typename _Up, typename... _Args>
+-      __emplace_t<decay_t<_Tp>, initializer_list<_Up>, _Args&&...>
++      __emplace_t<decay_t<_Tp>, initializer_list<_Up>&, _Args&&...>
+       emplace(initializer_list<_Up> __il, _Args&&... __args)
+       {
+ 	using _VTp = decay_t<_Tp>;
 @@ -488,7 +488,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
  	return static_cast<_ValueType>(std::move(*__p));
        __throw_bad_any_cast();
@@ -22721,10 +25296,167 @@ index efc99d1e5a5..0f02938cb1d 100644
        // Cached codecvt facet.
        const __codecvt_type* 	_M_codecvt;
 diff --git a/libstdc++-v3/include/std/future b/libstdc++-v3/include/std/future
-index 09f4af6fe7c..ceb1959e3b7 100644
+index 09f4af6fe7c..a036dc15682 100644
 --- a/libstdc++-v3/include/std/future
 +++ b/libstdc++-v3/include/std/future
-@@ -1767,7 +1767,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+@@ -533,26 +533,26 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+         };
+ 
+       template<typename _Res, typename _Arg>
++	__attribute__((__always_inline__))
+         static _Setter<_Res, _Arg&&>
+-        __setter(promise<_Res>* __prom, _Arg&& __arg)
++        __setter(promise<_Res>* __prom, _Arg&& __arg) noexcept
+         {
+-	  _S_check(__prom->_M_future);
+           return _Setter<_Res, _Arg&&>{ __prom, std::__addressof(__arg) };
+         }
+ 
+       template<typename _Res>
++	__attribute__((__always_inline__))
+         static _Setter<_Res, __exception_ptr_tag>
+-        __setter(exception_ptr& __ex, promise<_Res>* __prom)
++        __setter(exception_ptr& __ex, promise<_Res>* __prom) noexcept
+         {
+-	  _S_check(__prom->_M_future);
+           return _Setter<_Res, __exception_ptr_tag>{ __prom, &__ex };
+         }
+ 
+       template<typename _Res>
++	__attribute__((__always_inline__))
+ 	static _Setter<_Res, void>
+-	__setter(promise<_Res>* __prom)
++	__setter(promise<_Res>* __prom) noexcept
+ 	{
+-	  _S_check(__prom->_M_future);
+ 	  return _Setter<_Res, void>{ __prom };
+ 	}
+ 
+@@ -1118,36 +1118,44 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+       // Setting the result
+       void
+       set_value(const _Res& __r)
+-      { _M_future->_M_set_result(_State::__setter(this, __r)); }
++      { _M_state()._M_set_result(_State::__setter(this, __r)); }
+ 
+       void
+       set_value(_Res&& __r)
+-      { _M_future->_M_set_result(_State::__setter(this, std::move(__r))); }
++      { _M_state()._M_set_result(_State::__setter(this, std::move(__r))); }
+ 
+       void
+       set_exception(exception_ptr __p)
+-      { _M_future->_M_set_result(_State::__setter(__p, this)); }
++      { _M_state()._M_set_result(_State::__setter(__p, this)); }
+ 
+       void
+       set_value_at_thread_exit(const _Res& __r)
+       {
+-	_M_future->_M_set_delayed_result(_State::__setter(this, __r),
++	_M_state()._M_set_delayed_result(_State::__setter(this, __r),
+ 					 _M_future);
+       }
+ 
+       void
+       set_value_at_thread_exit(_Res&& __r)
+       {
+-	_M_future->_M_set_delayed_result(
++	_M_state()._M_set_delayed_result(
+ 	    _State::__setter(this, std::move(__r)), _M_future);
+       }
+ 
+       void
+       set_exception_at_thread_exit(exception_ptr __p)
+       {
+-	_M_future->_M_set_delayed_result(_State::__setter(__p, this),
++	_M_state()._M_set_delayed_result(_State::__setter(__p, this),
+ 					 _M_future);
+       }
++
++    private:
++      _State&
++      _M_state()
++      {
++	__future_base::_State_base::_S_check(_M_future);
++	return *_M_future;
++      }
+     };
+ 
+   template<typename _Res>
+@@ -1229,25 +1237,33 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+       // Setting the result
+       void
+       set_value(_Res& __r)
+-      { _M_future->_M_set_result(_State::__setter(this, __r)); }
++      { _M_state()._M_set_result(_State::__setter(this, __r)); }
+ 
+       void
+       set_exception(exception_ptr __p)
+-      { _M_future->_M_set_result(_State::__setter(__p, this)); }
++      { _M_state()._M_set_result(_State::__setter(__p, this)); }
+ 
+       void
+       set_value_at_thread_exit(_Res& __r)
+       {
+-	_M_future->_M_set_delayed_result(_State::__setter(this, __r),
++	_M_state()._M_set_delayed_result(_State::__setter(this, __r),
+ 					 _M_future);
+       }
+ 
+       void
+       set_exception_at_thread_exit(exception_ptr __p)
+       {
+-	_M_future->_M_set_delayed_result(_State::__setter(__p, this),
++	_M_state()._M_set_delayed_result(_State::__setter(__p, this),
+ 					 _M_future);
+       }
++
++    private:
++      _State&
++      _M_state()
++      {
++	__future_base::_State_base::_S_check(_M_future);
++	return *_M_future;
++      }
+     };
+ 
+   /// Explicit specialization for promise<void>
+@@ -1321,22 +1337,30 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+       // Setting the result
+       void
+       set_value()
+-      { _M_future->_M_set_result(_State::__setter(this)); }
++      { _M_state()._M_set_result(_State::__setter(this)); }
+ 
+       void
+       set_exception(exception_ptr __p)
+-      { _M_future->_M_set_result(_State::__setter(__p, this)); }
++      { _M_state()._M_set_result(_State::__setter(__p, this)); }
+ 
+       void
+       set_value_at_thread_exit()
+-      { _M_future->_M_set_delayed_result(_State::__setter(this), _M_future); }
++      { _M_state()._M_set_delayed_result(_State::__setter(this), _M_future); }
+ 
+       void
+       set_exception_at_thread_exit(exception_ptr __p)
+       {
+-	_M_future->_M_set_delayed_result(_State::__setter(__p, this),
++	_M_state()._M_set_delayed_result(_State::__setter(__p, this),
+ 					 _M_future);
+       }
++
++    private:
++      _State&
++      _M_state()
++      {
++	__future_base::_State_base::_S_check(_M_future);
++	return *_M_future;
++      }
+     };
+ 
+   template<typename _Ptr_type, typename _Fn, typename _Res>
+@@ -1767,7 +1791,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
  #endif // _GLIBCXX_ASYNC_ABI_COMPAT
  #endif // _GLIBCXX_HAS_GTHREADS
  
@@ -22894,10 +25626,24 @@ index 3c619f87040..dc846f015aa 100644
  } // namespace
  
 diff --git a/libstdc++-v3/include/std/numeric b/libstdc++-v3/include/std/numeric
-index bd70a52019b..6ad73d9713b 100644
+index bd70a52019b..03cf719c676 100644
 --- a/libstdc++-v3/include/std/numeric
 +++ b/libstdc++-v3/include/std/numeric
-@@ -693,7 +693,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+@@ -259,9 +259,11 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+     reduce(_InputIterator __first, _InputIterator __last, _Tp __init,
+ 	   _BinaryOperation __binary_op)
+     {
+-      using value_type = typename iterator_traits<_InputIterator>::value_type;
++      using __ref = typename iterator_traits<_InputIterator>::reference;
++      static_assert(is_invocable_r_v<_Tp, _BinaryOperation&, _Tp&, __ref>);
++      static_assert(is_invocable_r_v<_Tp, _BinaryOperation&, __ref, _Tp&>);
+       static_assert(is_invocable_r_v<_Tp, _BinaryOperation&, _Tp&, _Tp&>);
+-      static_assert(is_convertible_v<value_type, _Tp>);
++      static_assert(is_invocable_r_v<_Tp, _BinaryOperation&, __ref, __ref>);
+       if constexpr (__is_random_access_iter<_InputIterator>::value)
+ 	{
+ 	  while ((__last - __first) >= 4)
+@@ -693,7 +695,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
        return __result;
      }
  
@@ -22906,6 +25652,19 @@ index bd70a52019b..6ad73d9713b 100644
  
  _GLIBCXX_END_NAMESPACE_VERSION
  } // namespace std
+diff --git a/libstdc++-v3/include/std/optional b/libstdc++-v3/include/std/optional
+index d473b5369be..e3fbe625f25 100644
+--- a/libstdc++-v3/include/std/optional
++++ b/libstdc++-v3/include/std/optional
+@@ -798,7 +798,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+       template<typename _Up>
+ 	enable_if_t<__and_v<__not_<is_same<_Tp, _Up>>,
+ 			    is_constructible<_Tp, const _Up&>,
+-			    is_assignable<_Tp&, _Up>,
++			    is_assignable<_Tp&, const _Up&>,
+ 			    __not_<__converts_from_optional<_Tp, _Up>>,
+ 			    __not_<__assigns_from_optional<_Tp, _Up>>>,
+ 		    optional&>
 diff --git a/libstdc++-v3/include/std/ostream b/libstdc++-v3/include/std/ostream
 index 9a80adf3a5a..97ff1cee4e6 100644
 --- a/libstdc++-v3/include/std/ostream
@@ -24330,7 +27089,7 @@ index be2e70dc06a..f5d08973765 100644
  _GLIBCXX_END_NAMESPACE_VERSION
  } // namespace
 diff --git a/libstdc++-v3/include/std/variant b/libstdc++-v3/include/std/variant
-index fa0284d9738..0a754fb4196 100644
+index fa0284d9738..660b7fbc31c 100644
 --- a/libstdc++-v3/include/std/variant
 +++ b/libstdc++-v3/include/std/variant
 @@ -23,7 +23,7 @@
@@ -24342,8 +27101,51 @@ index fa0284d9738..0a754fb4196 100644
   */
  
  #ifndef _GLIBCXX_VARIANT
+@@ -1053,6 +1053,14 @@ namespace __variant
+ 			      std::index_sequence<__indices...>>
+     : _Base_dedup<__indices, __poison_hash<remove_const_t<_Types>>>... { };
+ 
++  template<size_t _Np, typename _Variant>
++    using __get_t = decltype(std::get<_Np>(std::declval<_Variant>()));
++
++  // Return type of std::visit.
++  template<typename _Visitor, typename... _Variants>
++    using __visit_result_t
++      = invoke_result_t<_Visitor, __get_t<0, _Variants>...>;
++
+ } // namespace __variant
+ } // namespace __detail
+ 
+@@ -1238,7 +1246,8 @@ namespace __variant
+ #endif
+ 
+   template<typename _Visitor, typename... _Variants>
+-    constexpr decltype(auto) visit(_Visitor&&, _Variants&&...);
++    constexpr __detail::__variant::__visit_result_t<_Visitor, _Variants...>
++    visit(_Visitor&&, _Variants&&...);
+ 
+   template<typename... _Types>
+     inline enable_if_t<(is_move_constructible_v<_Types> && ...)
+@@ -1704,14 +1713,14 @@ namespace __variant
+     }
+ 
+   template<typename _Visitor, typename... _Variants>
+-    constexpr decltype(auto)
++    constexpr __detail::__variant::__visit_result_t<_Visitor, _Variants...>
+     visit(_Visitor&& __visitor, _Variants&&... __variants)
+     {
+       if ((__variants.valueless_by_exception() || ...))
+ 	__throw_bad_variant_access("std::visit: variant is valueless");
+ 
+-      using _Result_type = std::invoke_result_t<_Visitor,
+-	decltype(std::get<0>(std::declval<_Variants>()))...>;
++      using _Result_type
++	= __detail::__variant::__visit_result_t<_Visitor, _Variants...>;
+ 
+       using _Tag = __detail::__variant::__deduce_visit_result<_Result_type>;
+ 
 diff --git a/libstdc++-v3/include/std/version b/libstdc++-v3/include/std/version
-index 1cb2e4edb75..a5bfc72a001 100644
+index 1cb2e4edb75..569375c8de4 100644
 --- a/libstdc++-v3/include/std/version
 +++ b/libstdc++-v3/include/std/version
 @@ -131,6 +131,7 @@
@@ -24354,11 +27156,23 @@ index 1cb2e4edb75..a5bfc72a001 100644
  #endif
  #define __cpp_lib_enable_shared_from_this 201603
  #define __cpp_lib_execution 201902L // FIXME: should be 201603L
-@@ -207,6 +208,7 @@
+@@ -200,13 +201,18 @@
+ // FIXME: #define __cpp_lib_execution 201902L
+ #define __cpp_lib_integer_comparison_functions 202002L
+ #define __cpp_lib_constexpr_algorithms 201806L
+-#define __cpp_lib_constexpr_char_traits 201811L
++#ifdef __cpp_lib_is_constant_evaluated
++# define __cpp_lib_constexpr_char_traits 201811L
++#endif
+ #define __cpp_lib_constexpr_complex 201711L
+ #define __cpp_lib_constexpr_dynamic_alloc 201907L
+ #define __cpp_lib_constexpr_functional 201907L
  #define __cpp_lib_constexpr_iterator 201811L
  #define __cpp_lib_constexpr_memory 201811L
  #define __cpp_lib_constexpr_numeric 201911L
-+#define __cpp_lib_constexpr_string 201811L
++#ifdef __cpp_lib_is_constant_evaluated
++# define __cpp_lib_constexpr_string 201811L
++#endif
  #define __cpp_lib_constexpr_string_view 201811L
  #define __cpp_lib_constexpr_tuple 201811L
  #define __cpp_lib_constexpr_utility 201811L
@@ -24963,6 +27777,231 @@ index edfb91fc6c5..812f39fe253 100644
  	  ++_M_cmpts._M_impl->_M_size;
  	}
      }
+diff --git a/libstdc++-v3/testsuite/20_util/allocator/void.cc b/libstdc++-v3/testsuite/20_util/allocator/void.cc
+index 86dde5416ea..309f3b5f850 100644
+--- a/libstdc++-v3/testsuite/20_util/allocator/void.cc
++++ b/libstdc++-v3/testsuite/20_util/allocator/void.cc
+@@ -33,6 +33,18 @@ test01()
+   std::allocator_traits<alloc_type>::destroy(a, &i);
+ }
+ 
++static_assert( std::allocator<void>::propagate_on_container_move_assignment(),
++	       "POCMA trait should always be present" );
++static_assert( std::allocator<void>::is_always_equal(),
++	       "is_always_equal trait should always be present" );
++
++static_assert(
++    std::is_same<std::allocator<void>::size_type, std::size_t>(),
++    "size_type is size_t" );
++static_assert(
++    std::is_same<std::allocator<void>::difference_type, std::ptrdiff_t>(),
++    "size_type is size_t" );
++
+ // These properties are formally unspecified, but have always been true for
+ // the libstdc++ definition of allocator<void>.
+ static_assert(
+@@ -51,9 +63,29 @@ static_assert(
+ #if __cplusplus > 201703L
+ // C++20 removes the allocator<void> explicit specialization, so it can now be
+ // constructed using the converting constructor from other specializations.
+-static_assert( std::is_constructible_v<std::allocator<void>,
+-				       std::allocator<int>> );
+-#endif
++static_assert( std::is_nothrow_constructible_v<std::allocator<void>,
++					       std::allocator<int>> );
++
++template<typename T>
++concept has_pointer = requires { typename T::pointer; };
++template<typename T>
++concept has_const_pointer = requires { typename T::const_pointer; };
++template<typename T>
++concept has_size_type = requires { typename T::size_type; };
++template<typename T>
++concept has_difference_type = requires { typename T::difference_type; };
++
++// These were removed for C++20
++static_assert( ! has_pointer<std::allocator<void>> );
++static_assert( ! has_const_pointer<std::allocator<void>> );
++
++#else
++static_assert(
++    std::is_same<std::allocator<void>::pointer, void*>(),
++    "pointer is void*" );
++static_assert( std::is_same<std::allocator<void>::const_pointer, const void*>(),
++    "const_pointer is const void*" );
++#endif // C++20
+ 
+ int
+ main()
+diff --git a/libstdc++-v3/testsuite/20_util/any/cons/101034.cc b/libstdc++-v3/testsuite/20_util/any/cons/101034.cc
+new file mode 100644
+index 00000000000..55f550a839e
+--- /dev/null
++++ b/libstdc++-v3/testsuite/20_util/any/cons/101034.cc
+@@ -0,0 +1,11 @@
++// { dg-do compile { target c++17 } }
++// PR libstdc++/101034 - wrong constraint in std::any's constructor
++
++#include <any>
++
++struct S {
++  S(std::initializer_list<int>&, int) {}
++};
++
++std::any a(std::in_place_type<S>, {0}, 0);
++S& s = a.emplace<S>({0}, 0);
+diff --git a/libstdc++-v3/testsuite/20_util/from_chars/3.cc b/libstdc++-v3/testsuite/20_util/from_chars/3.cc
+index 9d4a77f5c31..d1f93bba2cb 100644
+--- a/libstdc++-v3/testsuite/20_util/from_chars/3.cc
++++ b/libstdc++-v3/testsuite/20_util/from_chars/3.cc
+@@ -29,7 +29,7 @@ long long
+ read(const char* first, const char* last, int base)
+ {
+   long long val = 0;
+-  long long place = 1;
++  unsigned long long place = 1;
+   while (last > first)
+   {
+     val += (*--last - '0') * place;
+diff --git a/libstdc++-v3/testsuite/20_util/optional/assignment/100982.cc b/libstdc++-v3/testsuite/20_util/optional/assignment/100982.cc
+new file mode 100644
+index 00000000000..ae565250d68
+--- /dev/null
++++ b/libstdc++-v3/testsuite/20_util/optional/assignment/100982.cc
+@@ -0,0 +1,17 @@
++// { dg-do compile { target c++17 } }
++
++#include <optional>
++
++struct U {};
++
++struct T {
++  explicit T(const U&);
++  T& operator=(const U&);
++  T& operator=(U&&) = delete;
++};
++
++int main() {
++  std::optional<U> opt1;
++  std::optional<T> opt2;
++  opt2 = opt1; // PR libstdc++/100982
++}
+diff --git a/libstdc++-v3/testsuite/20_util/scoped_allocator/69293_neg.cc b/libstdc++-v3/testsuite/20_util/scoped_allocator/69293_neg.cc
+index 6f3cd0a2521..975862b3365 100644
+--- a/libstdc++-v3/testsuite/20_util/scoped_allocator/69293_neg.cc
++++ b/libstdc++-v3/testsuite/20_util/scoped_allocator/69293_neg.cc
+@@ -47,6 +47,7 @@ test01()
+   auto p = sa.allocate(1);
+   sa.construct(p);  // this is required to be ill-formed
+   // { dg-error "failed: .* uses_allocator is true" "" { target *-*-* } 0 }
++  // { dg-error "too many initializers for 'X'" "" { target c++2a } 0 }
+ }
+ 
+ // Needed because of PR c++/92193
+diff --git a/libstdc++-v3/testsuite/20_util/shared_ptr/cons/lwg3548.cc b/libstdc++-v3/testsuite/20_util/shared_ptr/cons/lwg3548.cc
+new file mode 100644
+index 00000000000..d6ec7b1d057
+--- /dev/null
++++ b/libstdc++-v3/testsuite/20_util/shared_ptr/cons/lwg3548.cc
+@@ -0,0 +1,16 @@
++// { dg-do compile { target c++11 } }
++
++#include <memory>
++
++// LWG 3548
++// shared_ptr construction from unique_ptr should move (not copy) the deleter
++
++struct D
++{
++  D() { }
++  D(D&&) { }
++  void operator()(int* p) const { delete p; }
++};
++
++std::unique_ptr<int, D> u;
++std::shared_ptr<int> s1(std::move(u));
+diff --git a/libstdc++-v3/testsuite/20_util/shared_ptr/cons/unique_ptr_deleter.cc b/libstdc++-v3/testsuite/20_util/shared_ptr/cons/unique_ptr_deleter.cc
+index 3205cc37f1f..506e1823c8f 100644
+--- a/libstdc++-v3/testsuite/20_util/shared_ptr/cons/unique_ptr_deleter.cc
++++ b/libstdc++-v3/testsuite/20_util/shared_ptr/cons/unique_ptr_deleter.cc
+@@ -58,10 +58,25 @@ test02()
+   VERIFY( D::count == 0 ); // LWG 2415
+ }
+ 
++void
++test03()
++{
++  struct D
++  {
++    D() = default;
++    D(const D&) = delete; // not copyable or movable
++    void operator()(int* p) const { delete p; }
++  };
++
++  using namespace std;
++  static_assert( ! is_constructible<shared_ptr<int>, unique_ptr<int, D>>(),
++		 "Constraints: is_move_constructible_v<D> is true" );
++}
++
+ int
+ main()
+ {
+   test01();
+   test02();
+-  return 0;
++  test03();
+ }
+diff --git a/libstdc++-v3/testsuite/20_util/shared_ptr/creation/99006.cc b/libstdc++-v3/testsuite/20_util/shared_ptr/creation/99006.cc
+new file mode 100644
+index 00000000000..d5f7a5da5e9
+--- /dev/null
++++ b/libstdc++-v3/testsuite/20_util/shared_ptr/creation/99006.cc
+@@ -0,0 +1,9 @@
++// FIXME: This should use { target { ! c++20 } }
++// { dg-do compile }
++
++#include <memory>
++
++auto p = std::make_shared<int[]>(2); // { dg-error "here" }
++auto q = std::make_shared<int[2]>(1, 2); // { dg-error "here" }
++
++// { dg-prune-output "static assertion failed" }
+diff --git a/libstdc++-v3/testsuite/20_util/uses_allocator/69293_neg.cc b/libstdc++-v3/testsuite/20_util/uses_allocator/69293_neg.cc
+index 423ecc4d90e..6626e5a9713 100644
+--- a/libstdc++-v3/testsuite/20_util/uses_allocator/69293_neg.cc
++++ b/libstdc++-v3/testsuite/20_util/uses_allocator/69293_neg.cc
+@@ -45,5 +45,6 @@ test01()
+   alloc_type a;
+   std::tuple<X> t(std::allocator_arg, a); // this is required to be ill-formed
+   // { dg-error "failed: .* uses_allocator is true" "" { target *-*-* } 0 }
+-  // { dg-error "no matching function for call" "" { target c++2a } 0 }
++  // { dg-error "too many initializers for 'X'" "" { target c++2a } 0 }
++  // { dg-prune-output "in 'constexpr' expansion" }
+ }
+diff --git a/libstdc++-v3/testsuite/20_util/uses_allocator/cons_neg.cc b/libstdc++-v3/testsuite/20_util/uses_allocator/cons_neg.cc
+index c3ff05aa72a..966e579cc99 100644
+--- a/libstdc++-v3/testsuite/20_util/uses_allocator/cons_neg.cc
++++ b/libstdc++-v3/testsuite/20_util/uses_allocator/cons_neg.cc
+@@ -45,3 +45,4 @@ void test01()
+ }
+ // { dg-error "failed: .* uses_allocator is true" "" { target *-*-* } 0 }
+ // { dg-error "no matching function for call" "" { target c++2a } 0 }
++// { dg-prune-output "in 'constexpr' expansion" }
+diff --git a/libstdc++-v3/testsuite/20_util/variant/100384.cc b/libstdc++-v3/testsuite/20_util/variant/100384.cc
+new file mode 100644
+index 00000000000..4866aa017ff
+--- /dev/null
++++ b/libstdc++-v3/testsuite/20_util/variant/100384.cc
+@@ -0,0 +1,9 @@
++// { dg-do compile { target c++17 } }
++
++#include <variant>
++
++int visit(int*, std::true_type) { return 0; }
++
++const std::true_type dat;
++
++int i = visit(nullptr, dat);
 diff --git a/libstdc++-v3/testsuite/21_strings/char_traits/requirements/constexpr_functions_c++17.cc b/libstdc++-v3/testsuite/21_strings/char_traits/requirements/constexpr_functions_c++17.cc
 index 55dcba48db6..ebde98be20e 100644
 --- a/libstdc++-v3/testsuite/21_strings/char_traits/requirements/constexpr_functions_c++17.cc
@@ -26521,6 +29560,34 @@ index 00000000000..358d91dfef1
 +  static_assert(std::same_as<std::iter_difference_t<iter>,
 +			     std::iter_difference_t<riter>>);
 +}
+diff --git a/libstdc++-v3/testsuite/24_iterators/reverse_iterator/2.cc b/libstdc++-v3/testsuite/24_iterators/reverse_iterator/2.cc
+index 29c4a5aae25..54e9f79bdd2 100644
+--- a/libstdc++-v3/testsuite/24_iterators/reverse_iterator/2.cc
++++ b/libstdc++-v3/testsuite/24_iterators/reverse_iterator/2.cc
+@@ -27,7 +27,7 @@ void test02()
+   iterator_type it01;
+   iterator_type it02;
+ 
+-  // Sanity check non-member operators and functions can be instantiated. 
++  // Sanity check non-member operators and functions can be instantiated.
+   it01 == it02;
+   it01 != it02;
+   it01 < it02;
+@@ -35,11 +35,11 @@ void test02()
+   it01 > it02;
+   it01 >= it02;
+   it01 - it02;
+-  5 + it02;
++  0 + it02;
+ }
+ 
+-int main() 
+-{ 
++int main()
++{
+   test02();
+   return 0;
+ }
 diff --git a/libstdc++-v3/testsuite/25_algorithms/copy/debug/99402.cc b/libstdc++-v3/testsuite/25_algorithms/copy/debug/99402.cc
 new file mode 100644
 index 00000000000..041d222d079
@@ -26562,6 +29629,63 @@ index 00000000000..041d222d079
 +    vector<int> dest(1);
 +    copy(source.begin(), ++source.begin(), dest.begin());
 +}
+diff --git a/libstdc++-v3/testsuite/25_algorithms/copy_backward/move_iterators/69478.cc b/libstdc++-v3/testsuite/25_algorithms/copy_backward/move_iterators/69478.cc
+index 1d779df10d6..2ed14fe110a 100644
+--- a/libstdc++-v3/testsuite/25_algorithms/copy_backward/move_iterators/69478.cc
++++ b/libstdc++-v3/testsuite/25_algorithms/copy_backward/move_iterators/69478.cc
+@@ -35,6 +35,6 @@ test01()
+   static_assert(std::is_trivial<trivial_rvalstruct>::value, "");
+ 
+   trivial_rvalstruct a[1], b[1];
+-  copy_backward(std::make_move_iterator(a), std::make_move_iterator(a+1), b);
++  copy_backward(std::make_move_iterator(a), std::make_move_iterator(a+1), b+1);
+ }
+ // { dg-prune-output "use of deleted" }
+diff --git a/libstdc++-v3/testsuite/25_algorithms/move_backward/69478.cc b/libstdc++-v3/testsuite/25_algorithms/move_backward/69478.cc
+index c9690288fee..ef28722a3ce 100644
+--- a/libstdc++-v3/testsuite/25_algorithms/move_backward/69478.cc
++++ b/libstdc++-v3/testsuite/25_algorithms/move_backward/69478.cc
+@@ -35,6 +35,6 @@ test01()
+   static_assert(std::is_trivial<trivial_rvalstruct>::value, "");
+ 
+   trivial_rvalstruct a[1], b[1];
+-  std::move_backward(a, a + 1, b);
++  std::move_backward(a, a + 1, b + 1);
+ }
+ // { dg-prune-output "use of deleted" }
+diff --git a/libstdc++-v3/testsuite/25_algorithms/move_backward/93872.cc b/libstdc++-v3/testsuite/25_algorithms/move_backward/93872.cc
+index 69774fa86c6..e16de82ce31 100644
+--- a/libstdc++-v3/testsuite/25_algorithms/move_backward/93872.cc
++++ b/libstdc++-v3/testsuite/25_algorithms/move_backward/93872.cc
+@@ -35,5 +35,5 @@ void
+ test01()
+ {
+   X a[2], b[2];
+-  std::move_backward(std::begin(a), std::end(a), std::begin(b));
++  std::move_backward(std::begin(a), std::end(a), std::end(b));
+ }
+diff --git a/libstdc++-v3/testsuite/26_numerics/reduce/95833.cc b/libstdc++-v3/testsuite/26_numerics/reduce/95833.cc
+new file mode 100644
+index 00000000000..cf4644f53c9
+--- /dev/null
++++ b/libstdc++-v3/testsuite/26_numerics/reduce/95833.cc
+@@ -0,0 +1,16 @@
++// { dg-do compile { target c++17 } }
++// PR libstdc++/95833 - Incorrect static_assert in std::reduce overload
++
++#include <numeric>
++
++struct A { };
++struct B { };
++
++struct binop
++{
++  template<typename T, typename U>
++    A operator()(T&&, U&&) const { return A{}; }
++};
++
++B b;
++A a = std::reduce(&b, &b + 1, A{}, binop{});
 diff --git a/libstdc++-v3/testsuite/27_io/filesystem/path/construct/100630.cc b/libstdc++-v3/testsuite/27_io/filesystem/path/construct/100630.cc
 new file mode 100644
 index 00000000000..eb8473e600e
@@ -26628,6 +29752,18 @@ index cf3724025f7..16175c4072a 100644
    test02();
 +  test03();
  }
+diff --git a/libstdc++-v3/testsuite/30_threads/promise/members/at_thread_exit2.cc b/libstdc++-v3/testsuite/30_threads/promise/members/at_thread_exit2.cc
+index 59eeae823ec..7db52a6336e 100644
+--- a/libstdc++-v3/testsuite/30_threads/promise/members/at_thread_exit2.cc
++++ b/libstdc++-v3/testsuite/30_threads/promise/members/at_thread_exit2.cc
+@@ -119,7 +119,6 @@ void test02()
+ void test03()
+ {
+   std::promise<void> p1;
+-  int i = 0;
+   p1.set_value();
+   try {
+     p1.set_value_at_thread_exit();
 diff --git a/libstdc++-v3/testsuite/experimental/filesystem/path/construct/100630.cc b/libstdc++-v3/testsuite/experimental/filesystem/path/construct/100630.cc
 new file mode 100644
 index 00000000000..b2428ff74cf
