@@ -13,7 +13,7 @@
 
 Name     : compat-gcc-10
 Version  : 10.3.0
-Release  : 12
+Release  : 13
 URL      : https://gcc.gnu.org
 Source0  : https://gcc.gnu.org/pub/gcc/releases/gcc-10.3.0/gcc-10.3.0.tar.xz
 Source1  : https://gcc.gnu.org/pub/gcc/infrastructure/isl-0.16.1.tar.bz2

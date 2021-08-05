@@ -15,8 +15,9 @@ Andre Vieira (1):
 Avi Kivity (1):
       libstdc++: add missing typename for dependent type in ranges::elements_view [PR100900]
 
-Bill Schmidt (1):
+Bill Schmidt (2):
       rs6000: Don't let swaps pass break multiply low-part (PR101129)
+      rs6000: Add int128 target check to pr101129.c (PR101531)
 
 Bin Cheng (1):
       tree-optimization/98736 - use programing order preserved RPO in ldist
@@ -41,7 +42,10 @@ François Dumont (3):
       libstdc++: Fix unordered containers move constructors noexcept qualification
       libstdc++: [_GLIBCXX_DEBUG] Fix management of __dp_sign_max_size [PR 99402]
 
-GCC Administrator (112):
+GCC Administrator (115):
+      Daily bump.
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -161,7 +165,7 @@ Geng Qi (1):
 Hafiz Abid Qadeer (1):
       [OpenACC] Fix an ICE where a loop with GT condition is collapsed.
 
-Harald Anlauf (8):
+Harald Anlauf (10):
       PR fortran/63797 - Bogus ambiguous reference to 'sqrt'
       PR fortran/100154 - ICE in gfc_conv_procedure_call, at fortran/trans-expr.c:6131
       PR fortran/100274 - ICE in gfc_conv_procedure_call, at fortran/trans-expr.c:6131
@@ -170,8 +174,10 @@ Harald Anlauf (8):
       Fortran - ICE in gfc_check_do_variable, at fortran/parse.c:4446
       Fortran - ICE in gfc_conv_expr_present initializing non-dummy class variable
       Fortran: reject FORMAT tag of unknown type.
+      Fortran: extend check for array arguments and reject CLASS array elements.
+      Fortran: ICE, OOM while calculating sizes of derived type array components
 
-Iain Buclaw (11):
+Iain Buclaw (12):
       d: Fix ICE in when formating a string with '%' or '`' characters (PR98457)
       d: Fix ICE in gimplify_var_or_parm_decl, at gimplify.c:2755 (PR100882)
       d: Respect explicit align(N) type alignment (PR100935)
@@ -183,6 +189,7 @@ Iain Buclaw (11):
       d: __FUNCTION__ doesn't work in core.stdc.stdio functions without cast (PR101441)
       d: fix ICE at convert_expr(tree_node*, Type*, Type*) (PR101490)
       d: Wrong evaluation order of binary expressions (PR101640)
+      d: Ensure casting from bool results in either 0 or 1 (PR96435)
 
 Jakub Jelinek (19):
       rs6000: Fix up libgcc ABI when built with --with-long-double-format=ieee [PR97653]
@@ -298,11 +305,12 @@ Marius Hillenbrand (1):
 Martin Jambor (1):
       ipa-sra: Fix thinko when overriding safe_to_import_accesses (PR 101066)
 
-Martin Liska (4):
+Martin Liska (5):
       Sync gcc-changelog scripts.
       gcc-changelog: sync scripts.
       contrib: add git-commit-mklog wrapper
       Add mklog.py.
+      sanitizer: cherry pick 414482751452e54710f16bae58458c66298aaf69
 
 Martin Sebor (2):
       PR middle-end/100571 - bogus -Wstringop-overflow with VLA of elements larger than byte
@@ -420,6 +428,9 @@ Vladimir N. Makarov (3):
       [PR97969] LRA: Transform pattern `plus (plus (hard reg, const),	pseudo)` after elimination
       [PR98722] LRA: Check that target has no 3-op add insn to transform 2 plus expression.
       [PR98777] LRA: Use preliminary created pseudo for in LRA elimination subpass
+
+Xi Ruoyao (1):
+      mips: Fix up mips_atomic_assign_expand_fenv [PR94780]
 
 YiFei Zhu (2):
       bpf: align function entry point to 64 bits
@@ -2765,10 +2776,19 @@ index 0719d810258..a9368325816 100644
 -10.3.0
 +10.3.1
 diff --git a/gcc/ChangeLog b/gcc/ChangeLog
-index 3b1384e707f..d918b0a13c2 100644
+index 3b1384e707f..4a7edf76069 100644
 --- a/gcc/ChangeLog
 +++ b/gcc/ChangeLog
-@@ -1,3 +1,842 @@
+@@ -1,3 +1,851 @@
++2021-07-31  Xi Ruoyao  <xry111@mengyan1223.wang>
++
++	Backported from master:
++	2021-07-30  Xi Ruoyao  <xry111@mengyan1223.wang>
++
++	PR target/94780
++	* config/mips/mips.c (mips_atomic_assign_expand_fenv): Use
++	  TARGET_EXPR instead of MODIFY_EXPR.
++
 +2021-07-28  Martin Sebor  <msebor@redhat.com>
 +
 +	PR c/99295
@@ -6718,6 +6738,38 @@ index 201f69e74c4..a39d09f06da 100644
      {
        offset = seh->sp_offset - alloc_offset;
        if (offset > 0 && offset < SEH_MAX_FRAME_SIZE)
+diff --git a/gcc/config/mips/mips.c b/gcc/config/mips/mips.c
+index 513fc5fe295..c1bd2332eb8 100644
+--- a/gcc/config/mips/mips.c
++++ b/gcc/config/mips/mips.c
+@@ -22418,12 +22418,12 @@ mips_atomic_assign_expand_fenv (tree *hold, tree *clear, tree *update)
+   tree get_fcsr = mips_builtin_decls[MIPS_GET_FCSR];
+   tree set_fcsr = mips_builtin_decls[MIPS_SET_FCSR];
+   tree get_fcsr_hold_call = build_call_expr (get_fcsr, 0);
+-  tree hold_assign_orig = build2 (MODIFY_EXPR, MIPS_ATYPE_USI,
+-				  fcsr_orig_var, get_fcsr_hold_call);
++  tree hold_assign_orig = build4 (TARGET_EXPR, MIPS_ATYPE_USI,
++				  fcsr_orig_var, get_fcsr_hold_call, NULL, NULL);
+   tree hold_mod_val = build2 (BIT_AND_EXPR, MIPS_ATYPE_USI, fcsr_orig_var,
+ 			      build_int_cst (MIPS_ATYPE_USI, 0xfffff003));
+-  tree hold_assign_mod = build2 (MODIFY_EXPR, MIPS_ATYPE_USI,
+-				 fcsr_mod_var, hold_mod_val);
++  tree hold_assign_mod = build4 (TARGET_EXPR, MIPS_ATYPE_USI,
++				 fcsr_mod_var, hold_mod_val, NULL, NULL);
+   tree set_fcsr_hold_call = build_call_expr (set_fcsr, 1, fcsr_mod_var);
+   tree hold_all = build2 (COMPOUND_EXPR, MIPS_ATYPE_USI,
+ 			  hold_assign_orig, hold_assign_mod);
+@@ -22433,8 +22433,8 @@ mips_atomic_assign_expand_fenv (tree *hold, tree *clear, tree *update)
+   *clear = build_call_expr (set_fcsr, 1, fcsr_mod_var);
+ 
+   tree get_fcsr_update_call = build_call_expr (get_fcsr, 0);
+-  *update = build2 (MODIFY_EXPR, MIPS_ATYPE_USI,
+-		    exceptions_var, get_fcsr_update_call);
++  *update = build4 (TARGET_EXPR, MIPS_ATYPE_USI,
++		    exceptions_var, get_fcsr_update_call, NULL, NULL);
+   tree set_fcsr_update_call = build_call_expr (set_fcsr, 1, fcsr_orig_var);
+   *update = build2 (COMPOUND_EXPR, void_type_node, *update,
+ 		    set_fcsr_update_call);
 diff --git a/gcc/config/nvptx/nvptx.c b/gcc/config/nvptx/nvptx.c
 index e3e84dfd4e4..243bf9da51a 100644
 --- a/gcc/config/nvptx/nvptx.c
@@ -8525,10 +8577,21 @@ index 53e9603868d..5ecedef0bb4 100644
        return DEBUG_IMPLICIT_PTR_DECL (x)
  	     == DEBUG_IMPLICIT_PTR_DECL (y);
 diff --git a/gcc/d/ChangeLog b/gcc/d/ChangeLog
-index 8bc729ae32d..0ee80b23aa9 100644
+index 8bc729ae32d..579d6358e36 100644
 --- a/gcc/d/ChangeLog
 +++ b/gcc/d/ChangeLog
-@@ -1,3 +1,134 @@
+@@ -1,3 +1,145 @@
++2021-07-29  Iain Buclaw  <ibuclaw@gdcproject.org>
++
++	Backported from master:
++	2021-07-29  Iain Buclaw  <ibuclaw@gdcproject.org>
++
++	PR d/96435
++	* d-convert.cc (convert_for_rvalue): New function.
++	* d-tree.h (convert_for_rvalue): Declare.
++	* expr.cc (ExprVisitor::visit (CastExp *)): Use convert_for_rvalue.
++	(build_return_dtor): Likewise.
++
 +2021-07-28  Iain Buclaw  <ibuclaw@gdcproject.org>
 +
 +	Backported from master:
@@ -8791,7 +8854,7 @@ index 8042f03f369..dcb8fc151f9 100644
      }
    else
 diff --git a/gcc/d/d-convert.cc b/gcc/d/d-convert.cc
-index f93405ed956..19a7ceeb403 100644
+index f93405ed956..87062513c33 100644
 --- a/gcc/d/d-convert.cc
 +++ b/gcc/d/d-convert.cc
 @@ -473,13 +473,18 @@ convert_expr (tree exp, Type *etype, Type *totype)
@@ -8818,6 +8881,49 @@ index f93405ed956..19a7ceeb403 100644
  
  	  /* Assumes casting to dynamic array of same type or void.  */
  	  return d_array_value (build_ctype (totype), size_int (dim),
+@@ -595,6 +600,42 @@ convert_expr (tree exp, Type *etype, Type *totype)
+   return result ? result : convert (build_ctype (totype), exp);
+ }
+ 
++/* Return a TREE represenwation of EXPR, whose type has been converted from
++ * ETYPE to TOTYPE, and is being used in an rvalue context.  */
++
++tree
++convert_for_rvalue (tree expr, Type *etype, Type *totype)
++{
++  tree result = NULL_TREE;
++
++  Type *ebtype = etype->toBasetype ();
++  Type *tbtype = totype->toBasetype ();
++
++  switch (ebtype->ty)
++    {
++    case Tbool:
++      /* If casting from bool, the result is either 0 or 1, any other value
++	 violates @safe code, so enforce that it is never invalid.  */
++      if (CONSTANT_CLASS_P (expr))
++	result = d_truthvalue_conversion (expr);
++      else
++	{
++	  /* Reinterpret the boolean as an integer and test the first bit.
++	     The generated code should end up being equivalent to:
++		*cast(ubyte *)&expr & 1;  */
++	  machine_mode bool_mode = TYPE_MODE (TREE_TYPE (expr));
++	  tree mtype = lang_hooks.types.type_for_mode (bool_mode, 1);
++	  result = fold_build2 (BIT_AND_EXPR, mtype,
++				build_vconvert (mtype, expr),
++				build_one_cst (mtype));
++	}
++
++      result = convert (build_ctype (tbtype), result);
++      break;
++    }
++
++  return result ? result : convert_expr (expr, etype, totype);
++}
+ 
+ /* Apply semantics of assignment to a value of type TOTYPE to EXPR
+    (e.g., pointer = array -> pointer = &array[0])
 diff --git a/gcc/d/d-diagnostic.cc b/gcc/d/d-diagnostic.cc
 index 6af35f71c31..dbe6bc1bb7b 100644
 --- a/gcc/d/d-diagnostic.cc
@@ -8989,7 +9095,7 @@ index 4f1bf4a6e6a..5850dace181 100644
  #define LANG_HOOKS_FINISH_INCOMPLETE_DECL   d_finish_incomplete_decl
  #define LANG_HOOKS_GIMPLIFY_EXPR	    d_gimplify_expr
 diff --git a/gcc/d/d-tree.h b/gcc/d/d-tree.h
-index 4d039adb0fa..813786e5dc6 100644
+index 4d039adb0fa..7989033366e 100644
 --- a/gcc/d/d-tree.h
 +++ b/gcc/d/d-tree.h
 @@ -491,6 +491,7 @@ extern const attribute_spec d_langhook_attribute_table[];
@@ -9000,7 +9106,15 @@ index 4d039adb0fa..813786e5dc6 100644
  extern void d_init_builtins (void);
  extern void d_register_builtin_type (tree, const char *);
  extern void d_build_builtins_module (Module *);
-@@ -655,6 +656,7 @@ extern tree layout_typeinfo (TypeInfoDeclaration *);
+@@ -581,6 +582,7 @@ extern bool decl_with_nonnull_addr_p (const_tree);
+ extern tree d_truthvalue_conversion (tree);
+ extern tree d_convert (tree, tree);
+ extern tree convert_expr (tree, Type *, Type *);
++extern tree convert_for_rvalue (tree, Type *, Type *);
+ extern tree convert_for_assignment (tree, Type *, Type *);
+ extern tree convert_for_argument (tree, Parameter *);
+ extern tree convert_for_condition (tree, Type *);
+@@ -655,6 +657,7 @@ extern tree layout_typeinfo (TypeInfoDeclaration *);
  extern tree layout_classinfo (ClassDeclaration *);
  extern tree get_typeinfo_decl (TypeInfoDeclaration *);
  extern tree get_classinfo_decl (ClassDeclaration *);
@@ -9303,7 +9417,7 @@ index 26e5950518a..765e9c3b8c9 100644
                                  {
                                      fs->error("index type '%s' cannot cover index range 0..%llu", p->type->toChars(), ta->dim->toInteger());
 diff --git a/gcc/d/expr.cc b/gcc/d/expr.cc
-index ad2255e1cd1..955a0ad4ad4 100644
+index ad2255e1cd1..a579356104e 100644
 --- a/gcc/d/expr.cc
 +++ b/gcc/d/expr.cc
 @@ -162,7 +162,7 @@ class ExprVisitor : public Visitor
@@ -9315,6 +9429,15 @@ index ad2255e1cd1..955a0ad4ad4 100644
        }
  
      return d_convert (type, ret);
+@@ -1468,7 +1468,7 @@ public:
+     if (tbtype->ty == Tvoid)
+       this->result_ = build_nop (build_ctype (tbtype), result);
+     else
+-      this->result_ = convert_expr (result, ebtype, tbtype);
++      this->result_ = convert_for_rvalue (result, ebtype, tbtype);
+   }
+ 
+   /* Build a delete expression.  */
 @@ -1870,15 +1870,10 @@ public:
        exp = d_convert (build_ctype (e->type), exp);
  
@@ -9332,6 +9455,25 @@ index ad2255e1cd1..955a0ad4ad4 100644
  	TARGET_EXPR_INITIAL (cleanup) = compound_expr (init, exp);
  	exp = cleanup;
        }
+@@ -3144,11 +3139,14 @@ build_return_dtor (Expression *e, Type *type, TypeFunction *tf)
+   tree result = build_expr (e);
+ 
+   /* Convert for initializing the DECL_RESULT.  */
+-  result = convert_expr (result, e->type, type);
+-
+-  /* If we are returning a reference, take the address.  */
+   if (tf->isref)
+-    result = build_address (result);
++    {
++      /* If we are returning a reference, take the address.  */
++      result = convert_expr (result, e->type, type);
++      result = build_address (result);
++    }
++  else
++    result = convert_for_rvalue (result, e->type, type);
+ 
+   /* The decl to store the return expression.  */
+   tree decl = DECL_RESULT (cfun->decl);
 diff --git a/gcc/d/typeinfo.cc b/gcc/d/typeinfo.cc
 index 6aa4f64a713..973729d3d8a 100644
 --- a/gcc/d/typeinfo.cc
@@ -9571,10 +9713,30 @@ index 991b26f3341..c4bffd0f199 100644
  					target, tmode, modifier, as);
        /* FALLTHRU */
 diff --git a/gcc/fortran/ChangeLog b/gcc/fortran/ChangeLog
-index aa5932be872..5e2f3d99a77 100644
+index aa5932be872..640e612a187 100644
 --- a/gcc/fortran/ChangeLog
 +++ b/gcc/fortran/ChangeLog
-@@ -1,3 +1,121 @@
+@@ -1,3 +1,141 @@
++2021-07-30  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2021-07-21  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/101514
++	* target-memory.c (gfc_interpret_derived): Size of array component
++	of derived type can only be computed here for explicit shape.
++	* trans-types.c (gfc_get_nodesc_array_type): Do not dereference
++	NULL pointers.
++
++2021-07-30  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2021-07-23  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/101536
++	* check.c (array_check): Adjust check for the case of CLASS
++	arrays.
++
 +2021-07-28  Harald Anlauf  <anlauf@gmx.de>
 +
 +	Backported from master:
@@ -9697,10 +9859,24 @@ index aa5932be872..5e2f3d99a77 100644
  
  	* GCC 10.3.0 released.
 diff --git a/gcc/fortran/check.c b/gcc/fortran/check.c
-index ca6f582625d..ff87a0ceff8 100644
+index ca6f582625d..1042f38486e 100644
 --- a/gcc/fortran/check.c
 +++ b/gcc/fortran/check.c
-@@ -1054,6 +1054,13 @@ variable_check (gfc_expr *e, int n, bool allow_proc)
+@@ -731,12 +731,11 @@ logical_array_check (gfc_expr *array, int n)
+ static bool
+ array_check (gfc_expr *e, int n)
+ {
+-  if (e->ts.type == BT_CLASS && gfc_expr_attr (e).class_ok
++  if (e->rank != 0 && e->ts.type == BT_CLASS && gfc_expr_attr (e).class_ok
+ 	&& CLASS_DATA (e)->attr.dimension
+ 	&& CLASS_DATA (e)->as->rank)
+     {
+       gfc_add_class_array_ref (e);
+-      return true;
+     }
+ 
+   if (e->rank != 0 && e->ts.type != BT_PROCEDURE)
+@@ -1054,6 +1053,13 @@ variable_check (gfc_expr *e, int n, bool allow_proc)
  	  return true;
      }
  
@@ -9714,7 +9890,7 @@ index ca6f582625d..ff87a0ceff8 100644
    gfc_error ("%qs argument of %qs intrinsic at %L must be a variable",
  	     gfc_current_intrinsic_arg[n]->name, gfc_current_intrinsic, &e->where);
  
-@@ -5681,6 +5688,19 @@ gfc_check_spread (gfc_expr *source, gfc_expr *dim, gfc_expr *ncopies)
+@@ -5681,6 +5687,19 @@ gfc_check_spread (gfc_expr *source, gfc_expr *dim, gfc_expr *ncopies)
  /* Functions for checking FGETC, FPUTC, FGET and FPUT (subroutines and
     functions).  */
  
@@ -9734,7 +9910,7 @@ index ca6f582625d..ff87a0ceff8 100644
  bool
  gfc_check_fgetputc_sub (gfc_expr *unit, gfc_expr *c, gfc_expr *status)
  {
-@@ -5694,13 +5714,19 @@ gfc_check_fgetputc_sub (gfc_expr *unit, gfc_expr *c, gfc_expr *status)
+@@ -5694,13 +5713,19 @@ gfc_check_fgetputc_sub (gfc_expr *unit, gfc_expr *c, gfc_expr *status)
      return false;
    if (!kind_value_check (c, 1, gfc_default_character_kind))
      return false;
@@ -9755,7 +9931,7 @@ index ca6f582625d..ff87a0ceff8 100644
      return false;
  
    return true;
-@@ -5721,13 +5747,19 @@ gfc_check_fgetput_sub (gfc_expr *c, gfc_expr *status)
+@@ -5721,13 +5746,19 @@ gfc_check_fgetput_sub (gfc_expr *c, gfc_expr *status)
      return false;
    if (!kind_value_check (c, 0, gfc_default_character_kind))
      return false;
@@ -9964,6 +10140,20 @@ index 3e19d5fdfbe..1501abfffd2 100644
    for (s=gfc_state_stack; s; s = s->previous)
      if (s->do_variable == st)
        {
+diff --git a/gcc/fortran/target-memory.c b/gcc/fortran/target-memory.c
+index 7f209913028..a3ef392b5d7 100644
+--- a/gcc/fortran/target-memory.c
++++ b/gcc/fortran/target-memory.c
+@@ -534,6 +534,9 @@ gfc_interpret_derived (unsigned char *buffer, size_t buffer_size, gfc_expr *resu
+ 	{
+ 	  int n;
+ 
++	  if (cmp->as->type != AS_EXPLICIT)
++	    return 0;
++
+ 	  e->expr_type = EXPR_ARRAY;
+ 	  e->rank = cmp->as->rank;
+ 
 diff --git a/gcc/fortran/trans-decl.c b/gcc/fortran/trans-decl.c
 index 529417fa8aa..bca15a51d99 100644
 --- a/gcc/fortran/trans-decl.c
@@ -10015,9 +10205,27 @@ index c2321a9ff5f..d88ad2b293a 100644
  			&& !e->symtree->n.sym->attr.pointer
  			&& !e->symtree->n.sym->attr.allocatable
 diff --git a/gcc/fortran/trans-types.c b/gcc/fortran/trans-types.c
-index d3fef08b4b9..68d903d47ae 100644
+index d3fef08b4b9..24758ddadee 100644
 --- a/gcc/fortran/trans-types.c
 +++ b/gcc/fortran/trans-types.c
+@@ -1618,7 +1618,7 @@ gfc_get_nodesc_array_type (tree etype, gfc_array_spec * as, gfc_packed packed,
+       GFC_TYPE_ARRAY_STRIDE (type, n) = tmp;
+ 
+       expr = as->lower[n];
+-      if (expr->expr_type == EXPR_CONSTANT)
++      if (expr && expr->expr_type == EXPR_CONSTANT)
+         {
+           tmp = gfc_conv_mpz_to_tree (expr->value.integer,
+ 				      gfc_index_integer_kind);
+@@ -1668,7 +1668,7 @@ gfc_get_nodesc_array_type (tree etype, gfc_array_spec * as, gfc_packed packed,
+   for (n = as->rank; n < as->rank + as->corank; n++)
+     {
+       expr = as->lower[n];
+-      if (expr->expr_type == EXPR_CONSTANT)
++      if (expr && expr->expr_type == EXPR_CONSTANT)
+ 	tmp = gfc_conv_mpz_to_tree (expr->value.integer,
+ 				    gfc_index_integer_kind);
+       else
 @@ -3115,14 +3115,14 @@ gfc_get_function_type (gfc_symbol * sym, gfc_actual_arglist *actual_args)
  	vec_safe_push (typelist, boolean_type_node);
        /* Coarrays which are descriptorless or assumed-shape pass with
@@ -10739,10 +10947,39 @@ index 99edad8a950..f33489286a9 100644
  
  #endif
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index 2913065bf31..0a7d1e27d5e 100644
+index 2913065bf31..c2dbc8af8b6 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,1019 @@
+@@ -1,3 +1,1048 @@
++2021-07-30  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2021-07-21  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/101514
++	* gfortran.dg/pr101514.f90: New test.
++
++2021-07-30  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2021-07-23  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/101536
++	* gfortran.dg/pr101536.f90: New test.
++
++2021-07-29  Bill Schmidt  <wschmidt@linux.ibm.com>
++
++	PR target/101531
++	* gcc.target/powerpc/pr101129.c: Adjust.
++
++2021-07-29  Iain Buclaw  <ibuclaw@gdcproject.org>
++
++	Backported from master:
++	2021-07-29  Iain Buclaw  <ibuclaw@gdcproject.org>
++
++	PR d/96435
++	* gdc.dg/pr96435.d: New test.
++
 +2021-07-28  Harald Anlauf  <anlauf@gmx.de>
 +
 +	Backported from master:
@@ -15703,12 +15940,13 @@ index 00000000000..15742f67d8c
 +}
 diff --git a/gcc/testsuite/gcc.target/powerpc/pr101129.c b/gcc/testsuite/gcc.target/powerpc/pr101129.c
 new file mode 100644
-index 00000000000..1abc12480e4
+index 00000000000..6b8e5a9b597
 --- /dev/null
 +++ b/gcc/testsuite/gcc.target/powerpc/pr101129.c
-@@ -0,0 +1,35 @@
+@@ -0,0 +1,36 @@
 +/* { dg-do run } */
 +/* { dg-require-effective-target p8vector_hw } */
++/* { dg-require-effective-target int128 } */
 +/* { dg-options "-mdejagnu-cpu=power8 -O " } */
 +
 +/* PR101129: The swaps pass was turning a mult-lopart into a mult-hipart.
@@ -16024,6 +16262,33 @@ index 00000000000..68de4088512
 +{
 +    // { dg-final { scan-tree-dump "= val \\\+ fun101640 \\\(\\\(int &\\\) &val\\\);" "original" } }
 +    return val + fun101640(val);
++}
+diff --git a/gcc/testsuite/gdc.dg/pr96435.d b/gcc/testsuite/gdc.dg/pr96435.d
+new file mode 100644
+index 00000000000..c6d8785ec5b
+--- /dev/null
++++ b/gcc/testsuite/gdc.dg/pr96435.d
+@@ -0,0 +1,21 @@
++// https://gcc.gnu.org/bugzilla/show_bug.cgi?id=96435
++// { dg-do run }
++
++@safe bool test96435()
++{
++    int[2] array = [16, 678];
++    union U { int i; bool b; }
++    U u;
++    u.i = 0xDEADBEEF;
++    assert(array[u.b] == 678);
++    return u.b;
++}
++
++@safe void main()
++{
++    auto b = test96435();
++    if (b)
++        assert(true);
++    if (!b)
++        assert(false);
 +}
 diff --git a/gcc/testsuite/gdc.dg/pr98457.d b/gcc/testsuite/gdc.dg/pr98457.d
 new file mode 100644
@@ -17012,6 +17277,86 @@ index 00000000000..6c736fd7f72
 +  end type
 +  class(t), allocatable :: y, z
 +  allocate (z, mold=y)
++end
+diff --git a/gcc/testsuite/gfortran.dg/pr101514.f90 b/gcc/testsuite/gfortran.dg/pr101514.f90
+new file mode 100644
+index 00000000000..51fbf8a7e85
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/pr101514.f90
+@@ -0,0 +1,35 @@
++! { dg-do compile }
++! PR fortran/101514 - ICE: out of memory allocating ... bytes
++
++subroutine s
++  type t1
++     integer :: a(..) ! { dg-error "must have an explicit shape" }
++  end type
++  type t2
++     integer :: a(*)  ! { dg-error "must have an explicit shape" }
++  end type
++  type t3
++     integer :: a(:)  ! { dg-error "must have an explicit shape" }
++  end type
++  type t4
++     integer :: a(0:) ! { dg-error "must have an explicit shape" }
++  end type
++  type t5
++     integer, allocatable :: a(:)
++  end type
++  type t6
++     integer, pointer     :: a(:)
++  end type
++  type(t1) :: a1
++  type(t2) :: a2
++  type(t3) :: a3
++  type(t4) :: a4
++  type(t5) :: a5
++  type(t6) :: a6
++  a1 = transfer(1, a1)
++  a2 = transfer(1, a2)
++  a3 = transfer(1, a3)
++  a4 = transfer(1, a4)
++  a5 = transfer(1, a5)
++  a6 = transfer(1, a6)
++end
+diff --git a/gcc/testsuite/gfortran.dg/pr101536.f90 b/gcc/testsuite/gfortran.dg/pr101536.f90
+new file mode 100644
+index 00000000000..b16af00d919
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/pr101536.f90
+@@ -0,0 +1,33 @@
++! { dg-do compile }
++! PR fortran/101536 - ICE in gfc_conv_expr_descriptor
++
++program p
++  type s
++     class(*), allocatable :: c
++  end type
++  type t
++     class(*), allocatable :: c(:)
++  end type t
++  type u
++     integer :: c(2)
++  end type
++  type(t) :: x
++  x%c = [1,2,3,4]
++!  print *, size (x)
++  print *, size (x%c)
++  print *, size (x%c(1)) ! { dg-error "must be an array" }
++contains
++  integer function f(x, y, z)
++    class(t), allocatable :: x(:)
++    class(u)              :: y(:)
++    class(s)              :: z
++    f = size (x)
++    f = size (x(1))      ! { dg-error "must be an array" }
++    f = size (y)
++    f = size (y%c(1))
++    f = size (y(2)%c)
++    f = size (y(2)%c(1)) ! { dg-error "must be an array" }
++    f = size (z)         ! { dg-error "must be an array" }
++    f = size (z% c)      ! { dg-error "must be an array" }
++  end
 +end
 diff --git a/gcc/testsuite/gfortran.dg/pr63797.f90 b/gcc/testsuite/gfortran.dg/pr63797.f90
 new file mode 100644
@@ -20947,23 +21292,24 @@ index d82fd5e4005..dc6423bc297 100644
  extern unsigned IOCTL_EQL_ENSLAVE;
  extern unsigned IOCTL_EQL_GETMASTRCFG;
 diff --git a/libsanitizer/sanitizer_common/sanitizer_posix_libcdep.cpp b/libsanitizer/sanitizer_common/sanitizer_posix_libcdep.cpp
-index 304b3a01a08..ac88fbe074e 100644
+index 304b3a01a08..44359b3d1ac 100644
 --- a/libsanitizer/sanitizer_common/sanitizer_posix_libcdep.cpp
 +++ b/libsanitizer/sanitizer_common/sanitizer_posix_libcdep.cpp
-@@ -169,7 +169,11 @@ bool SupportsColoredOutput(fd_t fd) {
+@@ -169,7 +169,12 @@ bool SupportsColoredOutput(fd_t fd) {
  
  #if !SANITIZER_GO
  // TODO(glider): different tools may require different altstack size.
 -static const uptr kAltStackSize = SIGSTKSZ * 4;  // SIGSTKSZ is not enough.
 +static uptr GetAltStackSize() {
-+  // SIGSTKSZ is not enough.
-+  static const uptr kAltStackSize = SIGSTKSZ * 4;
-+  return kAltStackSize;
++  // Note: since GLIBC_2.31, SIGSTKSZ may be a function call, so this may be
++  // more costly that you think. However GetAltStackSize is only call 2-3 times
++  // per thread so don't cache the evaluation.
++  return SIGSTKSZ * 4;
 +}
  
  void SetAlternateSignalStack() {
    stack_t altstack, oldstack;
-@@ -180,10 +184,9 @@ void SetAlternateSignalStack() {
+@@ -180,10 +185,9 @@ void SetAlternateSignalStack() {
    // TODO(glider): the mapped stack should have the MAP_STACK flag in the
    // future. It is not required by man 2 sigaltstack now (they're using
    // malloc()).
@@ -20976,7 +21322,7 @@ index 304b3a01a08..ac88fbe074e 100644
    CHECK_EQ(0, sigaltstack(&altstack, nullptr));
  }
  
-@@ -191,7 +194,7 @@ void UnsetAlternateSignalStack() {
+@@ -191,7 +195,7 @@ void UnsetAlternateSignalStack() {
    stack_t altstack, oldstack;
    altstack.ss_sp = nullptr;
    altstack.ss_flags = SS_DISABLE;
