@@ -42,7 +42,13 @@ François Dumont (3):
       libstdc++: Fix unordered containers move constructors noexcept qualification
       libstdc++: [_GLIBCXX_DEBUG] Fix management of __dp_sign_max_size [PR 99402]
 
-GCC Administrator (115):
+GCC Administrator (121):
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -234,7 +240,7 @@ Jason Merrill (20):
       c++: 'this' adjustment for devirtualized call
       c++: constexpr and array[0] [PR101029]
 
-Jonathan Wakely (45):
+Jonathan Wakely (46):
       libstdc++: Fix Doxygen warning about ambiguous file name
       maintainer-scripts: Disable multilib when generating libstdc++ docs
       libstdc++: Fix doxygen markup for group close commands
@@ -280,6 +286,7 @@ Jonathan Wakely (45):
       libstdc++: Simplify basic_string_view::ends_with [PR 101361]
       libstdc++: Constrain three-way comparison for std::optional [PR 98842]
       libstdc++: Move atomic functions to libsupc++ [PR 96657]
+      libstdc++: Fix common_reference for non-reference results [PR100894]
 
 José Rui Faustino de Sousa (1):
       Fortran: Fix double function call with -fcheck=pointer [PR]
@@ -21179,10 +21186,17 @@ index a63227cee8b..e0a9ad6c519 100644
  
      import std.traits : isArray;
 diff --git a/libsanitizer/ChangeLog b/libsanitizer/ChangeLog
-index ceea82c4f70..4306e67dc66 100644
+index ceea82c4f70..400b5b58033 100644
 --- a/libsanitizer/ChangeLog
 +++ b/libsanitizer/ChangeLog
-@@ -1,3 +1,24 @@
+@@ -1,3 +1,31 @@
++2021-08-05  Martin Liska  <mliska@suse.cz>
++
++	PR sanitizer/101749
++	* sanitizer_common/sanitizer_posix_libcdep.cpp: Prevent
++	generation of dependency on _cxa_guard for static
++	initialization.
++
 +2021-05-21  Tamar Christina  <tamar.christina@arm.com>
 +
 +	Backported from master:
@@ -21332,10 +21346,20 @@ index 304b3a01a08..44359b3d1ac 100644
    UnmapOrDie(oldstack.ss_sp, oldstack.ss_size);
  }
 diff --git a/libstdc++-v3/ChangeLog b/libstdc++-v3/ChangeLog
-index fdd63cbff1a..f3b21c28bc9 100644
+index fdd63cbff1a..4ce0651db2a 100644
 --- a/libstdc++-v3/ChangeLog
 +++ b/libstdc++-v3/ChangeLog
-@@ -1,3 +1,950 @@
+@@ -1,3 +1,960 @@
++2021-08-10  Jonathan Wakely  <jwakely@redhat.com>
++
++	Backported from master:
++	2021-06-14  Jonathan Wakely  <jwakely@redhat.com>
++
++	PR libstdc++/100894
++	* include/std/type_traits (__common_ref_impl<X&, Y&>): Only
++	use the type if it's a reference.
++	* testsuite/20_util/common_reference/100894.cc: New test.
++
 +2021-07-22  Jonathan Wakely  <jwakely@redhat.com>
 +
 +	Backported from master:
@@ -29698,6 +29722,31 @@ index b1ed458ba21..f25e74a685e 100644
  
  #ifdef __cpp_lib_jthread
  
+diff --git a/libstdc++-v3/include/std/type_traits b/libstdc++-v3/include/std/type_traits
+index c62dc72d3d7..cc34f82a31d 100644
+--- a/libstdc++-v3/include/std/type_traits
++++ b/libstdc++-v3/include/std/type_traits
+@@ -3307,11 +3307,17 @@ template <typename _From, typename _To>
+   template<typename _Ap, typename _Bp>
+     using __common_ref = typename __common_ref_impl<_Ap, _Bp>::type;
+ 
++  // COND-RES(COPYCV(X, Y) &, COPYCV(Y, X) &)
++  template<typename _Xp, typename _Yp>
++    using __condres_cvref
++      = __cond_res<__copy_cv<_Xp, _Yp>&, __copy_cv<_Yp, _Xp>&>;
++
+   // If A and B are both lvalue reference types, ...
+   template<typename _Xp, typename _Yp>
+-    struct __common_ref_impl<_Xp&, _Yp&,
+-      __void_t<__cond_res<__copy_cv<_Xp, _Yp>&, __copy_cv<_Yp, _Xp>&>>>
+-    { using type = __cond_res<__copy_cv<_Xp, _Yp>&, __copy_cv<_Yp, _Xp>&>; };
++    struct __common_ref_impl<_Xp&, _Yp&, __void_t<__condres_cvref<_Xp, _Yp>>>
++    : enable_if<is_reference_v<__condres_cvref<_Xp, _Yp>>,
++		__condres_cvref<_Xp, _Yp>>
++    { };
+ 
+   // let C be remove_reference_t<COMMON-REF(X&, Y&)>&&
+   template<typename _Xp, typename _Yp>
 diff --git a/libstdc++-v3/include/std/valarray b/libstdc++-v3/include/std/valarray
 index be2e70dc06a..f5d08973765 100644
 --- a/libstdc++-v3/include/std/valarray
@@ -30642,6 +30691,21 @@ index 00000000000..55f550a839e
 +
 +std::any a(std::in_place_type<S>, {0}, 0);
 +S& s = a.emplace<S>({0}, 0);
+diff --git a/libstdc++-v3/testsuite/20_util/common_reference/100894.cc b/libstdc++-v3/testsuite/20_util/common_reference/100894.cc
+new file mode 100644
+index 00000000000..5e144768002
+--- /dev/null
++++ b/libstdc++-v3/testsuite/20_util/common_reference/100894.cc
+@@ -0,0 +1,9 @@
++// { dg-options "-std=gnu++20" }
++// { dg-do compile { target c++20 } }
++// PR libstdc++/100894 - common_reference implementation seems to be wrong
++
++#include <type_traits>
++
++struct A {};
++struct B { B(A); };
++static_assert( std::is_same_v<std::common_reference_t<A&, B&&>, B> );
 diff --git a/libstdc++-v3/testsuite/20_util/from_chars/3.cc b/libstdc++-v3/testsuite/20_util/from_chars/3.cc
 index 9d4a77f5c31..d1f93bba2cb 100644
 --- a/libstdc++-v3/testsuite/20_util/from_chars/3.cc
