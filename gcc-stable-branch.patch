@@ -42,7 +42,8 @@ François Dumont (3):
       libstdc++: Fix unordered containers move constructors noexcept qualification
       libstdc++: [_GLIBCXX_DEBUG] Fix management of __dp_sign_max_size [PR 99402]
 
-GCC Administrator (121):
+GCC Administrator (122):
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -240,7 +241,7 @@ Jason Merrill (20):
       c++: 'this' adjustment for devirtualized call
       c++: constexpr and array[0] [PR101029]
 
-Jonathan Wakely (46):
+Jonathan Wakely (51):
       libstdc++: Fix Doxygen warning about ambiguous file name
       maintainer-scripts: Disable multilib when generating libstdc++ docs
       libstdc++: Fix doxygen markup for group close commands
@@ -287,6 +288,11 @@ Jonathan Wakely (46):
       libstdc++: Constrain three-way comparison for std::optional [PR 98842]
       libstdc++: Move atomic functions to libsupc++ [PR 96657]
       libstdc++: Fix common_reference for non-reference results [PR100894]
+      libstdc++: Change [cmp.alg] assertions to constraints
+      libstdc++: Implement LWG 3465 for std::compare_partial_order_fallback [PR101056]
+      libstdc++: Add more tests for filesystem::create_directory [PR101510]
+      libstdc++: Fix create_directories to resolve symlinks [PR101510]
+      libstdc++: Fix test that fails randomly [PR101866]
 
 José Rui Faustino de Sousa (1):
       Fortran: Fix double function call with -fcheck=pointer [PR]
@@ -21346,10 +21352,74 @@ index 304b3a01a08..44359b3d1ac 100644
    UnmapOrDie(oldstack.ss_sp, oldstack.ss_size);
  }
 diff --git a/libstdc++-v3/ChangeLog b/libstdc++-v3/ChangeLog
-index fdd63cbff1a..4ce0651db2a 100644
+index fdd63cbff1a..4607e1bf374 100644
 --- a/libstdc++-v3/ChangeLog
 +++ b/libstdc++-v3/ChangeLog
-@@ -1,3 +1,960 @@
+@@ -1,3 +1,1024 @@
++2021-08-11  Jonathan Wakely  <jwakely@redhat.com>
++
++	Backported from master:
++	2021-08-11  Jonathan Wakely  <jwakely@redhat.com>
++
++	PR libstdc++/101866
++	* testsuite/experimental/random/randint.cc: Loop and retry if
++	reseed() produces the same sequence.
++
++2021-08-11  Jonathan Wakely  <jwakely@redhat.com>
++
++	Backported from master:
++	2021-07-20  Jonathan Wakely  <jwakely@redhat.com>
++
++	PR libstdc++/101510
++	* src/c++17/fs_ops.cc (fs::create_directories): Use status
++	instead of symlink_status.
++	* src/filesystem/ops.cc (fs::create_directories): Likewise.
++	* testsuite/27_io/filesystem/operations/create_directories.cc:
++	Check symlink to existing directory.
++	* testsuite/27_io/filesystem/operations/create_directory.cc: Do
++	not test with symlinks on Windows.
++	* testsuite/experimental/filesystem/operations/create_directories.cc:
++	Check symlink to existing directory.
++	* testsuite/experimental/filesystem/operations/create_directory.cc:
++	Do not test with symlinks on Windows.
++
++2021-08-11  Jonathan Wakely  <jwakely@redhat.com>
++
++	Backported from master:
++	2021-07-20  Jonathan Wakely  <jwakely@redhat.com>
++
++	PR libstdc++/101510
++	* src/c++17/fs_ops.cc (create_dir): Adjust whitespace.
++	* testsuite/27_io/filesystem/operations/create_directory.cc:
++	Test creating directory with name of existing symlink to
++	directory.
++	* testsuite/experimental/filesystem/operations/create_directory.cc:
++	Likewise.
++
++2021-08-11  Jonathan Wakely  <jwakely@redhat.com>
++
++	Backported from master:
++	2021-06-14  Jonathan Wakely  <jwakely@redhat.com>
++
++	PR libstdc++/101056
++	* libsupc++/compare (compare_partial_order_fallback): Add
++	constraint using reversed parameter order, as per LWG 3465.
++	* testsuite/18_support/comparisons/algorithms/fallback.cc:
++	Adjust expected result.
++
++2021-08-11  Jonathan Wakely  <jwakely@redhat.com>
++
++	Backported from master:
++	2021-06-14  Jonathan Wakely  <jwakely@redhat.com>
++
++	* libsupc++/compare (__decayed_same_as): New helper concept.
++	(strong_order, weak_order, partial_order): Constrain with new
++	concept instead of using static_assert.
++	(compare_strong_order_fallback, compare_weak_order_fallback)
++	(compare_partial_order_fallback): Likewise. Do not deduce return
++	types. Remove redundant if-constexpr checks.
++	* testsuite/18_support/comparisons/algorithms/fallback.cc: New test.
++
 +2021-08-10  Jonathan Wakely  <jwakely@redhat.com>
 +
 +	Backported from master:
@@ -30342,6 +30412,152 @@ index f0b57aeee55..eec5872fc2e 100644
 +/// @} group atomics
  
  #endif
+diff --git a/libstdc++-v3/libsupc++/compare b/libstdc++-v3/libsupc++/compare
+index bd9c3b2352b..3a1d85a4c96 100644
+--- a/libstdc++-v3/libsupc++/compare
++++ b/libstdc++-v3/libsupc++/compare
+@@ -600,6 +600,9 @@ namespace std
+ 	  // FIXME: || floating_point<remove_reference_t<_Tp>>
+ 	  || __cmp3way<strong_ordering, _Tp, _Up>;
+ 
++    template<typename _Tp, typename _Up>
++      concept __decayed_same_as = same_as<decay_t<_Tp>, decay_t<_Up>>;
++
+     class _Strong_order
+     {
+       template<typename _Tp, typename _Up>
+@@ -620,14 +623,12 @@ namespace std
+       friend class _Strong_fallback;
+ 
+     public:
+-      template<typename _Tp, typename _Up>
++      template<typename _Tp, __decayed_same_as<_Tp> _Up>
+ 	requires __strongly_ordered<_Tp, _Up>
+ 	constexpr strong_ordering
+ 	operator()(_Tp&& __e, _Up&& __f) const
+ 	noexcept(_S_noexcept<_Tp, _Up>())
+ 	{
+-	  static_assert(same_as<decay_t<_Tp>, decay_t<_Up>>);
+-
+ 	  /* FIXME:
+ 	  if constexpr (floating_point<decay_t<_Tp>>)
+ 	    return __cmp_cust::__fp_strong_order(__e, __f);
+@@ -669,14 +670,12 @@ namespace std
+       friend class _Weak_fallback;
+ 
+     public:
+-      template<typename _Tp, typename _Up>
++      template<typename _Tp, __decayed_same_as<_Tp> _Up>
+ 	requires __weakly_ordered<_Tp, _Up>
+ 	constexpr weak_ordering
+ 	operator()(_Tp&& __e, _Up&& __f) const
+ 	noexcept(_S_noexcept<_Tp, _Up>())
+ 	{
+-	  static_assert(same_as<decay_t<_Tp>, decay_t<_Up>>);
+-
+ 	  if constexpr (floating_point<decay_t<_Tp>>)
+ 	    return __cmp_cust::__fp_weak_ordering(__e, __f);
+ 	  else if constexpr (__adl_weak<_Tp, _Up>)
+@@ -716,14 +715,12 @@ namespace std
+       friend class _Partial_fallback;
+ 
+     public:
+-      template<typename _Tp, typename _Up>
++      template<typename _Tp, __decayed_same_as<_Tp> _Up>
+ 	requires __partially_ordered<_Tp, _Up>
+ 	constexpr partial_ordering
+ 	operator()(_Tp&& __e, _Up&& __f) const
+ 	noexcept(_S_noexcept<_Tp, _Up>())
+ 	{
+-	  static_assert(same_as<decay_t<_Tp>, decay_t<_Up>>);
+-
+ 	  if constexpr (__adl_partial<_Tp, _Up>)
+ 	    return partial_ordering(partial_order(static_cast<_Tp&&>(__e),
+ 						  static_cast<_Up&&>(__f)));
+@@ -759,18 +756,16 @@ namespace std
+ 	}
+ 
+     public:
+-      template<typename _Tp, typename _Up>
++      template<typename _Tp, __decayed_same_as<_Tp> _Up>
+ 	requires __strongly_ordered<_Tp, _Up> || __op_eq_lt<_Tp, _Up>
+-	constexpr decltype(auto)
++	constexpr strong_ordering
+ 	operator()(_Tp&& __e, _Up&& __f) const
+ 	noexcept(_S_noexcept<_Tp, _Up>())
+ 	{
+-	  static_assert(same_as<decay_t<_Tp>, decay_t<_Up>>);
+-
+ 	  if constexpr (__strongly_ordered<_Tp, _Up>)
+ 	    return _Strong_order{}(static_cast<_Tp&&>(__e),
+ 				   static_cast<_Up&&>(__f));
+-	  else if constexpr (__op_eq_lt<_Tp, _Up>)
++	  else // __op_eq_lt<_Tp, _Up>
+ 	    return static_cast<_Tp&&>(__e) == static_cast<_Up&&>(__f)
+ 	      ? strong_ordering::equal
+ 	      : static_cast<_Tp&&>(__e) < static_cast<_Up&&>(__f)
+@@ -793,18 +788,16 @@ namespace std
+ 	}
+ 
+     public:
+-      template<typename _Tp, typename _Up>
++      template<typename _Tp, __decayed_same_as<_Tp> _Up>
+ 	requires __weakly_ordered<_Tp, _Up> || __op_eq_lt<_Tp, _Up>
+-	constexpr decltype(auto)
++	constexpr weak_ordering
+ 	operator()(_Tp&& __e, _Up&& __f) const
+ 	noexcept(_S_noexcept<_Tp, _Up>())
+ 	{
+-	  static_assert(same_as<decay_t<_Tp>, decay_t<_Up>>);
+-
+ 	  if constexpr (__weakly_ordered<_Tp, _Up>)
+ 	    return _Weak_order{}(static_cast<_Tp&&>(__e),
+ 				 static_cast<_Up&&>(__f));
+-	  else if constexpr (__op_eq_lt<_Tp, _Up>)
++	  else // __op_eq_lt<_Tp, _Up>
+ 	    return static_cast<_Tp&&>(__e) == static_cast<_Up&&>(__f)
+ 	      ? weak_ordering::equivalent
+ 	      : static_cast<_Tp&&>(__e) < static_cast<_Up&&>(__f)
+@@ -813,6 +806,16 @@ namespace std
+ 	}
+     };
+ 
++    // _GLIBCXX_RESOLVE_LIB_DEFECTS
++    // 3465. compare_partial_order_fallback requires F < E
++    template<typename _Tp, typename _Up>
++      concept __op_eq_lt_lt = __op_eq_lt<_Tp, _Up>
++	&& requires(_Tp&& __t, _Up&& __u)
++	{
++	  { static_cast<_Up&&>(__u) < static_cast<_Tp&&>(__t) }
++	    -> convertible_to<bool>;
++	};
++
+     class _Partial_fallback
+     {
+       template<typename _Tp, typename _Up>
+@@ -827,18 +830,16 @@ namespace std
+ 	}
+ 
+     public:
+-      template<typename _Tp, typename _Up>
+-	requires __partially_ordered<_Tp, _Up> || __op_eq_lt<_Tp, _Up>
+-	constexpr decltype(auto)
++      template<typename _Tp, __decayed_same_as<_Tp> _Up>
++	requires __partially_ordered<_Tp, _Up> || __op_eq_lt_lt<_Tp, _Up>
++	constexpr partial_ordering
+ 	operator()(_Tp&& __e, _Up&& __f) const
+ 	noexcept(_S_noexcept<_Tp, _Up>())
+ 	{
+-	  static_assert(same_as<decay_t<_Tp>, decay_t<_Up>>);
+-
+ 	  if constexpr (__partially_ordered<_Tp, _Up>)
+ 	    return _Partial_order{}(static_cast<_Tp&&>(__e),
+ 				    static_cast<_Up&&>(__f));
+-	  else if constexpr (__op_eq_lt<_Tp, _Up>)
++	  else // __op_eq_lt_lt<_Tp, _Up>
+ 	    return static_cast<_Tp&&>(__e) == static_cast<_Up&&>(__f)
+ 	      ? partial_ordering::equivalent
+ 	      : static_cast<_Tp&&>(__e) < static_cast<_Up&&>(__f)
 diff --git a/libstdc++-v3/libsupc++/exception b/libstdc++-v3/libsupc++/exception
 index 863eb91e7f0..992e6f8f256 100644
 --- a/libstdc++-v3/libsupc++/exception
@@ -30501,6 +30717,29 @@ index 27e0740af7e..01f3bf6c6a4 100644
          try:
              return gdb.lookup_type(search)
          except RuntimeError:
+diff --git a/libstdc++-v3/src/c++17/fs_ops.cc b/libstdc++-v3/src/c++17/fs_ops.cc
+index 81c84dfb557..1a340477b3a 100644
+--- a/libstdc++-v3/src/c++17/fs_ops.cc
++++ b/libstdc++-v3/src/c++17/fs_ops.cc
+@@ -496,7 +496,7 @@ fs::create_directories(const path& p, error_code& ec)
+       return false;
+     }
+ 
+-  file_status st = symlink_status(p, ec);
++  file_status st = status(p, ec);
+   if (is_directory(st))
+     return false;
+   else if (ec && !status_known(st))
+@@ -577,8 +577,7 @@ namespace
+   {
+     bool created = false;
+ #ifdef _GLIBCXX_HAVE_SYS_STAT_H
+-    posix::mode_t mode
+-      = static_cast<std::underlying_type_t<fs::perms>>(perm);
++    posix::mode_t mode = static_cast<std::underlying_type_t<fs::perms>>(perm);
+     if (posix::mkdir(p.c_str(), mode))
+       {
+ 	const int err = errno;
 diff --git a/libstdc++-v3/src/c++17/fs_path.cc b/libstdc++-v3/src/c++17/fs_path.cc
 index edfb91fc6c5..812f39fe253 100644
 --- a/libstdc++-v3/src/c++17/fs_path.cc
@@ -30595,6 +30834,67 @@ index 6895780a5f7..68e3a95f9a0 100644
  
  @ENABLE_DUAL_ABI_TRUE@collate_members_cow.cc: ${glibcxx_srcdir}/$(CCOLLATE_CC)
  @ENABLE_DUAL_ABI_TRUE@	$(LN_S) ${glibcxx_srcdir}/$(CCOLLATE_CC) ./$@ || true
+diff --git a/libstdc++-v3/src/filesystem/ops.cc b/libstdc++-v3/src/filesystem/ops.cc
+index 7cc82a50e01..32a17a6d818 100644
+--- a/libstdc++-v3/src/filesystem/ops.cc
++++ b/libstdc++-v3/src/filesystem/ops.cc
+@@ -426,7 +426,7 @@ fs::create_directories(const path& p, error_code& ec) noexcept
+       return false;
+     }
+ 
+-  file_status st = symlink_status(p, ec);
++  file_status st = status(p, ec);
+   if (is_directory(st))
+     return false;
+   else if (ec && !status_known(st))
+diff --git a/libstdc++-v3/testsuite/18_support/comparisons/algorithms/fallback.cc b/libstdc++-v3/testsuite/18_support/comparisons/algorithms/fallback.cc
+new file mode 100644
+index 00000000000..05e1bf7775e
+--- /dev/null
++++ b/libstdc++-v3/testsuite/18_support/comparisons/algorithms/fallback.cc
+@@ -0,0 +1,42 @@
++// { dg-options "-std=gnu++20" }
++// { dg-do compile { target c++20 } }
++
++#include <compare>
++
++using std::strong_ordering;
++using std::partial_ordering;
++
++namespace adl
++{
++  struct S { };
++  void strong_ordering(const S&, const S&);
++  bool operator==(const S&, S&) { return true; }
++  bool operator<(const S&, S&) { return true; }
++}
++
++template<typename T, typename U>
++  concept has_strong_order_fallback = requires (T& t, U& u) {
++    std::compare_strong_order_fallback(t, u);
++  };
++
++template<typename T, typename U>
++  concept has_weak_order_fallback = requires (T& t, U& u) {
++    std::compare_weak_order_fallback(t, u);
++  };
++
++template<typename T, typename U>
++  concept has_partial_order_fallback = requires (T& t, U& u) {
++    std::compare_partial_order_fallback(t, u);
++  };
++
++using adl::S;
++
++static_assert( has_strong_order_fallback<S, S> );
++static_assert( has_strong_order_fallback<const S, S> );
++static_assert( ! has_strong_order_fallback<const S, const S> );
++static_assert( has_weak_order_fallback<S, S> );
++static_assert( has_weak_order_fallback<const S, S> );
++static_assert( ! has_weak_order_fallback<const S, const S> );
++static_assert( has_partial_order_fallback<S, S> );
++static_assert( ! has_partial_order_fallback<const S, S> ); // LWG 3465
++static_assert( ! has_partial_order_fallback<const S, const S> );
 diff --git a/libstdc++-v3/testsuite/18_support/exception_ptr/96657.cc b/libstdc++-v3/testsuite/18_support/exception_ptr/96657.cc
 new file mode 100644
 index 00000000000..61572668385
@@ -32600,6 +32900,86 @@ index 00000000000..cf4644f53c9
 +
 +B b;
 +A a = std::reduce(&b, &b + 1, A{}, binop{});
+diff --git a/libstdc++-v3/testsuite/27_io/filesystem/operations/create_directories.cc b/libstdc++-v3/testsuite/27_io/filesystem/operations/create_directories.cc
+index aaa07042a19..ec58cdb0e7f 100644
+--- a/libstdc++-v3/testsuite/27_io/filesystem/operations/create_directories.cc
++++ b/libstdc++-v3/testsuite/27_io/filesystem/operations/create_directories.cc
+@@ -146,10 +146,33 @@ test03()
+   remove_all(p);
+ }
+ 
++void
++test04()
++{
++#if defined(__MINGW32__) || defined(__MINGW64__)
++  // no symlinks
++#else
++  // PR libstdc++/101510
++  // create_directories reports an error if the path is a symlink to a dir
++  std::error_code ec = make_error_code(std::errc::invalid_argument);
++  const auto p = __gnu_test::nonexistent_path() / "";
++  fs::create_directories(p/"dir");
++  auto link = p/"link";
++  fs::create_directory_symlink("dir", link);
++  bool created = fs::create_directories(link, ec);
++  VERIFY( !created );
++  VERIFY( !ec );
++  created = fs::create_directories(link);
++  VERIFY( !created );
++  remove_all(p);
++#endif
++}
++
+ int
+ main()
+ {
+   test01();
+   test02();
+   test03();
++  test04();
+ }
+diff --git a/libstdc++-v3/testsuite/27_io/filesystem/operations/create_directory.cc b/libstdc++-v3/testsuite/27_io/filesystem/operations/create_directory.cc
+index 02846040f5b..bf2e6132df1 100644
+--- a/libstdc++-v3/testsuite/27_io/filesystem/operations/create_directory.cc
++++ b/libstdc++-v3/testsuite/27_io/filesystem/operations/create_directory.cc
+@@ -55,6 +55,37 @@ test01()
+   b = create_directory(p);
+   VERIFY( !b );
+ 
++  auto f = p/"file";
++  std::ofstream{f} << "create file";
++  b = create_directory(f, ec);
++  VERIFY( ec == std::errc::file_exists );
++  VERIFY( !b );
++  try
++  {
++    create_directory(f);
++    VERIFY( false );
++  }
++  catch (const fs::filesystem_error& e)
++  {
++    VERIFY( e.code() == std::errc::file_exists );
++    VERIFY( e.path1() == f );
++  }
++
++#if defined(__MINGW32__) || defined(__MINGW64__)
++  // no symlinks
++#else
++  // PR libstdc++/101510 create_directory on an existing symlink to a directory
++  fs::create_directory(p/"dir");
++  auto link = p/"link";
++  fs::create_directory_symlink("dir", link);
++  ec = bad_ec;
++  b = fs::create_directory(link, ec);
++  VERIFY( !b );
++  VERIFY( !ec );
++  b = fs::create_directory(link);
++  VERIFY( !b );
++#endif
++
+   remove_all(p, ec);
+ }
+ 
 diff --git a/libstdc++-v3/testsuite/27_io/filesystem/path/construct/100630.cc b/libstdc++-v3/testsuite/27_io/filesystem/path/construct/100630.cc
 new file mode 100644
 index 00000000000..eb8473e600e
@@ -32678,6 +33058,93 @@ index 59eeae823ec..7db52a6336e 100644
    p1.set_value();
    try {
      p1.set_value_at_thread_exit();
+diff --git a/libstdc++-v3/testsuite/experimental/filesystem/operations/create_directories.cc b/libstdc++-v3/testsuite/experimental/filesystem/operations/create_directories.cc
+index 064c30b5b21..b8e853fe2ee 100644
+--- a/libstdc++-v3/testsuite/experimental/filesystem/operations/create_directories.cc
++++ b/libstdc++-v3/testsuite/experimental/filesystem/operations/create_directories.cc
+@@ -129,10 +129,33 @@ test03()
+   remove_all(p);
+ }
+ 
++void
++test04()
++{
++#if defined(__MINGW32__) || defined(__MINGW64__)
++  // no symlinks
++#else
++  // PR libstdc++/101510
++  // create_directories reports an error if the path is a symlink to a dir
++  std::error_code ec = make_error_code(std::errc::invalid_argument);
++  const auto p = __gnu_test::nonexistent_path() / "";
++  fs::create_directories(p/"dir");
++  auto link = p/"link";
++  fs::create_directory_symlink("dir", link);
++  bool created = fs::create_directories(link, ec);
++  VERIFY( !created );
++  VERIFY( !ec );
++  created = fs::create_directories(link);
++  VERIFY( !created );
++  remove_all(p);
++#endif
++}
++
+ int
+ main()
+ {
+   test01();
+   test02();
+   test03();
++  test04();
+ }
+diff --git a/libstdc++-v3/testsuite/experimental/filesystem/operations/create_directory.cc b/libstdc++-v3/testsuite/experimental/filesystem/operations/create_directory.cc
+index a39a456133a..271c152e4b9 100644
+--- a/libstdc++-v3/testsuite/experimental/filesystem/operations/create_directory.cc
++++ b/libstdc++-v3/testsuite/experimental/filesystem/operations/create_directory.cc
+@@ -46,12 +46,44 @@ test01()
+   VERIFY( exists(p) );
+ 
+   // Test existing path (libstdc++/71036).
++  ec = make_error_code(std::errc::invalid_argument);
+   b = create_directory(p, ec);
+   VERIFY( !ec );
+   VERIFY( !b );
+   b = create_directory(p);
+   VERIFY( !b );
+ 
++  auto f = p/"file";
++  std::ofstream{f} << "create file";
++  b = create_directory(f, ec);
++  VERIFY( ec == std::errc::file_exists );
++  VERIFY( !b );
++  try
++  {
++    create_directory(f);
++    VERIFY( false );
++  }
++  catch (const fs::filesystem_error& e)
++  {
++    VERIFY( e.code() == std::errc::file_exists );
++    VERIFY( e.path1() == f );
++  }
++
++#if defined(__MINGW32__) || defined(__MINGW64__)
++  // no symlinks
++#else
++  // PR libstdc++/101510 create_directory on an existing symlink to a directory
++  fs::create_directory(p/"dir");
++  auto link = p/"link";
++  fs::create_directory_symlink("dir", link);
++  ec = make_error_code(std::errc::invalid_argument);
++  b = fs::create_directory(link, ec);
++  VERIFY( !b );
++  VERIFY( !ec );
++  b = fs::create_directory(link);
++  VERIFY( !b );
++#endif
++
+   remove_all(p, ec);
+ }
+ 
 diff --git a/libstdc++-v3/testsuite/experimental/filesystem/path/construct/100630.cc b/libstdc++-v3/testsuite/experimental/filesystem/path/construct/100630.cc
 new file mode 100644
 index 00000000000..b2428ff74cf
@@ -32710,6 +33177,49 @@ index b77d6a29e3d..5fffdd97691 100644
  
  #include <experimental/internet>
  #include <sstream>
+diff --git a/libstdc++-v3/testsuite/experimental/random/randint.cc b/libstdc++-v3/testsuite/experimental/random/randint.cc
+index 94b4c416540..f51edef8ce0 100644
+--- a/libstdc++-v3/testsuite/experimental/random/randint.cc
++++ b/libstdc++-v3/testsuite/experimental/random/randint.cc
+@@ -34,7 +34,7 @@ test01()
+   }
+ 
+   std::experimental::reseed(99u);
+-  const long n1[] = {
++  const int n1[] = {
+     std::experimental::randint(0, 100),
+     std::experimental::randint(0, 100),
+     std::experimental::randint(0, 100),
+@@ -42,7 +42,7 @@ test01()
+     std::experimental::randint(0, 100)
+   };
+   std::experimental::reseed(99u);
+-  const long n2[] = {
++  const int n2[] = {
+     std::experimental::randint(0, 100),
+     std::experimental::randint(0, 100),
+     std::experimental::randint(0, 100),
+@@ -52,13 +52,13 @@ test01()
+   for (int i = 0; i < 5; ++i)
+     VERIFY( n1[i] == n2[i] );
+ 
+-  std::experimental::reseed();
+-  const long n3[] = {
+-    std::experimental::randint(0, 100),
+-    std::experimental::randint(0, 100),
+-    std::experimental::randint(0, 100)
+-  };
+-  VERIFY( !(n3[0] == n1[0] && n3[1] == n1[1] && n3[2] == n1[2]) );
++  do
++  {
++    std::experimental::reseed();
++  }
++  while (std::experimental::randint(0, 100) == n1[0]
++      && std::experimental::randint(0, 100) == n1[1]
++      && std::experimental::randint(0, 100) == n1[2]);
+ }
+ 
+ void
 diff --git a/libstdc++-v3/testsuite/std/ranges/97600.cc b/libstdc++-v3/testsuite/std/ranges/97600.cc
 new file mode 100644
 index 00000000000..d992318259d
