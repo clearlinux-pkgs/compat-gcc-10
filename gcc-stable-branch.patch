@@ -42,7 +42,13 @@ François Dumont (3):
       libstdc++: Fix unordered containers move constructors noexcept qualification
       libstdc++: [_GLIBCXX_DEBUG] Fix management of __dp_sign_max_size [PR 99402]
 
-GCC Administrator (122):
+GCC Administrator (128):
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -318,12 +324,13 @@ Marius Hillenbrand (1):
 Martin Jambor (1):
       ipa-sra: Fix thinko when overriding safe_to_import_accesses (PR 101066)
 
-Martin Liska (5):
+Martin Liska (6):
       Sync gcc-changelog scripts.
       gcc-changelog: sync scripts.
       contrib: add git-commit-mklog wrapper
       Add mklog.py.
       sanitizer: cherry pick 414482751452e54710f16bae58458c66298aaf69
+      coverage: handle function beginning
 
 Martin Sebor (2):
       PR middle-end/100571 - bogus -Wstringop-overflow with VLA of elements larger than byte
@@ -389,7 +396,7 @@ Richard Earnshaw (2):
       arm: fix UB due to missing mode check [PR100311]
       arm: correctly handle inequality comparisons against max constants [PR100563]
 
-Richard Sandiford (8):
+Richard Sandiford (10):
       data-ref: Tighten index-based alias checks [PR99726]
       gimple-fold: Recompute ADDR_EXPR flags after folding a TMR [PR98268]
       aarch64: Tweak post-RA handling of CONST_INT moves [PR98136]
@@ -398,6 +405,8 @@ Richard Sandiford (8):
       aarch64: Fix target alignment for SVE [PR98119]
       Check for matching CONST_VECTOR encodings [PR99929]
       lra: Avoid cycling on certain subreg reloads [PR96796]
+      aarch64: Fix address mode for vec_concat pattern [PR100305]
+      aarch64: Add -mtune=neoverse-512tvb
 
 Roman Zhuykov (1):
       modulo-sched: skip loops with strange register defs [PR100225]
@@ -423,8 +432,10 @@ Tamar Christina (2):
 Thomas Koenig (1):
       Do not replace variable op variable in I/O implied DO loop replacement.
 
-Thomas Schwinge (1):
+Thomas Schwinge (3):
       Add 'libgomp.oacc-c-c++-common/static-variable-1.c' [PR84991, PR84992, PR90779]
+      Restore 'gcc.dg/pr78213.c' testing
+      libstdc++: Avoid illegal argument to verbose in dg-test callback, continued
 
 Tobias Burnus (3):
       Fortran: Fix fndecl with -fcoarray=lib [PR99817]
@@ -2789,10 +2800,35 @@ index 0719d810258..a9368325816 100644
 -10.3.0
 +10.3.1
 diff --git a/gcc/ChangeLog b/gcc/ChangeLog
-index 3b1384e707f..4a7edf76069 100644
+index 3b1384e707f..3bd17c16404 100644
 --- a/gcc/ChangeLog
 +++ b/gcc/ChangeLog
-@@ -1,3 +1,851 @@
+@@ -1,3 +1,876 @@
++2021-08-17  Richard Sandiford  <richard.sandiford@arm.com>
++
++	Backported from master:
++	2021-08-03  Richard Sandiford  <richard.sandiford@arm.com>
++
++	* doc/invoke.texi: Document -mtune=neoverse-512tvb and
++	-mcpu=neoverse-512tvb.
++	* config/aarch64/aarch64-cores.def (neoverse-512tvb): New entry.
++	* config/aarch64/aarch64-tune.md: Regenerate.
++
++2021-08-17  Richard Sandiford  <richard.sandiford@arm.com>
++
++	Backported from master:
++	2021-04-28  Richard Sandiford  <richard.sandiford@arm.com>
++
++	PR target/100305
++	* config/aarch64/constraints.md (Utq): Require the address to
++	be valid for both the element mode and for V2DImode.
++
++2021-08-13  Martin Liska  <mliska@suse.cz>
++
++	PR gcov-profile/100788
++	* coverage.c (coverage_begin_function): Update function
++	  beginning when #line macro is used.
++
 +2021-07-31  Xi Ruoyao  <xry111@mengyan1223.wang>
 +
 +	Backported from master:
@@ -4638,6 +4674,18 @@ index 98026695fdb..d0035c735a3 100644
  		      bti_insn = gen_bti_j ();
  		      emit_insn_after (bti_insn, label);
  		    }
+diff --git a/gcc/config/aarch64/aarch64-cores.def b/gcc/config/aarch64/aarch64-cores.def
+index 9c290292479..fc60e2ae1ac 100644
+--- a/gcc/config/aarch64/aarch64-cores.def
++++ b/gcc/config/aarch64/aarch64-cores.def
+@@ -135,6 +135,7 @@ AARCH64_CORE("thunderx3t110",  thunderx3t110,  thunderx3t110, 8_3A,  AARCH64_FL_
+ /* Arm ('A') cores.  */
+ AARCH64_CORE("zeus", zeus, cortexa57, 8_4A,  AARCH64_FL_FOR_ARCH8_4 | AARCH64_FL_SVE | AARCH64_FL_RCPC | AARCH64_FL_I8MM | AARCH64_FL_BF16 | AARCH64_FL_F16 | AARCH64_FL_PROFILE | AARCH64_FL_SSBS | AARCH64_FL_RNG, neoversev1, 0x41, 0xd40, -1)
+ AARCH64_CORE("neoverse-v1", neoversev1, cortexa57, 8_4A,  AARCH64_FL_FOR_ARCH8_4 | AARCH64_FL_SVE | AARCH64_FL_RCPC | AARCH64_FL_I8MM | AARCH64_FL_BF16 | AARCH64_FL_F16 | AARCH64_FL_PROFILE | AARCH64_FL_SSBS | AARCH64_FL_RNG, neoversev1, 0x41, 0xd40, -1)
++AARCH64_CORE("neoverse-512tvb", neoverse512tvb, cortexa57, 8_4A,  AARCH64_FL_FOR_ARCH8_4 | AARCH64_FL_SVE | AARCH64_FL_RCPC | AARCH64_FL_I8MM | AARCH64_FL_BF16 | AARCH64_FL_F16 | AARCH64_FL_PROFILE | AARCH64_FL_SSBS | AARCH64_FL_RNG, neoversev1, INVALID_IMP, INVALID_CORE, -1)
+ 
+ /* Qualcomm ('Q') cores. */
+ AARCH64_CORE("saphira",     saphira,    saphira,    8_4A,  AARCH64_FL_FOR_ARCH8_4 | AARCH64_FL_CRYPTO | AARCH64_FL_RCPC, saphira,   0x51, 0xC01, -1)
 diff --git a/gcc/config/aarch64/aarch64-simd.md b/gcc/config/aarch64/aarch64-simd.md
 index 6049adc3f3b..e16bc784bb4 100644
 --- a/gcc/config/aarch64/aarch64-simd.md
@@ -4806,6 +4854,17 @@ index d17a7770690..bd51323e57d 100644
  ;; =========================================================================
  ;; == Conversions
  ;; =========================================================================
+diff --git a/gcc/config/aarch64/aarch64-tune.md b/gcc/config/aarch64/aarch64-tune.md
+index 7fda2294b8a..aa68d67bdf4 100644
+--- a/gcc/config/aarch64/aarch64-tune.md
++++ b/gcc/config/aarch64/aarch64-tune.md
+@@ -1,5 +1,5 @@
+ ;; -*- buffer-read-only: t -*-
+ ;; Generated automatically by gentune.sh from aarch64-cores.def
+ (define_attr "tune"
+-	"cortexa34,cortexa35,cortexa53,cortexa57,cortexa72,cortexa73,thunderx,thunderxt88p1,thunderxt88,octeontx,octeontxt81,octeontxt83,thunderxt81,thunderxt83,emag,xgene1,falkor,qdf24xx,exynosm1,phecda,thunderx2t99p1,vulcan,thunderx2t99,cortexa55,cortexa75,cortexa76,cortexa76ae,cortexa77,cortexa65,cortexa65ae,ares,neoversen1,neoversee1,octeontx2,octeontx2t98,octeontx2t96,octeontx2t93,octeontx2f95,octeontx2f95n,octeontx2f95mm,a64fx,tsv110,thunderx3t110,zeus,neoversev1,saphira,neoversen2,cortexa57cortexa53,cortexa72cortexa53,cortexa73cortexa35,cortexa73cortexa53,cortexa75cortexa55,cortexa76cortexa55"
++	"cortexa34,cortexa35,cortexa53,cortexa57,cortexa72,cortexa73,thunderx,thunderxt88p1,thunderxt88,octeontx,octeontxt81,octeontxt83,thunderxt81,thunderxt83,emag,xgene1,falkor,qdf24xx,exynosm1,phecda,thunderx2t99p1,vulcan,thunderx2t99,cortexa55,cortexa75,cortexa76,cortexa76ae,cortexa77,cortexa65,cortexa65ae,ares,neoversen1,neoversee1,octeontx2,octeontx2t98,octeontx2t96,octeontx2t93,octeontx2f95,octeontx2f95n,octeontx2f95mm,a64fx,tsv110,thunderx3t110,zeus,neoversev1,neoverse512tvb,saphira,neoversen2,cortexa57cortexa53,cortexa72cortexa53,cortexa73cortexa35,cortexa73cortexa53,cortexa75cortexa55,cortexa76cortexa55"
+ 	(const (symbol_ref "((enum attr_tune) aarch64_tune)")))
 diff --git a/gcc/config/aarch64/aarch64.c b/gcc/config/aarch64/aarch64.c
 index 9b400c49ac6..1e08f4caa11 100644
 --- a/gcc/config/aarch64/aarch64.c
@@ -4988,6 +5047,19 @@ index 58445dea941..552aed3ce89 100644
       {
         aarch64_expand_mov_immediate (operands[0], operands[1]);
         DONE;
+diff --git a/gcc/config/aarch64/constraints.md b/gcc/config/aarch64/constraints.md
+index 8cc6f508881..98c1f41c490 100644
+--- a/gcc/config/aarch64/constraints.md
++++ b/gcc/config/aarch64/constraints.md
+@@ -327,6 +327,8 @@
+   "@internal
+    An address valid for loading or storing a 128-bit AdvSIMD register"
+   (and (match_code "mem")
++       (match_test "aarch64_legitimate_address_p (GET_MODE (op),
++						  XEXP (op, 0), 1)")
+        (match_test "aarch64_legitimate_address_p (V2DImode,
+ 						  XEXP (op, 0), 1)")))
+ 
 diff --git a/gcc/config/aarch64/iterators.md b/gcc/config/aarch64/iterators.md
 index 0a7145281fa..ff5b23d71b1 100644
 --- a/gcc/config/aarch64/iterators.md
@@ -7070,6 +7142,63 @@ index 8ef4f44bb34..6022aded6bb 100644
  #define vec_load_len_r(X,L)				\
    (__vector unsigned char)__builtin_s390_vlrlr((L),(X))
  #define vec_store_len_r(X,Y,L) \
+diff --git a/gcc/coverage.c b/gcc/coverage.c
+index 38820bc170f..2747f8f1b4c 100644
+--- a/gcc/coverage.c
++++ b/gcc/coverage.c
+@@ -616,18 +616,16 @@ coverage_compute_cfg_checksum (struct function *fn)
+ int
+ coverage_begin_function (unsigned lineno_checksum, unsigned cfg_checksum)
+ {
+-  expanded_location xloc;
+-  unsigned long offset;
+-
+   /* We don't need to output .gcno file unless we're under -ftest-coverage
+      (e.g. -fprofile-arcs/generate/use don't need .gcno to work). */
+   if (no_coverage || !bbg_file_name)
+     return 0;
+ 
+-  xloc = expand_location (DECL_SOURCE_LOCATION (current_function_decl));
++  expanded_location startloc
++    = expand_location (DECL_SOURCE_LOCATION (current_function_decl));
+ 
+   /* Announce function */
+-  offset = gcov_write_tag (GCOV_TAG_FUNCTION);
++  unsigned long offset = gcov_write_tag (GCOV_TAG_FUNCTION);
+   if (param_profile_func_internal_id)
+     gcov_write_unsigned (current_function_funcdef_no + 1);
+   else
+@@ -644,16 +642,24 @@ coverage_begin_function (unsigned lineno_checksum, unsigned cfg_checksum)
+   gcov_write_unsigned (DECL_ARTIFICIAL (current_function_decl)
+ 		       && !DECL_FUNCTION_VERSIONED (current_function_decl)
+ 		       && !DECL_LAMBDA_FUNCTION_P (current_function_decl));
+-  gcov_write_filename (xloc.file);
+-  gcov_write_unsigned (xloc.line);
+-  gcov_write_unsigned (xloc.column);
++  gcov_write_filename (startloc.file);
++  gcov_write_unsigned (startloc.line);
++  gcov_write_unsigned (startloc.column);
+ 
+   expanded_location endloc = expand_location (cfun->function_end_locus);
+ 
+   /* Function can start in a single file and end in another one.  */
+-  int end_line = endloc.file == xloc.file ? endloc.line : xloc.line;
+-  int end_column = endloc.file == xloc.file ? endloc.column: xloc.column;
+-  gcc_assert (xloc.line <= end_line);
++  int end_line
++    = endloc.file == startloc.file ? endloc.line : startloc.line;
++  int end_column
++    = endloc.file == startloc.file ? endloc.column: startloc.column;
++
++  if (startloc.line > end_line)
++    {
++      end_line = startloc.line;
++      end_column = startloc.column;
++    }
++
+   gcov_write_unsigned (end_line);
+   gcov_write_unsigned (end_column);
+   gcov_write_length (offset);
 diff --git a/gcc/cp/ChangeLog b/gcc/cp/ChangeLog
 index b576f9a3678..2edb8b0ec18 100644
 --- a/gcc/cp/ChangeLog
@@ -9632,6 +9761,55 @@ index 9c734595950..dd04dd27264 100644
  void __builtin_vsx_disassemble_pair (void *, __vector_pair *);
  
  vec_t __builtin_vsx_xvcvspbf16 (vec_t);
+diff --git a/gcc/doc/invoke.texi b/gcc/doc/invoke.texi
+index eabeec944e7..72d995cd0cc 100644
+--- a/gcc/doc/invoke.texi
++++ b/gcc/doc/invoke.texi
+@@ -16994,8 +16994,9 @@ performance of the code.  Permissible values for this option are:
+ @samp{cortex-a57}, @samp{cortex-a72}, @samp{cortex-a73}, @samp{cortex-a75},
+ @samp{cortex-a76}, @samp{cortex-a76ae}, @samp{cortex-a77},
+ @samp{cortex-a65}, @samp{cortex-a65ae}, @samp{cortex-a34},
+-@samp{ares}, @samp{exynos-m1}, @samp{emag}, @samp{falkor}, @samp{neoverse-e1},
+-@samp{neoverse-n1}, @samp{neoverse-n2}, @samp{neoverse-v1}, @samp{qdf24xx},
++@samp{ares}, @samp{exynos-m1}, @samp{emag}, @samp{falkor},
++@samp{neoverse-e1}, @samp{neoverse-n1}, @samp{neoverse-n2},
++@samp{neoverse-v1}, @samp{neoverse-512tvb}, @samp{qdf24xx},
+ @samp{saphira}, @samp{phecda}, @samp{xgene1}, @samp{vulcan}, @samp{octeontx},
+ @samp{octeontx81},  @samp{octeontx83},
+ @samp{octeontx2}, @samp{octeontx2t98}, @samp{octeontx2t96}
+@@ -17015,6 +17016,15 @@ The values @samp{cortex-a57.cortex-a53}, @samp{cortex-a72.cortex-a53},
+ @samp{cortex-a75.cortex-a55}, @samp{cortex-a76.cortex-a55} specify that GCC
+ should tune for a big.LITTLE system.
+ 
++The value @samp{neoverse-512tvb} specifies that GCC should tune
++for Neoverse cores that (a) implement SVE and (b) have a total vector
++bandwidth of 512 bits per cycle.  In other words, the option tells GCC to
++tune for Neoverse cores that can execute 4 128-bit Advanced SIMD arithmetic
++instructions a cycle and that can execute an equivalent number of SVE
++arithmetic instructions per cycle (2 for 256-bit SVE, 4 for 128-bit SVE).
++This is more general than tuning for a specific core like Neoverse V1
++but is more specific than the default tuning described below.
++
+ Additionally on native AArch64 GNU/Linux systems the value
+ @samp{native} tunes performance to the host system.  This option has no effect
+ if the compiler is unable to recognize the processor of the host system.
+@@ -17044,6 +17054,16 @@ by @option{-mtune}).  Where this option is used in conjunction
+ with @option{-march} or @option{-mtune}, those options take precedence
+ over the appropriate part of this option.
+ 
++@option{-mcpu=neoverse-512tvb} is special in that it does not refer
++to a specific core, but instead refers to all Neoverse cores that
++(a) implement SVE and (b) have a total vector bandwidth of 512 bits
++a cycle.  Unless overridden by @option{-march},
++@option{-mcpu=neoverse-512tvb} generates code that can run on a
++Neoverse V1 core, since Neoverse V1 is the first Neoverse core with
++these properties.  Unless overridden by @option{-mtune},
++@option{-mcpu=neoverse-512tvb} tunes code in the same way as for
++@option{-mtune=neoverse-512tvb}.
++
+ @item -moverride=@var{string}
+ @opindex moverride
+ Override tuning decisions made by the back-end in response to a
 diff --git a/gcc/dse.c b/gcc/dse.c
 index c8dcf46ed29..ec6f7b63449 100644
 --- a/gcc/dse.c
@@ -10960,10 +11138,30 @@ index 99edad8a950..f33489286a9 100644
  
  #endif
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index 2913065bf31..c2dbc8af8b6 100644
+index 2913065bf31..b9f9fcc082e 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,1048 @@
+@@ -1,3 +1,1068 @@
++2021-08-17  Thomas Schwinge  <thomas@codesourcery.com>
++
++	Backported from master:
++	2021-08-17  Thomas Schwinge  <thomas@codesourcery.com>
++
++	* gcc.dg/pr78213.c: Restore testing.
++
++2021-08-17  Richard Sandiford  <richard.sandiford@arm.com>
++
++	Backported from master:
++	2021-04-28  Richard Sandiford  <richard.sandiford@arm.com>
++
++	PR target/100305
++	* gcc.c-torture/compile/pr100305.c: New test.
++
++2021-08-13  Martin Liska  <mliska@suse.cz>
++
++	PR gcov-profile/100788
++	* gcc.dg/pr100788.c: New test.
++
 +2021-07-30  Harald Anlauf  <anlauf@gmx.de>
 +
 +	Backported from master:
@@ -13967,6 +14165,25 @@ index 00000000000..64edaf3de21
 +  B b;
 +  (b.*f)();
 +}
+diff --git a/gcc/testsuite/gcc.c-torture/compile/pr100305.c b/gcc/testsuite/gcc.c-torture/compile/pr100305.c
+new file mode 100644
+index 00000000000..43d78bf6542
+--- /dev/null
++++ b/gcc/testsuite/gcc.c-torture/compile/pr100305.c
+@@ -0,0 +1,13 @@
++/* PR target/100305 */
++
++typedef double v2df __attribute__((vector_size(16)));
++
++#define N 4096
++void consume (void *);
++v2df
++foo (void)
++{
++  double x[N+2];
++  consume (x);
++  return (v2df) { x[N], x[N + 1] };
++}
 diff --git a/gcc/testsuite/gcc.c-torture/compile/pr96796.c b/gcc/testsuite/gcc.c-torture/compile/pr96796.c
 new file mode 100644
 index 00000000000..8808e62fe77
@@ -14356,6 +14573,25 @@ index 00000000000..f6a5fcd3a47
 +  unsigned long long d = e();
 +  f(b >= d);
 +}
+diff --git a/gcc/testsuite/gcc.dg/pr100788.c b/gcc/testsuite/gcc.dg/pr100788.c
+new file mode 100644
+index 00000000000..5d54329f752
+--- /dev/null
++++ b/gcc/testsuite/gcc.dg/pr100788.c
+@@ -0,0 +1,13 @@
++/* { dg-do compile } */
++/* { dg-options "--coverage" } */
++
++void
++foo()
++{
++#line 1
++}
++
++int main()
++{
++  foo ();
++}
 diff --git a/gcc/testsuite/gcc.dg/pr100791.c b/gcc/testsuite/gcc.dg/pr100791.c
 new file mode 100644
 index 00000000000..96cf34f14a4
@@ -14371,6 +14607,24 @@ index 00000000000..96cf34f14a4
 +  return log_bad_request(0, __builtin_va_arg_pack()); /* { dg-warning "implicit" } */
 +}
 +void log_bad_request() { foo (0); } /* { dg-warning "conflicting types" } */
+diff --git a/gcc/testsuite/gcc.dg/pr78213.c b/gcc/testsuite/gcc.dg/pr78213.c
+index ebc2cce78f4..40dd3c82b60 100644
+--- a/gcc/testsuite/gcc.dg/pr78213.c
++++ b/gcc/testsuite/gcc.dg/pr78213.c
+@@ -1,12 +1,5 @@
+ /* { dg-do compile } */
+-/* { dg-options "-fself-test" } */
+-
+-/* When this test was written -fself-test took no argument, but it
+-   has subsequently gained a mandatory argument, giving the path
+-   to selftest support files (within the srcdir).
+-   It's not clear how to provide this path sanely from
+-   within DejaGnu, so for now, this test is disabled.  */
+-/* { dg-skip-if "" { *-*-* } } */
++/* { dg-options "-fself-test=$srcdir/selftests" } */
+ 
+ /* Verify that -fself-test does not fail on a non empty source.  */
+ 
 diff --git a/gcc/testsuite/gcc.dg/pr99830.c b/gcc/testsuite/gcc.dg/pr99830.c
 new file mode 100644
 index 00000000000..75226f5c3a9
@@ -21352,10 +21606,18 @@ index 304b3a01a08..44359b3d1ac 100644
    UnmapOrDie(oldstack.ss_sp, oldstack.ss_size);
  }
 diff --git a/libstdc++-v3/ChangeLog b/libstdc++-v3/ChangeLog
-index fdd63cbff1a..4607e1bf374 100644
+index fdd63cbff1a..b5f60c74921 100644
 --- a/libstdc++-v3/ChangeLog
 +++ b/libstdc++-v3/ChangeLog
-@@ -1,3 +1,1024 @@
+@@ -1,3 +1,1032 @@
++2021-08-17  Thomas Schwinge  <thomas@codesourcery.com>
++
++	Backported from master:
++	2021-08-17  Thomas Schwinge  <thomas@codesourcery.com>
++
++	* testsuite/lib/libstdc++.exp: Avoid illegal argument to verbose,
++	continued.
++
 +2021-08-11  Jonathan Wakely  <jwakely@redhat.com>
 +
 +	Backported from master:
@@ -33220,6 +33482,20 @@ index 94b4c416540..f51edef8ce0 100644
  }
  
  void
+diff --git a/libstdc++-v3/testsuite/lib/libstdc++.exp b/libstdc++-v3/testsuite/lib/libstdc++.exp
+index 3b8587cd01d..45dd2c8c02e 100644
+--- a/libstdc++-v3/testsuite/lib/libstdc++.exp
++++ b/libstdc++-v3/testsuite/lib/libstdc++.exp
+@@ -410,8 +410,7 @@ proc libstdc++-dg-test { prog do_what extra_tool_flags } {
+     set select_compile "v3_target_compile"
+     set options ""
+     if { $extra_tool_flags != "" } {
+-	verbose -log "extra_tool_flags are:"
+-	verbose -log -- $extra_tool_flags
++	verbose -log "extra_tool_flags are: $extra_tool_flags"
+ 	if { [string first "-x c" $extra_tool_flags ] != -1 } {
+ 	    verbose -log "compiling and executing as C, not C++"
+ 	    set edit_tool_flags $extra_tool_flags
 diff --git a/libstdc++-v3/testsuite/std/ranges/97600.cc b/libstdc++-v3/testsuite/std/ranges/97600.cc
 new file mode 100644
 index 00000000000..d992318259d
