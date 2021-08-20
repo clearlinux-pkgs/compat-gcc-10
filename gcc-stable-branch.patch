@@ -42,7 +42,9 @@ François Dumont (3):
       libstdc++: Fix unordered containers move constructors noexcept qualification
       libstdc++: [_GLIBCXX_DEBUG] Fix management of __dp_sign_max_size [PR 99402]
 
-GCC Administrator (128):
+GCC Administrator (130):
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -247,7 +249,7 @@ Jason Merrill (20):
       c++: 'this' adjustment for devirtualized call
       c++: constexpr and array[0] [PR101029]
 
-Jonathan Wakely (51):
+Jonathan Wakely (52):
       libstdc++: Fix Doxygen warning about ambiguous file name
       maintainer-scripts: Disable multilib when generating libstdc++ docs
       libstdc++: Fix doxygen markup for group close commands
@@ -299,6 +301,7 @@ Jonathan Wakely (51):
       libstdc++: Add more tests for filesystem::create_directory [PR101510]
       libstdc++: Fix create_directories to resolve symlinks [PR101510]
       libstdc++: Fix test that fails randomly [PR101866]
+      libstdc++: Document P1739R4 status [PR100139]
 
 José Rui Faustino de Sousa (1):
       Fortran: Fix double function call with -fcheck=pointer [PR]
@@ -392,9 +395,10 @@ Richard Biener (20):
       ipa/100791 - copy fntype when processing __builtin_va_arg_pack
       tree-optimization/100934 - properly mark irreducible regions for DOM
 
-Richard Earnshaw (2):
+Richard Earnshaw (3):
       arm: fix UB due to missing mode check [PR100311]
       arm: correctly handle inequality comparisons against max constants [PR100563]
+      arm: Remove use of opts_set in arm_configure_build_target [PR100767]
 
 Richard Sandiford (10):
       data-ref: Tighten index-based alias checks [PR99726]
@@ -432,10 +436,11 @@ Tamar Christina (2):
 Thomas Koenig (1):
       Do not replace variable op variable in I/O implied DO loop replacement.
 
-Thomas Schwinge (3):
+Thomas Schwinge (4):
       Add 'libgomp.oacc-c-c++-common/static-variable-1.c' [PR84991, PR84992, PR90779]
       Restore 'gcc.dg/pr78213.c' testing
       libstdc++: Avoid illegal argument to verbose in dg-test callback, continued
+      Fix up 'gcc.dg/pr78213.c' for '--enable-checking=release' etc.
 
 Tobias Burnus (3):
       Fortran: Fix fndecl with -fcoarray=lib [PR99817]
@@ -2800,10 +2805,26 @@ index 0719d810258..a9368325816 100644
 -10.3.0
 +10.3.1
 diff --git a/gcc/ChangeLog b/gcc/ChangeLog
-index 3b1384e707f..3bd17c16404 100644
+index 3b1384e707f..c1c1a5546e2 100644
 --- a/gcc/ChangeLog
 +++ b/gcc/ChangeLog
-@@ -1,3 +1,876 @@
+@@ -1,3 +1,892 @@
++2021-08-19  Richard Earnshaw  <rearnsha@arm.com>
++
++	Backported from master:
++	2021-05-27  Richard Earnshaw  <rearnsha@arm.com>
++
++	PR target/100767
++	* config/arm/arm.c (arm_configure_build_target): Remove parameter
++	opts_set, directly check opts parameters for being non-null.
++	(arm_option_restore): Update call to arm_configure_build_target.
++	(arm_option_override): Likewise.
++	(arm_can_inline_p): Likewise.
++	(arm_valid_target_attribute_tree): Likewise.
++	* config/arm/arm-c.c (arm_pragma_target_parse): Likewise.
++	* config/arm/arm-protos.h (arm_configure_build_target): Adjust
++	prototype.
++
 +2021-08-17  Richard Sandiford  <richard.sandiford@arm.com>
 +
 +	Backported from master:
@@ -5072,6 +5093,20 @@ index 0a7145281fa..ff5b23d71b1 100644
      UNSPEC_COND_CMPEQ_WIDE ; Used in aarch64-sve.md.
      UNSPEC_COND_CMPGE_WIDE ; Used in aarch64-sve.md.
      UNSPEC_COND_CMPGT_WIDE ; Used in aarch64-sve.md.
+diff --git a/gcc/config/arm/arm-c.c b/gcc/config/arm/arm-c.c
+index 7468a20bd98..17b05567101 100644
+--- a/gcc/config/arm/arm-c.c
++++ b/gcc/config/arm/arm-c.c
+@@ -408,8 +408,7 @@ arm_pragma_target_parse (tree args, tree pop_target)
+        target_option_current_node, but not handle_pragma_target.  */
+       target_option_current_node = cur_tree;
+       arm_configure_build_target (&arm_active_target,
+-				  TREE_TARGET_OPTION (cur_tree),
+-				  &global_options_set, false);
++				  TREE_TARGET_OPTION (cur_tree), false);
+     }
+ 
+   /* Update macros if target_node changes. The global state will be restored
 diff --git a/gcc/config/arm/arm-cpus.in b/gcc/config/arm/arm-cpus.in
 index db0b93f6bb7..5abcad4c35d 100644
 --- a/gcc/config/arm/arm-cpus.in
@@ -5085,11 +5120,89 @@ index db0b93f6bb7..5abcad4c35d 100644
  # Architecture entries
  # format:
  # begin arch <name>
+diff --git a/gcc/config/arm/arm-protos.h b/gcc/config/arm/arm-protos.h
+index bbbf67180f6..fac68cee8da 100644
+--- a/gcc/config/arm/arm-protos.h
++++ b/gcc/config/arm/arm-protos.h
+@@ -241,8 +241,7 @@ extern bool arm_change_mode_p (tree);
+ extern tree arm_valid_target_attribute_tree (tree, struct gcc_options *,
+ 					     struct gcc_options *);
+ extern void arm_configure_build_target (struct arm_build_target *,
+-					struct cl_target_option *,
+-					struct gcc_options *, bool);
++					struct cl_target_option *, bool);
+ extern void arm_option_reconfigure_globals (void);
+ extern void arm_options_perform_arch_sanity_checks (void);
+ extern void arm_pr_long_calls (struct cpp_reader *);
 diff --git a/gcc/config/arm/arm.c b/gcc/config/arm/arm.c
-index db37e2b8e71..8f8386c5770 100644
+index db37e2b8e71..ac06424df7e 100644
 --- a/gcc/config/arm/arm.c
 +++ b/gcc/config/arm/arm.c
-@@ -3850,7 +3850,7 @@ arm_options_perform_arch_sanity_checks (void)
+@@ -3036,7 +3036,7 @@ arm_override_options_after_change (void)
+ {
+   arm_configure_build_target (&arm_active_target,
+ 			      TREE_TARGET_OPTION (target_option_default_node),
+-			      &global_options_set, false);
++			      false);
+ 
+   arm_override_options_after_change_1 (&global_options);
+ }
+@@ -3057,8 +3057,7 @@ arm_option_restore (struct gcc_options *opts, struct cl_target_option *ptr)
+   opts->x_arm_arch_string = ptr->x_arm_arch_string;
+   opts->x_arm_cpu_string = ptr->x_arm_cpu_string;
+   opts->x_arm_tune_string = ptr->x_arm_tune_string;
+-  arm_configure_build_target (&arm_active_target, ptr, &global_options_set,
+-			      false);
++  arm_configure_build_target (&arm_active_target, ptr, false);
+ }
+ 
+ /* Reset options between modes that the user has specified.  */
+@@ -3181,7 +3180,6 @@ static sbitmap isa_quirkbits;
+ void
+ arm_configure_build_target (struct arm_build_target *target,
+ 			    struct cl_target_option *opts,
+-			    struct gcc_options *opts_set,
+ 			    bool warn_compatible)
+ {
+   const cpu_option *arm_selected_tune = NULL;
+@@ -3196,7 +3194,7 @@ arm_configure_build_target (struct arm_build_target *target,
+   target->core_name = NULL;
+   target->arch_name = NULL;
+ 
+-  if (opts_set->x_arm_arch_string)
++  if (opts->x_arm_arch_string)
+     {
+       arm_selected_arch = arm_parse_arch_option_name (all_architectures,
+ 						      "-march",
+@@ -3204,7 +3202,7 @@ arm_configure_build_target (struct arm_build_target *target,
+       arch_opts = strchr (opts->x_arm_arch_string, '+');
+     }
+ 
+-  if (opts_set->x_arm_cpu_string)
++  if (opts->x_arm_cpu_string)
+     {
+       arm_selected_cpu = arm_parse_cpu_option_name (all_cores, "-mcpu",
+ 						    opts->x_arm_cpu_string);
+@@ -3214,7 +3212,7 @@ arm_configure_build_target (struct arm_build_target *target,
+ 	 options for tuning.  */
+     }
+ 
+-  if (opts_set->x_arm_tune_string)
++  if (opts->x_arm_tune_string)
+     {
+       arm_selected_tune = arm_parse_cpu_option_name (all_cores, "-mtune",
+ 						     opts->x_arm_tune_string);
+@@ -3473,8 +3471,7 @@ arm_option_override (void)
+     }
+ 
+   cl_target_option_save (&opts, &global_options);
+-  arm_configure_build_target (&arm_active_target, &opts, &global_options_set,
+-			      true);
++  arm_configure_build_target (&arm_active_target, &opts, true);
+ 
+ #ifdef SUBTARGET_OVERRIDE_OPTIONS
+   SUBTARGET_OVERRIDE_OPTIONS;
+@@ -3850,7 +3847,7 @@ arm_options_perform_arch_sanity_checks (void)
  
    /* We don't clear D16-D31 VFP registers for cmse_nonsecure_call functions
       and ARMv8-M Baseline and Mainline do not allow such configuration.  */
@@ -5098,7 +5211,7 @@ index db37e2b8e71..8f8386c5770 100644
      error ("ARMv8-M Security Extensions incompatible with selected FPU");
  
  
-@@ -5567,9 +5567,20 @@ arm_canonicalize_comparison (int *code, rtx *op0, rtx *op1,
+@@ -5567,9 +5564,20 @@ arm_canonicalize_comparison (int *code, rtx *op0, rtx *op1,
  			return;
  		      *op1 = GEN_INT (i + 1);
  		      *code = *code == GT ? GE : LT;
@@ -5121,7 +5234,7 @@ index db37e2b8e71..8f8386c5770 100644
  
  		case GTU:
  		case LEU:
-@@ -5582,9 +5593,19 @@ arm_canonicalize_comparison (int *code, rtx *op0, rtx *op1,
+@@ -5582,9 +5590,19 @@ arm_canonicalize_comparison (int *code, rtx *op0, rtx *op1,
  			return;
  		      *op1 = GEN_INT (i + 1);
  		      *code = *code == GTU ? GEU : LTU;
@@ -5143,7 +5256,7 @@ index db37e2b8e71..8f8386c5770 100644
  
  		default:
  		  gcc_unreachable ();
-@@ -5786,6 +5807,10 @@ arm_libcall_uses_aapcs_base (const_rtx libcall)
+@@ -5786,6 +5804,10 @@ arm_libcall_uses_aapcs_base (const_rtx libcall)
  		   convert_optab_libfunc (sfix_optab, DImode, SFmode));
        add_libcall (libcall_htab,
  		   convert_optab_libfunc (ufix_optab, DImode, SFmode));
@@ -5154,7 +5267,7 @@ index db37e2b8e71..8f8386c5770 100644
  
        /* Values from double-precision helper functions are returned in core
  	 registers if the selected core only supports single-precision
-@@ -18740,10 +18765,14 @@ cmse_nonsecure_call_inline_register_clear (void)
+@@ -18740,10 +18762,14 @@ cmse_nonsecure_call_inline_register_clear (void)
  		  imm = gen_int_mode (- lazy_store_stack_frame_size, SImode);
  		  add_insn = emit_insn (gen_addsi3 (stack_pointer_rtx,
  						    stack_pointer_rtx, imm));
@@ -5173,7 +5286,7 @@ index db37e2b8e71..8f8386c5770 100644
  		  emit_insn (gen_lazy_store_multiple_insn (stack_pointer_rtx));
  		}
  	      /* Save VFP callee-saved registers.  */
-@@ -18781,10 +18810,11 @@ cmse_nonsecure_call_inline_register_clear (void)
+@@ -18781,10 +18807,11 @@ cmse_nonsecure_call_inline_register_clear (void)
  		  rtx_insn *add_insn =
  		    emit_insn (gen_addsi3 (stack_pointer_rtx,
  					   stack_pointer_rtx, imm));
@@ -5189,7 +5302,7 @@ index db37e2b8e71..8f8386c5770 100644
  		}
  	      /* Restore VFP callee-saved registers.  */
  	      else
-@@ -25242,7 +25272,7 @@ arm_hard_regno_mode_ok (unsigned int regno, machine_mode mode)
+@@ -25242,7 +25269,7 @@ arm_hard_regno_mode_ok (unsigned int regno, machine_mode mode)
      return false;
  
    if (IS_VPR_REGNUM (regno))
@@ -5198,7 +5311,7 @@ index db37e2b8e71..8f8386c5770 100644
  
    if (TARGET_THUMB1)
      /* For the Thumb we only allow values bigger than SImode in
-@@ -27007,7 +27037,7 @@ cmse_nonsecure_entry_clear_before_return (void)
+@@ -27007,7 +27034,7 @@ cmse_nonsecure_entry_clear_before_return (void)
  	continue;
        if (IN_RANGE (regno, IP_REGNUM, PC_REGNUM))
  	continue;
@@ -5207,7 +5320,7 @@ index db37e2b8e71..8f8386c5770 100644
  	  && (!IN_RANGE (regno, FIRST_VFP_REGNUM, LAST_VFP_REGNUM)
  	      || TARGET_HARD_FLOAT))
  	bitmap_set_bit (to_clear_bitmap, regno);
-@@ -30470,13 +30500,31 @@ arm_split_compare_and_swap (rtx operands[])
+@@ -30470,13 +30497,31 @@ arm_split_compare_and_swap (rtx operands[])
      }
    else
      {
@@ -5243,6 +5356,28 @@ index db37e2b8e71..8f8386c5770 100644
      }
  
    arm_emit_store_exclusive (mode, neg_bval, mem, newval, use_release);
+@@ -32397,10 +32442,8 @@ arm_can_inline_p (tree caller, tree callee)
+   caller_target.isa = sbitmap_alloc (isa_num_bits);
+   callee_target.isa = sbitmap_alloc (isa_num_bits);
+ 
+-  arm_configure_build_target (&caller_target, caller_opts, &global_options_set,
+-			      false);
+-  arm_configure_build_target (&callee_target, callee_opts, &global_options_set,
+-			      false);
++  arm_configure_build_target (&caller_target, caller_opts, false);
++  arm_configure_build_target (&callee_target, callee_opts, false);
+   if (!bitmap_subset_p (callee_target.isa, caller_target.isa))
+     can_inline = false;
+ 
+@@ -32536,7 +32579,7 @@ arm_valid_target_attribute_tree (tree args, struct gcc_options *opts,
+     return NULL_TREE;
+ 
+   cl_target_option_save (&cl_opts, opts);
+-  arm_configure_build_target (&arm_active_target, &cl_opts, opts_set, false);
++  arm_configure_build_target (&arm_active_target, &cl_opts, false);
+   arm_option_check_internal (opts);
+   /* Do any overrides, such as global options arch=xxx.
+      We do this since arm_active_target was overridden.  */
 diff --git a/gcc/config/arm/arm.h b/gcc/config/arm/arm.h
 index 30e1d6dc994..2922dfe677c 100644
 --- a/gcc/config/arm/arm.h
@@ -11138,10 +11273,18 @@ index 99edad8a950..f33489286a9 100644
  
  #endif
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index 2913065bf31..b9f9fcc082e 100644
+index 2913065bf31..1fc4953fb84 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,1068 @@
+@@ -1,3 +1,1076 @@
++2021-08-19  Thomas Schwinge  <thomas@codesourcery.com>
++
++	Backported from master:
++	2021-08-19  Thomas Schwinge  <thomas@codesourcery.com>
++
++	PR testsuite/101969
++	* gcc.dg/pr78213.c: Fix up for '--enable-checking=release' etc.
++
 +2021-08-17  Thomas Schwinge  <thomas@codesourcery.com>
 +
 +	Backported from master:
@@ -14608,7 +14751,7 @@ index 00000000000..96cf34f14a4
 +}
 +void log_bad_request() { foo (0); } /* { dg-warning "conflicting types" } */
 diff --git a/gcc/testsuite/gcc.dg/pr78213.c b/gcc/testsuite/gcc.dg/pr78213.c
-index ebc2cce78f4..40dd3c82b60 100644
+index ebc2cce78f4..04bf0381f76 100644
 --- a/gcc/testsuite/gcc.dg/pr78213.c
 +++ b/gcc/testsuite/gcc.dg/pr78213.c
 @@ -1,12 +1,5 @@
@@ -14625,6 +14768,13 @@ index ebc2cce78f4..40dd3c82b60 100644
  
  /* Verify that -fself-test does not fail on a non empty source.  */
  
+@@ -15,4 +8,5 @@ int i;
+   while (i--)
+     bar();
+ }
+-/* { dg-message "fself\-test: " "-fself-test" { target *-*-* } 0 } */
++
++/* { dg-regexp {^-fself-test: [0-9]+ pass\(es\) in [.0-9]+ seconds$|.*: note: self-tests are not enabled in this build$} } */
 diff --git a/gcc/testsuite/gcc.dg/pr99830.c b/gcc/testsuite/gcc.dg/pr99830.c
 new file mode 100644
 index 00000000000..75226f5c3a9
@@ -21606,10 +21756,19 @@ index 304b3a01a08..44359b3d1ac 100644
    UnmapOrDie(oldstack.ss_sp, oldstack.ss_size);
  }
 diff --git a/libstdc++-v3/ChangeLog b/libstdc++-v3/ChangeLog
-index fdd63cbff1a..b5f60c74921 100644
+index fdd63cbff1a..238e2b5ce62 100644
 --- a/libstdc++-v3/ChangeLog
 +++ b/libstdc++-v3/ChangeLog
-@@ -1,3 +1,1032 @@
+@@ -1,3 +1,1041 @@
++2021-08-19  Jonathan Wakely  <jwakely@redhat.com>
++
++	Backported from master:
++	2021-08-19  Jonathan Wakely  <jwakely@redhat.com>
++
++	PR libstdc++/100139
++	* doc/xml/manual/status_cxx2020.xml: Add P1739R4 to status table.
++	* doc/html/manual/status.html: Regenerate.
++
 +2021-08-17  Thomas Schwinge  <thomas@codesourcery.com>
 +
 +	Backported from master:
@@ -22643,7 +22802,7 @@ index fdd63cbff1a..b5f60c74921 100644
  
  	* GCC 10.3.0 released.
 diff --git a/libstdc++-v3/doc/html/manual/status.html b/libstdc++-v3/doc/html/manual/status.html
-index a956ac2721d..1cb14d9b3ff 100644
+index a956ac2721d..98f86e1ad78 100644
 --- a/libstdc++-v3/doc/html/manual/status.html
 +++ b/libstdc++-v3/doc/html/manual/status.html
 @@ -932,7 +932,7 @@ since C++14 and the implementation is complete.
@@ -22655,6 +22814,18 @@ index a956ac2721d..1cb14d9b3ff 100644
        <span class="emphasis"><em>29</em></span>
        </td><td colspan="3" align="left">
  	<span class="emphasis"><em>Numerics</em></span>
+@@ -1285,7 +1285,10 @@ or any notes about the implementation.
+       </td><td align="center"> 10.1 </td><td align="left"> </td></tr><tr><td align="left"> Ranges Design Cleanup </td><td align="left">
+         <a class="link" href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1252r2.pdf" target="_top">
+         P1252R2 </a>
+-      </td><td align="center"> 10.1 </td><td align="left"> </td></tr><tr><td colspan="4" align="left">
++      </td><td align="center"> 10.1 </td><td align="left"> </td></tr><tr bgcolor="#C8B0B0"><td align="left"> Avoid template bloat for <code class="code">safe_ranges</code> in combination with ‘subrange-y’ view adaptors.</td><td align="left">
++        <a class="link" href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2020/p1739r4.html" target="_top">
++        P1739R4 </a>
++      </td><td align="center"> </td><td align="left"> </td></tr><tr><td colspan="4" align="left">
+         <span class="bold"><strong>Time, dates, calendars, time zones</strong></span>
+       </td></tr><tr bgcolor="#C8B0B0"><td align="left">  Extending chrono to Calendars and Time Zones </td><td align="left">
+         <a class="link" href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p0355r7.html" target="_top">
 diff --git a/libstdc++-v3/doc/xml/manual/status_cxx2017.xml b/libstdc++-v3/doc/xml/manual/status_cxx2017.xml
 index 0c3c23b4b31..148e3d452a4 100644
 --- a/libstdc++-v3/doc/xml/manual/status_cxx2017.xml
@@ -22668,6 +22839,27 @@ index 0c3c23b4b31..148e3d452a4 100644
      </row>
      <row>
        <entry>28.5</entry>
+diff --git a/libstdc++-v3/doc/xml/manual/status_cxx2020.xml b/libstdc++-v3/doc/xml/manual/status_cxx2020.xml
+index 1ae177113cb..5fced67db09 100644
+--- a/libstdc++-v3/doc/xml/manual/status_cxx2020.xml
++++ b/libstdc++-v3/doc/xml/manual/status_cxx2020.xml
+@@ -548,6 +548,16 @@ or any notes about the implementation.
+       <entry />
+     </row>
+ 
++    <row>
++      <?dbhtml bgcolor="#C8B0B0" ?>
++      <entry> Avoid template bloat for <code>safe_ranges</code> in combination with ‘subrange-y’ view adaptors.</entry>
++      <entry>
++        <link xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2020/p1739r4.html">
++        P1739R4 </link>
++      </entry>
++      <entry align="center"> </entry>
++      <entry />
++    </row>
+ 
+ 
+     <row>
 diff --git a/libstdc++-v3/include/bits/alloc_traits.h b/libstdc++-v3/include/bits/alloc_traits.h
 index 86d8ed221ff..4fcaa533f46 100644
 --- a/libstdc++-v3/include/bits/alloc_traits.h
