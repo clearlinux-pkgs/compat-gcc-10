@@ -22,6 +22,11 @@ Bill Schmidt (2):
 Bin Cheng (1):
       tree-optimization/98736 - use programing order preserved RPO in ldist
 
+Christophe Lyon (3):
+      arm: Fix __arm_vctp16q return type in arm_mve.h
+      arm: Fix typos for reorder assembler architecture directives [PR101723]
+      arm: Fix pr69245.c testcase for reorder assembler architecture directives [PR101723]
+
 David Edelsohn (1):
       aix: Alias -m64 to -maix64 and -m32 to -maix32.
 
@@ -42,7 +47,13 @@ François Dumont (3):
       libstdc++: Fix unordered containers move constructors noexcept qualification
       libstdc++: [_GLIBCXX_DEBUG] Fix management of __dp_sign_max_size [PR 99402]
 
-GCC Administrator (130):
+GCC Administrator (136):
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -249,7 +260,7 @@ Jason Merrill (20):
       c++: 'this' adjustment for devirtualized call
       c++: constexpr and array[0] [PR101029]
 
-Jonathan Wakely (52):
+Jonathan Wakely (53):
       libstdc++: Fix Doxygen warning about ambiguous file name
       maintainer-scripts: Disable multilib when generating libstdc++ docs
       libstdc++: Fix doxygen markup for group close commands
@@ -302,6 +313,7 @@ Jonathan Wakely (52):
       libstdc++: Fix create_directories to resolve symlinks [PR101510]
       libstdc++: Fix test that fails randomly [PR101866]
       libstdc++: Document P1739R4 status [PR100139]
+      libstdc++: Add default template argument to basic_istream_view
 
 José Rui Faustino de Sousa (1):
       Fortran: Fix double function call with -fcheck=pointer [PR]
@@ -373,7 +385,7 @@ Peter Bergner (3):
 Philippe Blain (1):
       libstdc++: Install libstdc++*-gdb.py more robustly [PR 99453]
 
-Richard Biener (20):
+Richard Biener (21):
       Increment BASE-VER after release
       testsuite/100176 - fix struct-layout-1_generate.c compile
       middle-end/98726 - fix VECTOR_CST element access
@@ -394,11 +406,21 @@ Richard Biener (20):
       ipa/100513 - fix SSA_NAME_DEF_STMT corruption in IPA param manip
       ipa/100791 - copy fntype when processing __builtin_va_arg_pack
       tree-optimization/100934 - properly mark irreducible regions for DOM
+      ipa/97565 - fix IPA PTA body availability check
 
-Richard Earnshaw (3):
+Richard Earnshaw (12):
       arm: fix UB due to missing mode check [PR100311]
       arm: correctly handle inequality comparisons against max constants [PR100563]
       arm: Remove use of opts_set in arm_configure_build_target [PR100767]
+      arm: ensure the arch_name is always set for the build target
+      arm: Don't reconfigure globals in arm_configure_build_target
+      arm: reorder assembler architecture directives [PR101723]
+      arm: Fix general issues with patterns for VLLDM and VLSTM
+      arm: testsuite: improve detection of CMSE hardware.
+      arm: Add command-line option for enabling CVE-2021-35465 mitigation [PR102035]
+      arm: add erratum mitigation to __gnu_cmse_nonsecure_call [PR102035]
+      arm: fix vlldm erratum for Armv8.1-m [PR102035]
+      arm: Add tests for VLLDM mitigation [PR102035]
 
 Richard Sandiford (10):
       data-ref: Tighten index-based alias checks [PR99726]
@@ -464,6 +486,9 @@ Xi Ruoyao (1):
 YiFei Zhu (2):
       bpf: align function entry point to 64 bits
       bpf: allow BSS symbols to be global symbols
+
+konglin1 (1):
+      i386: Fix _mm512_fpclass_ps_mask in O0 [PR 101471]
 
 diff --git a/contrib/ChangeLog b/contrib/ChangeLog
 index cfcc8b12b53..ac262eae462 100644
@@ -2805,10 +2830,109 @@ index 0719d810258..a9368325816 100644
 -10.3.0
 +10.3.1
 diff --git a/gcc/ChangeLog b/gcc/ChangeLog
-index 3b1384e707f..c1c1a5546e2 100644
+index 3b1384e707f..17d23ad2490 100644
 --- a/gcc/ChangeLog
 +++ b/gcc/ChangeLog
-@@ -1,3 +1,892 @@
+@@ -1,3 +1,991 @@
++2021-08-25  konglin1  <lingling.kong@intel.com>
++
++	PR target/101471
++	* config/i386/avx512dqintrin.h (_mm512_fpclass_ps_mask): Fix
++	macro define in O0.
++	(_mm512_mask_fpclass_ps_mask): Ditto.
++
++2021-08-24  Richard Earnshaw  <rearnsha@arm.com>
++
++	Backported from master:
++	2021-08-24  Richard Earnshaw  <rearnsha@arm.com>
++
++	PR target/102035
++	* config/arm/arm.md (attribute arch): Add fix_vlldm.
++	(arch_enabled): Use it.
++	* config/arm/vfp.md (lazy_store_multiple_insn): Add alternative to
++	use when erratum mitigation is needed.
++
++2021-08-24  Richard Earnshaw  <rearnsha@arm.com>
++
++	Backported from master:
++	2021-08-24  Richard Earnshaw  <rearnsha@arm.com>
++
++	PR target/102035
++	* config/arm/arm.opt (mfix-cmse-cve-2021-35465): New option.
++	* doc/invoke.texi (Arm Options): Document it.
++	* config/arm/arm-cpus.in (quirk_vlldm): New feature bit.
++	(ALL_QUIRKS): Add quirk_vlldm.
++	(cortex-m33): Add quirk_vlldm.
++	(cortex-m35p, cortex-m55): Likewise.
++	* config/arm/arm.c (arm_option_override): Enable fix_vlldm if
++	targetting an affected CPU and not explicitly controlled on
++	the command line.
++
++2021-08-24  Richard Earnshaw  <rearnsha@arm.com>
++
++	Backported from master:
++	2021-08-24  Richard Earnshaw  <rearnsha@arm.com>
++
++	* config/arm/vfp.md (lazy_store_multiple_insn): Rewrite as valid RTL.
++	(lazy_load_multiple_insn): Likewise.
++
++2021-08-24  Richard Biener  <rguenther@suse.de>
++
++	Backported from master:
++	2021-08-23  Richard Biener  <rguenther@suse.de>
++
++	PR ipa/97565
++	* tree-ssa-structalias.c (ipa_pta_execute): Check in_other_partition
++	in addition to has_gimple_body.
++
++2021-08-23  Richard Earnshaw  <rearnsha@arm.com>
++
++	Backported from master:
++	2021-08-05  Richard Earnshaw  <rearnsha@arm.com>
++
++	PR target/101723
++	* config/arm/arm-cpus.in (generic-armv7-a): Add quirk to suppress
++	writing .cpu directive in asm output.
++	* config/arm/arm.c (arm_identify_fpu_from_isa): New variable.
++	(arm_last_printed_arch_string): Delete.
++	(arm_last-printed_fpu_string): Delete.
++	(arm_configure_build_target): If use of floating-point/SIMD is
++	disabled, remove all fp/simd related features from the target ISA.
++	(last_arm_targ_options): New variable.
++	(arm_print_asm_arch_directives): Add new parameters.  Change order
++	of emitted directives and handle all cases here.
++	(arm_file_start): Always call arm_print_asm_arch_directives, move
++	all generation of .arch/.arch_extension here.
++	(arm_file_end): Call arm_print_asm_arch.
++	(arm_declare_function_name): Call arm_print_asm_arch_directives
++	instead of printing .arch/.fpu directives directly.
++
++2021-08-23  Richard Earnshaw  <rearnsha@arm.com>
++
++	Backported from master:
++	2021-08-05  Richard Earnshaw  <rearnsha@arm.com>
++
++	* config/arm/arm.c (arm_configure_build_target): Don't call
++	arm_option_reconfigure_globals.
++	(arm_option_restore): Call arm_option_reconfigure_globals after
++	reconfiguring the target.
++	* config/arm/arm-c.c (arm_pragma_target_parse): Likewise.
++
++2021-08-23  Richard Earnshaw  <rearnsha@arm.com>
++
++	Backported from master:
++	2021-08-05  Richard Earnshaw  <rearnsha@arm.com>
++
++	* config/arm/arm.c (arm_configure_build_target): Ensure the target's
++	arch_name is always set.
++
++2021-08-23  Christophe Lyon  <christophe.lyon@foss.st.com>
++
++	Backported from master:
++	2021-08-23  Christophe Lyon  <christophe.lyon@foss.st.com>
++
++	* config/arm/arm_mve.h: Fix __arm_vctp16q return type.
++
 +2021-08-19  Richard Earnshaw  <rearnsha@arm.com>
 +
 +	Backported from master:
@@ -5094,32 +5218,78 @@ index 0a7145281fa..ff5b23d71b1 100644
      UNSPEC_COND_CMPGE_WIDE ; Used in aarch64-sve.md.
      UNSPEC_COND_CMPGT_WIDE ; Used in aarch64-sve.md.
 diff --git a/gcc/config/arm/arm-c.c b/gcc/config/arm/arm-c.c
-index 7468a20bd98..17b05567101 100644
+index 7468a20bd98..36b12215243 100644
 --- a/gcc/config/arm/arm-c.c
 +++ b/gcc/config/arm/arm-c.c
-@@ -408,8 +408,7 @@ arm_pragma_target_parse (tree args, tree pop_target)
+@@ -408,8 +408,8 @@ arm_pragma_target_parse (tree args, tree pop_target)
         target_option_current_node, but not handle_pragma_target.  */
        target_option_current_node = cur_tree;
        arm_configure_build_target (&arm_active_target,
 -				  TREE_TARGET_OPTION (cur_tree),
 -				  &global_options_set, false);
 +				  TREE_TARGET_OPTION (cur_tree), false);
++      arm_option_reconfigure_globals ();
      }
  
    /* Update macros if target_node changes. The global state will be restored
 diff --git a/gcc/config/arm/arm-cpus.in b/gcc/config/arm/arm-cpus.in
-index db0b93f6bb7..5abcad4c35d 100644
+index db0b93f6bb7..65c6a4d2d02 100644
 --- a/gcc/config/arm/arm-cpus.in
 +++ b/gcc/config/arm/arm-cpus.in
-@@ -324,6 +324,8 @@ define implied vfp_base MVE MVE_FP ALL_FP
- # need to ignore it for matching purposes.
- define fgroup ALL_QUIRKS   quirk_no_volatile_ce quirk_armv6kz quirk_cm3_ldrd xscale quirk_no_asmcpu
+@@ -186,6 +186,9 @@ define feature quirk_armv6kz
+ # Cortex-M3 LDRD quirk.
+ define feature quirk_cm3_ldrd
  
-+define fgroup IGNORE_FOR_MULTILIB cdecp0 cdecp1 cdecp2 cdecp3 cdecp4 cdecp5 cdecp6 cdecp7
++# v8-m/v8.1-m VLLDM errata.
++define feature quirk_vlldm
 +
+ # Don't use .cpu assembly directive
+ define feature quirk_no_asmcpu
+ 
+@@ -322,7 +325,9 @@ define implied vfp_base MVE MVE_FP ALL_FP
+ # architectures.
+ # xscale isn't really a 'quirk', but it isn't an architecture either and we
+ # need to ignore it for matching purposes.
+-define fgroup ALL_QUIRKS   quirk_no_volatile_ce quirk_armv6kz quirk_cm3_ldrd xscale quirk_no_asmcpu
++define fgroup ALL_QUIRKS   quirk_no_volatile_ce quirk_armv6kz quirk_cm3_ldrd quirk_vlldm xscale quirk_no_asmcpu
++
++define fgroup IGNORE_FOR_MULTILIB cdecp0 cdecp1 cdecp2 cdecp3 cdecp4 cdecp5 cdecp6 cdecp7
+ 
  # Architecture entries
  # format:
- # begin arch <name>
+@@ -1078,6 +1083,7 @@ begin cpu generic-armv7-a
+  cname genericv7a
+  tune flags LDSCHED
+  architecture armv7-a+fp
++ isa quirk_no_asmcpu
+  option mp add mp
+  option sec add sec
+  option vfpv3-d16 add VFPv3 FP_DBL
+@@ -1524,6 +1530,7 @@ begin cpu cortex-m33
+  architecture armv8-m.main+dsp+fp
+  option nofp remove ALL_FP
+  option nodsp remove armv7em
++ isa quirk_vlldm
+  costs v7m
+ end cpu cortex-m33
+ 
+@@ -1533,6 +1540,7 @@ begin cpu cortex-m35p
+  architecture armv8-m.main+dsp+fp
+  option nofp remove ALL_FP
+  option nodsp remove armv7em
++ isa quirk_vlldm
+  costs v7m
+ end cpu cortex-m35p
+ 
+@@ -1544,7 +1552,7 @@ begin cpu cortex-m55
+  option nomve remove mve mve_float
+  option nofp remove ALL_FP mve_float
+  option nodsp remove MVE mve_float
+- isa quirk_no_asmcpu
++ isa quirk_no_asmcpu quirk_vlldm
+  costs v7m
+  vendor 41
+ end cpu cortex-m55
 diff --git a/gcc/config/arm/arm-protos.h b/gcc/config/arm/arm-protos.h
 index bbbf67180f6..fac68cee8da 100644
 --- a/gcc/config/arm/arm-protos.h
@@ -5135,10 +5305,29 @@ index bbbf67180f6..fac68cee8da 100644
  extern void arm_options_perform_arch_sanity_checks (void);
  extern void arm_pr_long_calls (struct cpp_reader *);
 diff --git a/gcc/config/arm/arm.c b/gcc/config/arm/arm.c
-index db37e2b8e71..ac06424df7e 100644
+index db37e2b8e71..f02d3d30b05 100644
 --- a/gcc/config/arm/arm.c
 +++ b/gcc/config/arm/arm.c
-@@ -3036,7 +3036,7 @@ arm_override_options_after_change (void)
+@@ -77,10 +77,6 @@
+ typedef struct minipool_node    Mnode;
+ typedef struct minipool_fixup   Mfix;
+ 
+-/* The last .arch and .fpu assembly strings that we printed.  */
+-static std::string arm_last_printed_arch_string;
+-static std::string arm_last_printed_fpu_string;
+-
+ void (*arm_lang_output_object_attributes_hook)(void);
+ 
+ struct four_ints
+@@ -332,6 +328,7 @@ static HOST_WIDE_INT arm_constant_alignment (const_tree, HOST_WIDE_INT);
+ static rtx_insn * thumb1_md_asm_adjust (vec<rtx> &, vec<rtx> &,
+ 					vec<const char *> &, vec<rtx> &,
+ 					HARD_REG_SET &);
++static const char *arm_identify_fpu_from_isa (sbitmap);
+ 
+ /* Table of machine attributes.  */
+ static const struct attribute_spec arm_attribute_table[] =
+@@ -3036,7 +3033,7 @@ arm_override_options_after_change (void)
  {
    arm_configure_build_target (&arm_active_target,
  			      TREE_TARGET_OPTION (target_option_default_node),
@@ -5147,17 +5336,18 @@ index db37e2b8e71..ac06424df7e 100644
  
    arm_override_options_after_change_1 (&global_options);
  }
-@@ -3057,8 +3057,7 @@ arm_option_restore (struct gcc_options *opts, struct cl_target_option *ptr)
+@@ -3057,8 +3054,8 @@ arm_option_restore (struct gcc_options *opts, struct cl_target_option *ptr)
    opts->x_arm_arch_string = ptr->x_arm_arch_string;
    opts->x_arm_cpu_string = ptr->x_arm_cpu_string;
    opts->x_arm_tune_string = ptr->x_arm_tune_string;
 -  arm_configure_build_target (&arm_active_target, ptr, &global_options_set,
 -			      false);
 +  arm_configure_build_target (&arm_active_target, ptr, false);
++  arm_option_reconfigure_globals ();
  }
  
  /* Reset options between modes that the user has specified.  */
-@@ -3181,7 +3180,6 @@ static sbitmap isa_quirkbits;
+@@ -3181,7 +3178,6 @@ static sbitmap isa_quirkbits;
  void
  arm_configure_build_target (struct arm_build_target *target,
  			    struct cl_target_option *opts,
@@ -5165,7 +5355,7 @@ index db37e2b8e71..ac06424df7e 100644
  			    bool warn_compatible)
  {
    const cpu_option *arm_selected_tune = NULL;
-@@ -3196,7 +3194,7 @@ arm_configure_build_target (struct arm_build_target *target,
+@@ -3196,7 +3192,7 @@ arm_configure_build_target (struct arm_build_target *target,
    target->core_name = NULL;
    target->arch_name = NULL;
  
@@ -5174,7 +5364,7 @@ index db37e2b8e71..ac06424df7e 100644
      {
        arm_selected_arch = arm_parse_arch_option_name (all_architectures,
  						      "-march",
-@@ -3204,7 +3202,7 @@ arm_configure_build_target (struct arm_build_target *target,
+@@ -3204,7 +3200,7 @@ arm_configure_build_target (struct arm_build_target *target,
        arch_opts = strchr (opts->x_arm_arch_string, '+');
      }
  
@@ -5183,7 +5373,7 @@ index db37e2b8e71..ac06424df7e 100644
      {
        arm_selected_cpu = arm_parse_cpu_option_name (all_cores, "-mcpu",
  						    opts->x_arm_cpu_string);
-@@ -3214,7 +3212,7 @@ arm_configure_build_target (struct arm_build_target *target,
+@@ -3214,7 +3210,7 @@ arm_configure_build_target (struct arm_build_target *target,
  	 options for tuning.  */
      }
  
@@ -5192,7 +5382,36 @@ index db37e2b8e71..ac06424df7e 100644
      {
        arm_selected_tune = arm_parse_cpu_option_name (all_cores, "-mtune",
  						     opts->x_arm_tune_string);
-@@ -3473,8 +3471,7 @@ arm_option_override (void)
+@@ -3407,6 +3403,11 @@ arm_configure_build_target (struct arm_build_target *target,
+       bitmap_ior (target->isa, target->isa, fpu_bits);
+     }
+ 
++  /* If we have the soft-float ABI, clear any feature bits relating to use of
++     floating-point operations.  They'll just confuse things later on.  */
++  if (arm_float_abi == ARM_FLOAT_ABI_SOFT)
++    bitmap_and_compl (target->isa, target->isa, isa_all_fpbits);
++
+   /* There may be implied bits which we still need to enable. These are
+      non-named features which are needed to complete other sets of features,
+      but cannot be enabled from arm-cpus.in due to being shared between
+@@ -3429,6 +3430,8 @@ arm_configure_build_target (struct arm_build_target *target,
+   const cpu_tune *tune_data = &all_tunes[arm_selected_tune - all_cores];
+ 
+   /* Finish initializing the target structure.  */
++  if (!target->arch_name)
++    target->arch_name = arm_selected_arch->common.name;
+   target->arch_pp_name = arm_selected_arch->arch;
+   target->base_arch = arm_selected_arch->base_arch;
+   target->profile = arm_selected_arch->profile;
+@@ -3436,7 +3439,6 @@ arm_configure_build_target (struct arm_build_target *target,
+   target->tune_flags = tune_data->tune_flags;
+   target->tune = tune_data->tune;
+   target->tune_core = tune_data->scheduler;
+-  arm_option_reconfigure_globals ();
+ }
+ 
+ /* Fix up any incompatible options that the user has specified.  */
+@@ -3473,8 +3475,7 @@ arm_option_override (void)
      }
  
    cl_target_option_save (&opts, &global_options);
@@ -5202,7 +5421,23 @@ index db37e2b8e71..ac06424df7e 100644
  
  #ifdef SUBTARGET_OVERRIDE_OPTIONS
    SUBTARGET_OVERRIDE_OPTIONS;
-@@ -3850,7 +3847,7 @@ arm_options_perform_arch_sanity_checks (void)
+@@ -3610,6 +3611,15 @@ arm_option_override (void)
+ 	fix_cm3_ldrd = 0;
+     }
+ 
++  /* Enable fix_vlldm by default if required.  */
++  if (fix_vlldm == 2)
++    {
++      if (bitmap_bit_p (arm_active_target.isa, isa_bit_quirk_vlldm))
++	fix_vlldm = 1;
++      else
++	fix_vlldm = 0;
++    }
++
+   /* Hot/Cold partitioning is not currently supported, since we can't
+      handle literal pool placement in that case.  */
+   if (flag_reorder_blocks_and_partition)
+@@ -3850,7 +3860,7 @@ arm_options_perform_arch_sanity_checks (void)
  
    /* We don't clear D16-D31 VFP registers for cmse_nonsecure_call functions
       and ARMv8-M Baseline and Mainline do not allow such configuration.  */
@@ -5211,7 +5446,7 @@ index db37e2b8e71..ac06424df7e 100644
      error ("ARMv8-M Security Extensions incompatible with selected FPU");
  
  
-@@ -5567,9 +5564,20 @@ arm_canonicalize_comparison (int *code, rtx *op0, rtx *op1,
+@@ -5567,9 +5577,20 @@ arm_canonicalize_comparison (int *code, rtx *op0, rtx *op1,
  			return;
  		      *op1 = GEN_INT (i + 1);
  		      *code = *code == GT ? GE : LT;
@@ -5234,7 +5469,7 @@ index db37e2b8e71..ac06424df7e 100644
  
  		case GTU:
  		case LEU:
-@@ -5582,9 +5590,19 @@ arm_canonicalize_comparison (int *code, rtx *op0, rtx *op1,
+@@ -5582,9 +5603,19 @@ arm_canonicalize_comparison (int *code, rtx *op0, rtx *op1,
  			return;
  		      *op1 = GEN_INT (i + 1);
  		      *code = *code == GTU ? GEU : LTU;
@@ -5256,7 +5491,7 @@ index db37e2b8e71..ac06424df7e 100644
  
  		default:
  		  gcc_unreachable ();
-@@ -5786,6 +5804,10 @@ arm_libcall_uses_aapcs_base (const_rtx libcall)
+@@ -5786,6 +5817,10 @@ arm_libcall_uses_aapcs_base (const_rtx libcall)
  		   convert_optab_libfunc (sfix_optab, DImode, SFmode));
        add_libcall (libcall_htab,
  		   convert_optab_libfunc (ufix_optab, DImode, SFmode));
@@ -5267,7 +5502,7 @@ index db37e2b8e71..ac06424df7e 100644
  
        /* Values from double-precision helper functions are returned in core
  	 registers if the selected core only supports single-precision
-@@ -18740,10 +18762,14 @@ cmse_nonsecure_call_inline_register_clear (void)
+@@ -18740,10 +18775,14 @@ cmse_nonsecure_call_inline_register_clear (void)
  		  imm = gen_int_mode (- lazy_store_stack_frame_size, SImode);
  		  add_insn = emit_insn (gen_addsi3 (stack_pointer_rtx,
  						    stack_pointer_rtx, imm));
@@ -5286,7 +5521,7 @@ index db37e2b8e71..ac06424df7e 100644
  		  emit_insn (gen_lazy_store_multiple_insn (stack_pointer_rtx));
  		}
  	      /* Save VFP callee-saved registers.  */
-@@ -18781,10 +18807,11 @@ cmse_nonsecure_call_inline_register_clear (void)
+@@ -18781,10 +18820,11 @@ cmse_nonsecure_call_inline_register_clear (void)
  		  rtx_insn *add_insn =
  		    emit_insn (gen_addsi3 (stack_pointer_rtx,
  					   stack_pointer_rtx, imm));
@@ -5302,7 +5537,7 @@ index db37e2b8e71..ac06424df7e 100644
  		}
  	      /* Restore VFP callee-saved registers.  */
  	      else
-@@ -25242,7 +25269,7 @@ arm_hard_regno_mode_ok (unsigned int regno, machine_mode mode)
+@@ -25242,7 +25282,7 @@ arm_hard_regno_mode_ok (unsigned int regno, machine_mode mode)
      return false;
  
    if (IS_VPR_REGNUM (regno))
@@ -5311,7 +5546,7 @@ index db37e2b8e71..ac06424df7e 100644
  
    if (TARGET_THUMB1)
      /* For the Thumb we only allow values bigger than SImode in
-@@ -27007,7 +27034,7 @@ cmse_nonsecure_entry_clear_before_return (void)
+@@ -27007,7 +27047,7 @@ cmse_nonsecure_entry_clear_before_return (void)
  	continue;
        if (IN_RANGE (regno, IP_REGNUM, PC_REGNUM))
  	continue;
@@ -5320,7 +5555,166 @@ index db37e2b8e71..ac06424df7e 100644
  	  && (!IN_RANGE (regno, FIRST_VFP_REGNUM, LAST_VFP_REGNUM)
  	      || TARGET_HARD_FLOAT))
  	bitmap_set_bit (to_clear_bitmap, regno);
-@@ -30470,13 +30497,31 @@ arm_split_compare_and_swap (rtx operands[])
+@@ -28040,20 +28080,65 @@ arm_print_tune_info (void)
+ 	       (int) current_tune->sched_autopref);
+ }
+ 
++/* The last set of target options used to emit .arch directives, etc.  This
++   could be a function-local static if it were not required to expose it as a
++   root to the garbage collector.  */
++static GTY(()) cl_target_option *last_asm_targ_options = NULL;
++
+ /* Print .arch and .arch_extension directives corresponding to the
+    current architecture configuration.  */
+ static void
+-arm_print_asm_arch_directives ()
++arm_print_asm_arch_directives (FILE *stream, cl_target_option *targ_options)
+ {
++  arm_build_target build_target;
++  /* If the target options haven't changed since the last time we were called
++     there is nothing to do.  This should be sufficient to suppress the
++     majority of redundant work.  */
++  if (last_asm_targ_options == targ_options)
++    return;
++
++  last_asm_targ_options = targ_options;
++
++  build_target.isa = sbitmap_alloc (isa_num_bits);
++  arm_configure_build_target (&build_target, targ_options, false);
++
++  if (build_target.core_name
++      && !bitmap_bit_p (build_target.isa, isa_bit_quirk_no_asmcpu))
++    {
++      const char* truncated_name
++	= arm_rewrite_selected_cpu (build_target.core_name);
++      asm_fprintf (stream, "\t.cpu %s\n", truncated_name);
++    }
++
+   const arch_option *arch
+     = arm_parse_arch_option_name (all_architectures, "-march",
+-				  arm_active_target.arch_name);
++				  build_target.arch_name);
+   auto_sbitmap opt_bits (isa_num_bits);
+ 
+   gcc_assert (arch);
+ 
+-  asm_fprintf (asm_out_file, "\t.arch %s\n", arm_active_target.arch_name);
+-  arm_last_printed_arch_string = arm_active_target.arch_name;
++  if (strcmp (build_target.arch_name, "armv7ve") == 0)
++    {
++      /* Keep backward compatability for assemblers which don't support
++	 armv7ve.  Fortunately, none of the following extensions are reset
++	 by a .fpu directive.  */
++      asm_fprintf (stream, "\t.arch armv7-a\n");
++      asm_fprintf (stream, "\t.arch_extension virt\n");
++      asm_fprintf (stream, "\t.arch_extension idiv\n");
++      asm_fprintf (stream, "\t.arch_extension sec\n");
++      asm_fprintf (stream, "\t.arch_extension mp\n");
++    }
++  else
++    asm_fprintf (stream, "\t.arch %s\n", build_target.arch_name);
++
++  /* The .fpu directive will reset any architecture extensions from the
++     assembler that relate to the fp/vector extensions.  So put this out before
++     any .arch_extension directives.  */
++  const char *fpu_name = (TARGET_SOFT_FLOAT
++			  ? "softvfp"
++			  : arm_identify_fpu_from_isa (build_target.isa));
++  asm_fprintf (stream, "\t.fpu %s\n", fpu_name);
++
+   if (!arch->common.extensions)
+     return;
+ 
+@@ -28079,13 +28164,12 @@ arm_print_asm_arch_directives ()
+ 		  && !TARGET_HAVE_MVE_FLOAT))
+ 	    continue;
+ 
+-	  /* If every feature bit of this option is set in the target
+-	     ISA specification, print out the option name.  However,
+-	     don't print anything if all the bits are part of the
+-	     FPU specification.  */
+-	  if (bitmap_subset_p (opt_bits, arm_active_target.isa)
++	  /* If every feature bit of this option is set in the target ISA
++	     specification, print out the option name.  However, don't print
++	     anything if all the bits are part of the FPU specification.  */
++	  if (bitmap_subset_p (opt_bits, build_target.isa)
+ 	      && !bitmap_subset_p (opt_bits, isa_all_fpubits_internal))
+-	    asm_fprintf (asm_out_file, "\t.arch_extension %s\n", opt->name);
++	    asm_fprintf (stream, "\t.arch_extension %s\n", opt->name);
+ 	}
+     }
+ }
+@@ -28095,46 +28179,23 @@ arm_file_start (void)
+ {
+   int val;
+ 
++  arm_print_asm_arch_directives
++    (asm_out_file, TREE_TARGET_OPTION (target_option_default_node));
++
+   if (TARGET_BPABI)
+     {
+-      /* We don't have a specified CPU.  Use the architecture to
+-	 generate the tags.
+-
+-	 Note: it might be better to do this unconditionally, then the
+-	 assembler would not need to know about all new CPU names as
+-	 they are added.  */
+-      if (!arm_active_target.core_name)
+-	{
+-	  /* armv7ve doesn't support any extensions.  */
+-	  if (strcmp (arm_active_target.arch_name, "armv7ve") == 0)
+-	    {
+-	      /* Keep backward compatability for assemblers
+-		 which don't support armv7ve.  */
+-	      asm_fprintf (asm_out_file, "\t.arch armv7-a\n");
+-	      asm_fprintf (asm_out_file, "\t.arch_extension virt\n");
+-	      asm_fprintf (asm_out_file, "\t.arch_extension idiv\n");
+-	      asm_fprintf (asm_out_file, "\t.arch_extension sec\n");
+-	      asm_fprintf (asm_out_file, "\t.arch_extension mp\n");
+-	      arm_last_printed_arch_string = "armv7ve";
+-	    }
+-	  else
+-	    arm_print_asm_arch_directives ();
+-	}
+-      else if (strncmp (arm_active_target.core_name, "generic", 7) == 0)
+-	{
+-	  asm_fprintf (asm_out_file, "\t.arch %s\n",
+-		       arm_active_target.core_name + 8);
+-	  arm_last_printed_arch_string = arm_active_target.core_name + 8;
+-	}
+-      else
++      /* If we have a named cpu, but we the assembler does not support that
++	 name via .cpu, put out a cpu name attribute; but don't do this if the
++	 name starts with the fictitious prefix, 'generic'.  */
++      if (arm_active_target.core_name
++	  && bitmap_bit_p (arm_active_target.isa, isa_bit_quirk_no_asmcpu)
++	  && strncmp (arm_active_target.core_name, "generic", 7) != 0)
+ 	{
+ 	  const char* truncated_name
+ 	    = arm_rewrite_selected_cpu (arm_active_target.core_name);
+ 	  if (bitmap_bit_p (arm_active_target.isa, isa_bit_quirk_no_asmcpu))
+ 	    asm_fprintf (asm_out_file, "\t.eabi_attribute 5, \"%s\"\n",
+ 			 truncated_name);
+-	  else
+-	    asm_fprintf (asm_out_file, "\t.cpu %s\n", truncated_name);
+ 	}
+ 
+       if (print_tune_info)
+@@ -28202,6 +28263,13 @@ arm_file_end (void)
+ {
+   int regno;
+ 
++  /* Just in case the last function output in the assembler had non-default
++     architecture directives, we force the assembler state back to the default
++     set, so that any 'calculated' build attributes are based on the default
++     options rather than the special options for that function.  */
++  arm_print_asm_arch_directives
++    (asm_out_file, TREE_TARGET_OPTION (target_option_default_node));
++
+   if (NEED_INDICATE_EXEC_STACK)
+     /* Add .note.GNU-stack.  */
+     file_end_indicate_exec_stack ();
+@@ -30470,13 +30538,31 @@ arm_split_compare_and_swap (rtx operands[])
      }
    else
      {
@@ -5356,7 +5750,7 @@ index db37e2b8e71..ac06424df7e 100644
      }
  
    arm_emit_store_exclusive (mode, neg_bval, mem, newval, use_release);
-@@ -32397,10 +32442,8 @@ arm_can_inline_p (tree caller, tree callee)
+@@ -32397,10 +32483,8 @@ arm_can_inline_p (tree caller, tree callee)
    caller_target.isa = sbitmap_alloc (isa_num_bits);
    callee_target.isa = sbitmap_alloc (isa_num_bits);
  
@@ -5369,7 +5763,7 @@ index db37e2b8e71..ac06424df7e 100644
    if (!bitmap_subset_p (callee_target.isa, caller_target.isa))
      can_inline = false;
  
-@@ -32536,7 +32579,7 @@ arm_valid_target_attribute_tree (tree args, struct gcc_options *opts,
+@@ -32536,7 +32620,7 @@ arm_valid_target_attribute_tree (tree args, struct gcc_options *opts,
      return NULL_TREE;
  
    cl_target_option_save (&cl_opts, opts);
@@ -5378,6 +5772,84 @@ index db37e2b8e71..ac06424df7e 100644
    arm_option_check_internal (opts);
    /* Do any overrides, such as global options arch=xxx.
       We do this since arm_active_target was overridden.  */
+@@ -32680,58 +32764,7 @@ arm_declare_function_name (FILE *stream, const char *name, tree decl)
+     targ_options = TREE_TARGET_OPTION (target_option_current_node);
+   gcc_assert (targ_options);
+ 
+-  /* Only update the assembler .arch string if it is distinct from the last
+-     such string we printed. arch_to_print is set conditionally in case
+-     targ_options->x_arm_arch_string is NULL which can be the case
+-     when cc1 is invoked directly without passing -march option.  */
+-  std::string arch_to_print;
+-  if (targ_options->x_arm_arch_string)
+-    arch_to_print = targ_options->x_arm_arch_string;
+-
+-  if (arch_to_print != arm_last_printed_arch_string)
+-    {
+-      std::string arch_name
+-	= arch_to_print.substr (0, arch_to_print.find ("+"));
+-      asm_fprintf (asm_out_file, "\t.arch %s\n", arch_name.c_str ());
+-      const arch_option *arch
+-	= arm_parse_arch_option_name (all_architectures, "-march",
+-				      targ_options->x_arm_arch_string);
+-      auto_sbitmap opt_bits (isa_num_bits);
+-
+-      gcc_assert (arch);
+-      if (arch->common.extensions)
+-	{
+-	  for (const struct cpu_arch_extension *opt = arch->common.extensions;
+-	       opt->name != NULL;
+-	       opt++)
+-	    {
+-	      if (!opt->remove)
+-		{
+-		  arm_initialize_isa (opt_bits, opt->isa_bits);
+-		  /* For the cases "-march=armv8.1-m.main+mve -mfloat-abi=soft"
+-		     and "-march=armv8.1-m.main+mve.fp -mfloat-abi=soft" MVE and
+-		     MVE with floating point instructions is disabled.  So the
+-		     following check restricts the printing of ".arch_extension
+-		     mve" and ".arch_extension fp" (for mve.fp) in the assembly
+-		     file.    MVE needs this special behaviour because the
+-		     feature bit "mve" and "mve_float" are not part of
+-		     "fpu bits", so they are not cleared when -mfloat-abi=soft
+-		     (i.e nofp) but the marco TARGET_HAVE_MVE and
+-		     TARGET_HAVE_MVE_FLOAT are disabled.  */
+-		  if ((bitmap_bit_p (opt_bits, isa_bit_mve) && !TARGET_HAVE_MVE)
+-		      || (bitmap_bit_p (opt_bits, isa_bit_mve_float)
+-			  && !TARGET_HAVE_MVE_FLOAT))
+-		    continue;
+-		  if (bitmap_subset_p (opt_bits, arm_active_target.isa)
+-		      && !bitmap_subset_p (opt_bits, isa_all_fpubits_internal))
+-		    asm_fprintf (asm_out_file, "\t.arch_extension %s\n",
+-				 opt->name);
+-		}
+-	     }
+-	}
+-
+-      arm_last_printed_arch_string = arch_to_print;
+-    }
++  arm_print_asm_arch_directives (stream, targ_options);
+ 
+   fprintf (stream, "\t.syntax unified\n");
+ 
+@@ -32749,17 +32782,6 @@ arm_declare_function_name (FILE *stream, const char *name, tree decl)
+   else
+     fprintf (stream, "\t.arm\n");
+ 
+-  std::string fpu_to_print
+-    = TARGET_SOFT_FLOAT
+-	? "softvfp" : arm_identify_fpu_from_isa (arm_active_target.isa);
+-
+-  if (!(!strcmp (fpu_to_print.c_str (), "softvfp") && TARGET_VFP_BASE)
+-      && (fpu_to_print != arm_last_printed_arch_string))
+-    {
+-      asm_fprintf (asm_out_file, "\t.fpu %s\n", fpu_to_print.c_str ());
+-      arm_last_printed_fpu_string = fpu_to_print;
+-    }
+-
+   if (TARGET_POKE_FUNCTION_NAME)
+     arm_poke_function_name (stream, (const char *) name);
+ }
 diff --git a/gcc/config/arm/arm.h b/gcc/config/arm/arm.h
 index 30e1d6dc994..2922dfe677c 100644
 --- a/gcc/config/arm/arm.h
@@ -5429,10 +5901,36 @@ index 30e1d6dc994..2922dfe677c 100644
  
  #define TARGET_SUPPORTS_WIDE_INT 1
 diff --git a/gcc/config/arm/arm.md b/gcc/config/arm/arm.md
-index 55ba92fe39a..a8ee9e1afab 100644
+index 55ba92fe39a..650b0f7f6a4 100644
 --- a/gcc/config/arm/arm.md
 +++ b/gcc/config/arm/arm.md
-@@ -8579,18 +8579,21 @@
+@@ -132,9 +132,12 @@
+ ; TARGET_32BIT, "t1" or "t2" to specify a specific Thumb mode.  "v6"
+ ; for ARM or Thumb-2 with arm_arch6, and nov6 for ARM without
+ ; arm_arch6.  "v6t2" for Thumb-2 with arm_arch6 and "v8mb" for ARMv8-M
+-; Baseline.  This attribute is used to compute attribute "enabled",
++; Baseline.  "fix_vlldm" is for fixing the v8-m/v8.1-m VLLDM erratum.
++; This attribute is used to compute attribute "enabled",
+ ; use type "any" to enable an alternative in all cases.
+-(define_attr "arch" "any,a,t,32,t1,t2,v6,nov6,v6t2,v8mb,iwmmxt,iwmmxt2,armv6_or_vfpv3,neon,mve"
++(define_attr "arch" "any, a, t, 32, t1, t2, v6,nov6, v6t2, \
++		     v8mb, fix_vlldm, iwmmxt, iwmmxt2, armv6_or_vfpv3, \
++		     neon, mve"
+   (const_string "any"))
+ 
+ (define_attr "arch_enabled" "no,yes"
+@@ -177,6 +180,10 @@
+ 	      (match_test "TARGET_THUMB1 && arm_arch8"))
+ 	 (const_string "yes")
+ 
++	 (and (eq_attr "arch" "fix_vlldm")
++	      (match_test "fix_vlldm"))
++	 (const_string "yes")
++
+ 	 (and (eq_attr "arch" "iwmmxt2")
+ 	      (match_test "TARGET_REALLY_IWMMXT2"))
+ 	 (const_string "yes")
+@@ -8579,18 +8586,21 @@
  	      (use (match_operand 2 "" ""))
  	      (clobber (reg:SI LR_REGNUM))])]
    "use_cmse"
@@ -5463,7 +5961,7 @@ index 55ba92fe39a..a8ee9e1afab 100644
  (define_insn "*call_reg_armv5"
    [(call (mem:SI (match_operand:SI 0 "s_register_operand" "r"))
 diff --git a/gcc/config/arm/arm.opt b/gcc/config/arm/arm.opt
-index cd3d8e1beac..43c2c745457 100644
+index cd3d8e1beac..976af5ce1c3 100644
 --- a/gcc/config/arm/arm.opt
 +++ b/gcc/config/arm/arm.opt
 @@ -90,6 +90,12 @@ Specify the name of the target architecture.
@@ -5479,10 +5977,30 @@ index cd3d8e1beac..43c2c745457 100644
  marm
  Target Report RejectNegative Negative(mthumb) InverseMask(THUMB)
  Generate code in 32 bit ARM state.
+@@ -271,6 +277,10 @@ Target Report Var(fix_cm3_ldrd) Init(2)
+ Avoid overlapping destination and address registers on LDRD instructions
+ that may trigger Cortex-M3 errata.
+ 
++mfix-cmse-cve-2021-35465
++Target Var(fix_vlldm) Init(2)
++Mitigate issues with VLLDM on some M-profile devices (CVE-2021-35465).
++
+ munaligned-access
+ Target Report Var(unaligned_access) Init(2) Save
+ Enable unaligned word and halfword accesses to packed data.
 diff --git a/gcc/config/arm/arm_mve.h b/gcc/config/arm/arm_mve.h
-index 449219e90fc..4aa3787ca53 100644
+index 449219e90fc..a19006f5008 100644
 --- a/gcc/config/arm/arm_mve.h
 +++ b/gcc/config/arm/arm_mve.h
+@@ -3524,7 +3524,7 @@ __arm_vaddlvq_u32 (uint32x4_t __a)
+   return __builtin_mve_vaddlvq_uv4si (__a);
+ }
+ 
+-__extension__ extern __inline int64_t
++__extension__ extern __inline mve_pred16_t
+ __attribute__ ((__always_inline__, __gnu_inline__, __artificial__))
+ __arm_vctp16q (uint32_t __a)
+ {
 @@ -37559,47 +37559,47 @@ extern void *__ARM_undef;
  
  #define __arm_vld1q(p0) (\
@@ -5568,15 +6086,15 @@ index 449219e90fc..4aa3787ca53 100644
    int (*)[__ARM_mve_type_float32x4_t]: __arm_vstrwq_scatter_base_p_f32(p0, p1, __ARM_mve_coerce(__p2, float32x4_t), p3));})
  
 -#define __arm_vstrwq_scatter_offset(p0,p1,p2) ({ __typeof(p1) __p1 = (p1); \
-+#define __arm_vstrwq_scatter_offset(p0,p1,p2) ({ __typeof(p0) __p0 = (p0); \
-   __typeof(p2) __p2 = (p2); \
+-  __typeof(p2) __p2 = (p2); \
 -  _Generic( (int (*)[__ARM_mve_typeid(p0)][__ARM_mve_typeid(__p2)])0, \
 -  int (*)[__ARM_mve_type_int32_t_ptr][__ARM_mve_type_int32x4_t]: __arm_vstrwq_scatter_offset_s32 (__ARM_mve_coerce(p0, int32_t *), __p1, __ARM_mve_coerce(__p2, int32x4_t)), \
 -  int (*)[__ARM_mve_type_uint32_t_ptr][__ARM_mve_type_uint32x4_t]: __arm_vstrwq_scatter_offset_u32 (__ARM_mve_coerce(p0, uint32_t *), __p1, __ARM_mve_coerce(__p2, uint32x4_t)), \
 -  int (*)[__ARM_mve_type_float32_t_ptr][__ARM_mve_type_float32x4_t]: __arm_vstrwq_scatter_offset_f32 (__ARM_mve_coerce(p0, float32_t *), __p1, __ARM_mve_coerce(__p2, float32x4_t)));})
 -
 -#define __arm_vstrwq_scatter_offset_p(p0,p1,p2,p3) ({ __typeof(p1) __p1 = (p1); \
--  __typeof(p2) __p2 = (p2); \
++#define __arm_vstrwq_scatter_offset(p0,p1,p2) ({ __typeof(p0) __p0 = (p0); \
+   __typeof(p2) __p2 = (p2); \
 -  _Generic( (int (*)[__ARM_mve_typeid(p0)][__ARM_mve_typeid(__p2)])0, \
 -  int (*)[__ARM_mve_type_int32_t_ptr][__ARM_mve_type_int32x4_t]: __arm_vstrwq_scatter_offset_p_s32 (__ARM_mve_coerce(p0, int32_t *), __p1, __ARM_mve_coerce(__p2, int32x4_t), p3), \
 -  int (*)[__ARM_mve_type_uint32_t_ptr][__ARM_mve_type_uint32x4_t]: __arm_vstrwq_scatter_offset_p_u32 (__ARM_mve_coerce(p0, uint32_t *), __p1, __ARM_mve_coerce(__p2, uint32x4_t), p3), \
@@ -5848,8 +6366,7 @@ index 449219e90fc..4aa3787ca53 100644
    int (*)[__ARM_mve_type_uint16_t_ptr][__ARM_mve_type_uint32x4_t][__ARM_mve_type_uint32x4_t]: __arm_vstrhq_scatter_shifted_offset_p_u32 (__ARM_mve_coerce(p0, uint16_t *), __ARM_mve_coerce(__p1, uint32x4_t), __ARM_mve_coerce(__p2, uint32x4_t), p3));})
  
 -#define __arm_vstrwq_scatter_offset(p0,p1,p2) ({ __typeof(p1) __p1 = (p1); \
-+#define __arm_vstrwq_scatter_offset(p0,p1,p2) ({ __typeof(p0) __p0 = (p0); \
-   __typeof(p2) __p2 = (p2); \
+-  __typeof(p2) __p2 = (p2); \
 -  _Generic( (int (*)[__ARM_mve_typeid(p0)][__ARM_mve_typeid(__p2)])0, \
 -  int (*)[__ARM_mve_type_int32_t_ptr][__ARM_mve_type_int32x4_t]: __arm_vstrwq_scatter_offset_s32 (__ARM_mve_coerce(p0, int32_t *), __p1, __ARM_mve_coerce(__p2, int32x4_t)), \
 -  int (*)[__ARM_mve_type_uint32_t_ptr][__ARM_mve_type_uint32x4_t]: __arm_vstrwq_scatter_offset_u32 (__ARM_mve_coerce(p0, uint32_t *), __p1, __ARM_mve_coerce(__p2, uint32x4_t)));})
@@ -5861,7 +6378,8 @@ index 449219e90fc..4aa3787ca53 100644
 -  int (*)[__ARM_mve_type_uint32_t_ptr][__ARM_mve_type_uint32x4_t]: __arm_vstrwq_scatter_offset_p_u32 (__ARM_mve_coerce(p0, uint32_t *), __p1, __ARM_mve_coerce(__p2, uint32x4_t)));})
 -
 -#define __arm_vstrwq_scatter_offset_p(p0,p1,p2,p3) ({ __typeof(p1) __p1 = (p1); \
--  __typeof(p2) __p2 = (p2); \
++#define __arm_vstrwq_scatter_offset(p0,p1,p2) ({ __typeof(p0) __p0 = (p0); \
+   __typeof(p2) __p2 = (p2); \
 -  _Generic( (int (*)[__ARM_mve_typeid(p0)][__ARM_mve_typeid(__p2)])0, \
 -  int (*)[__ARM_mve_type_int32_t_ptr][__ARM_mve_type_int32x4_t]: __arm_vstrwq_scatter_offset_p_s32 (__ARM_mve_coerce(p0, int32_t *), __p1, __ARM_mve_coerce(__p2, int32x4_t), p3), \
 -  int (*)[__ARM_mve_type_uint32_t_ptr][__ARM_mve_type_uint32x4_t]: __arm_vstrwq_scatter_offset_p_u32 (__ARM_mve_coerce(p0, uint32_t *), __p1, __ARM_mve_coerce(__p2, uint32x4_t), p3));})
@@ -6017,15 +6535,15 @@ index 449219e90fc..4aa3787ca53 100644
 +  int (*)[__ARM_mve_type_int8x16_t][__ARM_mve_type_int8x16_t]: __arm_vmlsdavaq_s8(p0, __ARM_mve_coerce(__p1, int8x16_t), __ARM_mve_coerce(__p2, int8x16_t)), \
 +  int (*)[__ARM_mve_type_int16x8_t][__ARM_mve_type_int16x8_t]: __arm_vmlsdavaq_s16(p0, __ARM_mve_coerce(__p1, int16x8_t), __ARM_mve_coerce(__p2, int16x8_t)), \
 +  int (*)[__ARM_mve_type_int32x4_t][__ARM_mve_type_int32x4_t]: __arm_vmlsdavaq_s32(p0, __ARM_mve_coerce(__p1, int32x4_t), __ARM_mve_coerce(__p2, int32x4_t)));})
-+
+ 
+-#define __arm_vmlsdavaq_p(p0,p1,p2,p3) ({ __typeof(p0) __p0 = (p0); \
 +#define __arm_vmlsdavaxq(p0,p1,p2) ({ __typeof(p2) __p2 = (p2); \
-+  __typeof(p1) __p1 = (p1); \
+   __typeof(p1) __p1 = (p1); \
 +  _Generic( (int (*)[__ARM_mve_typeid(__p1)][__ARM_mve_typeid(__p2)])0, \
 +  int (*)[__ARM_mve_type_int8x16_t][__ARM_mve_type_int8x16_t]: __arm_vmlsdavaxq_s8(p0, __ARM_mve_coerce(__p1, int8x16_t), __ARM_mve_coerce(__p2, int8x16_t)), \
 +  int (*)[__ARM_mve_type_int16x8_t][__ARM_mve_type_int16x8_t]: __arm_vmlsdavaxq_s16(p0, __ARM_mve_coerce(__p1, int16x8_t), __ARM_mve_coerce(__p2, int16x8_t)), \
 +  int (*)[__ARM_mve_type_int32x4_t][__ARM_mve_type_int32x4_t]: __arm_vmlsdavaxq_s32(p0, __ARM_mve_coerce(__p1, int32x4_t), __ARM_mve_coerce(__p2, int32x4_t)));})
- 
--#define __arm_vmlsdavaq_p(p0,p1,p2,p3) ({ __typeof(p0) __p0 = (p0); \
++
 +#define __arm_vmlsdavq_p(p0,p1,p2) ({ __typeof(p0) __p0 = (p0); \
 +  __typeof(p1) __p1 = (p1); \
 +  _Generic( (int (*)[__ARM_mve_typeid(__p0)][__ARM_mve_typeid(__p1)])0, \
@@ -6034,7 +6552,7 @@ index 449219e90fc..4aa3787ca53 100644
 +  int (*)[__ARM_mve_type_int32x4_t][__ARM_mve_type_int32x4_t]: __arm_vmlsdavq_p_s32 (__ARM_mve_coerce(__p0, int32x4_t), __ARM_mve_coerce(__p1, int32x4_t), p2));})
 +
 +#define __arm_vmlsdavxq_p(p0,p1,p2) ({ __typeof(p0) __p0 = (p0); \
-   __typeof(p1) __p1 = (p1); \
++  __typeof(p1) __p1 = (p1); \
 +  _Generic( (int (*)[__ARM_mve_typeid(__p0)][__ARM_mve_typeid(__p1)])0, \
 +  int (*)[__ARM_mve_type_int8x16_t][__ARM_mve_type_int8x16_t]: __arm_vmlsdavxq_p_s8 (__ARM_mve_coerce(__p0, int8x16_t), __ARM_mve_coerce(__p1, int8x16_t), p2), \
 +  int (*)[__ARM_mve_type_int16x8_t][__ARM_mve_type_int16x8_t]: __arm_vmlsdavxq_p_s16 (__ARM_mve_coerce(__p0, int16x8_t), __ARM_mve_coerce(__p1, int16x8_t), p2), \
@@ -6582,6 +7100,55 @@ index f0129db2c3e..46351d9f784 100644
  ;; Changes to the constraints of this pattern must be propagated to those of
  ;; atomic compare_and_swap splitters in sync.md.  These must be at least as
  ;; strict as the constraints here and aim to be as permissive.
+diff --git a/gcc/config/arm/vfp.md b/gcc/config/arm/vfp.md
+index e6c287c1a85..63915478582 100644
+--- a/gcc/config/arm/vfp.md
++++ b/gcc/config/arm/vfp.md
+@@ -1703,12 +1703,15 @@
+    (set_attr "type" "mov_reg")]
+ )
+ 
++;; Both this and the next instruction are treated by GCC in the same
++;; way as a blockage pattern.  That's perhaps stronger than it needs
++;; to be, but we do not want accesses to the VFP register bank to be
++;; moved across either instruction.
++
+ (define_insn "lazy_store_multiple_insn"
+-  [(set (match_operand:SI 0 "s_register_operand" "+&rk")
+-	(post_dec:SI (match_dup 0)))
+-   (unspec_volatile [(const_int 0)
+-		     (mem:SI (post_dec:SI (match_dup 0)))]
+-		    VUNSPEC_VLSTM)]
++  [(unspec_volatile
++    [(mem:BLK (match_operand:SI 0 "s_register_operand" "rk"))]
++    VUNSPEC_VLSTM)]
+   "use_cmse && reload_completed"
+   "vlstm%?\\t%0"
+   [(set_attr "predicable" "yes")
+@@ -1716,14 +1719,16 @@
+ )
+ 
+ (define_insn "lazy_load_multiple_insn"
+-  [(set (match_operand:SI 0 "s_register_operand" "+&rk")
+-	(post_inc:SI (match_dup 0)))
+-   (unspec_volatile:SI [(const_int 0)
+-			(mem:SI (match_dup 0))]
+-		       VUNSPEC_VLLDM)]
++  [(unspec_volatile
++    [(mem:BLK (match_operand:SI 0 "s_register_operand" "rk,rk"))]
++    VUNSPEC_VLLDM)]
+   "use_cmse && reload_completed"
+-  "vlldm%?\\t%0"
+-  [(set_attr "predicable" "yes")
++  "@
++   vscclrm\\t{vpr}\;vlldm\\t%0
++   vlldm\\t%0"
++  [(set_attr "arch" "fix_vlldm,*")
++   (set_attr "predicable" "no")
++   (set_attr "length" "8,4")
+    (set_attr "type" "load_4")]
+ )
+ 
 diff --git a/gcc/config/bpf/bpf.h b/gcc/config/bpf/bpf.h
 index 359f389a134..88183e69564 100644
 --- a/gcc/config/bpf/bpf.h
@@ -6616,6 +7183,28 @@ index 359f389a134..88183e69564 100644
  
  /*** Output and Generation of Labels.  */
  
+diff --git a/gcc/config/i386/avx512dqintrin.h b/gcc/config/i386/avx512dqintrin.h
+index d28dfab8e4e..bdc8f1dc0b1 100644
+--- a/gcc/config/i386/avx512dqintrin.h
++++ b/gcc/config/i386/avx512dqintrin.h
+@@ -2655,7 +2655,7 @@ _mm512_fpclass_ps_mask (__m512 __A, const int __imm)
+ 
+ #define _mm512_mask_fpclass_ps_mask(u, x, c)				\
+   ((__mmask16) __builtin_ia32_fpclassps512_mask ((__v16sf) (__m512) (x),\
+-						 (int) (c),(__mmask8)(u)))
++						 (int) (c),(__mmask16)(u)))
+ 
+ #define _mm512_fpclass_pd_mask(X, C)                                    \
+   ((__mmask8) __builtin_ia32_fpclasspd512_mask ((__v8df) (__m512d) (X), \
+@@ -2663,7 +2663,7 @@ _mm512_fpclass_ps_mask (__m512 __A, const int __imm)
+ 
+ #define _mm512_fpclass_ps_mask(x, c)                                    \
+   ((__mmask16) __builtin_ia32_fpclassps512_mask ((__v16sf) (__m512) (x),\
+-						 (int) (c),(__mmask8)-1))
++						 (int) (c),(__mmask16)-1))
+ 
+ #define _mm_reduce_sd(A, B, C)						\
+   ((__m128d) __builtin_ia32_reducesd_mask ((__v2df)(__m128d)(A),	\
 diff --git a/gcc/config/i386/i386.c b/gcc/config/i386/i386.c
 index 2f838840e96..103fa10a9c5 100644
 --- a/gcc/config/i386/i386.c
@@ -9897,10 +10486,18 @@ index 9c734595950..dd04dd27264 100644
  
  vec_t __builtin_vsx_xvcvspbf16 (vec_t);
 diff --git a/gcc/doc/invoke.texi b/gcc/doc/invoke.texi
-index eabeec944e7..72d995cd0cc 100644
+index eabeec944e7..c88f30e4fd8 100644
 --- a/gcc/doc/invoke.texi
 +++ b/gcc/doc/invoke.texi
-@@ -16994,8 +16994,9 @@ performance of the code.  Permissible values for this option are:
+@@ -770,6 +770,7 @@ Objective-C and Objective-C++ Dialects}.
+ -mverbose-cost-dump @gol
+ -mpure-code @gol
+ -mcmse @gol
++-mfix-cmse-cve-2021-35465 @gol
+ -mfdpic}
+ 
+ @emph{AVR Options}
+@@ -16994,8 +16995,9 @@ performance of the code.  Permissible values for this option are:
  @samp{cortex-a57}, @samp{cortex-a72}, @samp{cortex-a73}, @samp{cortex-a75},
  @samp{cortex-a76}, @samp{cortex-a76ae}, @samp{cortex-a77},
  @samp{cortex-a65}, @samp{cortex-a65ae}, @samp{cortex-a34},
@@ -9912,7 +10509,7 @@ index eabeec944e7..72d995cd0cc 100644
  @samp{saphira}, @samp{phecda}, @samp{xgene1}, @samp{vulcan}, @samp{octeontx},
  @samp{octeontx81},  @samp{octeontx83},
  @samp{octeontx2}, @samp{octeontx2t98}, @samp{octeontx2t96}
-@@ -17015,6 +17016,15 @@ The values @samp{cortex-a57.cortex-a53}, @samp{cortex-a72.cortex-a53},
+@@ -17015,6 +17017,15 @@ The values @samp{cortex-a57.cortex-a53}, @samp{cortex-a72.cortex-a53},
  @samp{cortex-a75.cortex-a55}, @samp{cortex-a76.cortex-a55} specify that GCC
  should tune for a big.LITTLE system.
  
@@ -9928,7 +10525,7 @@ index eabeec944e7..72d995cd0cc 100644
  Additionally on native AArch64 GNU/Linux systems the value
  @samp{native} tunes performance to the host system.  This option has no effect
  if the compiler is unable to recognize the processor of the host system.
-@@ -17044,6 +17054,16 @@ by @option{-mtune}).  Where this option is used in conjunction
+@@ -17044,6 +17055,16 @@ by @option{-mtune}).  Where this option is used in conjunction
  with @option{-march} or @option{-mtune}, those options take precedence
  over the appropriate part of this option.
  
@@ -9945,6 +10542,21 @@ index eabeec944e7..72d995cd0cc 100644
  @item -moverride=@var{string}
  @opindex moverride
  Override tuning decisions made by the back-end in response to a
+@@ -19236,6 +19257,14 @@ Generate secure code as per the "ARMv8-M Security Extensions: Requirements on
+ Development Tools Engineering Specification", which can be found on
+ @url{https://developer.arm.com/documentation/ecm0359818/latest/}.
+ 
++@item -mfix-cmse-cve-2021-35465
++@opindex mfix-cmse-cve-2021-35465
++Mitigate against a potential security issue with the @code{VLLDM} instruction
++in some M-profile devices when using CMSE (CVE-2021-365465).  This option is
++enabled by default when the option @option{-mcpu=} is used with
++@code{cortex-m33}, @code{cortex-m35p} or @code{cortex-m55}.  The option
++@option{-mno-fix-cmse-cve-2021-35465} can be used to disable the mitigation.
++
+ @item -mfdpic
+ @itemx -mno-fdpic
+ @opindex mfdpic
 diff --git a/gcc/dse.c b/gcc/dse.c
 index c8dcf46ed29..ec6f7b63449 100644
 --- a/gcc/dse.c
@@ -11273,10 +11885,86 @@ index 99edad8a950..f33489286a9 100644
  
  #endif
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index 2913065bf31..1fc4953fb84 100644
+index 2913065bf31..ad42f0f6cbe 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,1076 @@
+@@ -1,3 +1,1152 @@
++2021-08-25  konglin1  <lingling.kong@intel.com>
++
++	PR target/101471
++	* gcc.target/i386/avx512f-pr101471.c: New test.
++
++2021-08-24  Richard Earnshaw  <rearnsha@arm.com>
++
++	Backported from master:
++	2021-08-24  Richard Earnshaw  <rearnsha@arm.com>
++
++	PR target/102035
++	* gcc.target/arm/cmse/mainline/8_1m/soft/cmse-13a.c: New test.
++	* gcc.target/arm/cmse/mainline/8_1m/soft/cmse-7a.c: Likewise.
++	* gcc.target/arm/cmse/mainline/8_1m/soft/cmse-8a.c: Likewise.
++	* gcc.target/arm/cmse/mainline/8_1m/softfp-sp/cmse-7a.c: Likewise.
++	* gcc.target/arm/cmse/mainline/8_1m/softfp-sp/cmse-8a.c: Likewise.
++	* gcc.target/arm/cmse/mainline/8_1m/softfp/cmse-13a.c: Likewise.
++	* gcc.target/arm/cmse/mainline/8_1m/softfp/cmse-7a.c: Likewise.
++	* gcc.target/arm/cmse/mainline/8_1m/softfp/cmse-8a.c: Likewise.
++
++2021-08-24  Richard Earnshaw  <rearnsha@arm.com>
++
++	Backported from master:
++	2021-08-24  Richard Earnshaw  <rearnsha@arm.com>
++
++	* lib/target-supports.exp (check_effective_target_arm_cmse_hw):
++	New function.
++
++2021-08-24  Richard Biener  <rguenther@suse.de>
++
++	Backported from master:
++	2021-08-23  Richard Biener  <rguenther@suse.de>
++
++	PR ipa/97565
++	* g++.dg/lto/pr97565_0.C: New testcase.
++	* g++.dg/lto/pr97565_1.C: Likewise.
++
++2021-08-23  Christophe Lyon  <christophe.lyon@foss.st.com>
++
++	Backported from master:
++	2021-08-06  Christophe Lyon  <christophe.lyon@foss.st.com>
++
++	PR target/101723
++	* gcc.target/arm/pr69245.c: Make sure to emit code for fn1, fix
++	typo.
++
++2021-08-23  Christophe Lyon  <christophe.lyon@foss.st.com>
++
++	Backported from master:
++	2021-08-06  Christophe Lyon  <christophe.lyon@foss.st.com>
++
++	PR target/101723
++	* gcc.target/arm/attr-neon3.c: Fix typo.
++	* gcc.target/arm/pragma_fpu_attribute_2.c: Fix typo.
++
++2021-08-23  Richard Earnshaw  <rearnsha@arm.com>
++
++	Backported from master:
++	2021-08-05  Richard Earnshaw  <rearnsha@arm.com>
++
++	PR target/101723
++	* gcc.target/arm/cortex-m55-nofp-flag-hard.c: Update expected output.
++	* gcc.target/arm/cortex-m55-nofp-flag-softfp.c: Likewise.
++	* gcc.target/arm/cortex-m55-nofp-nomve-flag-softfp.c: Likewise.
++	* gcc.target/arm/mve/intrinsics/mve_fpu1.c: Convert to dg-do assemble.
++	Add a non-no-op function body.
++	* gcc.target/arm/mve/intrinsics/mve_fpu2.c: Likewise.
++	* gcc.target/arm/attr-neon.c: Tighten scan-assembler tests.
++	* gcc.target/arm/attr-neon2.c: Use -Ofast, convert test to use
++	check-function-bodies.
++	* gcc.target/arm/attr-neon3.c: Likewise.
++	* gcc.target/arm/pr69245.c: Tighten scan-assembler match, but allow
++	multiple instances.
++	* gcc.target/arm/pragma_fpu_attribute.c: Likewise.
++	* gcc.target/arm/pragma_fpu_attribute_2.c: Likewise.
++
 +2021-08-19  Thomas Schwinge  <thomas@codesourcery.com>
 +
 +	Backported from master:
@@ -13731,6 +14419,31 @@ index 00000000000..02383bbea3e
 +
 +Problem t;
 +int i = t.f("42");
+diff --git a/gcc/testsuite/g++.dg/lto/pr97565_0.C b/gcc/testsuite/g++.dg/lto/pr97565_0.C
+new file mode 100644
+index 00000000000..f4572e17bf5
+--- /dev/null
++++ b/gcc/testsuite/g++.dg/lto/pr97565_0.C
+@@ -0,0 +1,7 @@
++// { dg-lto-do link }
++// { dg-lto-options { "-O -flto -fipa-pta" } }
++
++extern "C" void abort(void)
++{
++  abort();
++}
+diff --git a/gcc/testsuite/g++.dg/lto/pr97565_1.C b/gcc/testsuite/g++.dg/lto/pr97565_1.C
+new file mode 100644
+index 00000000000..ff7b638e9c5
+--- /dev/null
++++ b/gcc/testsuite/g++.dg/lto/pr97565_1.C
+@@ -0,0 +1,6 @@
++extern "C" void abort(void);
++
++int main(int argc, char * argv[])
++{
++  abort();
++}
 diff --git a/gcc/testsuite/g++.dg/opt/nrv20.C b/gcc/testsuite/g++.dg/opt/nrv20.C
 new file mode 100644
 index 00000000000..ade0c28824a
@@ -15504,6 +16217,169 @@ index 00000000000..5bc030e2e46
 +{
 +  return 0;
 +}
+diff --git a/gcc/testsuite/gcc.target/arm/attr-neon.c b/gcc/testsuite/gcc.target/arm/attr-neon.c
+index 225fb8dc3db..e8e3086247d 100644
+--- a/gcc/testsuite/gcc.target/arm/attr-neon.c
++++ b/gcc/testsuite/gcc.target/arm/attr-neon.c
+@@ -1,7 +1,10 @@
+ /* { dg-do compile } */
+ /* { dg-require-effective-target arm_neon_ok } */
+ /* { dg-options "-O2 -ftree-vectorize" } */
+-/* { dg-add-options arm_neon arm_v8_vfp } */ /* The arm_v8_vfp adds -mfpu=fp-armv8 to the command line, overriding any -mfpu= option set by arm_neon, thus ensuring that the attributes below really are checked for correct fpu selection.  */
++/* { dg-add-options arm_neon arm_v8_vfp } */
++/* The arm_v8_vfp adds -mfpu=fp-armv8 to the command line, overriding any
++   -mfpu= option set by arm_neon, thus ensuring that the attributes below
++   really are checked for correct fpu selection.  */
+ 
+ /* Verify that neon instructions are emitted once.  */
+ void __attribute__ ((target("fpu=neon")))
+@@ -18,6 +21,6 @@ f3(int n, int x[], int y[]) {
+     y[i] = x[i] << 3;
+ }
+ 
+-/* { dg-final { scan-assembler-times "\.fpu vfp" 1 } } */
+-/* { dg-final { scan-assembler-times "\.fpu neon" 1 } } */
++/* { dg-final { scan-assembler-times "\.fpu\\s+vfp\n" 1 } } */
++/* { dg-final { scan-assembler-times "\.fpu\\s+neon\n" 1 } } */
+ /* { dg-final { scan-assembler-times "vshl" 1 } } */
+diff --git a/gcc/testsuite/gcc.target/arm/attr-neon2.c b/gcc/testsuite/gcc.target/arm/attr-neon2.c
+index 29668256cf5..a7a72dac379 100644
+--- a/gcc/testsuite/gcc.target/arm/attr-neon2.c
++++ b/gcc/testsuite/gcc.target/arm/attr-neon2.c
+@@ -1,7 +1,7 @@
+ /* { dg-do compile } */
+ /* { dg-require-effective-target arm_neon_ok } */
+ /* { dg-require-effective-target arm_fp_ok } */
+-/* { dg-options "-O2" } */
++/* { dg-options "-Ofast" } */
+ /* { dg-add-options arm_fp } */
+ 
+ /* Reset fpu to a value compatible with the next pragmas.  */
+@@ -12,23 +12,36 @@
+ #include <arm_neon.h>
+ 
+ /* Check that pragma target is used.  */
+-int8x8_t 
+-my (int8x8_t __a, int8x8_t __b)
++/*
++**my:
++**	...
++**	vadd.f32	d[0-9]+, d[0-9]+, d[0-9]+
++**	...
++**	bx	lr
++*/
++float32x2_t
++my (float32x2_t __a, float32x2_t __b)
+ {
+   return __a + __b;
+ }
+ 
+ #pragma GCC pop_options
+ 
+-/* Check that command line option is restored.  */
+-int8x8_t 
+-my1 (int8x8_t __a, int8x8_t __b)
++/* Check that fpu=vfp is restored.  */
++/*
++**my1:
++**	...
++**	vadd.f32	s[0-9]+, s[0-9]+, s[0-9]+
++**	vadd.f32	s[0-9]+, s[0-9]+, s[0-9]+
++**	...
++**	bx	lr
++*/
++float32x2_t
++my1 (float32x2_t __a, float32x2_t __b)
+ {
+   return __a + __b;
+ }
+ 
+-/* { dg-final { scan-assembler-times "\.fpu vfp" 1 } } */
+-/* { dg-final { scan-assembler-times "\.fpu neon" 1 } } */
+-/* { dg-final { scan-assembler "vadd" } } */
+-
+-
++/* { dg-final { scan-assembler "\.fpu\\s+vfp\n" } } */
++/* { dg-final { scan-assembler "\.fpu\\s+neon\n" } } */
++/* { dg-final { check-function-bodies "**" "" } } */
+diff --git a/gcc/testsuite/gcc.target/arm/attr-neon3.c b/gcc/testsuite/gcc.target/arm/attr-neon3.c
+index 17e429ad739..b6171e72d89 100644
+--- a/gcc/testsuite/gcc.target/arm/attr-neon3.c
++++ b/gcc/testsuite/gcc.target/arm/attr-neon3.c
+@@ -1,7 +1,7 @@
+ /* { dg-do compile } */
+ /* { dg-require-effective-target arm_crypto_ok } */
+ /* { dg-require-effective-target arm_fp_ok } */
+-/* { dg-options "-O2" } */
++/* { dg-options "-Ofast" } */
+ /* { dg-add-options arm_fp } */
+ 
+ /* Reset fpu to a value compatible with the next pragmas.  */
+@@ -11,28 +11,54 @@
+ #include <arm_neon.h>
+ 
+ /* Check that neon is used.  */
+-int8x8_t __attribute__ ((target("fpu=neon")))
+-my (int8x8_t __a, int8x8_t __b)
++/*
++**my:
++**	...
++**	vadd.f32	d[0-9]+, d[0-9]+, d[0-9]+
++**	...
++**	bx	lr
++*/
++float32x2_t __attribute__ ((target("fpu=neon")))
++my (float32x2_t __a, float32x2_t __b)
+ {
+   return __a + __b;
+ }
+ 
+ /* Check that crypto builtins are recognized.  */
++/*
++**foo:
++**	...
++** (
++**	vld1.64	{d[0-9]+-d[0-9]+}, \[r[0-9]+:64\]
++** |
++**	vld1.64	{d[0-9]+}, \[r[0-9]+:64\]!
++**	vld1.64	{d[0-9]+}, \[r[0-9]+:64\]
++** )
++**	...
++**	bx	lr
++*/
++
+ poly128_t __attribute__ ((target("fpu=crypto-neon-fp-armv8")))
+ foo (poly128_t* ptr)
+ {
+   return vldrq_p128 (ptr);
+ }
+ 
+-/* Check that default mode is restored.  */
+-int8x8_t
+-my1 (int8x8_t __a, int8x8_t __b)
++/* Check that fpu=vfp is restored.  */
++/*
++**my1:
++**	...
++**	vadd.f32	s[0-9]+, s[0-9]+, s[0-9]+
++**	vadd.f32	s[0-9]+, s[0-9]+, s[0-9]+
++**	...
++**	bx	lr
++*/float32x2_t
++my1 (float32x2_t __a, float32x2_t __b)
+ {
+   return __a + __b;
+ }
+ 
+-/* { dg-final { scan-assembler-times "\.fpu vfp" 1 } } */
+-/* { dg-final { scan-assembler-times "\.fpu neon" 1 } } */
+-/* { dg-final { scan-assembler-times "\.fpu crypto-neon-fp-armv8" 1 } } */
+-/* { dg-final { scan-assembler-times "vld1" 1 } } */
+-/* { dg-final { scan-assembler-times "vadd" 1} } */
++/* { dg-final { scan-assembler "\.fpu\\s+vfp\n" } } */
++/* { dg-final { scan-assembler "\.fpu\\s+neon\n" } } */
++/* { dg-final { scan-assembler "\.fpu\\s+crypto-neon-fp-armv8\n" } } */
++/* { dg-final { check-function-bodies "**" "" } } */
 diff --git a/gcc/testsuite/gcc.target/arm/cmse/cmse-18.c b/gcc/testsuite/gcc.target/arm/cmse/cmse-18.c
 index e1ff09257b7..db7d975a90e 100644
 --- a/gcc/testsuite/gcc.target/arm/cmse/cmse-18.c
@@ -15549,6 +16425,285 @@ index 00000000000..08e89bff637
 +  free (ptr);
 +  return 0;
 +}
+diff --git a/gcc/testsuite/gcc.target/arm/cmse/mainline/8_1m/soft/cmse-13a.c b/gcc/testsuite/gcc.target/arm/cmse/mainline/8_1m/soft/cmse-13a.c
+new file mode 100644
+index 00000000000..553cc7837e1
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/arm/cmse/mainline/8_1m/soft/cmse-13a.c
+@@ -0,0 +1,31 @@
++/* { dg-do compile } */
++/* { dg-options "-mcmse -mfloat-abi=soft -mfix-cmse-cve-2021-35465" }  */
++/* { dg-skip-if "Incompatible float ABI" { *-*-* } { "-mfloat-abi=*" } { "-mfloat-abi=soft" } } */
++
++#include "../../../cmse-13.x"
++
++/* Checks for saving and clearing prior to function call.  */
++/* Shift on the same register as blxns.  */
++/* { dg-final { scan-assembler "lsrs\t(r\[1,4-9\]|r10|fp|ip), \\1, #1.*blxns\t\\1" } } */
++/* { dg-final { scan-assembler "lsls\t(r\[1,4-9\]|r10|fp|ip), \\1, #1.*blxns\t\\1" } } */
++/* { dg-final { scan-assembler-not "mov\tr0, r4" } } */
++/* { dg-final { scan-assembler-not "mov\tr2, r4" } } */
++/* { dg-final { scan-assembler-not "mov\tr3, r4" } } */
++/* { dg-final { scan-assembler "push\t\{r4, r5, r6, r7, r8, r9, r10, fp\}" } } */
++/* { dg-final { scan-assembler "vlstm\tsp" } } */
++/* Check the right registers are cleared and none appears twice.  */
++/* { dg-final { scan-assembler "clrm\t\{(r1, )?(r4, )?(r5, )?(r6, )?(r7, )?(r8, )?(r9, )?(r10, )?(fp, )?(ip, )?APSR\}" } } */
++/* Check that the right number of registers is cleared and thus only one
++   register is missing.  */
++/* { dg-final { scan-assembler "clrm\t\{((r\[1,4-9\]|r10|fp|ip), ){9}APSR\}" } } */
++/* Check that no cleared register is used for blxns.  */
++/* { dg-final { scan-assembler-not "clrm\t\{\[^\}\]\+(r\[1,4-9\]|r10|fp|ip),\[^\}\]\+\}.*blxns\t\\1" } } */
++/* Check for v8.1-m variant of erratum work-around.  */
++/* { dg-final { scan-assembler "vscclrm\t\{vpr\}" } } */
++/* { dg-final { scan-assembler "vlldm\tsp" } } */
++/* { dg-final { scan-assembler "pop\t\{r4, r5, r6, r7, r8, r9, r10, fp\}" } } */
++/* { dg-final { scan-assembler-not "vmov" } } */
++/* { dg-final { scan-assembler-not "vmsr" } } */
++
++/* Now we check that we use the correct intrinsic to call.  */
++/* { dg-final { scan-assembler "blxns" } } */
+diff --git a/gcc/testsuite/gcc.target/arm/cmse/mainline/8_1m/soft/cmse-7a.c b/gcc/testsuite/gcc.target/arm/cmse/mainline/8_1m/soft/cmse-7a.c
+new file mode 100644
+index 00000000000..ce02fdea643
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/arm/cmse/mainline/8_1m/soft/cmse-7a.c
+@@ -0,0 +1,28 @@
++/* { dg-do compile } */
++/* { dg-options "-mcmse -mfloat-abi=soft -mfix-cmse-cve-2021-35465" }  */
++/* { dg-skip-if "Incompatible float ABI" { *-*-* } { "-mfloat-abi=*" } { "-mfloat-abi=soft" } } */
++
++#include "../../../cmse-7.x"
++
++/* Checks for saving and clearing prior to function call.  */
++/* Shift on the same register as blxns.  */
++/* { dg-final { scan-assembler "lsrs\t(r\[0-9\]|r10|fp|ip), \\1, #1.*blxns\t\\1" } } */
++/* { dg-final { scan-assembler "lsls\t(r\[0-9\]|r10|fp|ip), \\1, #1.*blxns\t\\1" } } */
++/* { dg-final { scan-assembler "push\t\{r4, r5, r6, r7, r8, r9, r10, fp\}" } } */
++/* { dg-final { scan-assembler "vlstm\tsp" } } */
++/* Check the right registers are cleared and none appears twice.  */
++/* { dg-final { scan-assembler "clrm\t\{(r0, )?(r1, )?(r2, )?(r3, )?(r4, )?(r5, )?(r6, )?(r7, )?(r8, )?(r9, )?(r10, )?(fp, )?(ip, )?APSR\}" } } */
++/* Check that the right number of registers is cleared and thus only one
++   register is missing.  */
++/* { dg-final { scan-assembler "clrm\t\{((r\[0-9\]|r10|fp|ip), ){12}APSR\}" } } */
++/* Check that no cleared register is used for blxns.  */
++/* { dg-final { scan-assembler-not "clrm\t\{\[^\}\]\+(r\[0-9\]|r10|fp|ip),\[^\}\]\+\}.*blxns\t\\1" } } */
++/* Check for v8.1-m variant of erratum work-around.  */
++/* { dg-final { scan-assembler "vscclrm\t\{vpr\}" } } */
++/* { dg-final { scan-assembler "vlldm\tsp" } } */
++/* { dg-final { scan-assembler "pop\t\{r4, r5, r6, r7, r8, r9, r10, fp\}" } } */
++/* { dg-final { scan-assembler-not "vmov" } } */
++/* { dg-final { scan-assembler-not "vmsr" } } */
++
++/* Now we check that we use the correct intrinsic to call.  */
++/* { dg-final { scan-assembler "blxns" } } */
+diff --git a/gcc/testsuite/gcc.target/arm/cmse/mainline/8_1m/soft/cmse-8a.c b/gcc/testsuite/gcc.target/arm/cmse/mainline/8_1m/soft/cmse-8a.c
+new file mode 100644
+index 00000000000..75e161152aa
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/arm/cmse/mainline/8_1m/soft/cmse-8a.c
+@@ -0,0 +1,30 @@
++/* { dg-do compile } */
++/* { dg-options "-mcmse -mfloat-abi=soft -mfix-cmse-cve-2021-35465" }  */
++/* { dg-skip-if "Incompatible float ABI" { *-*-* } { "-mfloat-abi=*" } { "-mfloat-abi=soft" } } */
++
++#include "../../../cmse-8.x"
++
++/* Checks for saving and clearing prior to function call.  */
++/* Shift on the same register as blxns.  */
++/* { dg-final { scan-assembler "lsrs\t(r\[2-9\]|r10|fp|ip), \\1, #1.*blxns\t\\1" } } */
++/* { dg-final { scan-assembler "lsls\t(r\[2-9\]|r10|fp|ip), \\1, #1.*blxns\t\\1" } } */
++/* { dg-final { scan-assembler-not "mov\tr0, r4" } } */
++/* { dg-final { scan-assembler-not "mov\tr1, r4" } } */
++/* { dg-final { scan-assembler "push\t\{r4, r5, r6, r7, r8, r9, r10, fp\}" } } */
++/* { dg-final { scan-assembler "vlstm\tsp" } } */
++/* Check the right registers are cleared and none appears twice.  */
++/* { dg-final { scan-assembler "clrm\t\{(r2, )?(r3, )?(r4, )?(r5, )?(r6, )?(r7, )?(r8, )?(r9, )?(r10, )?(fp, )?(ip, )?APSR\}" } } */
++/* Check that the right number of registers is cleared and thus only one
++   register is missing.  */
++/* { dg-final { scan-assembler "clrm\t\{((r\[2-9\]|r10|fp|ip), ){10}APSR\}" } } */
++/* Check that no cleared register is used for blxns.  */
++/* { dg-final { scan-assembler-not "clrm\t\{\[^\}\]\+(r\[2-9\]|r10|fp|ip),\[^\}\]\+\}.*blxns\t\\1" } } */
++/* Check for v8.1-m variant of erratum work-around.  */
++/* { dg-final { scan-assembler "vscclrm\t\{vpr\}" } } */
++/* { dg-final { scan-assembler "vlldm\tsp" } } */
++/* { dg-final { scan-assembler "pop\t\{r4, r5, r6, r7, r8, r9, r10, fp\}" } } */
++/* { dg-final { scan-assembler-not "vmov" } } */
++/* { dg-final { scan-assembler-not "vmsr" } } */
++
++/* Now we check that we use the correct intrinsic to call.  */
++/* { dg-final { scan-assembler "blxns" } } */
+diff --git a/gcc/testsuite/gcc.target/arm/cmse/mainline/8_1m/softfp-sp/cmse-7a.c b/gcc/testsuite/gcc.target/arm/cmse/mainline/8_1m/softfp-sp/cmse-7a.c
+new file mode 100644
+index 00000000000..dad72660d87
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/arm/cmse/mainline/8_1m/softfp-sp/cmse-7a.c
+@@ -0,0 +1,27 @@
++/* { dg-do compile } */
++/* { dg-options "-mcmse -mfloat-abi=softfp -mfpu=fpv5-sp-d16 -mfix-cmse-cve-2021-35465" }  */
++/* { dg-skip-if "Incompatible float ABI" { *-*-* } { "-mfloat-abi=*" } { "-mfloat-abi=softfp" } } */
++/* { dg-skip-if "Skip these if testing double precision" {*-*-*} {"-mfpu=fpv[4-5]-d16"} {""} } */
++
++#include "../../../cmse-7.x"
++
++/* Checks for saving and clearing prior to function call.  */
++/* Shift on the same register as blxns.  */
++/* { dg-final { scan-assembler "lsrs\t(r\[0-9\]|r10|fp|ip), \\1, #1.*blxns\t\\1" } } */
++/* { dg-final { scan-assembler "lsls\t(r\[0-9\]|r10|fp|ip), \\1, #1.*blxns\t\\1" } } */
++/* { dg-final { scan-assembler "push\t\{r4, r5, r6, r7, r8, r9, r10, fp\}" } } */
++/* { dg-final { scan-assembler "vlstm\tsp" } } */
++/* Check the right registers are cleared and none appears twice.  */
++/* { dg-final { scan-assembler "clrm\t\{(r0, )?(r1, )?(r2, )?(r3, )?(r4, )?(r5, )?(r6, )?(r7, )?(r8, )?(r9, )?(r10, )?(fp, )?(ip, )?APSR\}" } } */
++/* Check that the right number of registers is cleared and thus only one
++   register is missing.  */
++/* { dg-final { scan-assembler "clrm\t\{((r\[0-9\]|r10|fp|ip), ){12}APSR\}" } } */
++/* Check that no cleared register is used for blxns.  */
++/* { dg-final { scan-assembler-not "clrm\t\{\[^\}\]\+(r\[0-9\]|r10|fp|ip),\[^\}\]\+\}.*blxns\t\\1" } } */
++/* Check for v8.1-m variant of erratum work-around.  */
++/* { dg-final { scan-assembler "vscclrm\t\{vpr\}" } } */
++/* { dg-final { scan-assembler "vlldm\tsp" } } */
++/* { dg-final { scan-assembler "pop\t\{r4, r5, r6, r7, r8, r9, r10, fp\}" } } */
++
++/* Now we check that we use the correct intrinsic to call.  */
++/* { dg-final { scan-assembler "blxns" } } */
+diff --git a/gcc/testsuite/gcc.target/arm/cmse/mainline/8_1m/softfp-sp/cmse-8a.c b/gcc/testsuite/gcc.target/arm/cmse/mainline/8_1m/softfp-sp/cmse-8a.c
+new file mode 100644
+index 00000000000..faa04481372
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/arm/cmse/mainline/8_1m/softfp-sp/cmse-8a.c
+@@ -0,0 +1,29 @@
++/* { dg-do compile } */
++/* { dg-options "-mcmse -mfloat-abi=softfp -mfpu=fpv5-sp-d16 -mfix-cmse-cve-2021-35465" }  */
++/* { dg-skip-if "Incompatible float ABI" { *-*-* } { "-mfloat-abi=*" } { "-mfloat-abi=softfp" } } */
++/* { dg-skip-if "Skip these if testing double precision" {*-*-*} {"-mfpu=fpv[4-5]-d16"} {""} } */
++
++#include "../../../cmse-8.x"
++
++/* Checks for saving and clearing prior to function call.  */
++/* Shift on the same register as blxns.  */
++/* { dg-final { scan-assembler "lsrs\t(r\[2-9\]|r10|fp|ip), \\1, #1.*blxns\t\\1" } } */
++/* { dg-final { scan-assembler "lsls\t(r\[2-9\]|r10|fp|ip), \\1, #1.*blxns\t\\1" } } */
++/* { dg-final { scan-assembler-not "mov\tr0, r4" } } */
++/* { dg-final { scan-assembler-not "mov\tr1, r4" } } */
++/* { dg-final { scan-assembler "push\t\{r4, r5, r6, r7, r8, r9, r10, fp\}" } } */
++/* { dg-final { scan-assembler "vlstm\tsp" } } */
++/* Check the right registers are cleared and none appears twice.  */
++/* { dg-final { scan-assembler "clrm\t\{(r2, )?(r3, )?(r4, )?(r5, )?(r6, )?(r7, )?(r8, )?(r9, )?(r10, )?(fp, )?(ip, )?APSR\}" } } */
++/* Check that the right number of registers is cleared and thus only one
++   register is missing.  */
++/* { dg-final { scan-assembler "clrm\t\{((r\[2-9\]|r10|fp|ip), ){10}APSR\}" } } */
++/* Check that no cleared register is used for blxns.  */
++/* { dg-final { scan-assembler-not "clrm\t\{\[^\}\]\+(r\[2-9\]|r10|fp|ip),\[^\}\]\+\}.*blxns\t\\1" } } */
++/* Check for v8.1-m variant of erratum work-around.  */
++/* { dg-final { scan-assembler "vscclrm\t\{vpr\}" } } */
++/* { dg-final { scan-assembler "vlldm\tsp" } } */
++/* { dg-final { scan-assembler "pop\t\{r4, r5, r6, r7, r8, r9, r10, fp\}" } } */
++
++/* Now we check that we use the correct intrinsic to call.  */
++/* { dg-final { scan-assembler "blxns" } } */
+diff --git a/gcc/testsuite/gcc.target/arm/cmse/mainline/8_1m/softfp/cmse-13a.c b/gcc/testsuite/gcc.target/arm/cmse/mainline/8_1m/softfp/cmse-13a.c
+new file mode 100644
+index 00000000000..bceba44e496
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/arm/cmse/mainline/8_1m/softfp/cmse-13a.c
+@@ -0,0 +1,30 @@
++/* { dg-do compile } */
++/* { dg-options "-mcmse -mfloat-abi=softfp -mfpu=fpv5-d16 -mfix-cmse-cve-2021-35465" }  */
++/* { dg-skip-if "Incompatible float ABI" { *-*-* } { "-mfloat-abi=*" } { "-mfloat-abi=softfp" } } */
++/* { dg-skip-if "Skip these if testing single precision" {*-*-*} {"-mfpu=*-sp-*"} {""} } */
++
++#include "../../../cmse-13.x"
++
++/* Checks for saving and clearing prior to function call.  */
++/* Shift on the same register as blxns.  */
++/* { dg-final { scan-assembler "lsrs\t(r\[1,4-9\]|r10|fp|ip), \\1, #1.*blxns\t\\1" } } */
++/* { dg-final { scan-assembler "lsls\t(r\[1,4-9\]|r10|fp|ip), \\1, #1.*blxns\t\\1" } } */
++/* { dg-final { scan-assembler-not "mov\tr0, r4" } } */
++/* { dg-final { scan-assembler-not "mov\tr2, r4" } } */
++/* { dg-final { scan-assembler-not "mov\tr3, r4" } } */
++/* { dg-final { scan-assembler "push\t\{r4, r5, r6, r7, r8, r9, r10, fp\}" } } */
++/* { dg-final { scan-assembler "vlstm\tsp" } } */
++/* Check the right registers are cleared and none appears twice.  */
++/* { dg-final { scan-assembler "clrm\t\{(r1, )?(r4, )?(r5, )?(r6, )?(r7, )?(r8, )?(r9, )?(r10, )?(fp, )?(ip, )?APSR\}" } } */
++/* Check that the right number of registers is cleared and thus only one
++   register is missing.  */
++/* { dg-final { scan-assembler "clrm\t\{((r\[1,4-9\]|r10|fp|ip), ){9}APSR\}" } } */
++/* Check that no cleared register is used for blxns.  */
++/* { dg-final { scan-assembler-not "clrm\t\{\[^\}\]\+(r\[1,4-9\]|r10|fp|ip),\[^\}\]\+\}.*blxns\t\\1" } } */
++/* Check for v8.1-m variant of erratum work-around.  */
++/* { dg-final { scan-assembler "vscclrm\t\{vpr\}" } } */
++/* { dg-final { scan-assembler "vlldm\tsp" } } */
++/* { dg-final { scan-assembler "pop\t\{r4, r5, r6, r7, r8, r9, r10, fp\}" } } */
++
++/* Now we check that we use the correct intrinsic to call.  */
++/* { dg-final { scan-assembler "blxns" } } */
+diff --git a/gcc/testsuite/gcc.target/arm/cmse/mainline/8_1m/softfp/cmse-7a.c b/gcc/testsuite/gcc.target/arm/cmse/mainline/8_1m/softfp/cmse-7a.c
+new file mode 100644
+index 00000000000..c74ebbdc231
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/arm/cmse/mainline/8_1m/softfp/cmse-7a.c
+@@ -0,0 +1,27 @@
++/* { dg-do compile } */
++/* { dg-options "-mcmse -mfloat-abi=softfp -mfpu=fpv5-d16 -mfix-cmse-cve-2021-35465" }  */
++/* { dg-skip-if "Incompatible float ABI" { *-*-* } { "-mfloat-abi=*" } { "-mfloat-abi=softfp" } } */
++/* { dg-skip-if "Skip these if testing single precision" {*-*-*} {"-mfpu=*-sp-*"} {""} } */
++
++#include "../../../cmse-7.x"
++
++/* Checks for saving and clearing prior to function call.  */
++/* Shift on the same register as blxns.  */
++/* { dg-final { scan-assembler "lsrs\t(r\[0-9\]|r10|fp|ip), \\1, #1.*blxns\t\\1" } } */
++/* { dg-final { scan-assembler "lsls\t(r\[0-9\]|r10|fp|ip), \\1, #1.*blxns\t\\1" } } */
++/* { dg-final { scan-assembler "push\t\{r4, r5, r6, r7, r8, r9, r10, fp\}" } } */
++/* { dg-final { scan-assembler "vlstm\tsp" } } */
++/* Check the right registers are cleared and none appears twice.  */
++/* { dg-final { scan-assembler "clrm\t\{(r0, )?(r1, )?(r2, )?(r3, )?(r4, )?(r5, )?(r6, )?(r7, )?(r8, )?(r9, )?(r10, )?(fp, )?(ip, )?APSR\}" } } */
++/* Check that the right number of registers is cleared and thus only one
++   register is missing.  */
++/* { dg-final { scan-assembler "clrm\t\{((r\[0-9\]|r10|fp|ip), ){12}APSR\}" } } */
++/* Check that no cleared register is used for blxns.  */
++/* { dg-final { scan-assembler-not "clrm\t\{\[^\}\]\+(r\[0-9\]|r10|fp|ip),\[^\}\]\+\}.*blxns\t\\1" } } */
++/* Check for v8.1-m variant of erratum work-around.  */
++/* { dg-final { scan-assembler "vscclrm\t\{vpr\}" } } */
++/* { dg-final { scan-assembler "vlldm\tsp" } } */
++/* { dg-final { scan-assembler "pop\t\{r4, r5, r6, r7, r8, r9, r10, fp\}" } } */
++
++/* Now we check that we use the correct intrinsic to call.  */
++/* { dg-final { scan-assembler "blxns" } } */
+diff --git a/gcc/testsuite/gcc.target/arm/cmse/mainline/8_1m/softfp/cmse-8a.c b/gcc/testsuite/gcc.target/arm/cmse/mainline/8_1m/softfp/cmse-8a.c
+new file mode 100644
+index 00000000000..ffb67a777fd
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/arm/cmse/mainline/8_1m/softfp/cmse-8a.c
+@@ -0,0 +1,29 @@
++/* { dg-do compile } */
++/* { dg-options "-mcmse -mfloat-abi=softfp -mfpu=fpv5-d16 -mfix-cmse-cve-2021-35465" }  */
++/* { dg-skip-if "Incompatible float ABI" { *-*-* } { "-mfloat-abi=*" } { "-mfloat-abi=softfp" } } */
++/* { dg-skip-if "Skip these if testing single precision" {*-*-*} {"-mfpu=*-sp-*"} {""} } */
++
++#include "../../../cmse-8.x"
++
++/* Checks for saving and clearing prior to function call.  */
++/* Shift on the same register as blxns.  */
++/* { dg-final { scan-assembler "lsrs\t(r\[2-9\]|r10|fp|ip), \\1, #1.*blxns\t\\1" } } */
++/* { dg-final { scan-assembler "lsls\t(r\[2-9\]|r10|fp|ip), \\1, #1.*blxns\t\\1" } } */
++/* { dg-final { scan-assembler-not "mov\tr0, r4" } } */
++/* { dg-final { scan-assembler-not "mov\tr1, r4" } } */
++/* { dg-final { scan-assembler "push\t\{r4, r5, r6, r7, r8, r9, r10, fp\}" } } */
++/* { dg-final { scan-assembler "vlstm\tsp" } } */
++/* Check the right registers are cleared and none appears twice.  */
++/* { dg-final { scan-assembler "clrm\t\{(r2, )?(r3, )?(r4, )?(r5, )?(r6, )?(r7, )?(r8, )?(r9, )?(r10, )?(fp, )?(ip, )?APSR\}" } } */
++/* Check that the right number of registers is cleared and thus only one
++   register is missing.  */
++/* { dg-final { scan-assembler "clrm\t\{((r\[2-9\]|r10|fp|ip), ){10}APSR\}" } } */
++/* Check that no cleared register is used for blxns.  */
++/* { dg-final { scan-assembler-not "clrm\t\{\[^\}\]\+(r\[2-9\]|r10|fp|ip),\[^\}\]\+\}.*blxns\t\\1" } } */
++/* Check for v8.1-m variant of erratum work-around.  */
++/* { dg-final { scan-assembler "vscclrm\t\{vpr\}" } } */
++/* { dg-final { scan-assembler "vlldm\tsp" } } */
++/* { dg-final { scan-assembler "pop\t\{r4, r5, r6, r7, r8, r9, r10, fp\}" } } */
++
++/* Now we check that we use the correct intrinsic to call.  */
++/* { dg-final { scan-assembler "blxns" } } */
 diff --git a/gcc/testsuite/gcc.target/arm/cmse/pr100333.c b/gcc/testsuite/gcc.target/arm/cmse/pr100333.c
 new file mode 100644
 index 00000000000..d8e3d809f73
@@ -15573,6 +16728,63 @@ index 00000000000..284da184f96
 +typedef int __attribute__((cmse_nonsecure_call)) (*t)();
 +t f;
 +void g() { f(); }
+diff --git a/gcc/testsuite/gcc.target/arm/cortex-m55-nofp-flag-hard.c b/gcc/testsuite/gcc.target/arm/cortex-m55-nofp-flag-hard.c
+index da1cc25e83b..e0fb307ac30 100644
+--- a/gcc/testsuite/gcc.target/arm/cortex-m55-nofp-flag-hard.c
++++ b/gcc/testsuite/gcc.target/arm/cortex-m55-nofp-flag-hard.c
+@@ -1,12 +1,12 @@
+ /* { dg-do assemble } */
+ /* { dg-require-effective-target arm_v8_1m_mve_fp_ok } */
+-/* { dg-additional-options "-mcpu=cortex-m55+nofp -mfloat-abi=hard -mfpu=auto --save-temps" } */
++/* { dg-additional-options "-mcpu=cortex-m55+nofp -mthumb -mfloat-abi=hard -mfpu=auto --save-temps" } */
++/* { dg-final { scan-assembler "\.fpu softvfp" } } */
+ /* { dg-final { scan-assembler "\.arch_extension mve" } } */
+ /* { dg-final { scan-assembler "\.arch_extension dsp" } } */
+ /* { dg-final { scan-assembler-not "\.arch_extension fp" } } */
+ /* { dg-final { scan-assembler-not "\.arch_extension fp.dp" } } */
+ /* { dg-final { scan-assembler-not "\.arch_extension mve.fp" } } */
+-/* { dg-final { scan-assembler-not "\.fpu" } } */
+ 
+ int
+ f ()
+diff --git a/gcc/testsuite/gcc.target/arm/cortex-m55-nofp-flag-softfp.c b/gcc/testsuite/gcc.target/arm/cortex-m55-nofp-flag-softfp.c
+index 0a4fb14bd9b..50645e8cd0f 100644
+--- a/gcc/testsuite/gcc.target/arm/cortex-m55-nofp-flag-softfp.c
++++ b/gcc/testsuite/gcc.target/arm/cortex-m55-nofp-flag-softfp.c
+@@ -1,12 +1,12 @@
+ /* { dg-do assemble } */
+ /* { dg-require-effective-target arm_v8_1m_mve_fp_ok } */
+-/* { dg-additional-options "-mcpu=cortex-m55+nofp -mfloat-abi=softfp -mfpu=auto --save-temps" } */
++/* { dg-additional-options "-mcpu=cortex-m55+nofp -mthumb -mfloat-abi=softfp -mfpu=auto --save-temps" } */
++/* { dg-final { scan-assembler "\.fpu softvfp" } } */
+ /* { dg-final { scan-assembler "\.arch_extension mve" } } */
+ /* { dg-final { scan-assembler "\.arch_extension dsp" } } */
+ /* { dg-final { scan-assembler-not "\.arch_extension fp" } } */
+ /* { dg-final { scan-assembler-not "\.arch_extension fp.dp" } } */
+ /* { dg-final { scan-assembler-not "\.arch_extension mve.fp" } } */
+-/* { dg-final { scan-assembler-not "\.fpu" } } */
+ 
+ int
+ f ()
+diff --git a/gcc/testsuite/gcc.target/arm/cortex-m55-nofp-nomve-flag-softfp.c b/gcc/testsuite/gcc.target/arm/cortex-m55-nofp-nomve-flag-softfp.c
+index 2ae7f34d456..948f622633c 100644
+--- a/gcc/testsuite/gcc.target/arm/cortex-m55-nofp-nomve-flag-softfp.c
++++ b/gcc/testsuite/gcc.target/arm/cortex-m55-nofp-nomve-flag-softfp.c
+@@ -1,12 +1,12 @@
+ /* { dg-do assemble } */
+ /* { dg-require-effective-target arm_v8_1m_mve_fp_ok } */
+-/* { dg-additional-options "-mcpu=cortex-m55+nomve+nofp -mfloat-abi=softfp -mfpu=auto --save-temps" } */
++/* { dg-additional-options "-mcpu=cortex-m55+nomve+nofp -mthumb -mfloat-abi=softfp -mfpu=auto --save-temps" } */
++/* { dg-final { scan-assembler "\.fpu softvfp" } } */
+ /* { dg-final { scan-assembler-not "\.arch_extension mve" } } */
+ /* { dg-final { scan-assembler-not "\.arch_extension mve.fp" } } */
+ /* { dg-final { scan-assembler-not "\.arch_extension fp" } } */
+ /* { dg-final { scan-assembler-not "\.arch_extension fp.dp" } } */
+ /* { dg-final { scan-assembler "\.arch_extension dsp" } } */
+-/* { dg-final { scan-assembler-not "\.fpu" } } */
+ 
+ int
+ f ()
 diff --git a/gcc/testsuite/gcc.target/arm/multilib.exp b/gcc/testsuite/gcc.target/arm/multilib.exp
 index 6aba29ede95..82355464839 100644
 --- a/gcc/testsuite/gcc.target/arm/multilib.exp
@@ -15697,6 +16909,44 @@ index 6aba29ede95..82355464839 100644
      } {
  	check_multi_dir $opts $dir
      }
+diff --git a/gcc/testsuite/gcc.target/arm/mve/intrinsics/mve_fpu1.c b/gcc/testsuite/gcc.target/arm/mve/intrinsics/mve_fpu1.c
+index 611097ec956..c5acdb5e4e5 100644
+--- a/gcc/testsuite/gcc.target/arm/mve/intrinsics/mve_fpu1.c
++++ b/gcc/testsuite/gcc.target/arm/mve/intrinsics/mve_fpu1.c
+@@ -1,3 +1,4 @@
++/* { dg-do assemble } */
+ /* { dg-require-effective-target arm_v8_1m_mve_ok } */
+ /* { dg-require-effective-target arm_hard_ok } */
+ /* { dg-add-options arm_v8_1m_mve } */
+@@ -8,8 +9,6 @@
+ int8x16_t
+ foo1 (int8x16_t value)
+ {
+-  int8x16_t b = value;
++  int8x16_t b = -value;
+   return b;
+ }
+-
+-/* { dg-final { scan-assembler-not "\.fpu softvfp" }  } */
+diff --git a/gcc/testsuite/gcc.target/arm/mve/intrinsics/mve_fpu2.c b/gcc/testsuite/gcc.target/arm/mve/intrinsics/mve_fpu2.c
+index b8e105111de..907db5e1572 100644
+--- a/gcc/testsuite/gcc.target/arm/mve/intrinsics/mve_fpu2.c
++++ b/gcc/testsuite/gcc.target/arm/mve/intrinsics/mve_fpu2.c
+@@ -1,3 +1,4 @@
++/* { dg-do assemble } */
+ /* { dg-require-effective-target arm_v8_1m_mve_ok } */
+ /* { dg-require-effective-target arm_softfp_ok } */
+ /* { dg-add-options arm_v8_1m_mve } */
+@@ -8,8 +9,6 @@
+ int8x16_t
+ foo1 (int8x16_t value)
+ {
+-  int8x16_t b = value;
++  int8x16_t b = -value;
+   return b;
+ }
+-
+-/* { dg-final { scan-assembler-not "\.fpu softvfp" }  } */
 diff --git a/gcc/testsuite/gcc.target/arm/mve/intrinsics/pr101016.c b/gcc/testsuite/gcc.target/arm/mve/intrinsics/pr101016.c
 new file mode 100644
 index 00000000000..b12786d04f5
@@ -15915,6 +17165,29 @@ index 4f66a07ac29..bfeb52b4dd6 100644
 -/* { dg-final { scan-assembler-times "vstr.64" 2 } } */
 +/* { dg-final { scan-assembler-times "vstrw.32" 4 } } */
  /* { dg-final { scan-assembler-not "__ARM_undef" } } */
+diff --git a/gcc/testsuite/gcc.target/arm/pr69245.c b/gcc/testsuite/gcc.target/arm/pr69245.c
+index bd505187728..58a6104e8f6 100644
+--- a/gcc/testsuite/gcc.target/arm/pr69245.c
++++ b/gcc/testsuite/gcc.target/arm/pr69245.c
+@@ -12,7 +12,7 @@
+ #pragma GCC target "fpu=neon-vfpv4"
+ int a, c, d;
+ float b;
+-static int fn1 ()
++ int fn1 ()
+ {
+   return 0;
+ }
+@@ -23,4 +23,8 @@ void fn2 ()
+   d = b * c + a;
+ }
+ 
+-/* { dg-final { scan-assembler-times "\.fpu vfp" 1 } } */
++/* Because we don't know the exact command-line options used to invoke the test
++   we cannot expect these tests to match exactly once.  But they must appear at
++   least once.  */
++/* { dg-final { scan-assembler "\.fpu\\s+vfp\n" } } */
++/* { dg-final { scan-assembler "\.fpu\\s+neon-vfpv4\n" } } */
 diff --git a/gcc/testsuite/gcc.target/arm/pr95646.c b/gcc/testsuite/gcc.target/arm/pr95646.c
 new file mode 100644
 index 00000000000..cde1b2d9d36
@@ -16024,6 +17297,60 @@ index 00000000000..db330e4a4a3
 +_Bool f2(int *p) { return __sync_bool_compare_and_swap (p, -8, 2); }
 +int g1(int *p) { return __sync_val_compare_and_swap (p, -1, 2); }
 +int g2(int *p) { return __sync_val_compare_and_swap (p, -8, 3); }
+diff --git a/gcc/testsuite/gcc.target/arm/pragma_fpu_attribute.c b/gcc/testsuite/gcc.target/arm/pragma_fpu_attribute.c
+index 174be85f3f7..7e63cf53013 100644
+--- a/gcc/testsuite/gcc.target/arm/pragma_fpu_attribute.c
++++ b/gcc/testsuite/gcc.target/arm/pragma_fpu_attribute.c
+@@ -22,5 +22,8 @@ uint32_t restored ()
+   return bar();
+ }
+ 
+-/* { dg-final { scan-assembler-times {\.fpu\s+vfpv4} 1 } } */
+-/* { dg-final { scan-assembler-times {\.fpu\s+vfpv3-d16} 1 } } */
++/* We can't tell exactly how many times the following tests will match because
++   command-line options may cause additional instances to be generated, but
++   each must be present at least once.  */
++/* { dg-final { scan-assembler {\.fpu\s+vfpv4\n} } } */
++/* { dg-final { scan-assembler {\.fpu\s+vfpv3-d16\n} } } */
+diff --git a/gcc/testsuite/gcc.target/arm/pragma_fpu_attribute_2.c b/gcc/testsuite/gcc.target/arm/pragma_fpu_attribute_2.c
+index add40ddc6b8..398d8fff35c 100644
+--- a/gcc/testsuite/gcc.target/arm/pragma_fpu_attribute_2.c
++++ b/gcc/testsuite/gcc.target/arm/pragma_fpu_attribute_2.c
+@@ -25,5 +25,8 @@ uint32_t restored ()
+   return bar();
+ }
+ 
+-/* { dg-final { scan-assembler-times {\.fpu\s+vfpv4} 1 } } */
+-/* { dg-final { scan-assembler-times {\.fpu\s+vfpv3-d16} 1 } } */
++/* We can't tell exactly how many times the following tests will match because
++   command-line options may cause additional instances to be generated, but
++   each must be present at least once.  */
++/* { dg-final { scan-assembler {\.fpu\s+vfpv4\n} } } */
++/* { dg-final { scan-assembler {\.fpu\s+vfpv3-d16\n} } } */
+diff --git a/gcc/testsuite/gcc.target/i386/avx512f-pr101471.c b/gcc/testsuite/gcc.target/i386/avx512f-pr101471.c
+new file mode 100644
+index 00000000000..4a0057b241e
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/i386/avx512f-pr101471.c
+@@ -0,0 +1,18 @@
++/* { dg-do run } */
++/* { dg-options "-mavx512dq -O0" } */
++/* { dg-require-effective-target avx512dq } */
++
++#include "avx512f-check.h"
++
++static void
++avx512f_test (void)
++{
++  __m512 x = {
++      1, 1, 1, 1,
++      1, 1, 1, 1,
++      0, 0, 0, 0,
++      0, 0, 0, 0,  };
++  int ret = _mm512_fpclass_ps_mask(x, 0x26);
++  if (ret != 65280)
++    __builtin_abort();
++}
 diff --git a/gcc/testsuite/gcc.target/i386/pr100182.c b/gcc/testsuite/gcc.target/i386/pr100182.c
 new file mode 100644
 index 00000000000..2f92a04db73
@@ -17975,6 +19302,34 @@ index a26a6a9b762..ce8cc10b93b 100644
  
  with Unchecked_Conversion;
  
+diff --git a/gcc/testsuite/lib/target-supports.exp b/gcc/testsuite/lib/target-supports.exp
+index bd62a0d9e79..71298eb1b89 100644
+--- a/gcc/testsuite/lib/target-supports.exp
++++ b/gcc/testsuite/lib/target-supports.exp
+@@ -4671,6 +4671,23 @@ proc check_effective_target_arm_cmse_ok {} {
+     } "-mcmse"];
+ }
+ 
++# Return 1 if the target supports executing CMSE instructions, 0
++# otherwise.  Cache the result.
++
++proc check_effective_target_arm_cmse_hw { } {
++    return [check_runtime arm_cmse_hw_available {
++	int main (void)
++	{
++	    unsigned id_pfr1;
++	    asm ("ldr\t%0, =0xe000ed44\n" \
++		 "ldr\t%0, [%0]\n" \
++		 "sg" : "=l" (id_pfr1));
++	    /* Exit with code 0 iff security extension is available.  */
++	    return !(id_pfr1 & 0xf0);
++	}
++    } "-mcmse"]
++}
++
+ # Return 1 if the target supports executing MVE instructions, 0
+ # otherwise.
+ 
 diff --git a/gcc/tree-data-ref.c b/gcc/tree-data-ref.c
 index 2cb54def860..2a4da7a7a18 100644
 --- a/gcc/tree-data-ref.c
@@ -18597,6 +19952,53 @@ index 926b4a976ae..f6b1bd174c3 100644
    /* As heuristic to improve compile-time we handle only the N innermost
       loops and the outermost one optimistically.  */
    if (iterate)
+diff --git a/gcc/tree-ssa-structalias.c b/gcc/tree-ssa-structalias.c
+index 40171d53d0a..5bf4738b526 100644
+--- a/gcc/tree-ssa-structalias.c
++++ b/gcc/tree-ssa-structalias.c
+@@ -8134,10 +8134,12 @@ ipa_pta_execute (void)
+   FOR_EACH_DEFINED_FUNCTION (node)
+     {
+       varinfo_t vi;
+-      /* Nodes without a body are not interesting.  Especially do not
+-         visit clones at this point for now - we get duplicate decls
+-	 there for inline clones at least.  */
+-      if (!node->has_gimple_body_p () || node->inlined_to)
++      /* Nodes without a body in this partition are not interesting.
++	 Especially do not visit clones at this point for now - we
++	 get duplicate decls there for inline clones at least.  */
++      if (!node->has_gimple_body_p ()
++	  || node->in_other_partition
++	  || node->inlined_to)
+ 	continue;
+       node->get_body ();
+ 
+@@ -8215,8 +8217,10 @@ ipa_pta_execute (void)
+       struct function *func;
+       basic_block bb;
+ 
+-      /* Nodes without a body are not interesting.  */
+-      if (!node->has_gimple_body_p () || node->clone_of)
++      /* Nodes without a body in this partition are not interesting.  */
++      if (!node->has_gimple_body_p ()
++	  || node->in_other_partition
++	  || node->clone_of)
+ 	continue;
+ 
+       if (dump_file)
+@@ -8345,8 +8349,10 @@ ipa_pta_execute (void)
+       unsigned i;
+       basic_block bb;
+ 
+-      /* Nodes without a body are not interesting.  */
+-      if (!node->has_gimple_body_p () || node->clone_of)
++      /* Nodes without a body in this partition are not interesting.  */
++      if (!node->has_gimple_body_p ()
++	  || node->in_other_partition
++	  || node->clone_of)
+ 	continue;
+ 
+       fn = DECL_STRUCT_FUNCTION (node->decl);
 diff --git a/gcc/tree-vect-loop.c b/gcc/tree-vect-loop.c
 index 899b5608745..d9e7d04d9ea 100644
 --- a/gcc/tree-vect-loop.c
@@ -19167,10 +20569,19 @@ index 8a390d0857b..1dce2292522 100644
  
  /* Given two virtual locations *LOC0 and *LOC1, return the first
 diff --git a/libgcc/ChangeLog b/libgcc/ChangeLog
-index 1f9de3d5091..9b8ece2dcfe 100644
+index 1f9de3d5091..54f614b0437 100644
 --- a/libgcc/ChangeLog
 +++ b/libgcc/ChangeLog
-@@ -1,3 +1,36 @@
+@@ -1,3 +1,45 @@
++2021-08-24  Richard Earnshaw  <rearnsha@arm.com>
++
++	Backported from master:
++	2021-08-24  Richard Earnshaw  <rearnsha@arm.com>
++
++	PR target/102035
++	* config/arm/cmse_nonsecure_call.S (__gnu_cmse_nonsecure_call):
++	Add vlldm erratum work-around.
++
 +2021-06-18  Srinath Parvathaneni  <srinath.parvathaneni@arm.com>
 +
 +	Backported from master:
@@ -19208,7 +20619,7 @@ index 1f9de3d5091..9b8ece2dcfe 100644
  
  	* GCC 10.3.0 released.
 diff --git a/libgcc/config/arm/cmse_nonsecure_call.S b/libgcc/config/arm/cmse_nonsecure_call.S
-index 5ba28692d6b..b1954b8714d 100644
+index 5ba28692d6b..95f626dd456 100644
 --- a/libgcc/config/arm/cmse_nonsecure_call.S
 +++ b/libgcc/config/arm/cmse_nonsecure_call.S
 @@ -25,7 +25,7 @@
@@ -19229,6 +20640,18 @@ index 5ba28692d6b..b1954b8714d 100644
  vmov.f64    d9, d8
  vmov.f64    d10, d8
  vmov.f64    d11, d8
+@@ -102,6 +102,11 @@ blxns	    r4
+ #ifdef __ARM_PCS_VFP
+ vpop.f64    {d8-d15}
+ #else
++/* VLLDM erratum mitigation sequence. */
++mrs	    r5, control
++tst	    r5, #8	  /* CONTROL_S.SFPA */
++it	    ne
++.inst.w	    0xeeb00a40	  /* vmovne s0, s0 */
+ vlldm	    sp		  /* Lazy restore of d0-d16 and FPSCR.  */
+ add	    sp, sp, #0x88 /* Free space used to save floating point registers.  */
+ #endif /* __ARM_PCS_VFP */
 diff --git a/libgcc/config/arm/t-arm b/libgcc/config/arm/t-arm
 index 3625a2590be..c1553d4e5d8 100644
 --- a/libgcc/config/arm/t-arm
@@ -21756,10 +23179,19 @@ index 304b3a01a08..44359b3d1ac 100644
    UnmapOrDie(oldstack.ss_sp, oldstack.ss_size);
  }
 diff --git a/libstdc++-v3/ChangeLog b/libstdc++-v3/ChangeLog
-index fdd63cbff1a..238e2b5ce62 100644
+index fdd63cbff1a..3274f225cf1 100644
 --- a/libstdc++-v3/ChangeLog
 +++ b/libstdc++-v3/ChangeLog
-@@ -1,3 +1,1041 @@
+@@ -1,3 +1,1050 @@
++2021-08-23  Jonathan Wakely  <jwakely@redhat.com>
++
++	Backported from master:
++	2021-08-23  Jonathan Wakely  <jwakely@redhat.com>
++
++	* include/std/ranges (basic_istream_view): Add default template
++	argument.
++	* testsuite/std/ranges/istream_view.cc: Check it.
++
 +2021-08-19  Jonathan Wakely  <jwakely@redhat.com>
 +
 +	Backported from master:
@@ -28927,7 +30359,7 @@ index 9a80adf3a5a..97ff1cee4e6 100644
    // Standard basic_ostream manipulators
  
 diff --git a/libstdc++-v3/include/std/ranges b/libstdc++-v3/include/std/ranges
-index 8e00222c2e8..29fd613cb8d 100644
+index 8e00222c2e8..dc619fcd494 100644
 --- a/libstdc++-v3/include/std/ranges
 +++ b/libstdc++-v3/include/std/ranges
 @@ -222,11 +222,6 @@ namespace ranges
@@ -29023,7 +30455,17 @@ index 8e00222c2e8..29fd613cb8d 100644
        };
  
        _Winc _M_value = _Winc();
-@@ -973,7 +970,7 @@ namespace views
+@@ -954,7 +951,8 @@ namespace views
+ 	= requires(basic_istream<_CharT, _Traits>& is, _Val& t) { is >> t; };
+   } // namespace __detail
+ 
+-  template<movable _Val, typename _CharT, typename _Traits>
++  template<movable _Val, typename _CharT,
++	   typename _Traits = char_traits<_CharT>>
+     requires default_initializable<_Val>
+       && __detail::__stream_extractable<_Val, _CharT, _Traits>
+     class basic_istream_view
+@@ -973,7 +971,7 @@ namespace views
        {
  	if (_M_stream != nullptr)
  	  *_M_stream >> _M_object;
@@ -29032,7 +30474,7 @@ index 8e00222c2e8..29fd613cb8d 100644
        }
  
        constexpr default_sentinel_t
-@@ -994,8 +991,8 @@ namespace views
+@@ -994,8 +992,8 @@ namespace views
  	_Iterator() = default;
  
  	constexpr explicit
@@ -29043,7 +30485,7 @@ index 8e00222c2e8..29fd613cb8d 100644
  	{ }
  
  	_Iterator(const _Iterator&) = delete;
-@@ -1292,65 +1289,50 @@ namespace views
+@@ -1292,65 +1290,50 @@ namespace views
  
    } // namespace views
  
@@ -29131,7 +30573,7 @@ index 8e00222c2e8..29fd613cb8d 100644
  	return { std::move(__first1), std::move(__first2) };
        }
    } // namespace __detail
-@@ -1429,7 +1411,32 @@ namespace views
+@@ -1429,7 +1412,32 @@ namespace views
  	  _M_offset = __it - ranges::begin(__r);
  	}
        };
@@ -29164,7 +30606,7 @@ index 8e00222c2e8..29fd613cb8d 100644
    } // namespace __detail
  
    template<input_range _Vp,
-@@ -1440,7 +1447,7 @@ namespace views
+@@ -1440,7 +1448,7 @@ namespace views
      private:
        struct _Sentinel;
  
@@ -29173,7 +30615,7 @@ index 8e00222c2e8..29fd613cb8d 100644
        {
        private:
  	static constexpr auto
-@@ -1454,18 +1461,6 @@ namespace views
+@@ -1454,18 +1462,6 @@ namespace views
  	    return input_iterator_tag{};
  	}
  
@@ -29192,7 +30634,7 @@ index 8e00222c2e8..29fd613cb8d 100644
  	friend filter_view;
  
  	using _Vp_iter = iterator_t<_Vp>;
-@@ -1475,21 +1470,20 @@ namespace views
+@@ -1475,21 +1471,20 @@ namespace views
  
        public:
  	using iterator_concept = decltype(_S_iter_concept());
@@ -29219,7 +30661,7 @@ index 8e00222c2e8..29fd613cb8d 100644
  	{ return _M_current; }
  
  	constexpr _Vp_iter
-@@ -1574,8 +1568,8 @@ namespace views
+@@ -1574,8 +1569,8 @@ namespace views
  	_Sentinel() = default;
  
  	constexpr explicit
@@ -29230,7 +30672,7 @@ index 8e00222c2e8..29fd613cb8d 100644
  	{ }
  
  	constexpr sentinel_t<_Vp>
-@@ -1615,23 +1609,23 @@ namespace views
+@@ -1615,23 +1610,23 @@ namespace views
        begin()
        {
  	if (_M_cached_begin._M_has_value())
@@ -29258,7 +30700,7 @@ index 8e00222c2e8..29fd613cb8d 100644
        }
      };
  
-@@ -1656,36 +1650,26 @@ namespace views
+@@ -1656,36 +1651,26 @@ namespace views
      {
      private:
        template<bool _Const>
@@ -29305,7 +30747,7 @@ index 8e00222c2e8..29fd613cb8d 100644
  		if constexpr (derived_from<_Cat, contiguous_iterator_tag>)
  		  return random_access_iterator_tag{};
  		else
-@@ -1694,6 +1678,32 @@ namespace views
+@@ -1694,6 +1679,32 @@ namespace views
  	    else
  	      return input_iterator_tag{};
  	  }
@@ -29338,7 +30780,7 @@ index 8e00222c2e8..29fd613cb8d 100644
  
  	  using _Base_iter = iterator_t<_Base>;
  
-@@ -1702,7 +1712,7 @@ namespace views
+@@ -1702,7 +1713,7 @@ namespace views
  
  	public:
  	  using iterator_concept = decltype(_S_iter_concept());
@@ -29347,7 +30789,7 @@ index 8e00222c2e8..29fd613cb8d 100644
  	  using value_type
  	    = remove_cvref_t<invoke_result_t<_Fp&, range_reference_t<_Base>>>;
  	  using difference_type = range_difference_t<_Base>;
-@@ -1710,9 +1720,9 @@ namespace views
+@@ -1710,9 +1721,9 @@ namespace views
  	  _Iterator() = default;
  
  	  constexpr
@@ -29359,7 +30801,7 @@ index 8e00222c2e8..29fd613cb8d 100644
  	  { }
  
  	  constexpr
-@@ -1722,9 +1732,8 @@ namespace views
+@@ -1722,9 +1733,8 @@ namespace views
  	    : _M_current(std::move(__i._M_current)), _M_parent(__i._M_parent)
  	  { }
  
@@ -29371,7 +30813,7 @@ index 8e00222c2e8..29fd613cb8d 100644
  	  { return _M_current; }
  
  	  constexpr _Base_iter
-@@ -1825,17 +1834,17 @@ namespace views
+@@ -1825,17 +1835,17 @@ namespace views
  	  friend constexpr _Iterator
  	  operator+(_Iterator __i, difference_type __n)
  	    requires random_access_range<_Base>
@@ -29392,7 +30834,7 @@ index 8e00222c2e8..29fd613cb8d 100644
  
  	  // _GLIBCXX_RESOLVE_LIB_DEFECTS
  	  // 3483. transform_view::iterator's difference is overconstrained
-@@ -1853,12 +1862,6 @@ namespace views
+@@ -1853,12 +1863,6 @@ namespace views
  	      return *__i;
  	  }
  
@@ -29405,7 +30847,7 @@ index 8e00222c2e8..29fd613cb8d 100644
  	  friend _Iterator<!_Const>;
  	  template<bool> friend struct _Sentinel;
  	};
-@@ -1868,7 +1871,7 @@ namespace views
+@@ -1868,7 +1872,7 @@ namespace views
  	{
  	private:
  	  using _Parent = __detail::__maybe_const_t<_Const, transform_view>;
@@ -29414,7 +30856,7 @@ index 8e00222c2e8..29fd613cb8d 100644
  
  	  template<bool _Const2>
  	    constexpr auto
-@@ -1946,13 +1949,13 @@ namespace views
+@@ -1946,13 +1950,13 @@ namespace views
  
        constexpr _Iterator<false>
        begin()
@@ -29430,7 +30872,7 @@ index 8e00222c2e8..29fd613cb8d 100644
  
        constexpr _Sentinel<false>
        end()
-@@ -1960,7 +1963,7 @@ namespace views
+@@ -1960,7 +1964,7 @@ namespace views
  
        constexpr _Iterator<false>
        end() requires common_range<_Vp>
@@ -29439,7 +30881,7 @@ index 8e00222c2e8..29fd613cb8d 100644
  
        constexpr _Sentinel<true>
        end() const
-@@ -1972,7 +1975,7 @@ namespace views
+@@ -1972,7 +1976,7 @@ namespace views
        end() const
  	requires common_range<const _Vp>
  	  && regular_invocable<const _Fp&, range_reference_t<const _Vp>>
@@ -29448,7 +30890,7 @@ index 8e00222c2e8..29fd613cb8d 100644
  
        constexpr auto
        size() requires sized_range<_Vp>
-@@ -2127,14 +2130,14 @@ namespace views
+@@ -2127,14 +2131,14 @@ namespace views
        size() requires sized_range<_Vp>
        {
  	auto __n = ranges::size(_M_base);
@@ -29465,7 +30907,7 @@ index 8e00222c2e8..29fd613cb8d 100644
        }
      };
  
-@@ -2438,18 +2441,62 @@ namespace views
+@@ -2438,18 +2442,62 @@ namespace views
      private:
        using _InnerRange = range_reference_t<_Vp>;
  
@@ -29531,7 +30973,7 @@ index 8e00222c2e8..29fd613cb8d 100644
  
  	  constexpr void
  	  _M_satisfy()
-@@ -2489,30 +2536,8 @@ namespace views
+@@ -2489,30 +2537,8 @@ namespace views
  	      return input_iterator_tag{};
  	  }
  
@@ -29564,7 +31006,7 @@ index 8e00222c2e8..29fd613cb8d 100644
  
  	  _Outer_iter _M_outer = _Outer_iter();
  	  _Inner_iter _M_inner = _Inner_iter();
-@@ -2520,7 +2545,7 @@ namespace views
+@@ -2520,7 +2546,7 @@ namespace views
  
  	public:
  	  using iterator_concept = decltype(_S_iter_concept());
@@ -29573,7 +31015,7 @@ index 8e00222c2e8..29fd613cb8d 100644
  	  using value_type = range_value_t<range_reference_t<_Base>>;
  	  using difference_type
  	    = common_type_t<range_difference_t<_Base>,
-@@ -2529,9 +2554,9 @@ namespace views
+@@ -2529,9 +2555,9 @@ namespace views
  	  _Iterator() = default;
  
  	  constexpr
@@ -29585,7 +31027,7 @@ index 8e00222c2e8..29fd613cb8d 100644
  	  { _M_satisfy(); }
  
  	  constexpr
-@@ -2558,7 +2583,7 @@ namespace views
+@@ -2558,7 +2584,7 @@ namespace views
  	  constexpr _Iterator&
  	  operator++()
  	  {
@@ -29594,7 +31036,7 @@ index 8e00222c2e8..29fd613cb8d 100644
  	      if constexpr (_S_ref_is_glvalue)
  		return *_M_outer;
  	      else
-@@ -2629,6 +2654,7 @@ namespace views
+@@ -2629,6 +2655,7 @@ namespace views
  	  friend constexpr void
  	  iter_swap(const _Iterator& __x, const _Iterator& __y)
  	    noexcept(noexcept(ranges::iter_swap(__x._M_inner, __y._M_inner)))
@@ -29602,7 +31044,7 @@ index 8e00222c2e8..29fd613cb8d 100644
  	  { return ranges::iter_swap(__x._M_inner, __y._M_inner); }
  
  	  friend _Iterator<!_Const>;
-@@ -2640,7 +2666,7 @@ namespace views
+@@ -2640,7 +2667,7 @@ namespace views
  	{
  	private:
  	  using _Parent = __detail::__maybe_const_t<_Const, join_view>;
@@ -29611,7 +31053,7 @@ index 8e00222c2e8..29fd613cb8d 100644
  
  	  template<bool _Const2>
  	    constexpr bool
-@@ -2653,8 +2679,8 @@ namespace views
+@@ -2653,8 +2680,8 @@ namespace views
  	  _Sentinel() = default;
  
  	  constexpr explicit
@@ -29622,7 +31064,7 @@ index 8e00222c2e8..29fd613cb8d 100644
  	  { }
  
  	  constexpr
-@@ -2702,7 +2728,7 @@ namespace views
+@@ -2702,7 +2729,7 @@ namespace views
  	constexpr bool __use_const
  	  = (__detail::__simple_view<_Vp>
  	     && is_reference_v<range_reference_t<_Vp>>);
@@ -29631,7 +31073,7 @@ index 8e00222c2e8..29fd613cb8d 100644
        }
  
        constexpr auto
-@@ -2710,7 +2736,7 @@ namespace views
+@@ -2710,7 +2737,7 @@ namespace views
  	requires input_range<const _Vp>
  	  && is_reference_v<range_reference_t<const _Vp>>
        {
@@ -29640,7 +31082,7 @@ index 8e00222c2e8..29fd613cb8d 100644
        }
  
        constexpr auto
-@@ -2719,10 +2745,10 @@ namespace views
+@@ -2719,10 +2746,10 @@ namespace views
  	if constexpr (forward_range<_Vp> && is_reference_v<_InnerRange>
  		      && forward_range<_InnerRange>
  		      && common_range<_Vp> && common_range<_InnerRange>)
@@ -29653,7 +31095,7 @@ index 8e00222c2e8..29fd613cb8d 100644
        }
  
        constexpr auto
-@@ -2735,9 +2761,9 @@ namespace views
+@@ -2735,9 +2762,9 @@ namespace views
  		      && forward_range<range_reference_t<const _Vp>>
  		      && common_range<const _Vp>
  		      && common_range<range_reference_t<const _Vp>>)
@@ -29665,7 +31107,7 @@ index 8e00222c2e8..29fd613cb8d 100644
        }
      };
  
-@@ -2765,6 +2791,35 @@ namespace views
+@@ -2765,6 +2792,35 @@ namespace views
  	&& requires
  	   { typename __require_constant<remove_reference_t<_Range>::size()>; }
  	&& (remove_reference_t<_Range>::size() <= 1);
@@ -29701,7 +31143,7 @@ index 8e00222c2e8..29fd613cb8d 100644
    }
  
    template<input_range _Vp, forward_range _Pattern>
-@@ -2775,15 +2830,19 @@ namespace views
+@@ -2775,15 +2831,19 @@ namespace views
      class split_view : public view_interface<split_view<_Vp, _Pattern>>
      {
      private:
@@ -29722,7 +31164,7 @@ index 8e00222c2e8..29fd613cb8d 100644
  
  	  constexpr bool
  	  __at_end() const
-@@ -2822,7 +2881,7 @@ namespace views
+@@ -2822,7 +2882,7 @@ namespace views
  	  using iterator_concept = conditional_t<forward_range<_Base>,
  						 forward_iterator_tag,
  						 input_iterator_tag>;
@@ -29731,7 +31173,7 @@ index 8e00222c2e8..29fd613cb8d 100644
  	  using difference_type = range_difference_t<_Base>;
  
  	  struct value_type : view_interface<value_type>
-@@ -2856,14 +2915,14 @@ namespace views
+@@ -2856,14 +2916,14 @@ namespace views
  	  _OuterIter() = default;
  
  	  constexpr explicit
@@ -29750,7 +31192,7 @@ index 8e00222c2e8..29fd613cb8d 100644
  	      _M_current(std::move(__current))
  	  { }
  
-@@ -2881,21 +2940,31 @@ namespace views
+@@ -2881,21 +2941,31 @@ namespace views
  	  constexpr _OuterIter&
  	  operator++()
  	  {
@@ -29786,7 +31228,7 @@ index 8e00222c2e8..29fd613cb8d 100644
  		} while (++__current() != __end);
  	    return *this;
  	  }
-@@ -2928,9 +2997,10 @@ namespace views
+@@ -2928,9 +2998,10 @@ namespace views
  
        template<bool _Const>
  	struct _InnerIter
@@ -29798,7 +31240,7 @@ index 8e00222c2e8..29fd613cb8d 100644
  
  	  constexpr bool
  	  __at_end() const
-@@ -2964,17 +3034,6 @@ namespace views
+@@ -2964,17 +3035,6 @@ namespace views
  	      }
  	  }
  
@@ -29816,7 +31258,7 @@ index 8e00222c2e8..29fd613cb8d 100644
  	  constexpr auto&
  	  _M_i_current() noexcept
  	  { return _M_i.__current(); }
-@@ -2989,7 +3048,7 @@ namespace views
+@@ -2989,7 +3049,7 @@ namespace views
  	public:
  	  using iterator_concept
  	    = typename _OuterIter<_Const>::iterator_concept;
@@ -29825,7 +31267,7 @@ index 8e00222c2e8..29fd613cb8d 100644
  	  using value_type = range_value_t<_Base>;
  	  using difference_type = range_difference_t<_Base>;
  
-@@ -3018,7 +3077,7 @@ namespace views
+@@ -3018,7 +3078,7 @@ namespace views
  	  constexpr decltype(auto)
  	  operator++(int)
  	  {
@@ -29834,7 +31276,7 @@ index 8e00222c2e8..29fd613cb8d 100644
  	      {
  		auto __tmp = *this;
  		++*this;
-@@ -3089,25 +3148,25 @@ namespace views
+@@ -3089,25 +3149,25 @@ namespace views
        {
  	if constexpr (forward_range<_Vp>)
  	  return _OuterIter<__detail::__simple_view<_Vp>>{
@@ -29864,7 +31306,7 @@ index 8e00222c2e8..29fd613cb8d 100644
        }
  
        constexpr auto
-@@ -3116,7 +3175,7 @@ namespace views
+@@ -3116,7 +3176,7 @@ namespace views
  	if constexpr (forward_range<_Vp>
  		      && forward_range<const _Vp>
  		      && common_range<const _Vp>)
@@ -29873,7 +31315,7 @@ index 8e00222c2e8..29fd613cb8d 100644
  	else
  	  return default_sentinel;
        }
-@@ -3388,6 +3447,10 @@ namespace views
+@@ -3388,6 +3448,10 @@ namespace views
  	{ std::get<_Nm>(__t) }
  	  -> convertible_to<const tuple_element_t<_Nm, _Tp>&>;
        };
@@ -29884,7 +31326,7 @@ index 8e00222c2e8..29fd613cb8d 100644
    }
  
    template<input_range _Vp, size_t _Nm>
-@@ -3395,6 +3458,7 @@ namespace views
+@@ -3395,6 +3459,7 @@ namespace views
        && __detail::__has_tuple_element<range_value_t<_Vp>, _Nm>
        && __detail::__has_tuple_element<remove_reference_t<range_reference_t<_Vp>>,
  				       _Nm>
@@ -29892,7 +31334,7 @@ index 8e00222c2e8..29fd613cb8d 100644
      class elements_view : public view_interface<elements_view<_Vp, _Nm>>
      {
      public:
-@@ -3405,8 +3469,8 @@ namespace views
+@@ -3405,8 +3470,8 @@ namespace views
  	: _M_base(std::move(base))
        { }
  
@@ -29903,7 +31345,7 @@ index 8e00222c2e8..29fd613cb8d 100644
        { return _M_base; }
  
        constexpr _Vp
-@@ -3446,21 +3510,75 @@ namespace views
+@@ -3446,21 +3511,75 @@ namespace views
        { return ranges::size(_M_base); }
  
      private:
@@ -29983,7 +31425,7 @@ index 8e00222c2e8..29fd613cb8d 100644
  	  using value_type
  	    = remove_cvref_t<tuple_element_t<_Nm, range_value_t<_Base>>>;
  	  using difference_type = range_difference_t<_Base>;
-@@ -3488,8 +3606,8 @@ namespace views
+@@ -3488,8 +3607,8 @@ namespace views
  	  { return std::move(_M_current); }
  
  	  constexpr decltype(auto)
@@ -29994,7 +31436,7 @@ index 8e00222c2e8..29fd613cb8d 100644
  
  	  constexpr _Iterator&
  	  operator++()
-@@ -3499,7 +3617,7 @@ namespace views
+@@ -3499,7 +3618,7 @@ namespace views
  	  }
  
  	  constexpr void
@@ -30003,7 +31445,7 @@ index 8e00222c2e8..29fd613cb8d 100644
  	  { ++_M_current; }
  
  	  constexpr _Iterator
-@@ -3544,7 +3662,7 @@ namespace views
+@@ -3544,7 +3663,7 @@ namespace views
  	  constexpr decltype(auto)
  	  operator[](difference_type __n) const
  	    requires random_access_range<_Base>
@@ -30012,7 +31454,7 @@ index 8e00222c2e8..29fd613cb8d 100644
  
  	  friend constexpr bool
  	  operator==(const _Iterator& __x, const _Iterator& __y)
-@@ -3601,18 +3719,24 @@ namespace views
+@@ -3601,18 +3720,24 @@ namespace views
  	    requires sized_sentinel_for<iterator_t<_Base>, iterator_t<_Base>>
  	  { return __x._M_current - __y._M_current; }
  
@@ -30042,7 +31484,7 @@ index 8e00222c2e8..29fd613cb8d 100644
  	  sentinel_t<_Base> _M_end = sentinel_t<_Base>();
  
  	public:
-@@ -3646,14 +3770,14 @@ namespace views
+@@ -3646,14 +3771,14 @@ namespace views
  	    requires sized_sentinel_for<sentinel_t<_Base>, iterator_t<_Base2>>
  	    friend constexpr range_difference_t<_Base2>
  	    operator-(const _Iterator<_Const2>& __x, const _Sentinel& __y)
@@ -33920,6 +35362,32 @@ index 65d166fbd3b..76888ac7959 100644
    test03();
    test04();
 +  test05();
+ }
+diff --git a/libstdc++-v3/testsuite/std/ranges/istream_view.cc b/libstdc++-v3/testsuite/std/ranges/istream_view.cc
+index f74e05e347a..77df686aa4a 100644
+--- a/libstdc++-v3/testsuite/std/ranges/istream_view.cc
++++ b/libstdc++-v3/testsuite/std/ranges/istream_view.cc
+@@ -83,6 +83,15 @@ test04()
+   static_assert(!std::forward_iterator<It>);
+ }
+ 
++void
++test06()
++{
++  // Default template argument
++  using V = std::ranges::basic_istream_view<int, char>;
++  using W = std::ranges::basic_istream_view<int, char, std::char_traits<char>>;
++  static_assert( std::is_same_v<V, W> );
++}
++
+ int
+ main()
+ {
+@@ -90,4 +99,5 @@ main()
+   test02();
+   test03();
+   test04();
++  test06();
  }
 diff --git a/libstdc++-v3/testsuite/std/ranges/p2259.cc b/libstdc++-v3/testsuite/std/ranges/p2259.cc
 new file mode 100644
