@@ -47,7 +47,9 @@ François Dumont (3):
       libstdc++: Fix unordered containers move constructors noexcept qualification
       libstdc++: [_GLIBCXX_DEBUG] Fix management of __dp_sign_max_size [PR 99402]
 
-GCC Administrator (140):
+GCC Administrator (142):
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -434,7 +436,7 @@ Richard Earnshaw (12):
       arm: fix vlldm erratum for Armv8.1-m [PR102035]
       arm: Add tests for VLLDM mitigation [PR102035]
 
-Richard Sandiford (10):
+Richard Sandiford (11):
       data-ref: Tighten index-based alias checks [PR99726]
       gimple-fold: Recompute ADDR_EXPR flags after folding a TMR [PR98268]
       aarch64: Tweak post-RA handling of CONST_INT moves [PR98136]
@@ -445,6 +447,7 @@ Richard Sandiford (10):
       lra: Avoid cycling on certain subreg reloads [PR96796]
       aarch64: Fix address mode for vec_concat pattern [PR100305]
       aarch64: Add -mtune=neoverse-512tvb
+      libgcc: Add missing runtime exception notices
 
 Roman Zhuykov (1):
       modulo-sched: skip loops with strange register defs [PR100225]
@@ -470,11 +473,12 @@ Tamar Christina (2):
 Thomas Koenig (1):
       Do not replace variable op variable in I/O implied DO loop replacement.
 
-Thomas Schwinge (4):
+Thomas Schwinge (5):
       Add 'libgomp.oacc-c-c++-common/static-variable-1.c' [PR84991, PR84992, PR90779]
       Restore 'gcc.dg/pr78213.c' testing
       libstdc++: Avoid illegal argument to verbose in dg-test callback, continued
       Fix up 'gcc.dg/pr78213.c' for '--enable-checking=release' etc.
+      Fix 'OMP_CLAUSE_TILE' operands handling in 'gcc/tree.c:walk_tree_1'
 
 Tobias Burnus (3):
       Fortran: Fix fndecl with -fcoarray=lib [PR99817]
@@ -2843,10 +2847,17 @@ index 0719d810258..a9368325816 100644
 -10.3.0
 +10.3.1
 diff --git a/gcc/ChangeLog b/gcc/ChangeLog
-index 3b1384e707f..45b18a4bba7 100644
+index 3b1384e707f..92b02000ccb 100644
 --- a/gcc/ChangeLog
 +++ b/gcc/ChangeLog
-@@ -1,3 +1,1000 @@
+@@ -1,3 +1,1007 @@
++2021-08-31  Thomas Schwinge  <thomas@codesourcery.com>
++
++	Backported from master:
++	2021-08-31  Thomas Schwinge  <thomas@codesourcery.com>
++
++	* tree.c (walk_tree_1) <OMP_CLAUSE_TILE>: Handle three operands.
++
 +2021-08-27  konglin1  <lingling.kong@intel.com>
 +
 +	PR target/101472
@@ -10725,10 +10736,30 @@ index 991b26f3341..c4bffd0f199 100644
  					target, tmode, modifier, as);
        /* FALLTHRU */
 diff --git a/gcc/fortran/ChangeLog b/gcc/fortran/ChangeLog
-index aa5932be872..e7cb6c4b3e0 100644
+index aa5932be872..2708ce3f9d4 100644
 --- a/gcc/fortran/ChangeLog
 +++ b/gcc/fortran/ChangeLog
-@@ -1,3 +1,195 @@
+@@ -1,3 +1,215 @@
++2021-08-30  Paul Thomas  <pault@gcc.gnu.org>
++
++	Backported from master:
++	2021-05-06  Paul Thomas  <pault@gcc.gnu.org>
++
++	PR fortran/46691
++	PR fortran/99819
++	* class.c (gfc_build_class_symbol): Remove the error that
++	disables assumed size class arrays. Class array types that are
++	not deferred shape or assumed rank are given a unique name and
++	placed in the procedure namespace.
++	* trans-array.c (gfc_trans_g77_array): Obtain the data pointer
++	for class arrays.
++	(gfc_trans_dummy_array_bias): Suppress the runtime error for
++	extent violations in explicit shape class arrays because it
++	always fails.
++	* trans-expr.c (gfc_conv_procedure_call): Handle assumed size
++	class actual arguments passed to non-descriptor formal args by
++	using the data pointer, stored as the symbol's backend decl.
++
 +2021-08-28  Paul Thomas  <pault@gcc.gnu.org>
 +
 +	Backported from master:
@@ -12256,10 +12287,20 @@ index 99edad8a950..f33489286a9 100644
  
  #endif
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index 2913065bf31..3b9c3bf1d70 100644
+index 2913065bf31..029c3ca017b 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,1200 @@
+@@ -1,3 +1,1210 @@
++2021-08-30  Paul Thomas  <pault@gcc.gnu.org>
++
++	Backported from master:
++	2021-05-06  Paul Thomas  <pault@gcc.gnu.org>
++
++	PR fortran/46691
++	PR fortran/99819
++	* gfortran.dg/class_dummy_6.f90: New test.
++	* gfortran.dg/class_dummy_7.f90: New test.
++
 +2021-08-28  Paul Thomas  <pault@gcc.gnu.org>
 +
 +	Backported from master:
@@ -21133,7 +21174,7 @@ index adc579ff544..be48d915e59 100644
  }
  
 diff --git a/gcc/tree.c b/gcc/tree.c
-index 3c17694c703..b43bc809823 100644
+index 3c17694c703..d82c308f14c 100644
 --- a/gcc/tree.c
 +++ b/gcc/tree.c
 @@ -10982,13 +10982,13 @@ build_opaque_vector_type (tree innertype, poly_int64 nunits)
@@ -21169,6 +21210,22 @@ index 3c17694c703..b43bc809823 100644
  }
  
  /* Return the value of element I of VECTOR_CST T.  */
+@@ -12191,7 +12191,6 @@ walk_tree_1 (tree *tp, walk_tree_fn func, void *data,
+ 	case OMP_CLAUSE_BIND:
+ 	case OMP_CLAUSE_AUTO:
+ 	case OMP_CLAUSE_SEQ:
+-	case OMP_CLAUSE_TILE:
+ 	case OMP_CLAUSE__SIMT_:
+ 	case OMP_CLAUSE_IF_PRESENT:
+ 	case OMP_CLAUSE_FINALIZE:
+@@ -12203,6 +12202,7 @@ walk_tree_1 (tree *tp, walk_tree_fn func, void *data,
+ 	  WALK_SUBTREE_TAIL (OMP_CLAUSE_CHAIN (*tp));
+ 
+ 	case OMP_CLAUSE_COLLAPSE:
++	case OMP_CLAUSE_TILE:
+ 	  {
+ 	    int i;
+ 	    for (i = 0; i < 3; i++)
 diff --git a/gcc/tree.h b/gcc/tree.h
 index 328a2d5d226..bb80e81d389 100644
 --- a/gcc/tree.h
@@ -21423,10 +21480,21 @@ index 8a390d0857b..1dce2292522 100644
  
  /* Given two virtual locations *LOC0 and *LOC1, return the first
 diff --git a/libgcc/ChangeLog b/libgcc/ChangeLog
-index 1f9de3d5091..54f614b0437 100644
+index 1f9de3d5091..307fd79eddf 100644
 --- a/libgcc/ChangeLog
 +++ b/libgcc/ChangeLog
-@@ -1,3 +1,45 @@
+@@ -1,3 +1,56 @@
++2021-08-31  Richard Sandiford  <richard.sandiford@arm.com>
++
++	Backported from master:
++	2021-08-31  Richard Sandiford  <richard.sandiford@arm.com>
++
++	* config/aarch64/value-unwind.h: Add missing runtime exception
++	paragraph.
++	* config/frv/frv-abi.h: Likewise.
++	* config/i386/value-unwind.h: Likewise.
++	* config/pa/pa64-hpux-lib.h: Likewise.
++
 +2021-08-24  Richard Earnshaw  <rearnsha@arm.com>
 +
 +	Backported from master:
@@ -21472,6 +21540,21 @@ index 1f9de3d5091..54f614b0437 100644
  2021-04-08  Release Manager
  
  	* GCC 10.3.0 released.
+diff --git a/libgcc/config/aarch64/value-unwind.h b/libgcc/config/aarch64/value-unwind.h
+index e8b9d44cc58..bb35f416b94 100644
+--- a/libgcc/config/aarch64/value-unwind.h
++++ b/libgcc/config/aarch64/value-unwind.h
+@@ -13,6 +13,10 @@
+    or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public
+    License for more details.
+ 
++   Under Section 7 of GPL version 3, you are granted additional
++   permissions described in the GCC Runtime Library Exception, version
++   3.1, as published by the Free Software Foundation.
++
+    You should have received a copy of the GNU General Public License and
+    a copy of the GCC Runtime Library Exception along with this program;
+    see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 diff --git a/libgcc/config/arm/cmse_nonsecure_call.S b/libgcc/config/arm/cmse_nonsecure_call.S
 index 5ba28692d6b..95f626dd456 100644
 --- a/libgcc/config/arm/cmse_nonsecure_call.S
@@ -21531,6 +21614,56 @@ index 3625a2590be..c1553d4e5d8 100644
  		       $(gcc_compile) -c $<
  endif
 -endif
+diff --git a/libgcc/config/frv/frv-abi.h b/libgcc/config/frv/frv-abi.h
+index 1db8b35cfa5..2ba8916db8e 100644
+--- a/libgcc/config/frv/frv-abi.h
++++ b/libgcc/config/frv/frv-abi.h
+@@ -14,6 +14,10 @@
+    FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+    for more details.
+ 
++   Under Section 7 of GPL version 3, you are granted additional
++   permissions described in the GCC Runtime Library Exception, version
++   3.1, as published by the Free Software Foundation.
++
+    You should have received a copy of the GNU General Public License and
+    a copy of the GCC Runtime Library Exception along with this program;
+    see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
+diff --git a/libgcc/config/i386/value-unwind.h b/libgcc/config/i386/value-unwind.h
+index 367c0dea777..208de15510b 100644
+--- a/libgcc/config/i386/value-unwind.h
++++ b/libgcc/config/i386/value-unwind.h
+@@ -13,6 +13,10 @@
+    or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public
+    License for more details.
+ 
++   Under Section 7 of GPL version 3, you are granted additional
++   permissions described in the GCC Runtime Library Exception, version
++   3.1, as published by the Free Software Foundation.
++
+    You should have received a copy of the GNU General Public License and
+    a copy of the GCC Runtime Library Exception along with this program;
+    see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
+diff --git a/libgcc/config/pa/pa64-hpux-lib.h b/libgcc/config/pa/pa64-hpux-lib.h
+index ebe1b51057e..ae1423fcb0e 100644
+--- a/libgcc/config/pa/pa64-hpux-lib.h
++++ b/libgcc/config/pa/pa64-hpux-lib.h
+@@ -14,8 +14,13 @@ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+ 
+-You should have received a copy of the GNU General Public License
+-along with GCC; see the file COPYING3.  If not see
++Under Section 7 of GPL version 3, you are granted additional
++permissions described in the GCC Runtime Library Exception, version
++3.1, as published by the Free Software Foundation.
++
++You should have received a copy of the GNU General Public License and
++a copy of the GCC Runtime Library Exception along with this program;
++see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
+ <http://www.gnu.org/licenses/>.  */
+ 
+ /* We use DTOR_LIST_BEGIN to carry a bunch of hacks to allow us to use
 diff --git a/libgcc/config/rs6000/t-linux b/libgcc/config/rs6000/t-linux
 index 72e9c2770a6..500210ddaf2 100644
 --- a/libgcc/config/rs6000/t-linux
