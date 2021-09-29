@@ -40,7 +40,7 @@ Daniel Cederman (5):
 David Edelsohn (1):
       aix: Alias -m64 to -maix64 and -m32 to -maix32.
 
-Eric Botcazou (17):
+Eric Botcazou (18):
       Fix thinko in libcpp preparation patch for modules
       Further increase the limit on the size of accepted Ada files
       Fix another -freorder-blocks-and-partition glitch with Windows SEH
@@ -58,13 +58,22 @@ Eric Botcazou (17):
       Fix inaccurate bounds in debug info for vector array types
       Do not issue size error for too large array type
       Fix PR rtl-optimization/102306
+      Fix no_fsanitize_address effective target
 
 François Dumont (3):
       libstdc++: Fix [multi]map/[multi]set move constructors noexcept qualification
       libstdc++: Fix unordered containers move constructors noexcept qualification
       libstdc++: [_GLIBCXX_DEBUG] Fix management of __dp_sign_max_size [PR 99402]
 
-GCC Administrator (162):
+GCC Administrator (170):
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -234,7 +243,7 @@ Geng Qi (1):
 Hafiz Abid Qadeer (1):
       [OpenACC] Fix an ICE where a loop with GT condition is collapsed.
 
-Harald Anlauf (13):
+Harald Anlauf (16):
       PR fortran/63797 - Bogus ambiguous reference to 'sqrt'
       PR fortran/100154 - ICE in gfc_conv_procedure_call, at fortran/trans-expr.c:6131
       PR fortran/100274 - ICE in gfc_conv_procedure_call, at fortran/trans-expr.c:6131
@@ -248,6 +257,9 @@ Harald Anlauf (13):
       Fortran: fix pointless warning for static variables
       Fortran - out of bounds in array constructor with implied do loop
       Fortran - improve error recovery determining array element from constructor
+      Fortran - (large) arrays in the main shall be static
+      Fortran - fix handling of optional allocatable DT arguments with INTENT(OUT)
+      Fortran - fix handling of substring start and end indices
 
 Iain Buclaw (12):
       d: Fix ICE in when formating a string with '%' or '`' characters (PR98457)
@@ -367,6 +379,9 @@ Jonathan Wakely (54):
 
 José Rui Faustino de Sousa (1):
       Fortran: Fix double function call with -fcheck=pointer [PR]
+
+Kewen Lin (1):
+      ipa-fnsummary: Remove inconsistent bp_pack_value
 
 Marek Polacek (13):
       c++: ICE when late parsing noexcept/NSDMI [PR98333]
@@ -510,9 +525,11 @@ Richard Sandiford (11):
 Roman Zhuykov (1):
       modulo-sched: skip loops with strange register defs [PR100225]
 
-Segher Boessenkool (2):
+Segher Boessenkool (4):
       rs6000: Fix cpu selection w/ isel (PR100108)
       combine: Don't create REG_UNUSED notes if the reg already died (PR99927)
+      rs6000: Don't use r12 for CR save on ELFv2 (PR102107)
+      rs6000: Fix ELFv2 r12 use in epilogue
 
 Srinath Parvathaneni (5):
       arm: Do not clobber callee saved registers with CMSE.
@@ -2908,10 +2925,36 @@ index 0719d810258..a9368325816 100644
 -10.3.0
 +10.3.1
 diff --git a/gcc/ChangeLog b/gcc/ChangeLog
-index 3b1384e707f..28120a9a369 100644
+index 3b1384e707f..440f74e693a 100644
 --- a/gcc/ChangeLog
 +++ b/gcc/ChangeLog
-@@ -1,3 +1,1160 @@
+@@ -1,3 +1,1186 @@
++2021-09-22  Kewen Lin  <linkw@linux.ibm.com>
++
++	Backported from master:
++	2021-09-22  Kewen Lin  <linkw@linux.ibm.com>
++
++	* ipa-fnsummary.c (inline_read_section): Unpack a dummy bit
++	to keep consistent with the side of streaming out.
++
++2021-09-21  Segher Boessenkool  <segher@kernel.crashing.org>
++
++	Backported from master:
++	2021-09-08  Segher Boessenkool  <segher@kernel.crashing.org>
++
++	PR target/102107
++	* config/rs6000/rs6000-logue.c (rs6000_emit_epilogue): For ELFv2 use
++	r11 instead of r12 for restoring CR.
++
++2021-09-21  Segher Boessenkool  <segher@kernel.crashing.org>
++
++	Backported from master:
++	2021-09-03  Segher Boessenkool  <segher@kernel.crashing.org>
++
++	PR target/102107
++	* config/rs6000/rs6000-logue.c (rs6000_emit_prologue): On ELFv2 use r11
++	instead of r12 for CR save, in all cases.
++
 +2021-09-17  Eric Botcazou  <ebotcazou@adacore.com>
 +
 +	PR rtl-optimization/102306
@@ -8428,6 +8471,39 @@ index a112593878a..b5e06eb08fd 100644
      default:
        break;
      }
+diff --git a/gcc/config/rs6000/rs6000-logue.c b/gcc/config/rs6000/rs6000-logue.c
+index 6aad1ff826a..fbde3b62f48 100644
+--- a/gcc/config/rs6000/rs6000-logue.c
++++ b/gcc/config/rs6000/rs6000-logue.c
+@@ -3254,10 +3254,13 @@ rs6000_emit_prologue (void)
+ 
+   /* If we need to save CR, put it into r12 or r11.  Choose r12 except when
+      r12 will be needed by out-of-line gpr save.  */
+-  cr_save_regno = ((DEFAULT_ABI == ABI_AIX || DEFAULT_ABI == ABI_ELFv2)
+-		   && !(strategy & (SAVE_INLINE_GPRS
+-				    | SAVE_NOINLINE_GPRS_SAVES_LR))
+-		   ? 11 : 12);
++  if (DEFAULT_ABI == ABI_AIX
++      && !(strategy & (SAVE_INLINE_GPRS | SAVE_NOINLINE_GPRS_SAVES_LR)))
++    cr_save_regno = 11;
++  else if (DEFAULT_ABI == ABI_ELFv2)
++    cr_save_regno = 11;
++  else
++    cr_save_regno = 12;
+   if (!WORLD_SAVE_P (info)
+       && info->cr_save_p
+       && REGNO (frame_reg_rtx) != cr_save_regno
+@@ -4773,6 +4776,10 @@ rs6000_emit_epilogue (enum epilogue_type epilogue_type)
+       else if (REGNO (frame_reg_rtx) == 12)
+ 	cr_save_regno = 11;
+ 
++      /* For ELFv2 r12 is already in use as the GEP.  */
++      if (DEFAULT_ABI == ABI_ELFv2)
++	cr_save_regno = 11;
++
+       cr_save_reg = load_cr_save (cr_save_regno, frame_reg_rtx,
+ 				  info->cr_save_offset + frame_off,
+ 				  exit_func);
 diff --git a/gcc/config/rs6000/rs6000-p8swap.c b/gcc/config/rs6000/rs6000-p8swap.c
 index 3d5dc7d8aae..4a358646830 100644
 --- a/gcc/config/rs6000/rs6000-p8swap.c
@@ -11968,10 +12044,39 @@ index 991b26f3341..c4bffd0f199 100644
  					target, tmode, modifier, as);
        /* FALLTHRU */
 diff --git a/gcc/fortran/ChangeLog b/gcc/fortran/ChangeLog
-index aa5932be872..67d241f6bb8 100644
+index aa5932be872..a7152777733 100644
 --- a/gcc/fortran/ChangeLog
 +++ b/gcc/fortran/ChangeLog
-@@ -1,3 +1,298 @@
+@@ -1,3 +1,327 @@
++2021-09-21  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2021-09-13  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/85130
++	* expr.c (find_substring_ref): Handle given substring start and
++	end indices as signed integers, not unsigned.
++
++2021-09-21  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2021-09-16  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/102287
++	* trans-expr.c (gfc_conv_procedure_call): Wrap deallocation of
++	allocatable components of optional allocatable derived type
++	procedure arguments with INTENT(OUT) into a presence check.
++
++2021-09-21  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2021-09-17  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/102366
++	* trans-decl.c (gfc_finish_var_decl): Disable the warning message
++	for variables moved from stack to static storange if they are
++	declared in the main, but allow the move to happen.
++
 +2021-09-16  Harald Anlauf  <anlauf@gmx.de>
 +
 +	Backported from master:
@@ -12475,7 +12580,7 @@ index f017fbe3be7..51bd6d18317 100644
      {
        gfc_symtree *st;
 diff --git a/gcc/fortran/expr.c b/gcc/fortran/expr.c
-index f946145eb1b..368dbd00f64 100644
+index f946145eb1b..7f0e3596eab 100644
 --- a/gcc/fortran/expr.c
 +++ b/gcc/fortran/expr.c
 @@ -1337,7 +1337,9 @@ find_array_element (gfc_constructor_base base, gfc_array_ref *ar,
@@ -12499,6 +12604,17 @@ index f946145eb1b..368dbd00f64 100644
        /* Check the bounds.  */
        if ((ar->as->upper[i]
  	   && mpz_cmp (e->value.integer,
+@@ -1725,8 +1724,8 @@ find_substring_ref (gfc_expr *p, gfc_expr **newp)
+   *newp = gfc_copy_expr (p);
+   free ((*newp)->value.character.string);
+ 
+-  end = (gfc_charlen_t) mpz_get_ui (p->ref->u.ss.end->value.integer);
+-  start = (gfc_charlen_t) mpz_get_ui (p->ref->u.ss.start->value.integer);
++  end = (gfc_charlen_t) mpz_get_si (p->ref->u.ss.end->value.integer);
++  start = (gfc_charlen_t) mpz_get_si (p->ref->u.ss.start->value.integer);
+   if (end >= start)
+     length = end - start + 1;
+   else
 @@ -3809,6 +3808,9 @@ gfc_check_pointer_assign (gfc_expr *lvalue, gfc_expr *rvalue,
    int proc_pointer;
    bool same_rank;
@@ -12904,23 +13020,26 @@ index 46fd1dda4c4..65f66b8cdd3 100644
  
        /* If we have an array section or are assigning make sure that
 diff --git a/gcc/fortran/trans-decl.c b/gcc/fortran/trans-decl.c
-index 529417fa8aa..c7dec272037 100644
+index 529417fa8aa..8aa71ede989 100644
 --- a/gcc/fortran/trans-decl.c
 +++ b/gcc/fortran/trans-decl.c
-@@ -736,7 +736,10 @@ gfc_finish_var_decl (tree decl, gfc_symbol * sym)
- 
+@@ -737,6 +737,8 @@ gfc_finish_var_decl (tree decl, gfc_symbol * sym)
    /* Keep variables larger than max-stack-var-size off stack.  */
    if (!(sym->ns->proc_name && sym->ns->proc_name->attr.recursive)
-+      && !(sym->ns->proc_name && sym->ns->proc_name->attr.is_main_program)
        && !sym->attr.automatic
 +      && sym->attr.save != SAVE_EXPLICIT
 +      && sym->attr.save != SAVE_IMPLICIT
        && INTEGER_CST_P (DECL_SIZE_UNIT (decl))
        && !gfc_can_put_var_on_stack (DECL_SIZE_UNIT (decl))
  	 /* Put variable length auto array pointers always into stack.  */
-@@ -749,13 +752,17 @@ gfc_finish_var_decl (tree decl, gfc_symbol * sym)
+@@ -747,15 +749,21 @@ gfc_finish_var_decl (tree decl, gfc_symbol * sym)
+ 	  || sym->attr.allocatable)
+       && !DECL_ARTIFICIAL (decl))
      {
-       if (flag_max_stack_var_size > 0)
+-      if (flag_max_stack_var_size > 0)
++      if (flag_max_stack_var_size > 0
++	  && !(sym->ns->proc_name
++	       && sym->ns->proc_name->attr.is_main_program))
  	gfc_warning (OPT_Wsurprising,
 -		     "Array %qs at %L is larger than limit set by"
 -		     " %<-fmax-stack-var-size=%>, moved from stack to static"
@@ -12943,7 +13062,7 @@ index 529417fa8aa..c7dec272037 100644
  		     sym->name, &sym->declared_at);
  
        TREE_STATIC (decl) = 1;
-@@ -1527,7 +1534,8 @@ gfc_get_symbol_decl (gfc_symbol * sym)
+@@ -1527,7 +1535,8 @@ gfc_get_symbol_decl (gfc_symbol * sym)
       declaration of the entity and memory allocated/deallocated.  */
    if ((sym->ts.type == BT_DERIVED || sym->ts.type == BT_CLASS)
        && sym->param_list != NULL
@@ -12954,7 +13073,7 @@ index 529417fa8aa..c7dec272037 100644
  
    /* Dummy PDT 'len' parameters should be checked when they are explicit.  */
 diff --git a/gcc/fortran/trans-expr.c b/gcc/fortran/trans-expr.c
-index c2321a9ff5f..c26fe146dc3 100644
+index c2321a9ff5f..07e046cc2ac 100644
 --- a/gcc/fortran/trans-expr.c
 +++ b/gcc/fortran/trans-expr.c
 @@ -1648,8 +1648,9 @@ gfc_trans_class_init_assign (gfc_code *code)
@@ -13046,7 +13165,25 @@ index c2321a9ff5f..c26fe146dc3 100644
  	      else if (gfc_is_class_array_ref (e, NULL)
  		       && fsym && fsym->ts.type == BT_DERIVED)
  		/* The actual argument is a component reference to an
-@@ -11046,7 +11057,8 @@ gfc_trans_assignment_1 (gfc_expr * expr1, gfc_expr * expr2, bool init_flag,
+@@ -6435,6 +6446,17 @@ gfc_conv_procedure_call (gfc_se * se, gfc_symbol * sym,
+ 		    // deallocate the components first
+ 		    tmp = gfc_deallocate_alloc_comp (fsym->ts.u.derived,
+ 						     parmse.expr, e->rank);
++		    /* But check whether dummy argument is optional.  */
++		    if (tmp != NULL_TREE
++			&& fsym->attr.optional
++			&& e->expr_type == EXPR_VARIABLE
++			&& e->symtree->n.sym->attr.optional)
++		      {
++			tree present;
++			present = gfc_conv_expr_present (e->symtree->n.sym);
++			tmp = build3_v (COND_EXPR, present, tmp,
++					build_empty_stmt (input_location));
++		      }
+ 		    if (tmp != NULL_TREE)
+ 		      gfc_add_expr_to_block (&se->pre, tmp);
+ 		  }
+@@ -11046,7 +11068,8 @@ gfc_trans_assignment_1 (gfc_expr * expr1, gfc_expr * expr2, bool init_flag,
  		       || gfc_is_class_array_ref (expr1, NULL)
  		       || gfc_is_class_scalar_expr (expr1)
  		       || gfc_is_class_array_ref (expr2, NULL)
@@ -13200,6 +13337,35 @@ index 8f59b18d47f..f27375d52a6 100644
              }
          }
        else
+diff --git a/gcc/ipa-fnsummary.c b/gcc/ipa-fnsummary.c
+index 1105f6ae5c2..825db3c973d 100644
+--- a/gcc/ipa-fnsummary.c
++++ b/gcc/ipa-fnsummary.c
+@@ -4239,13 +4239,20 @@ inline_read_section (struct lto_file_decl_data *file_data, const char *data,
+       bp = streamer_read_bitpack (&ib);
+       if (info)
+ 	{
+-          info->inlinable = bp_unpack_value (&bp, 1);
+-          info->fp_expressions = bp_unpack_value (&bp, 1);
++	  info->inlinable = bp_unpack_value (&bp, 1);
++	  /* On the side of streaming out, there is still one bit
++	     streamed out between inlinable and fp_expressions bits,
++	     which was used for cilk+ before but now always false.
++	     To remove the bit packing need to bump LTO minor version,
++	     so unpack a dummy bit here to keep consistent instead.  */
++	  bp_unpack_value (&bp, 1);
++	  info->fp_expressions = bp_unpack_value (&bp, 1);
+ 	}
+       else
+ 	{
+-          bp_unpack_value (&bp, 1);
+-          bp_unpack_value (&bp, 1);
++	  bp_unpack_value (&bp, 1);
++	  bp_unpack_value (&bp, 1);
++	  bp_unpack_value (&bp, 1);
+ 	}
+ 
+       count2 = streamer_read_uhwi (&ib);
 diff --git a/gcc/ipa-param-manipulation.c b/gcc/ipa-param-manipulation.c
 index fbeea454084..2ec4517420e 100644
 --- a/gcc/ipa-param-manipulation.c
@@ -13867,10 +14033,43 @@ index 99edad8a950..f33489286a9 100644
  
  #endif
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index 2913065bf31..5dd7c08fb68 100644
+index 2913065bf31..e1aff61fba4 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,1341 @@
+@@ -1,3 +1,1374 @@
++2021-09-21  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2021-09-13  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/85130
++	* gfortran.dg/substr_6.f90: Revert commit r8-7574, adding again
++	test that was erroneously considered as illegal.
++
++2021-09-21  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2021-09-16  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/102287
++	* gfortran.dg/intent_out_14.f90: New test.
++
++2021-09-21  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2021-09-17  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/102366
++	* gfortran.dg/pr102366.f90: New test.
++
++2021-09-21  Eric Botcazou  <ebotcazou@adacore.com>
++
++	* lib/target-supports.exp (no_fsanitize_address): Add missing bits.
++	* gcc.dg/pr91441.c: Likewise.
++	* gcc.dg/pr96260.c: Likewise.
++	* gcc.dg/pr96307.c: Likewise.
++	* g++.dg/abi/anon4.C: Likewise.
++
 +2021-09-17  Eric Botcazou  <ebotcazou@adacore.com>
 +
 +	* gcc.target/sparc/20210917-1.c: New test.
@@ -15300,6 +15499,16 @@ index 00000000000..a6d2a2829ff
 +  #pragma omp parallel shared(red)
 +  PARALLEL_FOR( for(int i=0; i < 3; i++) red += A[i]; )
 +}
+diff --git a/gcc/testsuite/g++.dg/abi/anon4.C b/gcc/testsuite/g++.dg/abi/anon4.C
+index 088ba994019..8200f4bb270 100644
+--- a/gcc/testsuite/g++.dg/abi/anon4.C
++++ b/gcc/testsuite/g++.dg/abi/anon4.C
+@@ -1,4 +1,5 @@
+ // PR c++/65209
++// { dg-additional-options "-fno-pie" { target sparc*-*-* } }
+ // { dg-final { scan-assembler-not "comdat" } }
+ 
+ // Everything involving the anonymous namespace bits should be private, not
 diff --git a/gcc/testsuite/g++.dg/compat/struct-layout-1_generate.c b/gcc/testsuite/g++.dg/compat/struct-layout-1_generate.c
 index 990e6f439e5..e9ece645cd0 100644
 --- a/gcc/testsuite/g++.dg/compat/struct-layout-1_generate.c
@@ -17659,6 +17868,50 @@ index ebc2cce78f4..04bf0381f76 100644
 -/* { dg-message "fself\-test: " "-fself-test" { target *-*-* } 0 } */
 +
 +/* { dg-regexp {^-fself-test: [0-9]+ pass\(es\) in [.0-9]+ seconds$|.*: note: self-tests are not enabled in this build$} } */
+diff --git a/gcc/testsuite/gcc.dg/pr91441.c b/gcc/testsuite/gcc.dg/pr91441.c
+index 4f7a8fbec5e..4c785f61e59 100644
+--- a/gcc/testsuite/gcc.dg/pr91441.c
++++ b/gcc/testsuite/gcc.dg/pr91441.c
+@@ -1,11 +1,11 @@
+ /* PR target/91441 */
+ /* { dg-do compile  } */
+-/* { dg-require-effective-target no_fsanitize_address }*/
+ /* { dg-options "--param asan-stack=1 -fsanitize=kernel-address" } */
++/* { dg-skip-if "no address sanitizer" { no_fsanitize_address } } */
+ 
+ int *bar(int *);
+ int *f( int a)
+ {
+   return bar(&a);
+ }
+-/* { dg-warning ".'-fsanitize=kernel-address' with stack protection is not supported without '-fasan-shadow-offset=' for this target" "" { target *-*-* } 0 } */
++/* { dg-warning ".'-fsanitize=kernel-address' with stack protection is not supported without '-fasan-shadow-offset=' for this target" "" { target riscv*-*-* } 0 } */
+diff --git a/gcc/testsuite/gcc.dg/pr96260.c b/gcc/testsuite/gcc.dg/pr96260.c
+index 734832f021e..587afb76116 100644
+--- a/gcc/testsuite/gcc.dg/pr96260.c
++++ b/gcc/testsuite/gcc.dg/pr96260.c
+@@ -1,7 +1,7 @@
+ /* PR target/96260 */
+ /* { dg-do compile } */
+-/* { dg-require-effective-target no_fsanitize_address }*/
+ /* { dg-options "--param asan-stack=1 -fsanitize=kernel-address -fasan-shadow-offset=0x100000" } */
++/* { dg-skip-if "no address sanitizer" { no_fsanitize_address } } */
+ 
+ int *bar(int *);
+ int *f( int a)
+diff --git a/gcc/testsuite/gcc.dg/pr96307.c b/gcc/testsuite/gcc.dg/pr96307.c
+index cd1c17c9661..89002b85c8e 100644
+--- a/gcc/testsuite/gcc.dg/pr96307.c
++++ b/gcc/testsuite/gcc.dg/pr96307.c
+@@ -1,7 +1,7 @@
+ /* PR target/96307 */
+ /* { dg-do compile } */
+-/* { dg-require-effective-target no_fsanitize_address }*/
+ /* { dg-additional-options "-fsanitize=kernel-address --param=asan-instrumentation-with-call-threshold=8" } */
++/* { dg-skip-if "no address sanitizer" { no_fsanitize_address } } */
+ 
+ #include <limits.h>
+ enum a {test1, test2, test3=INT_MAX};
 diff --git a/gcc/testsuite/gcc.dg/pr99830.c b/gcc/testsuite/gcc.dg/pr99830.c
 new file mode 100644
 index 00000000000..75226f5c3a9
@@ -22075,6 +22328,36 @@ index 00000000000..df8ad06c123
 +  class(*), allocatable :: z(:, :)
 +  z = matmul(x, x)
 +end
+diff --git a/gcc/testsuite/gfortran.dg/intent_out_14.f90 b/gcc/testsuite/gfortran.dg/intent_out_14.f90
+new file mode 100644
+index 00000000000..e5994635008
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/intent_out_14.f90
+@@ -0,0 +1,24 @@
++! { dg-do run }
++! PR fortran/102287 - optional allocatable DT array arguments (intent out)
++
++module m
++  type t
++     integer, allocatable :: a
++  end type t
++contains
++  subroutine a (x, v)
++    type(t), optional, allocatable, intent(out) :: x(:)
++    type(t), optional,              intent(out) :: v(:)
++    call b (x, v)
++  end subroutine a
++
++  subroutine b (y, w)
++    type(t), optional, allocatable, intent(out) :: y(:)
++    type(t), optional,              intent(out) :: w(:)
++  end subroutine b
++end module m
++
++program p
++  use m
++  call a ()
++end
 diff --git a/gcc/testsuite/gfortran.dg/pdt_26.f03 b/gcc/testsuite/gfortran.dg/pdt_26.f03
 index bf1273743d3..59ddcfb6cc4 100644
 --- a/gcc/testsuite/gfortran.dg/pdt_26.f03
@@ -22270,6 +22553,21 @@ index 00000000000..b16af00d919
 +    f = size (z)         ! { dg-error "must be an array" }
 +    f = size (z% c)      ! { dg-error "must be an array" }
 +  end
++end
+diff --git a/gcc/testsuite/gfortran.dg/pr102366.f90 b/gcc/testsuite/gfortran.dg/pr102366.f90
+new file mode 100644
+index 00000000000..d002f64a8ae
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/pr102366.f90
+@@ -0,0 +1,9 @@
++! { dg-do compile }
++! { dg-options "-fdump-tree-original -Wall" }
++! { dg-final { scan-tree-dump-times "static real" 1 "original" } }
++! PR fortran/102366 - large arrays no longer become static
++
++program p
++  real(kind=4) :: a(16776325)
++  a=1.0
 +end
 diff --git a/gcc/testsuite/gfortran.dg/pr63797.f90 b/gcc/testsuite/gfortran.dg/pr63797.f90
 new file mode 100644
@@ -22530,6 +22828,19 @@ index 00000000000..8b8230c6f7e
 +  if (allocated (a%x)) stop 1
 +
 +end program constructor_allocatable
+diff --git a/gcc/testsuite/gfortran.dg/substr_6.f90 b/gcc/testsuite/gfortran.dg/substr_6.f90
+index 0d5e3d75e88..83e788a55a6 100644
+--- a/gcc/testsuite/gfortran.dg/substr_6.f90
++++ b/gcc/testsuite/gfortran.dg/substr_6.f90
+@@ -6,6 +6,8 @@ CHARACTER(5), parameter :: c0(1) = (/ "123" // ACHAR(0) // "5" /)
+ CHARACTER*5 c(1)
+ CHARACTER(1), parameter :: c1(5) = (/ "1", "2", "3", ACHAR(0), "5" /)
+ 
++c = c0(1)(-5:-8)
++if (c(1) /= "     ") STOP 1
+ c = (/ c0(1)(1:5) /)
+ do i=1,5
+    if (c(1)(i:i) /= c1(i)) STOP 2
 diff --git a/gcc/testsuite/gnat.dg/derived_type7.adb b/gcc/testsuite/gnat.dg/derived_type7.adb
 new file mode 100644
 index 00000000000..61e7abaa1d7
@@ -22629,7 +22940,7 @@ index a26a6a9b762..ce8cc10b93b 100644
  with Unchecked_Conversion;
  
 diff --git a/gcc/testsuite/lib/target-supports.exp b/gcc/testsuite/lib/target-supports.exp
-index bd62a0d9e79..71298eb1b89 100644
+index bd62a0d9e79..2749afe4741 100644
 --- a/gcc/testsuite/lib/target-supports.exp
 +++ b/gcc/testsuite/lib/target-supports.exp
 @@ -4671,6 +4671,23 @@ proc check_effective_target_arm_cmse_ok {} {
@@ -22656,6 +22967,23 @@ index bd62a0d9e79..71298eb1b89 100644
  # Return 1 if the target supports executing MVE instructions, 0
  # otherwise.
  
+@@ -10352,13 +10369,14 @@ proc check_effective_target_tune_cortex_a76 { } {
+     return [check_configured_with "with-tune=cortex-a76"]
+ }
+ 
+-# Return 1 if target is not support address sanitize, 1 otherwise.
++# Return 1 if the target does not support address sanitizer, 0 otherwise
+ 
+ proc check_effective_target_no_fsanitize_address {} {
+     if ![check_no_compiler_messages fsanitize_address executable {
+ 	int main (void) { return 0; }
+-    }] {
++    } "-fsanitize=address" ] {
+ 	return 1;
+     }
++
+     return 0;
+ }
 diff --git a/gcc/tree-data-ref.c b/gcc/tree-data-ref.c
 index 2cb54def860..a0613ed83eb 100644
 --- a/gcc/tree-data-ref.c
