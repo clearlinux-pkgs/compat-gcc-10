@@ -40,7 +40,7 @@ Daniel Cederman (5):
 David Edelsohn (1):
       aix: Alias -m64 to -maix64 and -m32 to -maix32.
 
-Eric Botcazou (18):
+Eric Botcazou (20):
       Fix thinko in libcpp preparation patch for modules
       Further increase the limit on the size of accepted Ada files
       Fix another -freorder-blocks-and-partition glitch with Windows SEH
@@ -59,13 +59,18 @@ Eric Botcazou (18):
       Do not issue size error for too large array type
       Fix PR rtl-optimization/102306
       Fix no_fsanitize_address effective target
+      Fix PR c++/64697 at -O1 or above
+      Fix ICE with stack checking emulation at -O2
 
 François Dumont (3):
       libstdc++: Fix [multi]map/[multi]set move constructors noexcept qualification
       libstdc++: Fix unordered containers move constructors noexcept qualification
       libstdc++: [_GLIBCXX_DEBUG] Fix management of __dp_sign_max_size [PR 99402]
 
-GCC Administrator (170):
+GCC Administrator (173):
+      Daily bump.
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -243,7 +248,7 @@ Geng Qi (1):
 Hafiz Abid Qadeer (1):
       [OpenACC] Fix an ICE where a loop with GT condition is collapsed.
 
-Harald Anlauf (16):
+Harald Anlauf (18):
       PR fortran/63797 - Bogus ambiguous reference to 'sqrt'
       PR fortran/100154 - ICE in gfc_conv_procedure_call, at fortran/trans-expr.c:6131
       PR fortran/100274 - ICE in gfc_conv_procedure_call, at fortran/trans-expr.c:6131
@@ -260,6 +265,8 @@ Harald Anlauf (16):
       Fortran - (large) arrays in the main shall be static
       Fortran - fix handling of optional allocatable DT arguments with INTENT(OUT)
       Fortran - fix handling of substring start and end indices
+      Fortran: fix error recovery for invalid constructor
+      Fortran - ensure simplification of bounds of array-valued named constants
 
 Iain Buclaw (12):
       d: Fix ICE in when formating a string with '%' or '`' characters (PR98457)
@@ -2925,10 +2932,21 @@ index 0719d810258..a9368325816 100644
 -10.3.0
 +10.3.1
 diff --git a/gcc/ChangeLog b/gcc/ChangeLog
-index 3b1384e707f..440f74e693a 100644
+index 3b1384e707f..58c018d99d7 100644
 --- a/gcc/ChangeLog
 +++ b/gcc/ChangeLog
-@@ -1,3 +1,1186 @@
+@@ -1,3 +1,1197 @@
++2021-10-01  Eric Botcazou  <ebotcazou@adacore.com>
++
++	* explow.c: Include langhooks.h.
++	(set_stack_check_libfunc): Build a proper function type.
++
++2021-10-01  Eric Botcazou  <ebotcazou@adacore.com>
++
++	PR c++/64697
++	* config/i386/i386.c (legitimate_pic_address_disp_p): For PE-COFF do
++	not return true for external weak function symbols in medium model.
++
 +2021-09-22  Kewen Lin  <linkw@linux.ibm.com>
 +
 +	Backported from master:
@@ -7681,7 +7699,7 @@ index d28dfab8e4e..bdc8f1dc0b1 100644
  #define _mm_reduce_sd(A, B, C)						\
    ((__m128d) __builtin_ia32_reducesd_mask ((__v2df)(__m128d)(A),	\
 diff --git a/gcc/config/i386/i386.c b/gcc/config/i386/i386.c
-index 2f838840e96..103fa10a9c5 100644
+index 2f838840e96..bcee6bafa96 100644
 --- a/gcc/config/i386/i386.c
 +++ b/gcc/config/i386/i386.c
 @@ -6356,12 +6356,29 @@ ix86_compute_frame_layout (void)
@@ -7717,7 +7735,40 @@ index 2f838840e96..103fa10a9c5 100644
  	{
  	  /* The resulting diff will be a multiple of 16 lower than 255,
  	     i.e. at most 240 as required by the unwind data structure.  */
-@@ -21333,10 +21350,12 @@ ix86_stack_protect_fail (void)
+@@ -10318,24 +10335,19 @@ legitimate_pic_address_disp_p (rtx disp)
+ 	      if (is_imported_p (op0))
+ 		return true;
+ 
+-	      if (SYMBOL_REF_FAR_ADDR_P (op0)
+-		  || !SYMBOL_REF_LOCAL_P (op0))
++	      if (SYMBOL_REF_FAR_ADDR_P (op0) || !SYMBOL_REF_LOCAL_P (op0))
+ 		break;
+ 
+-	      /* Function-symbols need to be resolved only for
+-	         large-model.
+-	         For the small-model we don't need to resolve anything
+-	         here.  */
++	      /* Non-external-weak function symbols need to be resolved only
++		 for the large model.  Non-external symbols don't need to be
++		 resolved for large and medium models.  For the small model,
++		 we don't need to resolve anything here.  */
+ 	      if ((ix86_cmodel != CM_LARGE_PIC
+-	           && SYMBOL_REF_FUNCTION_P (op0))
++		   && SYMBOL_REF_FUNCTION_P (op0)
++		   && !(SYMBOL_REF_EXTERNAL_P (op0) && SYMBOL_REF_WEAK (op0)))
++		  || !SYMBOL_REF_EXTERNAL_P (op0)
+ 		  || ix86_cmodel == CM_SMALL_PIC)
+ 		return true;
+-	      /* Non-external symbols don't need to be resolved for
+-	         large, and medium-model.  */
+-	      if ((ix86_cmodel == CM_LARGE_PIC
+-		   || ix86_cmodel == CM_MEDIUM_PIC)
+-		  && !SYMBOL_REF_EXTERNAL_P (op0))
+-		return true;
+ 	    }
+ 	  else if (!SYMBOL_REF_FAR_ADDR_P (op0)
+ 		   && (SYMBOL_REF_LOCAL_P (op0)
+@@ -21333,10 +21345,12 @@ ix86_stack_protect_fail (void)
     After all, the relocation needed is the same as for the call insn.
     Whether or not a particular assembler allows us to enter such, I
     guess we'll have to see.  */
@@ -7731,7 +7782,7 @@ index 2f838840e96..103fa10a9c5 100644
      {
        int type = DW_EH_PE_sdata8;
        if (!TARGET_64BIT
-@@ -21345,9 +21364,11 @@ asm_preferred_eh_data_format (int code, int global)
+@@ -21345,9 +21359,11 @@ asm_preferred_eh_data_format (int code, int global)
  	type = DW_EH_PE_sdata4;
        return (global ? DW_EH_PE_indirect : 0) | DW_EH_PE_pcrel | type;
      }
@@ -12030,6 +12081,34 @@ index 972512e8115..9dbde16989e 100644
  	  || CONST_DOUBLE_AS_FLOAT_P (x)
  	  || CONST_FIXED_P (x));
  }
+diff --git a/gcc/explow.c b/gcc/explow.c
+index b838f035870..21ac074ad55 100644
+--- a/gcc/explow.c
++++ b/gcc/explow.c
+@@ -34,6 +34,7 @@ along with GCC; see the file COPYING3.  If not see
+ #include "recog.h"
+ #include "diagnostic-core.h"
+ #include "stor-layout.h"
++#include "langhooks.h"
+ #include "except.h"
+ #include "dojump.h"
+ #include "explow.h"
+@@ -1614,8 +1615,14 @@ set_stack_check_libfunc (const char *libfunc_name)
+ {
+   gcc_assert (stack_check_libfunc == NULL_RTX);
+   stack_check_libfunc = gen_rtx_SYMBOL_REF (Pmode, libfunc_name);
++  tree ptype
++    = Pmode == ptr_mode
++      ? ptr_type_node
++      : lang_hooks.types.type_for_mode (Pmode, 1);
++  tree ftype
++    = build_function_type_list (void_type_node, ptype, NULL_TREE);
+   tree decl = build_decl (UNKNOWN_LOCATION, FUNCTION_DECL,
+-			  get_identifier (libfunc_name), void_type_node);
++			  get_identifier (libfunc_name), ftype);
+   DECL_EXTERNAL (decl) = 1;
+   SET_SYMBOL_REF_DECL (stack_check_libfunc, decl);
+ }
 diff --git a/gcc/expr.c b/gcc/expr.c
 index 991b26f3341..c4bffd0f199 100644
 --- a/gcc/expr.c
@@ -12044,10 +12123,28 @@ index 991b26f3341..c4bffd0f199 100644
  					target, tmode, modifier, as);
        /* FALLTHRU */
 diff --git a/gcc/fortran/ChangeLog b/gcc/fortran/ChangeLog
-index aa5932be872..a7152777733 100644
+index aa5932be872..582e347becf 100644
 --- a/gcc/fortran/ChangeLog
 +++ b/gcc/fortran/ChangeLog
-@@ -1,3 +1,327 @@
+@@ -1,3 +1,345 @@
++2021-09-30  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2021-09-13  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/82314
++	* decl.c (add_init_expr_to_sym): For proper initialization of
++	array-valued named constants the array bounds need to be
++	simplified before adding the initializer.
++
++2021-09-30  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2021-09-29  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/102520
++	* array.c (expand_constructor): Do not dereference NULL pointer.
++
 +2021-09-21  Harald Anlauf  <anlauf@gmx.de>
 +
 +	Backported from master:
@@ -12375,6 +12472,20 @@ index aa5932be872..a7152777733 100644
  2021-04-08  Release Manager
  
  	* GCC 10.3.0 released.
+diff --git a/gcc/fortran/array.c b/gcc/fortran/array.c
+index 471523fb767..e5ce3328471 100644
+--- a/gcc/fortran/array.c
++++ b/gcc/fortran/array.c
+@@ -1798,6 +1798,9 @@ expand_constructor (gfc_constructor_base base)
+ 
+       e = c->expr;
+ 
++      if (e == NULL)
++	return false;
++
+       if (empty_constructor)
+ 	empty_ts = e->ts;
+ 
 diff --git a/gcc/fortran/check.c b/gcc/fortran/check.c
 index ca6f582625d..ad3cffe2d8e 100644
 --- a/gcc/fortran/check.c
@@ -12579,6 +12690,35 @@ index f017fbe3be7..51bd6d18317 100644
    if (fclass == NULL)
      {
        gfc_symtree *st;
+diff --git a/gcc/fortran/decl.c b/gcc/fortran/decl.c
+index 9273976aa9a..66baf11a249 100644
+--- a/gcc/fortran/decl.c
++++ b/gcc/fortran/decl.c
+@@ -2078,6 +2078,24 @@ add_init_expr_to_sym (const char *name, gfc_expr **initp, locus *var_locus)
+ 	  sym->as->type = AS_EXPLICIT;
+ 	}
+ 
++      /* Ensure that explicit bounds are simplified.  */
++      if (sym->attr.flavor == FL_PARAMETER && sym->attr.dimension
++	  && sym->as->type == AS_EXPLICIT)
++	{
++	  for (int dim = 0; dim < sym->as->rank; ++dim)
++	    {
++	      gfc_expr *e;
++
++	      e = sym->as->lower[dim];
++	      if (e->expr_type != EXPR_CONSTANT)
++		gfc_reduce_init_expr (e);
++
++	      e = sym->as->upper[dim];
++	      if (e->expr_type != EXPR_CONSTANT)
++		gfc_reduce_init_expr (e);
++	    }
++	}
++
+       /* Need to check if the expression we initialized this
+ 	 to was one of the iso_c_binding named constants.  If so,
+ 	 and we're a parameter (constant), let it be iso_c.
 diff --git a/gcc/fortran/expr.c b/gcc/fortran/expr.c
 index f946145eb1b..7f0e3596eab 100644
 --- a/gcc/fortran/expr.c
@@ -14033,10 +14173,26 @@ index 99edad8a950..f33489286a9 100644
  
  #endif
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index 2913065bf31..e1aff61fba4 100644
+index 2913065bf31..1dd41b7e605 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,1374 @@
+@@ -1,3 +1,1390 @@
++2021-09-30  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2021-09-13  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/82314
++	* gfortran.dg/pr82314.f90: New test.
++
++2021-09-30  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2021-09-29  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/102520
++	* gfortran.dg/pr102520.f90: New test.
++
 +2021-09-21  Harald Anlauf  <anlauf@gmx.de>
 +
 +	Backported from master:
@@ -22569,6 +22725,24 @@ index 00000000000..d002f64a8ae
 +  real(kind=4) :: a(16776325)
 +  a=1.0
 +end
+diff --git a/gcc/testsuite/gfortran.dg/pr102520.f90 b/gcc/testsuite/gfortran.dg/pr102520.f90
+new file mode 100644
+index 00000000000..1c98c185c17
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/pr102520.f90
+@@ -0,0 +1,12 @@
++! { dg-do compile }
++! PR fortran/102520 - ICE in expand_constructor, at fortran/array.c:1802
++
++program p
++  type t
++  end type
++  type(t), parameter :: a(4)   = shape(1)         ! { dg-error "Incompatible" }
++  type(t), parameter :: b(2,2) = reshape(a,[2,2]) ! { dg-error "Incompatible" }
++  type(t), parameter :: c(2,2) = transpose(b)     ! { dg-error "Unclassifiable" }
++end
++
++! { dg-error "Different shape for array assignment" " " { target *-*-* } 7 }
 diff --git a/gcc/testsuite/gfortran.dg/pr63797.f90 b/gcc/testsuite/gfortran.dg/pr63797.f90
 new file mode 100644
 index 00000000000..1131e8167b1
@@ -22635,6 +22809,23 @@ index 00000000000..1131e8167b1
 +  y% a = sqrt (x% a) + z - w + root (x% a)
 +  y% a = real_root (x% a)
 +end program test
+diff --git a/gcc/testsuite/gfortran.dg/pr82314.f90 b/gcc/testsuite/gfortran.dg/pr82314.f90
+new file mode 100644
+index 00000000000..3a147e22711
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/pr82314.f90
+@@ -0,0 +1,11 @@
++! { dg-do run }
++! PR fortran/82314 - ICE in gfc_conv_expr_descriptor
++
++program p
++  implicit none
++  integer, parameter :: karray(merge(3,7,.true.):merge(3,7,.false.)) = 1
++  integer, parameter :: i = size   (karray)
++  integer, parameter :: l = lbound (karray,1)
++  integer, parameter :: u = ubound (karray,1)
++  if (l /= 3 .or. u /= 7 .or. i /= 5) stop 1
++end
 diff --git a/gcc/testsuite/gfortran.dg/pr95502.f90 b/gcc/testsuite/gfortran.dg/pr95502.f90
 new file mode 100644
 index 00000000000..d40fd9a5508
