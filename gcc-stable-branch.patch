@@ -74,7 +74,11 @@ François Dumont (3):
       libstdc++: Fix unordered containers move constructors noexcept qualification
       libstdc++: [_GLIBCXX_DEBUG] Fix management of __dp_sign_max_size [PR 99402]
 
-GCC Administrator (186):
+GCC Administrator (190):
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -3001,10 +3005,15 @@ index 0719d810258..a9368325816 100644
 -10.3.0
 +10.3.1
 diff --git a/gcc/ChangeLog b/gcc/ChangeLog
-index 3b1384e707f..d1217c66cc4 100644
+index 3b1384e707f..8af0c3a63c5 100644
 --- a/gcc/ChangeLog
 +++ b/gcc/ChangeLog
-@@ -1,3 +1,1270 @@
+@@ -1,3 +1,1275 @@
++2021-10-15  John David Anglin  <danglin@gcc.gnu.org>
++
++	* config/pa/pa.md: Consistently use "rG" constraint for copy
++	instruction in move patterns.
++
 +2021-10-14  John David Anglin  <danglin@gcc.gnu.org>
 +
 +	* config/pa/pa.md (cbranchsf4): Disable if TARGET_SOFT_FLOAT.
