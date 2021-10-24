@@ -74,7 +74,9 @@ François Dumont (3):
       libstdc++: Fix unordered containers move constructors noexcept qualification
       libstdc++: [_GLIBCXX_DEBUG] Fix management of __dp_sign_max_size [PR 99402]
 
-GCC Administrator (193):
+GCC Administrator (195):
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -278,7 +280,7 @@ H.J. Lu (1):
 Hafiz Abid Qadeer (1):
       [OpenACC] Fix an ICE where a loop with GT condition is collapsed.
 
-Harald Anlauf (20):
+Harald Anlauf (21):
       PR fortran/63797 - Bogus ambiguous reference to 'sqrt'
       PR fortran/100154 - ICE in gfc_conv_procedure_call, at fortran/trans-expr.c:6131
       PR fortran/100274 - ICE in gfc_conv_procedure_call, at fortran/trans-expr.c:6131
@@ -299,6 +301,7 @@ Harald Anlauf (20):
       Fortran - ensure simplification of bounds of array-valued named constants
       Fortran - improve checking for intrinsics allowed in constant expressions
       Fortran: resolve expressions during SIZE simplification
+      Fortran: fix order of checks for the SHAPE intrinsic
 
 Iain Buclaw (13):
       d: Fix ICE in when formating a string with '%' or '`' characters (PR98457)
@@ -367,10 +370,11 @@ Jason Merrill (20):
       c++: 'this' adjustment for devirtualized call
       c++: constexpr and array[0] [PR101029]
 
-John David Anglin (3):
+John David Anglin (4):
       Add support for 32-bit hppa targets in muldi3 expander
       Fix TARGET_SOFT_FLOAT patterns in pa.md
       Consistently use "rG" constraint for copy instruction in move patterns
+      Don't use 'G' constraint in integer move patterns
 
 Jonathan Wakely (73):
       libstdc++: Fix Doxygen warning about ambiguous file name
@@ -8367,7 +8371,7 @@ index e3e84dfd4e4..243bf9da51a 100644
      }
  
 diff --git a/gcc/config/pa/pa.md b/gcc/config/pa/pa.md
-index 3a82fac85e3..affb322132a 100644
+index 3a82fac85e3..1803c66cd21 100644
 --- a/gcc/config/pa/pa.md
 +++ b/gcc/config/pa/pa.md
 @@ -1383,7 +1383,7 @@
@@ -8388,40 +8392,6 @@ index 3a82fac85e3..affb322132a 100644
    "
  {
    pa_emit_bcond_fp (operands);
-@@ -2186,14 +2186,14 @@
-   [(set (match_operand:SI 0 "move_dest_operand"
- 			  "=r,r,r,r,r,r,Q,!*q,!r,!*f,*f,T,?r,?*f")
- 	(match_operand:SI 1 "move_src_operand"
--			  "A,r,J,N,K,RQ,rM,!rM,!*q,!*fM,RT,*f,*f,r"))]
-+			  "A,rG,J,N,K,RQ,rM,!rM,!*q,!*fM,RT,*f,*f,r"))]
-   "(register_operand (operands[0], SImode)
-     || reg_or_0_operand (operands[1], SImode))
-    && !TARGET_SOFT_FLOAT
-    && !TARGET_64BIT"
-   "@
-    ldw RT'%A1,%0
--   copy %1,%0
-+   copy %r1,%0
-    ldi %1,%0
-    ldil L'%1,%0
-    {zdepi|depwi,z} %Z1,%0
-@@ -2214,14 +2214,14 @@
-   [(set (match_operand:SI 0 "move_dest_operand"
- 			  "=r,r,r,r,r,r,Q,!*q,!r,!*f,*f,T")
- 	(match_operand:SI 1 "move_src_operand"
--			  "A,r,J,N,K,RQ,rM,!rM,!*q,!*fM,RT,*f"))]
-+			  "A,rG,J,N,K,RQ,rM,!rM,!*q,!*fM,RT,*f"))]
-   "(register_operand (operands[0], SImode)
-     || reg_or_0_operand (operands[1], SImode))
-    && !TARGET_SOFT_FLOAT
-    && TARGET_64BIT"
-   "@
-    ldw RT'%A1,%0
--   copy %1,%0
-+   copy %r1,%0
-    ldi %1,%0
-    ldil L'%1,%0
-    {zdepi|depwi,z} %Z1,%0
 @@ -2236,6 +2236,29 @@
     (set_attr "pa_combine_type" "addmove")
     (set_attr "length" "4,4,4,4,4,4,4,4,4,4,4,4")])
@@ -8430,14 +8400,14 @@ index 3a82fac85e3..affb322132a 100644
 +  [(set (match_operand:SI 0 "move_dest_operand"
 +			  "=r,r,r,r,r,r,Q,!*q,!r")
 +	(match_operand:SI 1 "move_src_operand"
-+			  "A,rG,J,N,K,RQ,rM,!rM,!*q"))]
++			  "A,r,J,N,K,RQ,rM,!rM,!*q"))]
 +  "(register_operand (operands[0], SImode)
 +    || reg_or_0_operand (operands[1], SImode))
 +   && TARGET_SOFT_FLOAT
 +   && TARGET_64BIT"
 +  "@
 +   ldw RT'%A1,%0
-+   copy %r1,%0
++   copy %1,%0
 +   ldi %1,%0
 +   ldil L'%1,%0
 +   {zdepi|depwi,z} %Z1,%0
@@ -8452,50 +8422,6 @@ index 3a82fac85e3..affb322132a 100644
  (define_insn ""
    [(set (match_operand:SI 0 "indexed_memory_operand" "=R")
  	(match_operand:SI 1 "register_operand" "f"))]
-@@ -2358,13 +2381,13 @@
-   [(set (match_operand:SI 0 "move_dest_operand"
- 			  "=r,r,r,r,r,r,Q,!*q,!r")
- 	(match_operand:SI 1 "move_src_operand"
--			  "A,r,J,N,K,RQ,rM,!rM,!*q"))]
-+			  "A,rG,J,N,K,RQ,rM,!rM,!*q"))]
-   "(register_operand (operands[0], SImode)
-     || reg_or_0_operand (operands[1], SImode))
-    && TARGET_SOFT_FLOAT"
-   "@
-    ldw RT'%A1,%0
--   copy %1,%0
-+   copy %r1,%0
-    ldi %1,%0
-    ldil L'%1,%0
-    {zdepi|depwi,z} %Z1,%0
-@@ -2886,11 +2909,11 @@
-   [(set (match_operand:HI 0 "move_dest_operand"
- 	 		  "=r,r,r,r,r,Q,!*q,!r")
- 	(match_operand:HI 1 "move_src_operand"
--			  "r,J,N,K,RQ,rM,!rM,!*q"))]
-+			  "rG,J,N,K,RQ,rM,!rM,!*q"))]
-   "(register_operand (operands[0], HImode)
-     || reg_or_0_operand (operands[1], HImode))"
-   "@
--   copy %1,%0
-+   copy %r1,%0
-    ldi %1,%0
-    ldil L'%1,%0
-    {zdepi|depwi,z} %Z1,%0
-@@ -3046,11 +3069,11 @@
-   [(set (match_operand:QI 0 "move_dest_operand"
- 			  "=r,r,r,r,r,Q,!*q,!r")
- 	(match_operand:QI 1 "move_src_operand"
--			  "r,J,N,K,RQ,rM,!rM,!*q"))]
-+			  "rG,J,N,K,RQ,rM,!rM,!*q"))]
-   "(register_operand (operands[0], QImode)
-     || reg_or_0_operand (operands[1], QImode))"
-   "@
--   copy %1,%0
-+   copy %r1,%0
-    ldi %1,%0
-    ldil L'%1,%0
-    {zdepi|depwi,z} %Z1,%0
 @@ -4024,12 +4047,12 @@
    [(set (match_operand:DF 0 "move_dest_operand"
  			  "=!*r,*r,*r,*r,*r,Q,f,f,T")
@@ -8537,22 +8463,6 @@ index 3a82fac85e3..affb322132a 100644
  
  (define_expand "movdi"
    [(set (match_operand:DI 0 "general_operand" "")
-@@ -4179,13 +4221,13 @@
-   [(set (match_operand:DI 0 "move_dest_operand"
- 			  "=r,r,r,r,r,r,Q,!*q,!r,!*f,*f,T")
- 	(match_operand:DI 1 "move_src_operand"
--			  "A,r,J,N,K,RQ,rM,!rM,!*q,!*fM,RT,*f"))]
-+			  "A,rG,J,N,K,RQ,rM,!rM,!*q,!*fM,RT,*f"))]
-   "(register_operand (operands[0], DImode)
-     || reg_or_0_operand (operands[1], DImode))
-    && !TARGET_SOFT_FLOAT && TARGET_64BIT"
-   "@
-    ldd RT'%A1,%0
--   copy %1,%0
-+   copy %r1,%0
-    ldi %1,%0
-    ldil L'%1,%0
-    depdi,z %z1,%0
 @@ -4200,6 +4242,28 @@
     (set_attr "pa_combine_type" "addmove")
     (set_attr "length" "4,4,4,4,4,4,4,4,4,4,4,4")])
@@ -8561,13 +8471,13 @@ index 3a82fac85e3..affb322132a 100644
 +  [(set (match_operand:DI 0 "move_dest_operand"
 +			  "=r,r,r,r,r,r,Q,!*q,!r")
 +	(match_operand:DI 1 "move_src_operand"
-+			  "A,rG,J,N,K,RQ,rM,!rM,!*q"))]
++			  "A,r,J,N,K,RQ,rM,!rM,!*q"))]
 +  "(register_operand (operands[0], DImode)
 +    || reg_or_0_operand (operands[1], DImode))
 +   && TARGET_SOFT_FLOAT && TARGET_64BIT"
 +  "@
 +   ldd RT'%A1,%0
-+   copy %r1,%0
++   copy %1,%0
 +   ldi %1,%0
 +   ldil L'%1,%0
 +   depdi,z %z1,%0
@@ -13104,10 +13014,19 @@ index 991b26f3341..c4bffd0f199 100644
  					target, tmode, modifier, as);
        /* FALLTHRU */
 diff --git a/gcc/fortran/ChangeLog b/gcc/fortran/ChangeLog
-index aa5932be872..a4de446008b 100644
+index aa5932be872..a3a890dc5a7 100644
 --- a/gcc/fortran/ChangeLog
 +++ b/gcc/fortran/ChangeLog
-@@ -1,3 +1,364 @@
+@@ -1,3 +1,373 @@
++2021-10-23  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2021-10-14  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/102716
++	* check.c (gfc_check_shape): Reorder checks so that invalid KIND
++	arguments can be detected.
++
 +2021-10-05  Harald Anlauf  <anlauf@gmx.de>
 +
 +	Backported from master:
@@ -13487,7 +13406,7 @@ index 471523fb767..e5ce3328471 100644
  	empty_ts = e->ts;
  
 diff --git a/gcc/fortran/check.c b/gcc/fortran/check.c
-index ca6f582625d..ad3cffe2d8e 100644
+index ca6f582625d..5ecfea077a1 100644
 --- a/gcc/fortran/check.c
 +++ b/gcc/fortran/check.c
 @@ -289,7 +289,7 @@ bin2real (gfc_expr *x, int kind)
@@ -13570,6 +13489,34 @@ index ca6f582625d..ad3cffe2d8e 100644
    d = ap->next->next->expr;
    m = ap->next->next->next->expr;
    k = ap->next->next->next->next->expr;
+@@ -5068,6 +5075,13 @@ gfc_check_shape (gfc_expr *source, gfc_expr *kind)
+   if (gfc_invalid_null_arg (source))
+     return false;
+ 
++  if (!kind_check (kind, 1, BT_INTEGER))
++    return false;
++  if (kind && !gfc_notify_std (GFC_STD_F2003, "%qs intrinsic "
++			       "with KIND argument at %L",
++			       gfc_current_intrinsic, &kind->where))
++    return false;
++
+   if (source->rank == 0 || source->expr_type != EXPR_VARIABLE)
+     return true;
+ 
+@@ -5080,13 +5094,6 @@ gfc_check_shape (gfc_expr *source, gfc_expr *kind)
+       return false;
+     }
+ 
+-  if (!kind_check (kind, 1, BT_INTEGER))
+-    return false;
+-  if (kind && !gfc_notify_std (GFC_STD_F2003, "%qs intrinsic "
+-			       "with KIND argument at %L",
+-			       gfc_current_intrinsic, &kind->where))
+-    return false;
+-
+   return true;
+ }
+ 
 @@ -5681,6 +5688,19 @@ gfc_check_spread (gfc_expr *source, gfc_expr *dim, gfc_expr *ncopies)
  /* Functions for checking FGETC, FPUTC, FGET and FPUT (subroutines and
     functions).  */
@@ -15242,10 +15189,18 @@ index 99edad8a950..f33489286a9 100644
  
  #endif
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index 2913065bf31..63e6e99c185 100644
+index 2913065bf31..80a4c22a058 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,1455 @@
+@@ -1,3 +1,1463 @@
++2021-10-23  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2021-10-14  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/102716
++	* gfortran.dg/shape_10.f90: New test.
++
 +2021-10-13  Richard Biener  <rguenther@suse.de>
 +
 +	Backported from master:
@@ -24521,6 +24476,18 @@ index 00000000000..55aa9e1b9bf
 +   if (any ([cssel(x),cssel(y),cssel(z),cssel()] .ne. ['0','1','?','-'])) stop 1
 +
 +end program classstar_rank
+diff --git a/gcc/testsuite/gfortran.dg/shape_10.f90 b/gcc/testsuite/gfortran.dg/shape_10.f90
+new file mode 100644
+index 00000000000..4943c21b1d2
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/shape_10.f90
+@@ -0,0 +1,6 @@
++! { dg-do compile }
++! PR fortran/102716
++
++program p
++  integer, parameter :: a(1) = shape([2], [1]) ! { dg-error "must be a scalar" }
++end
 diff --git a/gcc/testsuite/gfortran.dg/structure_constructor_17.f90 b/gcc/testsuite/gfortran.dg/structure_constructor_17.f90
 new file mode 100644
 index 00000000000..8b8230c6f7e
