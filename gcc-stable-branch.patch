@@ -74,7 +74,8 @@ François Dumont (3):
       libstdc++: Fix unordered containers move constructors noexcept qualification
       libstdc++: [_GLIBCXX_DEBUG] Fix management of __dp_sign_max_size [PR 99402]
 
-GCC Administrator (195):
+GCC Administrator (196):
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -3015,10 +3016,14 @@ index 0719d810258..a9368325816 100644
 -10.3.0
 +10.3.1
 diff --git a/gcc/ChangeLog b/gcc/ChangeLog
-index 3b1384e707f..0b16e083465 100644
+index 3b1384e707f..978cc9edc63 100644
 --- a/gcc/ChangeLog
 +++ b/gcc/ChangeLog
-@@ -1,3 +1,1284 @@
+@@ -1,3 +1,1288 @@
++2021-10-24  John David Anglin  <danglin@gcc.gnu.org>
++
++	* config/pa/pa.md: Don't use 'G' constraint in integer move patterns.
++
 +2021-10-21  H.J. Lu  <hjl.tools@gmail.com>
 +
 +	Backported from master:
