@@ -74,7 +74,8 @@ François Dumont (3):
       libstdc++: Fix unordered containers move constructors noexcept qualification
       libstdc++: [_GLIBCXX_DEBUG] Fix management of __dp_sign_max_size [PR 99402]
 
-GCC Administrator (196):
+GCC Administrator (197):
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -553,6 +554,9 @@ Peter Bergner (7):
 
 Philippe Blain (1):
       libstdc++: Install libstdc++*-gdb.py more robustly [PR 99453]
+
+Piotr Kubaj (1):
+      gcc/configure: Check for powerpc64le*-*-freebsd*
 
 Richard Biener (30):
       Increment BASE-VER after release
@@ -9677,6 +9681,32 @@ index b3d688b392f..3eb1f3e9a48 100644
  EnumValue
  Enum(sparc_processor) String(sparclite) Value(PROCESSOR_SPARCLITE)
  
+diff --git a/gcc/configure b/gcc/configure
+index 8fe9c91fd7c..84e0ea21054 100755
+--- a/gcc/configure
++++ b/gcc/configure
+@@ -29405,7 +29405,7 @@ $as_echo "#define HAVE_LD_PPC_GNU_ATTR_LONG_DOUBLE 1" >>confdefs.h
+ esac
+ 
+ case "$target:$tm_file" in
+-  powerpc64-*-freebsd* | powerpc64*-*-linux* | powerpc*-*-linux*rs6000/biarch64.h*)
++  powerpc64*-*-freebsd* | powerpc64*-*-linux* | powerpc*-*-linux*rs6000/biarch64.h*)
+   case "$target" in
+      *le-*-linux*)
+      emul_name="-melf64lppc"
+diff --git a/gcc/configure.ac b/gcc/configure.ac
+index 84dceb8074a..d068618bd8f 100644
+--- a/gcc/configure.ac
++++ b/gcc/configure.ac
+@@ -5871,7 +5871,7 @@ EOF
+ esac
+ 
+ case "$target:$tm_file" in
+-  powerpc64-*-freebsd* | powerpc64*-*-linux* | powerpc*-*-linux*rs6000/biarch64.h*)
++  powerpc64*-*-freebsd* | powerpc64*-*-linux* | powerpc*-*-linux*rs6000/biarch64.h*)
+   case "$target" in
+      *le-*-linux*)
+      emul_name="-melf64lppc"
 diff --git a/gcc/coverage.c b/gcc/coverage.c
 index 38820bc170f..2747f8f1b4c 100644
 --- a/gcc/coverage.c
