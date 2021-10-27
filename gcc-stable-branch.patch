@@ -373,11 +373,12 @@ Jason Merrill (20):
       c++: 'this' adjustment for devirtualized call
       c++: constexpr and array[0] [PR101029]
 
-John David Anglin (4):
+John David Anglin (5):
       Add support for 32-bit hppa targets in muldi3 expander
       Fix TARGET_SOFT_FLOAT patterns in pa.md
       Consistently use "rG" constraint for copy instruction in move patterns
       Don't use 'G' constraint in integer move patterns
+      Fix warnings building linux-atomic.c and fptr.c on hppa64-linux
 
 Jonathan Wakely (73):
       libstdc++: Fix Doxygen warning about ambiguous file name
@@ -656,11 +657,12 @@ Tobias Burnus (3):
       OpenACC: Fix integer-type issue with collapse/tile [PR97880]
       Fortran/OpenMP: Fix var-list expr parsing with array/dt
 
-Uros Bizjak (4):
+Uros Bizjak (5):
       i386: Fix atomic FP peepholes [PR100182]
       i386: Change abs<MMXMODEI:mode>2 to an expander.
       i386: Prevent unwanted combine from LZCNT to BSR [PR101175]
       i386: Remove atomic_storedi_fpu and atomic_loaddi_fpu peepholes [PR100182]
+      i386: Fix ICE in ix86_print_opreand_address [PR 102761]
 
 Vladimir N. Makarov (3):
       [PR97969] LRA: Transform pattern `plus (plus (hard reg, const),	pseudo)` after elimination
@@ -7888,7 +7890,7 @@ index d28dfab8e4e..bdc8f1dc0b1 100644
  #define _mm_reduce_sd(A, B, C)						\
    ((__m128d) __builtin_ia32_reducesd_mask ((__v2df)(__m128d)(A),	\
 diff --git a/gcc/config/i386/i386.c b/gcc/config/i386/i386.c
-index 2f838840e96..bcee6bafa96 100644
+index 2f838840e96..fe381331c5e 100644
 --- a/gcc/config/i386/i386.c
 +++ b/gcc/config/i386/i386.c
 @@ -6356,12 +6356,29 @@ ix86_compute_frame_layout (void)
@@ -7957,7 +7959,19 @@ index 2f838840e96..bcee6bafa96 100644
  	    }
  	  else if (!SYMBOL_REF_FAR_ADDR_P (op0)
  		   && (SYMBOL_REF_LOCAL_P (op0)
-@@ -21333,10 +21345,12 @@ ix86_stack_protect_fail (void)
+@@ -13465,7 +13477,10 @@ ix86_print_operand_address_as (FILE *file, rtx addr,
+ static void
+ ix86_print_operand_address (FILE *file, machine_mode /*mode*/, rtx addr)
+ {
+-  ix86_print_operand_address_as (file, addr, ADDR_SPACE_GENERIC, false);
++  if (this_is_asm_operands && ! address_operand (addr, VOIDmode))
++    output_operand_lossage ("invalid constraints for operand");
++  else
++    ix86_print_operand_address_as (file, addr, ADDR_SPACE_GENERIC, false);
+ }
+ 
+ /* Implementation of TARGET_ASM_OUTPUT_ADDR_CONST_EXTRA.  */
+@@ -21333,10 +21348,12 @@ ix86_stack_protect_fail (void)
     After all, the relocation needed is the same as for the call insn.
     Whether or not a particular assembler allows us to enter such, I
     guess we'll have to see.  */
@@ -7971,7 +7985,7 @@ index 2f838840e96..bcee6bafa96 100644
      {
        int type = DW_EH_PE_sdata8;
        if (!TARGET_64BIT
-@@ -21345,9 +21359,11 @@ asm_preferred_eh_data_format (int code, int global)
+@@ -21345,9 +21362,11 @@ asm_preferred_eh_data_format (int code, int global)
  	type = DW_EH_PE_sdata4;
        return (global ? DW_EH_PE_indirect : 0) | DW_EH_PE_pcrel | type;
      }
@@ -21719,6 +21733,23 @@ index 00000000000..ed7a08110a5
 +  if (r != -1)
 +    abort ();
 +}
+diff --git a/gcc/testsuite/gcc.target/i386/pr102761.c b/gcc/testsuite/gcc.target/i386/pr102761.c
+new file mode 100644
+index 00000000000..58ff27e4bcc
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/i386/pr102761.c
+@@ -0,0 +1,11 @@
++/* PR target/102761 */
++/* { dg-do compile } */
++/* { dg-options "-O1" } */
++
++int foo (void);
++
++void
++bar (void)
++{
++  asm volatile ("%a0" : : "X"(foo () ? 2 : 1)); /* { dg-error "invalid constraints for operand" } */
++}
 diff --git a/gcc/testsuite/gcc.target/i386/pr71245-1.c b/gcc/testsuite/gcc.target/i386/pr71245-1.c
 deleted file mode 100644
 index be0b7602a8c..00000000000
@@ -26241,6 +26272,19 @@ index 1f9de3d5091..307fd79eddf 100644
  2021-04-08  Release Manager
  
  	* GCC 10.3.0 released.
+diff --git a/libgcc/config.host b/libgcc/config.host
+index c529cc40f0c..ab58027e68e 100644
+--- a/libgcc/config.host
++++ b/libgcc/config.host
+@@ -627,7 +627,7 @@ h8300-*-linux*)
+ 	tm_file="$tm_file h8300/h8300-lib.h"
+ 	;;
+ hppa*64*-*-linux*)
+-	tmake_file="$tmake_file pa/t-linux pa/t-linux64"
++	tmake_file="$tmake_file pa/t-linux64"
+ 	extra_parts="crtbegin.o crtbeginS.o crtbeginT.o crtend.o crtendS.o"
+ 	;;
+ hppa*-*-linux*)
 diff --git a/libgcc/config/aarch64/value-unwind.h b/libgcc/config/aarch64/value-unwind.h
 index e8b9d44cc58..bb35f416b94 100644
 --- a/libgcc/config/aarch64/value-unwind.h
@@ -26345,6 +26389,158 @@ index 367c0dea777..208de15510b 100644
     You should have received a copy of the GNU General Public License and
     a copy of the GCC Runtime Library Exception along with this program;
     see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
+diff --git a/libgcc/config/pa/linux-atomic.c b/libgcc/config/pa/linux-atomic.c
+index 8eb4b5edb03..9083af18730 100644
+--- a/libgcc/config/pa/linux-atomic.c
++++ b/libgcc/config/pa/linux-atomic.c
+@@ -28,6 +28,14 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
+ #define EBUSY   16
+ #define ENOSYS 251 
+ 
++typedef unsigned char u8;
++typedef short unsigned int u16;
++#ifdef __LP64__
++typedef long unsigned int u64;
++#else
++typedef long long unsigned int u64;
++#endif
++
+ /* PA-RISC 2.0 supports out-of-order execution for loads and stores.
+    Thus, we need to synchonize memory accesses.  For more info, see:
+    "Advanced Performance Features of the 64-bit PA-8000" by Doug Hunt.
+@@ -117,26 +125,26 @@ __kernel_cmpxchg2 (volatile void *mem, const void *oldval, const void *newval,
+     return tmp;								\
+   }
+ 
+-FETCH_AND_OP_2 (add,   , +, long long unsigned int, 8, 3)
+-FETCH_AND_OP_2 (sub,   , -, long long unsigned int, 8, 3)
+-FETCH_AND_OP_2 (or,    , |, long long unsigned int, 8, 3)
+-FETCH_AND_OP_2 (and,   , &, long long unsigned int, 8, 3)
+-FETCH_AND_OP_2 (xor,   , ^, long long unsigned int, 8, 3)
+-FETCH_AND_OP_2 (nand, ~, &, long long unsigned int, 8, 3)
+-
+-FETCH_AND_OP_2 (add,   , +, short unsigned int, 2, 1)
+-FETCH_AND_OP_2 (sub,   , -, short unsigned int, 2, 1)
+-FETCH_AND_OP_2 (or,    , |, short unsigned int, 2, 1)
+-FETCH_AND_OP_2 (and,   , &, short unsigned int, 2, 1)
+-FETCH_AND_OP_2 (xor,   , ^, short unsigned int, 2, 1)
+-FETCH_AND_OP_2 (nand, ~, &, short unsigned int, 2, 1)
+-
+-FETCH_AND_OP_2 (add,   , +, unsigned char, 1, 0)
+-FETCH_AND_OP_2 (sub,   , -, unsigned char, 1, 0)
+-FETCH_AND_OP_2 (or,    , |, unsigned char, 1, 0)
+-FETCH_AND_OP_2 (and,   , &, unsigned char, 1, 0)
+-FETCH_AND_OP_2 (xor,   , ^, unsigned char, 1, 0)
+-FETCH_AND_OP_2 (nand, ~, &, unsigned char, 1, 0)
++FETCH_AND_OP_2 (add,   , +, u64, 8, 3)
++FETCH_AND_OP_2 (sub,   , -, u64, 8, 3)
++FETCH_AND_OP_2 (or,    , |, u64, 8, 3)
++FETCH_AND_OP_2 (and,   , &, u64, 8, 3)
++FETCH_AND_OP_2 (xor,   , ^, u64, 8, 3)
++FETCH_AND_OP_2 (nand, ~, &, u64, 8, 3)
++
++FETCH_AND_OP_2 (add,   , +, u16, 2, 1)
++FETCH_AND_OP_2 (sub,   , -, u16, 2, 1)
++FETCH_AND_OP_2 (or,    , |, u16, 2, 1)
++FETCH_AND_OP_2 (and,   , &, u16, 2, 1)
++FETCH_AND_OP_2 (xor,   , ^, u16, 2, 1)
++FETCH_AND_OP_2 (nand, ~, &, u16, 2, 1)
++
++FETCH_AND_OP_2 (add,   , +, u8, 1, 0)
++FETCH_AND_OP_2 (sub,   , -, u8, 1, 0)
++FETCH_AND_OP_2 (or,    , |, u8, 1, 0)
++FETCH_AND_OP_2 (and,   , &, u8, 1, 0)
++FETCH_AND_OP_2 (xor,   , ^, u8, 1, 0)
++FETCH_AND_OP_2 (nand, ~, &, u8, 1, 0)
+ 
+ #define OP_AND_FETCH_2(OP, PFX_OP, INF_OP, TYPE, WIDTH, INDEX)		\
+   TYPE HIDDEN								\
+@@ -154,26 +162,26 @@ FETCH_AND_OP_2 (nand, ~, &, unsigned char, 1, 0)
+     return PFX_OP (tmp INF_OP val);					\
+   }
+ 
+-OP_AND_FETCH_2 (add,   , +, long long unsigned int, 8, 3)
+-OP_AND_FETCH_2 (sub,   , -, long long unsigned int, 8, 3)
+-OP_AND_FETCH_2 (or,    , |, long long unsigned int, 8, 3)
+-OP_AND_FETCH_2 (and,   , &, long long unsigned int, 8, 3)
+-OP_AND_FETCH_2 (xor,   , ^, long long unsigned int, 8, 3)
+-OP_AND_FETCH_2 (nand, ~, &, long long unsigned int, 8, 3)
+-
+-OP_AND_FETCH_2 (add,   , +, short unsigned int, 2, 1)
+-OP_AND_FETCH_2 (sub,   , -, short unsigned int, 2, 1)
+-OP_AND_FETCH_2 (or,    , |, short unsigned int, 2, 1)
+-OP_AND_FETCH_2 (and,   , &, short unsigned int, 2, 1)
+-OP_AND_FETCH_2 (xor,   , ^, short unsigned int, 2, 1)
+-OP_AND_FETCH_2 (nand, ~, &, short unsigned int, 2, 1)
+-
+-OP_AND_FETCH_2 (add,   , +, unsigned char, 1, 0)
+-OP_AND_FETCH_2 (sub,   , -, unsigned char, 1, 0)
+-OP_AND_FETCH_2 (or,    , |, unsigned char, 1, 0)
+-OP_AND_FETCH_2 (and,   , &, unsigned char, 1, 0)
+-OP_AND_FETCH_2 (xor,   , ^, unsigned char, 1, 0)
+-OP_AND_FETCH_2 (nand, ~, &, unsigned char, 1, 0)
++OP_AND_FETCH_2 (add,   , +, u64, 8, 3)
++OP_AND_FETCH_2 (sub,   , -, u64, 8, 3)
++OP_AND_FETCH_2 (or,    , |, u64, 8, 3)
++OP_AND_FETCH_2 (and,   , &, u64, 8, 3)
++OP_AND_FETCH_2 (xor,   , ^, u64, 8, 3)
++OP_AND_FETCH_2 (nand, ~, &, u64, 8, 3)
++
++OP_AND_FETCH_2 (add,   , +, u16, 2, 1)
++OP_AND_FETCH_2 (sub,   , -, u16, 2, 1)
++OP_AND_FETCH_2 (or,    , |, u16, 2, 1)
++OP_AND_FETCH_2 (and,   , &, u16, 2, 1)
++OP_AND_FETCH_2 (xor,   , ^, u16, 2, 1)
++OP_AND_FETCH_2 (nand, ~, &, u16, 2, 1)
++
++OP_AND_FETCH_2 (add,   , +, u8, 1, 0)
++OP_AND_FETCH_2 (sub,   , -, u8, 1, 0)
++OP_AND_FETCH_2 (or,    , |, u8, 1, 0)
++OP_AND_FETCH_2 (and,   , &, u8, 1, 0)
++OP_AND_FETCH_2 (xor,   , ^, u8, 1, 0)
++OP_AND_FETCH_2 (nand, ~, &, u8, 1, 0)
+ 
+ #define FETCH_AND_OP_WORD(OP, PFX_OP, INF_OP)				\
+   unsigned int HIDDEN							\
+@@ -254,9 +262,9 @@ typedef unsigned char bool;
+     return (failure == 0);						\
+   }
+ 
+-COMPARE_AND_SWAP_2 (long long unsigned int, 8, 3)
+-COMPARE_AND_SWAP_2 (short unsigned int, 2, 1)
+-COMPARE_AND_SWAP_2 (unsigned char, 1, 0)
++COMPARE_AND_SWAP_2 (u64, 8, 3)
++COMPARE_AND_SWAP_2 (u16, 2, 1)
++COMPARE_AND_SWAP_2 (u8, 1, 0)
+ 
+ unsigned int HIDDEN
+ __sync_val_compare_and_swap_4 (volatile void *ptr, unsigned int oldval,
+@@ -304,9 +312,9 @@ TYPE HIDDEN								\
+     return oldval;							\
+   }
+ 
+-SYNC_LOCK_TEST_AND_SET_2 (long long unsigned int, 8, 3)
+-SYNC_LOCK_TEST_AND_SET_2 (short unsigned int, 2, 1)
+-SYNC_LOCK_TEST_AND_SET_2 (unsigned char, 1, 0)
++SYNC_LOCK_TEST_AND_SET_2 (u64, 8, 3)
++SYNC_LOCK_TEST_AND_SET_2 (u16, 2, 1)
++SYNC_LOCK_TEST_AND_SET_2 (u8, 1, 0)
+ 
+ unsigned int HIDDEN
+ __sync_lock_test_and_set_4 (volatile void *ptr, unsigned int val)
+@@ -336,9 +344,9 @@ __sync_lock_test_and_set_4 (volatile void *ptr, unsigned int val)
+     } while (failure != 0);					\
+   }
+ 
+-SYNC_LOCK_RELEASE_1 (long long unsigned int, 8, 3)
+-SYNC_LOCK_RELEASE_1 (short unsigned int, 2, 1)
+-SYNC_LOCK_RELEASE_1 (unsigned char, 1, 0)
++SYNC_LOCK_RELEASE_1 (u64, 8, 3)
++SYNC_LOCK_RELEASE_1 (u16, 2, 1)
++SYNC_LOCK_RELEASE_1 (u8, 1, 0)
+ 
+ void HIDDEN
+ __sync_lock_release_4 (volatile void *ptr)
 diff --git a/libgcc/config/pa/pa64-hpux-lib.h b/libgcc/config/pa/pa64-hpux-lib.h
 index ebe1b51057e..ae1423fcb0e 100644
 --- a/libgcc/config/pa/pa64-hpux-lib.h
@@ -26365,6 +26561,23 @@ index ebe1b51057e..ae1423fcb0e 100644
  <http://www.gnu.org/licenses/>.  */
  
  /* We use DTOR_LIST_BEGIN to carry a bunch of hacks to allow us to use
+diff --git a/libgcc/config/pa/t-linux64 b/libgcc/config/pa/t-linux64
+index 1d0a6ada1a1..026b48b02e5 100644
+--- a/libgcc/config/pa/t-linux64
++++ b/libgcc/config/pa/t-linux64
+@@ -1,8 +1,8 @@
+ # Plug millicode routines into libgcc.a  We want these on both native and
+ # cross compiles.
+-# FIXME: Explain.
+-LIB1ASMFUNCS := $(filter-out _dyncall, $(LIB1ASMFUNCS))
++LIB1ASMSRC = pa/milli64.S
++LIB1ASMFUNCS = _divI _divU _remI _remU _div_const _mulI
+ 
+-LIB2ADD_ST = $(srcdir)/config/pa/linux-atomic.c
++HOST_LIBGCC2_CFLAGS += -Dpa64=1 -DELF=1 -DLINUX=1
+ 
+-HOST_LIBGCC2_CFLAGS += -Dpa64=1 -DELF=1
++LIB2ADD_ST = $(srcdir)/config/pa/linux-atomic.c
 diff --git a/libgcc/config/rs6000/t-linux b/libgcc/config/rs6000/t-linux
 index 72e9c2770a6..500210ddaf2 100644
 --- a/libgcc/config/rs6000/t-linux
