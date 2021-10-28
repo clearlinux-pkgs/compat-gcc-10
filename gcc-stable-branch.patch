@@ -46,7 +46,7 @@ David Edelsohn (1):
 Diane Meirowitz (1):
       doc: improve -fsanitize=undefined description
 
-Eric Botcazou (21):
+Eric Botcazou (22):
       Fix thinko in libcpp preparation patch for modules
       Further increase the limit on the size of accepted Ada files
       Fix another -freorder-blocks-and-partition glitch with Windows SEH
@@ -68,6 +68,7 @@ Eric Botcazou (21):
       Fix PR c++/64697 at -O1 or above
       Fix ICE with stack checking emulation at -O2
       Fix PR target/102588
+      Update documentation of %X spec
 
 François Dumont (3):
       libstdc++: Fix [multi]map/[multi]set move constructors noexcept qualification
@@ -12805,7 +12806,7 @@ index 9c734595950..8184f59e820 100644
  
  @node RISC-V Built-in Functions
 diff --git a/gcc/doc/invoke.texi b/gcc/doc/invoke.texi
-index eabeec944e7..6d3cfcc664e 100644
+index eabeec944e7..c196f1179af 100644
 --- a/gcc/doc/invoke.texi
 +++ b/gcc/doc/invoke.texi
 @@ -770,6 +770,7 @@ Objective-C and Objective-C++ Dialects}.
@@ -12930,6 +12931,16 @@ index eabeec944e7..6d3cfcc664e 100644
  @samp{sparclite86x}, @samp{tsc701}, @samp{ultrasparc},
  @samp{ultrasparc3}, @samp{niagara}, @samp{niagara2}, @samp{niagara3},
  @samp{niagara4}, @samp{niagara7} and @samp{m8}.  With native Solaris
+@@ -30812,8 +30844,7 @@ Substitute the contents of spec string @var{name} at this point.
+ Accumulate an option for @samp{%X}.
+ 
+ @item %X
+-Output the accumulated linker options specified by @option{-Wl} or a @samp{%x}
+-spec string.
++Output the accumulated linker options specified by a @samp{%x} spec string.
+ 
+ @item %Y
+ Output the accumulated assembler options specified by @option{-Wa}.
 diff --git a/gcc/doc/trouble.texi b/gcc/doc/trouble.texi
 index 419a24b5b18..cf80cbda809 100644
 --- a/gcc/doc/trouble.texi
