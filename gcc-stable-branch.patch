@@ -75,7 +75,8 @@ François Dumont (3):
       libstdc++: Fix unordered containers move constructors noexcept qualification
       libstdc++: [_GLIBCXX_DEBUG] Fix management of __dp_sign_max_size [PR 99402]
 
-GCC Administrator (205):
+GCC Administrator (206):
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -675,10 +676,11 @@ Uros Bizjak (5):
       i386: Remove atomic_storedi_fpu and atomic_loaddi_fpu peepholes [PR100182]
       i386: Fix ICE in ix86_print_opreand_address [PR 102761]
 
-Vladimir N. Makarov (3):
+Vladimir N. Makarov (4):
       [PR97969] LRA: Transform pattern `plus (plus (hard reg, const),	pseudo)` after elimination
       [PR98722] LRA: Check that target has no 3-op add insn to transform 2 plus expression.
       [PR98777] LRA: Use preliminary created pseudo for in LRA elimination subpass
+      [PR102842] Consider all outputs in generation of matching reloads
 
 Xi Ruoyao (1):
       mips: Fix up mips_atomic_assign_expand_fenv [PR94780]
@@ -3034,10 +3036,17 @@ index 0719d810258..a9368325816 100644
 -10.3.0
 +10.3.1
 diff --git a/gcc/ChangeLog b/gcc/ChangeLog
-index 3b1384e707f..ac4b04e837f 100644
+index 3b1384e707f..4c71d8dae1e 100644
 --- a/gcc/ChangeLog
 +++ b/gcc/ChangeLog
-@@ -1,3 +1,1317 @@
+@@ -1,3 +1,1324 @@
++2021-11-03  Vladimir N. Makarov  <vmakarov@redhat.com>
++
++	PR rtl-optimization/102842
++	* lra-constraints.c (match_reload): Ignore out in checking values
++	of outs.
++	(curr_insn_transform): Collect outputs before doing reloads of operands.
++
 +2021-11-02  Martin Jambor  <mjambor@suse.cz>
 +
 +	Backported from master:
@@ -14729,7 +14738,7 @@ index 34a8f209e20..803c297b0fc 100644
        /* We can't assume nonlocal labels have their following insns yet.  */
        if (LABEL_REF_NONLOCAL_P (x) || LABEL_REF_NONLOCAL_P (y))
 diff --git a/gcc/lra-constraints.c b/gcc/lra-constraints.c
-index 7cc479b3042..f390c9ffed1 100644
+index 7cc479b3042..30d088afbca 100644
 --- a/gcc/lra-constraints.c
 +++ b/gcc/lra-constraints.c
 @@ -235,12 +235,17 @@ get_reg_class (int regno)
@@ -14835,6 +14844,51 @@ index 7cc479b3042..f390c9ffed1 100644
      case LABEL_REF:
        return label_ref_label (x) == label_ref_label (y);
      case SYMBOL_REF:
+@@ -1014,7 +1058,7 @@ match_reload (signed char out, signed char *ins, signed char *outs,
+ 	  for (i = 0; outs[i] >= 0; i++)
+ 	    {
+ 	      rtx other_out_rtx = *curr_id->operand_loc[outs[i]];
+-	      if (REG_P (other_out_rtx)
++	      if (outs[i] != out && REG_P (other_out_rtx)
+ 		  && (regno_val_use_in (REGNO (in_rtx), other_out_rtx)
+ 		      != NULL_RTX))
+ 		{
+@@ -4262,7 +4306,10 @@ curr_insn_transform (bool check_only_p)
+       }
+ 
+   n_outputs = 0;
+-  outputs[0] = -1;
++  for (i = 0; i < n_operands; i++)
++    if (curr_static_id->operand[i].type == OP_OUT)
++      outputs[n_outputs++] = i;
++  outputs[n_outputs] = -1;
+   for (i = 0; i < n_operands; i++)
+     {
+       int regno;
+@@ -4337,8 +4384,6 @@ curr_insn_transform (bool check_only_p)
+ 		     lra-lives.c.  */
+ 		  match_reload (i, goal_alt_matched[i], outputs, goal_alt[i], &before,
+ 				&after, TRUE);
+-		  outputs[n_outputs++] = i;
+-		  outputs[n_outputs] = -1;
+ 		}
+ 	      continue;
+ 	    }
+@@ -4509,14 +4554,6 @@ curr_insn_transform (bool check_only_p)
+ 	   process_alt_operands decides that it is possible.  */
+ 	gcc_unreachable ();
+ 
+-      /* Memorise processed outputs so that output remaining to be processed
+-	 can avoid using the same register value (see match_reload).  */
+-      if (curr_static_id->operand[i].type == OP_OUT)
+-	{
+-	  outputs[n_outputs++] = i;
+-	  outputs[n_outputs] = -1;
+-	}
+-
+       if (optional_p)
+ 	{
+ 	  rtx reg = op;
 diff --git a/gcc/lra-eliminations.c b/gcc/lra-eliminations.c
 index cf745dc6a26..7c70cc00f1f 100644
 --- a/gcc/lra-eliminations.c
@@ -15289,10 +15343,15 @@ index 99edad8a950..f33489286a9 100644
  
  #endif
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index 2913065bf31..d97e215a395 100644
+index 2913065bf31..907134ddcd7 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,1476 @@
+@@ -1,3 +1,1481 @@
++2021-11-03  Vladimir N. Makarov  <vmakarov@redhat.com>
++
++	PR rtl-optimization/102842
++	* g++.target/arm/pr102842.C: New test.
++
 +2021-11-02  Martin Jambor  <mjambor@suse.cz>
 +
 +	Backported from master:
@@ -18603,6 +18662,42 @@ index 00000000000..61a58a7fcf4
 +#include <arm_sve.h>
 +bool a;
 +int main() { a = svaddv(svptrue_b8(), svdup_s8(0)); }
+diff --git a/gcc/testsuite/g++.target/arm/pr102842.C b/gcc/testsuite/g++.target/arm/pr102842.C
+new file mode 100644
+index 00000000000..a2bac66091a
+--- /dev/null
++++ b/gcc/testsuite/g++.target/arm/pr102842.C
+@@ -0,0 +1,30 @@
++/* PR rtl-optimization/102842 */
++/* { dg-do compile } */
++/* { dg-options "-fPIC  -O2 -fno-omit-frame-pointer -mthumb -march=armv7-a+fp" } */
++
++struct Plane {
++  using T = float;
++  T *Row();
++};
++using ImageF = Plane;
++long long Mirror_x;
++struct EnsurePaddingInPlaceRowByRow {
++  void Process() {
++    switch (strategy_) {
++    case kSlow:
++      float *row = img_.Row();
++      long long xsize = x1_;
++      while (Mirror_x >= xsize)
++        if (Mirror_x)
++          Mirror_x = 2 * xsize - 1;
++      *row = Mirror_x;
++    }
++  }
++  ImageF img_;
++  unsigned x1_;
++  enum { kSlow } strategy_;
++};
++void FinalizeImageRect() {
++  EnsurePaddingInPlaceRowByRow ensure_padding;
++  ensure_padding.Process();
++}
 diff --git a/gcc/testsuite/g++.target/powerpc/pr99842.C b/gcc/testsuite/g++.target/powerpc/pr99842.C
 new file mode 100644
 index 00000000000..922450e2c21
