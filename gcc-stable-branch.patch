@@ -75,7 +75,11 @@ François Dumont (3):
       libstdc++: Fix unordered containers move constructors noexcept qualification
       libstdc++: [_GLIBCXX_DEBUG] Fix management of __dp_sign_max_size [PR 99402]
 
-GCC Administrator (206):
+GCC Administrator (210):
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -469,8 +473,9 @@ Jonathan Wakely (75):
 José Rui Faustino de Sousa (1):
       Fortran: Fix double function call with -fcheck=pointer [PR]
 
-Kewen Lin (1):
+Kewen Lin (2):
       ipa-fnsummary: Remove inconsistent bp_pack_value
+      vect: Don't update inits for simd_lane_access DRs [PR102789]
 
 Marek Polacek (13):
       c++: ICE when late parsing noexcept/NSDMI [PR98333]
@@ -494,7 +499,7 @@ Martin Jambor (2):
       ipa-sra: Fix thinko when overriding safe_to_import_accesses (PR 101066)
       sra: Fix corner case of total scalarization with virtual inheritance (PR 102505)
 
-Martin Liska (7):
+Martin Liska (8):
       Sync gcc-changelog scripts.
       gcc-changelog: sync scripts.
       contrib: add git-commit-mklog wrapper
@@ -502,6 +507,7 @@ Martin Liska (7):
       sanitizer: cherry pick 414482751452e54710f16bae58458c66298aaf69
       coverage: handle function beginning
       coroutines: init struct members to NULL
+      gcc-changelog: sync from master
 
 Martin Sebor (2):
       PR middle-end/100571 - bogus -Wstringop-overflow with VLA of elements larger than byte
@@ -762,10 +768,10 @@ index aa0356e6266..39291470918 100755
  isl='isl-0.18.tar.bz2'
  
 diff --git a/contrib/gcc-changelog/git_check_commit.py b/contrib/gcc-changelog/git_check_commit.py
-index 935425ef813..9a4c5d448fb 100755
+index 935425ef813..d6aff3cef91 100755
 --- a/contrib/gcc-changelog/git_check_commit.py
 +++ b/contrib/gcc-changelog/git_check_commit.py
-@@ -23,19 +23,16 @@ from git_repository import parse_git_revisions
+@@ -23,19 +23,18 @@ from git_repository import parse_git_revisions
  parser = argparse.ArgumentParser(description='Check git ChangeLog format '
                                   'of a commit')
  parser.add_argument('revisions', default='HEAD', nargs='?',
@@ -779,6 +785,8 @@ index 935425ef813..9a4c5d448fb 100755
 -parser.add_argument('-n', '--non-strict-mode', action='store_true',
 -                    help='Use non-strict mode (allow changes in ChangeLog and '
 -                    'other automatically updated files).')
++parser.add_argument('-v', '--verbose', action='store_true',
++                    help='Print verbose information')
  args = parser.parse_args()
  
  retval = 0
@@ -788,8 +796,17 @@ index 935425ef813..9a4c5d448fb 100755
      res = 'OK' if git_commit.success else 'FAILED'
      print('Checking %s: %s' % (git_commit.original_info.hexsha, res))
      if git_commit.success:
+@@ -44,6 +43,8 @@ for git_commit in parse_git_revisions(args.git_path, args.revisions,
+     else:
+         for error in git_commit.errors:
+             print('ERR: %s' % error)
++            if args.verbose and error.details:
++                print(error.details)
+         retval = 1
+ 
+ exit(retval)
 diff --git a/contrib/gcc-changelog/git_commit.py b/contrib/gcc-changelog/git_commit.py
-index ee1973371be..4958ab9c159 100755
+index ee1973371be..27a1d59b211 100755
 --- a/contrib/gcc-changelog/git_commit.py
 +++ b/contrib/gcc-changelog/git_commit.py
 @@ -19,8 +19,9 @@
@@ -803,7 +820,35 @@ index ee1973371be..4958ab9c159 100755
      'c++tools',
      'config',
      'contrib',
-@@ -200,7 +201,7 @@ class Error:
+@@ -133,6 +134,7 @@ ignored_prefixes = {
+     'gcc/go/gofrontend/',
+     'gcc/testsuite/gdc.test/',
+     'gcc/testsuite/go.test/test/',
++    'libffi/',
+     'libgo/',
+     'libphobos/libdruntime/',
+     'libphobos/src/',
+@@ -155,7 +157,9 @@ author_line_regex = \
+         re.compile(r'^(?P<datetime>\d{4}-\d{2}-\d{2})\ {2}(?P<name>.*  <.*>)')
+ additional_author_regex = re.compile(r'^\t(?P<spaces>\ *)?(?P<name>.*  <.*>)')
+ changelog_regex = re.compile(r'^(?:[fF]or +)?([a-z0-9+-/]*)ChangeLog:?')
+-pr_regex = re.compile(r'\tPR (?P<component>[a-z+-]+\/)?([0-9]+)$')
++subject_pr_regex = re.compile(r'(^|\W)PR\s+(?P<component>[a-zA-Z+-]+)/(?P<pr>\d{4,7})')
++subject_pr2_regex = re.compile(r'[(\[]PR\s*(?P<pr>\d{4,7})[)\]]')
++pr_regex = re.compile(r'\tPR (?P<component>[a-z+-]+\/)?(?P<pr>[0-9]+)$')
+ dr_regex = re.compile(r'\tDR ([0-9]+)$')
+ star_prefix_regex = re.compile(r'\t\*(?P<spaces>\ *)(?P<content>.*)')
+ end_of_location_regex = re.compile(r'[\[<(:]')
+@@ -193,14 +197,15 @@ def decode_path(path):
+ 
+ 
+ class Error:
+-    def __init__(self, message, line=None):
++    def __init__(self, message, line=None, details=None):
+         self.message = message
+         self.line = line
++        self.details = details
+ 
      def __repr__(self):
          s = self.message
          if self.line:
@@ -812,15 +857,15 @@ index ee1973371be..4958ab9c159 100755
          return s
  
  
-@@ -214,6 +215,7 @@ class ChangeLogEntry:
+@@ -214,6 +219,7 @@ class ChangeLogEntry:
          self.lines = []
          self.files = []
          self.file_patterns = []
-+        self.opened_parentheses = 0
++        self.parentheses_stack = []
  
      def parse_file_names(self):
          # Whether the content currently processed is between a star prefix the
-@@ -223,8 +225,14 @@ class ChangeLogEntry:
+@@ -223,8 +229,14 @@ class ChangeLogEntry:
          for line in self.lines:
              # If this line matches the star prefix, start the location
              # processing on the information that follows the star.
@@ -836,7 +881,7 @@ index ee1973371be..4958ab9c159 100755
                  in_location = True
                  line = m.group('content')
  
-@@ -280,7 +288,7 @@ class GitInfo:
+@@ -280,7 +292,7 @@ class GitInfo:
  
  
  class GitCommit:
@@ -845,7 +890,11 @@ index ee1973371be..4958ab9c159 100755
          self.original_info = info
          self.info = info
          self.message = None
-@@ -293,6 +301,7 @@ class GitCommit:
+@@ -290,14 +302,19 @@ class GitCommit:
+         self.top_level_authors = []
+         self.co_authors = []
+         self.top_level_prs = []
++        self.subject_prs = set()
          self.cherry_pick_commit = None
          self.revert_commit = None
          self.commit_to_info_hook = commit_to_info_hook
@@ -853,10 +902,33 @@ index ee1973371be..4958ab9c159 100755
  
          # Skip Update copyright years commits
          if self.info.lines and self.info.lines[0] == 'Update copyright years.':
-@@ -307,15 +316,16 @@ class GitCommit:
+             return
+ 
++        if self.info.lines and len(self.info.lines) > 1 and self.info.lines[1]:
++            self.errors.append(Error('Expected empty second line in commit message', info.lines[0]))
++
+         # Identify first if the commit is a Revert commit
+         for line in self.info.lines:
+             m = revert_regex.match(line)
+@@ -307,18 +324,36 @@ class GitCommit:
          if self.revert_commit:
              self.info = self.commit_to_info_hook(self.revert_commit)
  
++        # The following happens for get_email.py:
++        if not self.info:
++            return
++
++        self.check_commit_email()
++
++        # Extract PR numbers form the subject line
++        # Match either [PRnnnn] / (PRnnnn) or PR component/nnnn
++        if self.info.lines and not self.revert_commit:
++            self.subject_prs = {m.group('pr') for m in subject_pr2_regex.finditer(info.lines[0])}
++            for m in subject_pr_regex.finditer(info.lines[0]):
++                if not m.group('component') in bug_components:
++                    self.errors.append(Error('invalid PR component in subject', info.lines[0]))
++                self.subject_prs.add(m.group('pr'))
++
 +        # Allow complete deletion of ChangeLog files in a commit
          project_files = [f for f in self.info.modified_files
 -                         if self.is_changelog_filename(f[0])
@@ -868,11 +940,19 @@ index ee1973371be..4958ab9c159 100755
              # All modified files are only MISC files
              return
 -        elif project_files and strict:
+-            self.errors.append(Error('ChangeLog, DATESTAMP, BASE-VER and '
+-                                     'DEV-PHASE updates should be done '
+-                                     'separately from normal commits'))
 +        elif project_files:
-             self.errors.append(Error('ChangeLog, DATESTAMP, BASE-VER and '
-                                      'DEV-PHASE updates should be done '
-                                      'separately from normal commits'))
-@@ -328,6 +338,7 @@ class GitCommit:
++            err = 'ChangeLog, DATESTAMP, BASE-VER and DEV-PHASE updates ' \
++                  'should be done separately from normal commits\n' \
++                  '(note: ChangeLog entries will be automatically ' \
++                  'added by a cron job)'
++            self.errors.append(Error(err))
+             return
+ 
+         all_are_ignored = (len(project_files) + len(ignored_files)
+@@ -328,11 +363,15 @@ class GitCommit:
              self.parse_changelog()
              self.parse_file_names()
              self.check_for_empty_description()
@@ -880,7 +960,15 @@ index ee1973371be..4958ab9c159 100755
              self.deduce_changelog_locations()
              self.check_file_patterns()
              if not self.errors:
-@@ -343,18 +354,23 @@ class GitCommit:
+                 self.check_mentioned_files()
+                 self.check_for_correct_changelog()
++        if self.subject_prs:
++            self.errors.append(Error('PR %s in subject but not in changelog' %
++                                     ', '.join(self.subject_prs), self.info.lines[0]))
+ 
+     @property
+     def success(self):
+@@ -343,18 +382,23 @@ class GitCommit:
          return [x[0] for x in self.info.modified_files if x[1] == 'A']
  
      @classmethod
@@ -910,7 +998,7 @@ index ee1973371be..4958ab9c159 100755
  
      @classmethod
      def format_git_author(cls, author):
-@@ -374,6 +390,17 @@ class GitCommit:
+@@ -374,6 +418,17 @@ class GitCommit:
                  modified_files.append((parts[2], 'A'))
          return modified_files
  
@@ -928,7 +1016,7 @@ index ee1973371be..4958ab9c159 100755
      def parse_lines(self, all_are_ignored):
          body = self.info.lines
  
-@@ -382,7 +409,8 @@ class GitCommit:
+@@ -382,7 +437,8 @@ class GitCommit:
                  continue
              if (changelog_regex.match(b) or self.find_changelog_location(b)
                      or star_prefix_regex.match(b) or pr_regex.match(b)
@@ -938,7 +1026,7 @@ index ee1973371be..4958ab9c159 100755
                  self.changes = body[i:]
                  return
          if not all_are_ignored:
-@@ -400,8 +428,10 @@ class GitCommit:
+@@ -400,8 +456,10 @@ class GitCommit:
              if line != line.rstrip():
                  self.errors.append(Error('trailing whitespace', line))
              if len(line.replace('\t', ' ' * TAB_WIDTH)) > LINE_LIMIT:
@@ -951,17 +1039,37 @@ index ee1973371be..4958ab9c159 100755
              m = changelog_regex.match(line)
              if m:
                  last_entry = ChangeLogEntry(m.group(1).rstrip('/'),
-@@ -490,7 +520,8 @@ class GitCommit:
+@@ -428,7 +486,9 @@ class GitCommit:
+                     else:
+                         author_tuple = (m.group('name'), None)
+                 elif pr_regex.match(line):
+-                    component = pr_regex.match(line).group('component')
++                    m = pr_regex.match(line)
++                    component = m.group('component')
++                    pr = m.group('pr')
+                     if not component:
+                         self.errors.append(Error('missing PR component', line))
+                         continue
+@@ -437,6 +497,8 @@ class GitCommit:
+                         continue
+                     else:
+                         pr_line = line.lstrip()
++                    if pr in self.subject_prs:
++                        self.subject_prs.remove(pr)
+                 elif dr_regex.match(line):
+                     pr_line = line.lstrip()
+ 
+@@ -490,7 +552,8 @@ class GitCommit:
                  else:
                      m = star_prefix_regex.match(line)
                      if m:
 -                        if len(m.group('spaces')) != 1:
 +                        if (len(m.group('spaces')) != 1 and
-+                                last_entry.opened_parentheses == 0):
++                                not last_entry.parentheses_stack):
                              msg = 'one space should follow asterisk'
                              self.errors.append(Error(msg, line))
                          else:
-@@ -502,6 +533,7 @@ class GitCommit:
+@@ -502,6 +565,7 @@ class GitCommit:
                                          msg = f'empty group "{needle}" found'
                                          self.errors.append(Error(msg, line))
                              last_entry.lines.append(line)
@@ -969,7 +1077,7 @@ index ee1973371be..4958ab9c159 100755
                      else:
                          if last_entry.is_empty:
                              msg = 'first line should start with a tab, ' \
-@@ -509,6 +541,18 @@ class GitCommit:
+@@ -509,6 +573,18 @@ class GitCommit:
                              self.errors.append(Error(msg, line))
                          else:
                              last_entry.lines.append(line)
@@ -978,30 +1086,30 @@ index ee1973371be..4958ab9c159 100755
 +    def process_parentheses(self, last_entry, line):
 +        for c in line:
 +            if c == '(':
-+                last_entry.opened_parentheses += 1
++                last_entry.parentheses_stack.append(line)
 +            elif c == ')':
-+                if last_entry.opened_parentheses == 0:
++                if not last_entry.parentheses_stack:
 +                    msg = 'bad wrapping of parenthesis'
 +                    self.errors.append(Error(msg, line))
 +                else:
-+                    last_entry.opened_parentheses -= 1
++                    del last_entry.parentheses_stack[-1]
  
      def parse_file_names(self):
          for entry in self.changelog_entries:
-@@ -532,6 +576,12 @@ class GitCommit:
+@@ -532,6 +608,12 @@ class GitCommit:
                      msg = 'missing description of a change'
                      self.errors.append(Error(msg, line))
  
 +    def check_for_broken_parentheses(self):
 +        for entry in self.changelog_entries:
-+            if entry.opened_parentheses != 0:
++            if entry.parentheses_stack:
 +                msg = 'bad parentheses wrapping'
-+                self.errors.append(Error(msg, entry.lines[0]))
++                self.errors.append(Error(msg, entry.parentheses_stack[-1]))
 +
      def get_file_changelog_location(self, changelog_file):
          for file in self.info.modified_files:
              if file[0] == changelog_file:
-@@ -549,7 +599,7 @@ class GitCommit:
+@@ -549,7 +631,7 @@ class GitCommit:
                  for file in entry.files:
                      location = self.get_file_changelog_location(file)
                      if (location == ''
@@ -1010,7 +1118,7 @@ index ee1973371be..4958ab9c159 100755
                          if changelog and changelog != location:
                              msg = 'could not deduce ChangeLog file, ' \
                                    'not unique location'
-@@ -569,11 +619,10 @@ class GitCommit:
+@@ -569,11 +651,10 @@ class GitCommit:
                  return True
          return False
  
@@ -1024,7 +1132,7 @@ index ee1973371be..4958ab9c159 100755
                  break
              components = components[:-1]
          return '/'.join(components)
-@@ -592,7 +641,12 @@ class GitCommit:
+@@ -592,7 +673,12 @@ class GitCommit:
              assert not entry.folder.endswith('/')
              for file in entry.files:
                  if not self.is_changelog_filename(file):
@@ -1038,11 +1146,51 @@ index ee1973371be..4958ab9c159 100755
              for pattern in entry.file_patterns:
                  mentioned_patterns.append(os.path.join(entry.folder, pattern))
  
+@@ -602,9 +688,11 @@ class GitCommit:
+         for file in sorted(mentioned_files - changed_files):
+             msg = 'unchanged file mentioned in a ChangeLog'
+             candidates = difflib.get_close_matches(file, changed_files, 1)
++            details = None
+             if candidates:
+                 msg += f' (did you mean "{candidates[0]}"?)'
+-            self.errors.append(Error(msg, file))
++                details = '\n'.join(difflib.Differ().compare([file], [candidates[0]])).rstrip()
++            self.errors.append(Error(msg, file, details))
+         for file in sorted(changed_files - mentioned_files):
+             if not self.in_ignored_location(file):
+                 if file in self.new_files:
+@@ -721,3 +809,12 @@ class GitCommit:
+         print('Errors:')
+         for error in self.errors:
+             print(error)
++
++    def check_commit_email(self):
++        # Parse 'Martin Liska  <mliska@suse.cz>'
++        email = self.info.author.split(' ')[-1].strip('<>')
++
++        # Verify that all characters are ASCII
++        # TODO: Python 3.7 provides a nicer function: isascii
++        if len(email) != len(email.encode()):
++            self.errors.append(Error(f'non-ASCII characters in git commit email address ({email})'))
 diff --git a/contrib/gcc-changelog/git_email.py b/contrib/gcc-changelog/git_email.py
-index 00ad00458f4..fa62e3ad2f7 100755
+index 00ad00458f4..87b419cae5d 100755
 --- a/contrib/gcc-changelog/git_email.py
 +++ b/contrib/gcc-changelog/git_email.py
-@@ -32,7 +32,7 @@ unidiff_supports_renaming = hasattr(PatchedFile(), 'is_rename')
+@@ -17,6 +17,7 @@
+ # <http://www.gnu.org/licenses/>.  */
+ 
+ import os
++import re
+ import sys
+ from itertools import takewhile
+ 
+@@ -28,16 +29,20 @@ from unidiff import PatchSet, PatchedFile
+ 
+ DATE_PREFIX = 'Date: '
+ FROM_PREFIX = 'From: '
++SUBJECT_PREFIX = 'Subject: '
++subject_patch_regex = re.compile(r'^\[PATCH( \d+/\d+)?\] ')
+ unidiff_supports_renaming = hasattr(PatchedFile(), 'is_rename')
  
  
  class GitEmail(GitCommit):
@@ -1051,14 +1199,45 @@ index 00ad00458f4..fa62e3ad2f7 100755
          self.filename = filename
          diff = PatchSet.from_filename(filename)
          date = None
-@@ -66,16 +66,29 @@ class GitEmail(GitCommit):
+         author = None
++        subject = ''
+ 
++        subject_last = False
+         with open(self.filename, 'r') as f:
+             lines = f.read().splitlines()
+         lines = list(takewhile(lambda line: line != '---', lines))
+@@ -46,8 +51,21 @@ class GitEmail(GitCommit):
+                 date = parse(line[len(DATE_PREFIX):])
+             elif line.startswith(FROM_PREFIX):
+                 author = GitCommit.format_git_author(line[len(FROM_PREFIX):])
++            elif line.startswith(SUBJECT_PREFIX):
++                subject = line[len(SUBJECT_PREFIX):]
++                subject_last = True
++            elif subject_last and line.startswith(' '):
++                subject += line
++            elif line == '':
++                break
++            else:
++                subject_last = False
++
++        if subject:
++            subject = subject_patch_regex.sub('', subject)
+         header = list(takewhile(lambda line: line != '', lines))
+-        body = lines[len(header) + 1:]
++        # Note: commit message consists of email subject, empty line, email body
++        message = [subject] + lines[len(header):]
+ 
+         modified_files = []
+         for f in diff:
+@@ -66,16 +84,29 @@ class GitEmail(GitCommit):
                  t = 'A'
              else:
                  t = 'M'
 -            modified_files.append((target, t))
-+            modified_files.append((target if t != 'D' else source, t))
-         git_info = GitInfo(None, date, author, body, modified_files)
+-        git_info = GitInfo(None, date, author, body, modified_files)
 -        super().__init__(git_info, strict=strict,
++            modified_files.append((target if t != 'D' else source, t))
++        git_info = GitInfo(None, date, author, message, modified_files)
 +        super().__init__(git_info,
                           commit_to_info_hook=lambda x: None)
  
@@ -1086,7 +1265,7 @@ index 00ad00458f4..fa62e3ad2f7 100755
      if len(sys.argv) == 1:
          allfiles = []
          for root, _dirs, files in os.walk('patches'):
-@@ -97,7 +110,7 @@ if __name__ == '__main__':
+@@ -97,7 +128,7 @@ if __name__ == '__main__':
          print()
          print('Successfully parsed: %d/%d' % (success, len(allfiles)))
      else:
@@ -1120,20 +1299,23 @@ index a0e293d756d..2d688826ff8 100755
          parsed_commits.append(git_commit)
      return parsed_commits
 diff --git a/contrib/gcc-changelog/git_update_version.py b/contrib/gcc-changelog/git_update_version.py
-index d2cadb8811c..0508f194084 100755
+index d2cadb8811c..1837c1a8d7f 100755
 --- a/contrib/gcc-changelog/git_update_version.py
 +++ b/contrib/gcc-changelog/git_update_version.py
-@@ -26,6 +26,9 @@ from git_repository import parse_git_revisions
+@@ -26,6 +26,12 @@ from git_repository import parse_git_revisions
  
  current_timestamp = datetime.datetime.now().strftime('%Y%m%d\n')
  
 +# Skip the following commits, they cannot be correctly processed
-+IGNORED_COMMITS = ('c2be82058fb40f3ae891c68d185ff53e07f14f45')
++IGNORED_COMMITS = (
++        'c2be82058fb40f3ae891c68d185ff53e07f14f45',
++        '04a040d907a83af54e0a98bdba5bfabc0ef4f700',
++        '2e96b5f14e4025691b57d2301d71aa6092ed44bc')
 +
  
  def read_timestamp(path):
      with open(path) as f:
-@@ -54,7 +57,8 @@ def prepend_to_changelog_files(repo, folder, git_commit, add_to_git):
+@@ -54,7 +60,8 @@ def prepend_to_changelog_files(repo, folder, git_commit, add_to_git):
              repo.git.add(full_path)
  
  
@@ -1143,7 +1325,7 @@ index d2cadb8811c..0508f194084 100755
  
  parser = argparse.ArgumentParser(description='Update DATESTAMP and generate '
                                   'ChangeLog entries')
-@@ -74,7 +78,7 @@ repo = Repo(args.git_path)
+@@ -74,7 +81,7 @@ repo = Repo(args.git_path)
  origin = repo.remotes['origin']
  
  
@@ -1152,7 +1334,7 @@ index d2cadb8811c..0508f194084 100755
      commit = repo.head.commit
      commit_count = 1
      while commit:
-@@ -97,7 +101,8 @@ def update_current_branch():
+@@ -97,7 +104,8 @@ def update_current_branch():
          if len(head.parents) == 2:
              head = head.parents[1]
          commits = parse_git_revisions(args.git_path, '%s..%s'
@@ -1162,7 +1344,7 @@ index d2cadb8811c..0508f194084 100755
          for git_commit in reversed(commits):
              prepend_to_changelog_files(repo, args.git_path, git_commit,
                                         not args.dry_mode)
-@@ -140,6 +145,6 @@ else:
+@@ -140,6 +148,6 @@ else:
              branch.checkout()
              origin.pull(rebase=True)
              print('branch pulled and checked out')
@@ -1181,7 +1363,7 @@ index 9e4a0f6479c..efc313f6d52 100644
  [tool:pytest]
  addopts = -vv --flake8
 diff --git a/contrib/gcc-changelog/test_email.py b/contrib/gcc-changelog/test_email.py
-index 5db56caef9e..7472762e66d 100755
+index 5db56caef9e..a4796dbbe94 100755
 --- a/contrib/gcc-changelog/test_email.py
 +++ b/contrib/gcc-changelog/test_email.py
 @@ -62,17 +62,17 @@ class TestGccChangelog(unittest.TestCase):
@@ -1224,7 +1406,8 @@ index 5db56caef9e..7472762e66d 100755
 +        email = self.from_patch_glob('0001-Add-patch_are')
          msg = 'ChangeLog, DATESTAMP, BASE-VER and DEV-PHASE updates should ' \
                'be done separately from normal commits'
-         assert email.errors[0].message == msg
+-        assert email.errors[0].message == msg
++        assert email.errors[0].message.startswith(msg)
  
      def test_strict_mode_normal_patch(self):
 -        email = self.get_git_email('0001-Just-test-it.patch', True)
@@ -1237,7 +1420,7 @@ index 5db56caef9e..7472762e66d 100755
          assert not email.errors
  
      def test_wrong_changelog_entry(self):
-@@ -404,3 +403,27 @@ class TestGccChangelog(unittest.TestCase):
+@@ -404,3 +403,46 @@ class TestGccChangelog(unittest.TestCase):
          email = self.from_patch_glob('0001-Add-horse2.patch')
          assert not email.errors
          assert email.changelog_entries[0].files == ['koníček.txt']
@@ -1253,6 +1436,7 @@ index 5db56caef9e..7472762e66d 100755
 +    def test_multiline_bad_parentheses(self):
 +        email = self.from_patch_glob('0002-Wrong-macro-changelog.patch')
 +        assert email.errors[0].message == 'bad parentheses wrapping'
++        assert email.errors[0].line == '	* config/i386/i386.md (*fix_trunc<mode>_i387_1,'
 +
 +    def test_changelog_removal(self):
 +        email = self.from_patch_glob('0001-ChangeLog-removal.patch')
@@ -1265,8 +1449,26 @@ index 5db56caef9e..7472762e66d 100755
 +    def test_multi_same_file(self):
 +        email = self.from_patch_glob('0001-OpenMP-Fix-SIMT')
 +        assert email.errors[0].message == 'same file specified multiple times'
++
++    def test_pr_only_in_subject(self):
++        email = self.from_patch_glob('0001-rs6000-Support-doubleword')
++        assert (email.errors[0].message ==
++                'PR 100085 in subject but not in changelog')
++
++    def test_wrong_pr_comp_in_subject(self):
++        email = self.from_patch_glob('pr-wrong-comp.patch')
++        assert email.errors[0].message == 'invalid PR component in subject'
++
++    def test_copyright_years(self):
++        email = self.from_patch_glob('copyright-years.patch')
++        assert not email.errors
++
++    def test_non_ascii_email(self):
++        email = self.from_patch_glob('non-ascii-email.patch')
++        assert (email.errors[0].message ==
++                'non-ASCII characters in git commit email address (jbglaw@ług-owl.de)')
 diff --git a/contrib/gcc-changelog/test_patches.txt b/contrib/gcc-changelog/test_patches.txt
-index ffd13682d5c..39d40b88618 100644
+index ffd13682d5c..98a0d3f1ee0 100644
 --- a/contrib/gcc-changelog/test_patches.txt
 +++ b/contrib/gcc-changelog/test_patches.txt
 @@ -68,13 +68,6 @@ xxxx-xx-xx  Claudiu Zissulescu  <claziss@synopsys.com>
@@ -1741,7 +1943,15 @@ index ffd13682d5c..39d40b88618 100644
  diff --git a/gcc/cp/pt.c b/gcc/cp/pt.c
  index 7bf249cee5c..2fe7b66707c 100644
  --- a/gcc/cp/pt.c
-@@ -1539,13 +1469,6 @@ concepts.
+@@ -1531,6 +1461,7 @@ Subject: [PATCH 0030/2034] 	PR c++/92746 - ICE with noexcept of function
+ Another place that needs to specially handle Concepts TS function-style
+ concepts.
+ 
++	PR c++/92746
+ 	* except.c (check_noexcept_r): Handle concept-check.
+ ---
+  gcc/cp/ChangeLog                            | 3 +++
+@@ -1539,13 +1470,6 @@ concepts.
   3 files changed, 11 insertions(+)
   create mode 100644 gcc/testsuite/g++.dg/concepts/fn-concept3.C
  
@@ -1755,7 +1965,7 @@ index ffd13682d5c..39d40b88618 100644
  diff --git a/gcc/cp/except.c b/gcc/cp/except.c
  index e073bd4d2bc..55b4b6af442 100644
  --- a/gcc/cp/except.c
-@@ -1573,13 +1496,6 @@ Subject: [PATCH 0129/2034] Add PR number to change log
+@@ -1573,13 +1497,6 @@ Subject: [PATCH 0129/2034] Add PR number to change log
   gcc/ChangeLog | 1 +
   1 file changed, 1 insertion(+)
  
@@ -1769,7 +1979,7 @@ index ffd13682d5c..39d40b88618 100644
  -- 
  2.26.1
  
-@@ -1616,13 +1532,6 @@ gcc/testsuite/
+@@ -1616,13 +1533,6 @@ gcc/testsuite/
   6 files changed, 132 insertions(+)
   create mode 100644 gcc/testsuite/gcc.target/aarch64/movk_2.c
  
@@ -1783,7 +1993,7 @@ index ffd13682d5c..39d40b88618 100644
  diff --git a/gcc/config/aarch64/aarch64-protos.h b/gcc/config/aarch64/aarch64-protos.h
  index 24cc65a383a..d29975a8921 100644
  --- a/gcc/config/aarch64/aarch64-protos.h
-@@ -1643,13 +1552,6 @@ index 90eebce85c0..9c1f17d0f85 100644
+@@ -1643,13 +1553,6 @@ index 90eebce85c0..9c1f17d0f85 100644
  +++ b/gcc/config/aarch64/aarch64.md
  @@ -1 +1,2 @@
  
@@ -1797,7 +2007,7 @@ index ffd13682d5c..39d40b88618 100644
  +
  diff --git a/gcc/testsuite/gcc.target/aarch64/movk_2.c b/gcc/testsuite/gcc.target/aarch64/movk_2.c
  new file mode 100644
-@@ -1836,26 +1738,12 @@ already).
+@@ -1836,26 +1739,12 @@ already).
   gcc/testsuite/g++.dg/tree-ssa/pr27830.C |  2 ++
   4 files changed, 47 insertions(+), 5 deletions(-)
  
@@ -1824,7 +2034,7 @@ index ffd13682d5c..39d40b88618 100644
  +
  diff --git a/gcc/testsuite/g++.dg/tree-ssa/pr27830.C b/gcc/testsuite/g++.dg/tree-ssa/pr27830.C
  index 01c7fc18783..551ebc428cd 100644
-@@ -1968,13 +1856,6 @@ index c212a1a57dc..3dccef39701 100644
+@@ -1968,13 +1857,6 @@ index c212a1a57dc..3dccef39701 100644
  +++ b/gcc/opts.c
  @@ -1 +1,2 @@
  
@@ -1838,7 +2048,7 @@ index ffd13682d5c..39d40b88618 100644
  +
  diff --git a/gcc/testsuite/c-c++-common/patchable_function_entry-error-1.c b/gcc/testsuite/c-c++-common/patchable_function_entry-error-1.c
  new file mode 100644
-@@ -2082,13 +1963,6 @@ Subject: [PATCH 0004/2034] tree-opt: Fix bootstrap failure in
+@@ -2082,13 +1964,6 @@ Subject: [PATCH 0004/2034] tree-opt: Fix bootstrap failure in
   gcc/tree-ssa-forwprop.c | 6 +++---
   2 files changed, 12 insertions(+), 3 deletions(-)
  
@@ -1852,7 +2062,16 @@ index ffd13682d5c..39d40b88618 100644
  diff --git a/gcc/tree-ssa-forwprop.c b/gcc/tree-ssa-forwprop.c
  index aac31d02b6c..56c470f6ecf 100644
  --- a/gcc/tree-ssa-forwprop.c
-@@ -2125,13 +1999,6 @@ gcc/testsuite/ChangeLog:
+@@ -2103,7 +1978,7 @@ index aac31d02b6c..56c470f6ecf 100644
+ From 5194b51ed9714808d88827531e91474895b6c706 Mon Sep 17 00:00:00 2001
+ From: Jason Merrill <jason@redhat.com>
+ Date: Thu, 16 Jan 2020 16:55:39 -0500
+-Subject: [PATCH 0121/2034] PR c++/93286 - ICE with __is_constructible and
++Subject: [PATCH 0121/2034] PR c++/12345 - ICE with __is_constructible and
+  variadic template.
+ 
+ Here we had been recursing in tsubst_copy_and_build if type2 was a TREE_LIST
+@@ -2125,13 +2000,6 @@ gcc/testsuite/ChangeLog:
   3 files changed, 89 insertions(+), 7 deletions(-)
   create mode 100644 gcc/testsuite/g++.dg/ext/is_constructible4.C
  
@@ -1866,7 +2085,7 @@ index ffd13682d5c..39d40b88618 100644
  diff --git a/gcc/cp/pt.c b/gcc/cp/pt.c
  index 9bb8cc13e5f..872f8ff8f52 100644
  --- a/gcc/cp/pt.c
-@@ -2210,26 +2077,12 @@ Subject: [PATCH 0043/2034] Compare TREE_ADDRESSABLE and TYPE_MODE when ODR
+@@ -2210,26 +2078,12 @@ Subject: [PATCH 0043/2034] Compare TREE_ADDRESSABLE and TYPE_MODE when ODR
   create mode 100644 gcc/testsuite/g++.dg/lto/odr-8_0.C
   create mode 100644 gcc/testsuite/g++.dg/lto/odr-8_1.C
  
@@ -1893,7 +2112,7 @@ index ffd13682d5c..39d40b88618 100644
  +
  diff --git a/gcc/testsuite/g++.dg/lto/odr-8_0.C b/gcc/testsuite/g++.dg/lto/odr-8_0.C
  new file mode 100644
-@@ -2302,13 +2155,6 @@ gcc/testsuite/ChangeLog:
+@@ -2302,13 +2156,6 @@ gcc/testsuite/ChangeLog:
   create mode 100755 gcc/testsuite/gcc.target/aarch64/advsimd-intrinsics/vdot-3-3.c
   create mode 100755 gcc/testsuite/gcc.target/aarch64/advsimd-intrinsics/vdot-3-4.c
  
@@ -1907,7 +2126,7 @@ index ffd13682d5c..39d40b88618 100644
  diff --git a/gcc/config/aarch64/aarch64-builtins.c b/gcc/config/aarch64/aarch64-builtins.c
  index f0e0461b7f0..f50c4857e1c 100644
  --- a/gcc/config/aarch64/aarch64-builtins.c
-@@ -2343,13 +2189,6 @@ index b9843b83c5f..83720d9802a 100644
+@@ -2343,13 +2190,6 @@ index b9843b83c5f..83720d9802a 100644
  +++ b/gcc/config/aarch64/iterators.md
  @@ -1 +1,2 @@
  
@@ -1921,7 +2140,7 @@ index ffd13682d5c..39d40b88618 100644
  +
  diff --git a/gcc/testsuite/gcc.target/aarch64/advsimd-intrinsics/vdot-3-1.c b/gcc/testsuite/gcc.target/aarch64/advsimd-intrinsics/vdot-3-1.c
  new file mode 100755
-@@ -3398,4 +3237,172 @@ index 00000000000..56c67f58752
+@@ -3398,4 +3238,254 @@ index 00000000000..56c67f58752
  -- 
  2.29.2
  
@@ -1942,7 +2161,7 @@ index ffd13682d5c..39d40b88618 100644
 +From: Martin Liska <mliska@suse.cz>
 +Date: Wed, 13 Jan 2021 16:26:45 +0100
 +Subject: [PATCH 1/2] Add macro.
-+
+ 
 +gcc/ChangeLog:
 +
 +	* config/i386/i386.md (*fix_trunc<mode>_i387_1, *add<mode>3_eq,
@@ -1982,7 +2201,7 @@ index ffd13682d5c..39d40b88618 100644
 +From: Martin Liska <mliska@suse.cz>
 +Date: Wed, 13 Jan 2021 16:54:58 +0100
 +Subject: [PATCH 2/2] Wrong macro changelog
- 
++
 +gcc/ChangeLog:
 +
 +	* config/i386/i386.md (*fix_trunc<mode>_i387_1,
@@ -2094,6 +2313,88 @@ index ffd13682d5c..39d40b88618 100644
 ++
 +-- 
 +2.25.1
++=== 0001-rs6000-Support-doubleword ===
++From f700e4b0ee3ef53b48975cf89be26b9177e3a3f3 Mon Sep 17 00:00:00 2001
++From: Xionghu Luo <luoxhu@linux.ibm.com>
++Date: Tue, 8 Jun 2021 21:48:12 -0500
++Subject: [PATCH] rs6000: Support doubleword swaps removal in rot64 load store
++ [PR100085]
++
++gcc/testsuite/ChangeLog:
++
++	* gcc.target/powerpc/pr100085.c: New test.
++---
++diff --git a/gcc/testsuite/gcc.target/powerpc/pr100085.c b/gcc/testsuite/gcc.target/powerpc/pr100085.c
++new file mode 100644
++index 00000000000..7d8b147b127
++--- /dev/null
+++++ b/gcc/testsuite/gcc.target/powerpc/pr100085.c
++@@ -0,0 +1,1 @@
+++
++-- 
++2.25.1
++=== pr-wrong-comp.patch ===
++From 5194b51ed9714808d88827531e91474895b6c706 Mon Sep 17 00:00:00 2001
++From: Jason Merrill <jason@redhat.com>
++Date: Thu, 16 Jan 2020 16:55:39 -0500
++Subject: [PATCH 0121/2034] PR some/93286 - ICE with __is_constructible and
++ variadic template.
++
++gcc/testsuite/ChangeLog:
++
++	PR c++/93286
++	* gcc.target/powerpc/pr100085.c: New test.
++---
++diff --git a/gcc/testsuite/gcc.target/powerpc/pr100085.c b/gcc/testsuite/gcc.target/powerpc/pr100085.c
++new file mode 100644
++index 00000000000..7d8b147b127
++--- /dev/null
+++++ b/gcc/testsuite/gcc.target/powerpc/pr100085.c
++@@ -0,0 +1,1 @@
+++
++-- 
++2.25.1
++==== copyright-years.patch ===
++From 99dee82307f1e163e150c9c810452979994047ce Mon Sep 17 00:00:00 2001
++From: Jakub Jelinek <jakub@redhat.com>
++Date: Mon, 4 Jan 2021 10:26:59 +0100
++Subject: [PATCH] Update copyright years.
++
++---
++diff --git a/lto-plugin/lto-plugin.c b/lto-plugin/lto-plugin.c
++new file mode 100644
++index 6f67552d075..32478f070e8 100644
++--- a/lto-plugin/lto-plugin.c
+++++ b/lto-plugin/lto-plugin.c
++@@ -0,0 +1,1 @@
+++
++-- 
++2.25.1
++
++=== non-ascii-email.patch ===
++From f42e95a830ab48e59389065ce79a013a519646f1 Mon Sep 17 00:00:00 2001
++From: Jan-Benedict Glaw <jbglaw@ług-owl.de>
++Date: Mon, 13 Sep 2021 12:08:25 +0200
++Subject: [PATCH] Fix multi-statment macro
++
++INIT_CUMULATIVE_ARGS() expands to multiple statements, which will break right
++after an `if` statement. Wrap it into a block.
++
++gcc/ChangeLog:
++
++	* config/alpha/vms.h (INIT_CUMULATIVE_ARGS): Wrap multi-statment
++	define into a block.
++---
++ gcc/config/alpha/vms.h | 10 +++++++---
++ 1 file changed, 7 insertions(+), 3 deletions(-)
++
++diff --git a/gcc/config/alpha/vms.h b/gcc/config/alpha/vms.h
++index 2a9917cde62..0033b0004b3 100644
++--- a/gcc/config/alpha/vms.h
+++++ b/gcc/config/alpha/vms.h
++@@ -0,0 +1,1 @@
+++
++-- 
 diff --git a/contrib/git-commit-mklog.py b/contrib/git-commit-mklog.py
 new file mode 100755
 index 00000000000..9c59fb97809
@@ -25798,6 +26099,20 @@ index fcc0726bdbe..dd89436c44b 100644
  
        /* Skip the pair if inter-iteration dependencies are irrelevant
  	 and intra-iteration dependencies are guaranteed to be honored.  */
+diff --git a/gcc/tree-vect-loop-manip.c b/gcc/tree-vect-loop-manip.c
+index df37aead882..639d8ceabf0 100644
+--- a/gcc/tree-vect-loop-manip.c
++++ b/gcc/tree-vect-loop-manip.c
+@@ -1760,7 +1760,8 @@ vect_update_inits_of_drs (loop_vec_info loop_vinfo, tree niters,
+   FOR_EACH_VEC_ELT (datarefs, i, dr)
+     {
+       dr_vec_info *dr_info = loop_vinfo->lookup_dr (dr);
+-      if (!STMT_VINFO_GATHER_SCATTER_P (dr_info->stmt))
++      if (!STMT_VINFO_GATHER_SCATTER_P (dr_info->stmt)
++	  && !STMT_VINFO_SIMD_LANE_ACCESS_P (dr_info->stmt))
+ 	vect_update_init_of_dr (dr_info, niters, code);
+     }
+ }
 diff --git a/gcc/tree-vect-loop.c b/gcc/tree-vect-loop.c
 index 899b5608745..d9e7d04d9ea 100644
 --- a/gcc/tree-vect-loop.c
