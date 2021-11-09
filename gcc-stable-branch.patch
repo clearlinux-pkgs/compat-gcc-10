@@ -579,7 +579,7 @@ Philippe Blain (1):
 Piotr Kubaj (1):
       gcc/configure: Check for powerpc64le*-*-freebsd*
 
-Richard Biener (30):
+Richard Biener (33):
       Increment BASE-VER after release
       testsuite/100176 - fix struct-layout-1_generate.c compile
       middle-end/98726 - fix VECTOR_CST element access
@@ -610,6 +610,9 @@ Richard Biener (30):
       tree-optimization/101868 - avoid PRE of trapping mems across calls
       tree-optimization/101925 - fix VN with reverse storage order
       tree-optimization/102046 - fix SLP build from scalars with patterns
+      tree-optimization/100253 - fix bogus aligned vectorized loads/stores
+      middle-end/100672 - fix bogus right shift folding
+      ipa/102714 - IPA SRA eliding volatile
 
 Richard Earnshaw (12):
       arm: fix UB due to missing mode check [PR100311]
@@ -13442,6 +13445,28 @@ index 991b26f3341..c4bffd0f199 100644
  	return expand_expr_addr_expr_1 (COMPOUND_LITERAL_EXPR_DECL (exp),
  					target, tmode, modifier, as);
        /* FALLTHRU */
+diff --git a/gcc/fold-const.c b/gcc/fold-const.c
+index 6e635382fb4..7b4c9c0eb7f 100644
+--- a/gcc/fold-const.c
++++ b/gcc/fold-const.c
+@@ -511,7 +511,7 @@ negate_expr_p (tree t)
+       if (TREE_CODE (TREE_OPERAND (t, 1)) == INTEGER_CST)
+ 	{
+ 	  tree op1 = TREE_OPERAND (t, 1);
+-	  if (wi::to_wide (op1) == TYPE_PRECISION (type) - 1)
++	  if (wi::to_wide (op1) == element_precision (type) - 1)
+ 	    return true;
+ 	}
+       break;
+@@ -704,7 +704,7 @@ fold_negate_expr_1 (location_t loc, tree t)
+       if (TREE_CODE (TREE_OPERAND (t, 1)) == INTEGER_CST)
+ 	{
+ 	  tree op1 = TREE_OPERAND (t, 1);
+-	  if (wi::to_wide (op1) == TYPE_PRECISION (type) - 1)
++	  if (wi::to_wide (op1) == element_precision (type) - 1)
+ 	    {
+ 	      tree ntype = TYPE_UNSIGNED (type)
+ 			   ? signed_type_for (type)
 diff --git a/gcc/fortran/ChangeLog b/gcc/fortran/ChangeLog
 index aa5932be872..a3a890dc5a7 100644
 --- a/gcc/fortran/ChangeLog
@@ -14967,7 +14992,7 @@ index fbeea454084..2ec4517420e 100644
        *stmt_p = new_stmt;
        return true;
 diff --git a/gcc/ipa-sra.c b/gcc/ipa-sra.c
-index b706fceff42..1cb30afc38c 100644
+index b706fceff42..8ad57493ea6 100644
 --- a/gcc/ipa-sra.c
 +++ b/gcc/ipa-sra.c
 @@ -340,7 +340,7 @@ class isra_call_summary
@@ -15007,7 +15032,61 @@ index b706fceff42..1cb30afc38c 100644
  }
  
  
-@@ -2355,6 +2362,7 @@ process_scan_results (cgraph_node *node, struct function *fun,
+@@ -979,15 +986,17 @@ ptr_parm_has_nonarg_uses (cgraph_node *node, function *fun, tree parm,
+       if (gimple_assign_single_p (stmt))
+ 	{
+ 	  tree rhs = gimple_assign_rhs1 (stmt);
+-	  while (handled_component_p (rhs))
+-	    rhs = TREE_OPERAND (rhs, 0);
+-	  if (TREE_CODE (rhs) == MEM_REF
+-	      && TREE_OPERAND (rhs, 0) == name
+-	      && integer_zerop (TREE_OPERAND (rhs, 1))
+-	      && types_compatible_p (TREE_TYPE (rhs),
+-				     TREE_TYPE (TREE_TYPE (name)))
+-	      && !TREE_THIS_VOLATILE (rhs))
+-	    uses_ok++;
++	  if (!TREE_THIS_VOLATILE (rhs))
++	    {
++	      while (handled_component_p (rhs))
++		rhs = TREE_OPERAND (rhs, 0);
++	      if (TREE_CODE (rhs) == MEM_REF
++		  && TREE_OPERAND (rhs, 0) == name
++		  && integer_zerop (TREE_OPERAND (rhs, 1))
++		  && types_compatible_p (TREE_TYPE (rhs),
++					 TREE_TYPE (TREE_TYPE (name))))
++		uses_ok++;
++	    }
+ 	}
+       else if (is_gimple_call (stmt))
+ 	{
+@@ -1021,15 +1030,17 @@ ptr_parm_has_nonarg_uses (cgraph_node *node, function *fun, tree parm,
+ 		  continue;
+ 		}
+ 
+-	      while (handled_component_p (arg))
+-		arg = TREE_OPERAND (arg, 0);
+-	      if (TREE_CODE (arg) == MEM_REF
+-		  && TREE_OPERAND (arg, 0) == name
+-		  && integer_zerop (TREE_OPERAND (arg, 1))
+-		  && types_compatible_p (TREE_TYPE (arg),
+-					 TREE_TYPE (TREE_TYPE (name)))
+-		  && !TREE_THIS_VOLATILE (arg))
+-		uses_ok++;
++	      if (!TREE_THIS_VOLATILE (arg))
++		{
++		  while (handled_component_p (arg))
++		    arg = TREE_OPERAND (arg, 0);
++		  if (TREE_CODE (arg) == MEM_REF
++		      && TREE_OPERAND (arg, 0) == name
++		      && integer_zerop (TREE_OPERAND (arg, 1))
++		      && types_compatible_p (TREE_TYPE (arg),
++					     TREE_TYPE (TREE_TYPE (name))))
++		    uses_ok++;
++		}
+ 	    }
+ 	}
+ 
+@@ -2355,6 +2366,7 @@ process_scan_results (cgraph_node *node, struct function *fun,
  	unsigned count = gimple_call_num_args (call_stmt);
  	isra_call_summary *csum = call_sums->get_create (cs);
  	csum->init_inputs (count);
@@ -15015,7 +15094,7 @@ index b706fceff42..1cb30afc38c 100644
  	for (unsigned argidx = 0; argidx < count; argidx++)
  	  {
  	    if (!csum->m_arg_flow[argidx].pointer_pass_through)
-@@ -2601,6 +2609,7 @@ isra_write_edge_summary (output_block *ob, cgraph_edge *e)
+@@ -2601,6 +2613,7 @@ isra_write_edge_summary (output_block *ob, cgraph_edge *e)
    bp_pack_value (&bp, csum->m_return_ignored, 1);
    bp_pack_value (&bp, csum->m_return_returned, 1);
    bp_pack_value (&bp, csum->m_bit_aligned_arg, 1);
@@ -15023,7 +15102,7 @@ index b706fceff42..1cb30afc38c 100644
    streamer_write_bitpack (&bp);
  }
  
-@@ -2719,6 +2728,7 @@ isra_read_edge_summary (struct lto_input_block *ib, cgraph_edge *cs)
+@@ -2719,6 +2732,7 @@ isra_read_edge_summary (struct lto_input_block *ib, cgraph_edge *cs)
    csum->m_return_ignored = bp_unpack_value (&bp, 1);
    csum->m_return_returned = bp_unpack_value (&bp, 1);
    csum->m_bit_aligned_arg = bp_unpack_value (&bp, 1);
@@ -15031,7 +15110,7 @@ index b706fceff42..1cb30afc38c 100644
  }
  
  /* Read intraprocedural analysis information about NODE and all of its outgoing
-@@ -3475,7 +3485,8 @@ param_splitting_across_edge (cgraph_edge *cs)
+@@ -3475,7 +3489,8 @@ param_splitting_across_edge (cgraph_edge *cs)
  	    }
  	  else if (!ipf->safe_to_import_accesses)
  	    {
@@ -18806,6 +18885,45 @@ index 00000000000..ab436bac72f
 +    } n;
 +  }
 +} x;
+diff --git a/gcc/testsuite/g++.dg/pr100253.C b/gcc/testsuite/g++.dg/pr100253.C
+new file mode 100644
+index 00000000000..0102caa7df8
+--- /dev/null
++++ b/gcc/testsuite/g++.dg/pr100253.C
+@@ -0,0 +1,33 @@
++/* { dg-do run } */
++/* { dg-options "-O2 -fno-tree-bit-ccp -ftree-slp-vectorize" } */
++
++#include <vector>
++
++struct T
++{
++};
++
++struct S
++{
++  std::vector < std::vector < T > > v;
++  char x;
++  char y[16];
++  char z[16];
++};
++
++S s, g[1];
++
++void
++foo (char *buf)
++{
++  s = g[*buf];
++}
++
++char c;
++
++int
++main ()
++{
++  foo (&c);
++  return 0;
++}
 diff --git a/gcc/testsuite/g++.dg/pr98032.C b/gcc/testsuite/g++.dg/pr98032.C
 new file mode 100644
 index 00000000000..d7eef276668
@@ -19588,6 +19706,129 @@ index 00000000000..1ceb6e43136
 +    __builtin_abort();
 +  return 0;
 +}
+diff --git a/gcc/testsuite/gcc.dg/ipa/pr102714.c b/gcc/testsuite/gcc.dg/ipa/pr102714.c
+new file mode 100644
+index 00000000000..65dd86f5c15
+--- /dev/null
++++ b/gcc/testsuite/gcc.dg/ipa/pr102714.c
+@@ -0,0 +1,117 @@
++/* { dg-do compile } */
++/* { dg-options "-O2 -fno-strict-aliasing -fdump-ipa-sra-details -fdump-tree-optimized" } */
++
++typedef _Bool bool;
++
++enum {
++ false = 0,
++ true = 1
++};
++
++struct xarray {
++ unsigned int xa_lock;
++ unsigned int xa_flags;
++ void * xa_head;
++
++};
++
++struct list_head {
++ struct list_head *next, *prev;
++};
++
++struct callback_head {
++ struct callback_head *next;
++ void (*func)(struct callback_head *head);
++} __attribute__((aligned(sizeof(void *))));
++
++struct xa_node {
++ unsigned char shift;
++ unsigned char offset;
++ unsigned char count;
++ unsigned char nr_values;
++ struct xa_node *parent;
++ struct xarray *array;
++ union {
++  struct list_head private_list;
++  struct callback_head callback_head;
++ };
++ void *slots[(1UL << (0 ? 4 : 6))];
++ union {
++  unsigned long tags[3][((((1UL << (0 ? 4 : 6))) + (64) - 1) / (64))];
++  unsigned long marks[3][((((1UL << (0 ? 4 : 6))) + (64) - 1) / (64))];
++ };
++};
++
++static inline __attribute__((__gnu_inline__)) __attribute__((__unused__)) __attribute__((no_instrument_function)) unsigned long shift_maxindex(unsigned int shift)
++{
++ return ((1UL << (0 ? 4 : 6)) << shift) - 1;
++}
++
++static inline __attribute__((__gnu_inline__)) __attribute__((__unused__)) __attribute__((no_instrument_function)) unsigned long node_maxindex(const struct xa_node *node)
++{
++ return shift_maxindex(node->shift);
++}
++
++static inline __attribute__((__gnu_inline__)) __attribute__((__unused__)) __attribute__((no_instrument_function)) struct xa_node *entry_to_node(void *ptr)
++{
++ return (void *)((unsigned long)ptr & ~2UL);
++}
++
++static inline __attribute__((__gnu_inline__)) __attribute__((__unused__)) __attribute__((no_instrument_function)) bool radix_tree_is_internal_node(void *ptr)
++{
++ return ((unsigned long)ptr & 3UL) ==
++    2UL;
++}
++
++static inline __attribute__((__gnu_inline__)) __attribute__((__unused__)) __attribute__((no_instrument_function)) void *xa_mk_internal(unsigned long v)
++{
++ return (void *)((v << 2) | 2);
++}
++
++static unsigned radix_tree_load_root(const struct xarray *root,
++  struct xa_node **nodep, unsigned long *maxindex)
++{
++ struct xa_node *node =
++ ({
++    typeof(root->xa_head) ________p1 = ({(*(const volatile typeof(root->xa_head) *)&(root->xa_head)); });
++    ((typeof(*root->xa_head) *)(________p1));
++ });
++
++ *nodep = node;
++
++ if (__builtin_expect(!!(radix_tree_is_internal_node(node)), 1)) {
++  node = entry_to_node(node);
++  *maxindex = node_maxindex(node);
++  return node->shift + (0 ? 4 : 6);
++ }
++
++ *maxindex = 0;
++ return 0;
++}
++
++void *__radix_tree_lookup(const struct xarray *root,
++     unsigned long index, struct xa_node **nodep,
++     void ***slotp)
++{
++ struct xa_node *node, *parent;
++ unsigned long maxindex;
++
++ restart:
++ parent = ((void *)0);
++ radix_tree_load_root(root, &node, &maxindex);
++ while (radix_tree_is_internal_node(node)) {
++
++  parent = entry_to_node(node);
++  if (node == xa_mk_internal(256))
++   goto restart;
++  if (parent->shift == 0)
++   break;
++ }
++ if (nodep)
++  *nodep = parent;
++
++ return node;
++}
++
++/* { dg-final { scan-ipa-dump-not "IPA_PARAM_OP_SPLIT" "sra" } } */
++/* { dg-final { scan-tree-dump " ={v} " "optimized" } } */
 diff --git a/gcc/testsuite/gcc.dg/lto/pr101868_0.c b/gcc/testsuite/gcc.dg/lto/pr101868_0.c
 new file mode 100644
 index 00000000000..c84d19b0267
@@ -20200,6 +20441,31 @@ index 00000000000..ed856913639
 +  s = 1;
 +  bar ();
 +  if (c != 1)
++    __builtin_abort ();
++  return 0;
++}
+diff --git a/gcc/testsuite/gcc.dg/torture/pr100672.c b/gcc/testsuite/gcc.dg/torture/pr100672.c
+new file mode 100644
+index 00000000000..cc62e71f9a3
+--- /dev/null
++++ b/gcc/testsuite/gcc.dg/torture/pr100672.c
+@@ -0,0 +1,19 @@
++/* { dg-do run } */
++/* { dg-additional-options "-w -Wno-psabi" } */
++
++typedef long long __attribute__((__vector_size__ (4 * sizeof (long long)))) V;
++
++V
++foo (V v)
++{
++  return -(v >> 1);
++}
++
++int
++main (void)
++{
++  V v = foo ((V) { -2, -4, -6, -8 });
++  if (v[0] != 1 || v[1] != 2 || v[2] != 3 || v[3] != 4)
 +    __builtin_abort ();
 +  return 0;
 +}
@@ -26422,6 +26688,70 @@ index adc579ff544..aa3087fe3a4 100644
      }
  }
  
+diff --git a/gcc/tree-vect-stmts.c b/gcc/tree-vect-stmts.c
+index 6418edb5204..2ef71ec41c0 100644
+--- a/gcc/tree-vect-stmts.c
++++ b/gcc/tree-vect-stmts.c
+@@ -8368,6 +8368,7 @@ vectorizable_store (stmt_vec_info stmt_info, gimple_stmt_iterator *gsi,
+ 		  && TREE_CODE (dataref_ptr) == SSA_NAME)
+ 		set_ptr_info_alignment (get_ptr_info (dataref_ptr), align,
+ 					misalign);
++	      align = least_bit_hwi (misalign | align);
+ 
+ 	      if (memory_access_type == VMAT_CONTIGUOUS_REVERSE)
+ 		{
+@@ -8389,7 +8390,6 @@ vectorizable_store (stmt_vec_info stmt_info, gimple_stmt_iterator *gsi,
+ 	      /* Arguments are ready.  Create the new vector stmt.  */
+ 	      if (final_mask)
+ 		{
+-		  align = least_bit_hwi (misalign | align);
+ 		  tree ptr = build_int_cst (ref_type, align * BITS_PER_UNIT);
+ 		  gcall *call
+ 		    = gimple_build_call_internal (IFN_MASK_STORE, 4,
+@@ -8408,14 +8408,10 @@ vectorizable_store (stmt_vec_info stmt_info, gimple_stmt_iterator *gsi,
+ 					  : build_int_cst (ref_type, 0));
+ 		  if (aligned_access_p (first_dr_info))
+ 		    ;
+-		  else if (DR_MISALIGNMENT (first_dr_info) == -1)
+-		    TREE_TYPE (data_ref)
+-		      = build_aligned_type (TREE_TYPE (data_ref),
+-					    align * BITS_PER_UNIT);
+ 		  else
+ 		    TREE_TYPE (data_ref)
+ 		      = build_aligned_type (TREE_TYPE (data_ref),
+-					    TYPE_ALIGN (elem_type));
++					    align * BITS_PER_UNIT);
+ 		  vect_copy_ref_info (data_ref, DR_REF (first_dr_info->dr));
+ 		  gassign *new_stmt
+ 		    = gimple_build_assign (data_ref, vec_oprnd);
+@@ -9567,10 +9563,10 @@ vectorizable_load (stmt_vec_info stmt_info, gimple_stmt_iterator *gsi,
+ 			&& TREE_CODE (dataref_ptr) == SSA_NAME)
+ 		      set_ptr_info_alignment (get_ptr_info (dataref_ptr),
+ 					      align, misalign);
++		    align = least_bit_hwi (misalign | align);
+ 
+ 		    if (final_mask)
+ 		      {
+-			align = least_bit_hwi (misalign | align);
+ 			tree ptr = build_int_cst (ref_type,
+ 						  align * BITS_PER_UNIT);
+ 			gcall *call
+@@ -9621,14 +9617,10 @@ vectorizable_load (stmt_vec_info stmt_info, gimple_stmt_iterator *gsi,
+ 			  = fold_build2 (MEM_REF, ltype, dataref_ptr, offset);
+ 			if (alignment_support_scheme == dr_aligned)
+ 			  ;
+-			else if (DR_MISALIGNMENT (first_dr_info) == -1)
+-			  TREE_TYPE (data_ref)
+-			    = build_aligned_type (TREE_TYPE (data_ref),
+-						  align * BITS_PER_UNIT);
+ 			else
+ 			  TREE_TYPE (data_ref)
+ 			    = build_aligned_type (TREE_TYPE (data_ref),
+-						  TYPE_ALIGN (elem_type));
++						  align * BITS_PER_UNIT);
+ 			if (ltype != vectype)
+ 			  {
+ 			    vect_copy_ref_info (data_ref,
 diff --git a/gcc/tree.c b/gcc/tree.c
 index 3c17694c703..d82c308f14c 100644
 --- a/gcc/tree.c
