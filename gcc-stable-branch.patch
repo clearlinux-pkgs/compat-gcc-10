@@ -75,7 +75,8 @@ François Dumont (3):
       libstdc++: Fix unordered containers move constructors noexcept qualification
       libstdc++: [_GLIBCXX_DEBUG] Fix management of __dp_sign_max_size [PR 99402]
 
-GCC Administrator (210):
+GCC Administrator (211):
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -703,10 +704,19 @@ konglin1 (2):
       i386: Fix wrong optimization for consecutive masked scatters [PR 101472]
 
 diff --git a/contrib/ChangeLog b/contrib/ChangeLog
-index cfcc8b12b53..ac262eae462 100644
+index cfcc8b12b53..da635e2e5fb 100644
 --- a/contrib/ChangeLog
 +++ b/contrib/ChangeLog
-@@ -1,3 +1,47 @@
+@@ -1,3 +1,56 @@
++2021-11-08  Martin Liska  <mliska@suse.cz>
++
++	* gcc-changelog/git_check_commit.py: Sync from master.
++	* gcc-changelog/git_commit.py: Likewise.
++	* gcc-changelog/git_email.py: Likewise.
++	* gcc-changelog/git_update_version.py: Likewise.
++	* gcc-changelog/test_email.py: Likewise.
++	* gcc-changelog/test_patches.txt: Likewise.
++
 +2021-06-23  Martin Liska  <mliska@suse.cz>
 +
 +	* mklog.py: New file.
@@ -3337,10 +3347,19 @@ index 0719d810258..a9368325816 100644
 -10.3.0
 +10.3.1
 diff --git a/gcc/ChangeLog b/gcc/ChangeLog
-index 3b1384e707f..4c71d8dae1e 100644
+index 3b1384e707f..fc408c537f9 100644
 --- a/gcc/ChangeLog
 +++ b/gcc/ChangeLog
-@@ -1,3 +1,1324 @@
+@@ -1,3 +1,1333 @@
++2021-11-08  Kewen Lin  <linkw@linux.ibm.com>
++
++	Backported from master:
++	2021-10-26  Kewen Lin  <linkw@linux.ibm.com>
++
++	PR tree-optimization/102789
++	* tree-vect-loop-manip.c (vect_update_inits_of_drs): Do not
++	update inits of simd_lane_access.
++
 +2021-11-03  Vladimir N. Makarov  <vmakarov@redhat.com>
 +
 +	PR rtl-optimization/102842
