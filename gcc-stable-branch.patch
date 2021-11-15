@@ -75,7 +75,12 @@ François Dumont (3):
       libstdc++: Fix unordered containers move constructors noexcept qualification
       libstdc++: [_GLIBCXX_DEBUG] Fix management of __dp_sign_max_size [PR 99402]
 
-GCC Administrator (212):
+GCC Administrator (217):
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -298,7 +303,7 @@ H.J. Lu (1):
 Hafiz Abid Qadeer (1):
       [OpenACC] Fix an ICE where a loop with GT condition is collapsed.
 
-Harald Anlauf (21):
+Harald Anlauf (27):
       PR fortran/63797 - Bogus ambiguous reference to 'sqrt'
       PR fortran/100154 - ICE in gfc_conv_procedure_call, at fortran/trans-expr.c:6131
       PR fortran/100274 - ICE in gfc_conv_procedure_call, at fortran/trans-expr.c:6131
@@ -320,6 +325,12 @@ Harald Anlauf (21):
       Fortran - improve checking for intrinsics allowed in constant expressions
       Fortran: resolve expressions during SIZE simplification
       Fortran: fix order of checks for the SHAPE intrinsic
+      Fortran: handle initialization of derived type parameter arrays from scalar
+      Fortran: fix simplification of array-valued parameter expressions
+      Fortran: error recovery on rank mismatch of array and its initializer
+      Fortran: validate shape of arrays in constructors against declarations
+      Fortran: error recovery on initializing invalid derived type array component
+      Fortran: avoid NULL pointer dereferences
 
 Iain Buclaw (13):
       d: Fix ICE in when formating a string with '%' or '`' characters (PR98457)
@@ -475,9 +486,10 @@ Jonathan Wakely (75):
 José Rui Faustino de Sousa (1):
       Fortran: Fix double function call with -fcheck=pointer [PR]
 
-Kewen Lin (2):
+Kewen Lin (3):
       ipa-fnsummary: Remove inconsistent bp_pack_value
       vect: Don't update inits for simd_lane_access DRs [PR102789]
+      rs6000/doc: Rename future cpu with power10
 
 Marek Polacek (13):
       c++: ICE when late parsing noexcept/NSDMI [PR98333]
@@ -13187,7 +13199,7 @@ index 9c734595950..8184f59e820 100644
  
  @node RISC-V Built-in Functions
 diff --git a/gcc/doc/invoke.texi b/gcc/doc/invoke.texi
-index eabeec944e7..c196f1179af 100644
+index eabeec944e7..81e14773f42 100644
 --- a/gcc/doc/invoke.texi
 +++ b/gcc/doc/invoke.texi
 @@ -770,6 +770,7 @@ Objective-C and Objective-C++ Dialects}.
@@ -13278,6 +13290,62 @@ index eabeec944e7..c196f1179af 100644
  @item -mfdpic
  @itemx -mno-fdpic
  @opindex mfdpic
+@@ -25640,7 +25671,7 @@ Supported values for @var{cpu_type} are @samp{401}, @samp{403},
+ @samp{e6500}, @samp{ec603e}, @samp{G3}, @samp{G4}, @samp{G5},
+ @samp{titan}, @samp{power3}, @samp{power4}, @samp{power5}, @samp{power5+},
+ @samp{power6}, @samp{power6x}, @samp{power7}, @samp{power8},
+-@samp{power9}, @samp{future}, @samp{powerpc}, @samp{powerpc64},
++@samp{power9}, @samp{power10}, @samp{powerpc}, @samp{powerpc64},
+ @samp{powerpc64le}, @samp{rs64}, and @samp{native}.
+ 
+ @option{-mcpu=powerpc}, @option{-mcpu=powerpc64}, and
+@@ -25821,10 +25852,9 @@ Enable/disable the @var{__float128} keyword for IEEE 128-bit floating point
+ and use either software emulation for IEEE 128-bit floating point or
+ hardware instructions.
+ 
+-The VSX instruction set (@option{-mvsx}, @option{-mcpu=power7},
+-@option{-mcpu=power8}), or @option{-mcpu=power9} must be enabled to
+-use the IEEE 128-bit floating point support.  The IEEE 128-bit
+-floating point support only works on PowerPC Linux systems.
++The VSX instruction set (@option{-mvsx}) must be enabled to use the IEEE
++128-bit floating point support.  The IEEE 128-bit floating point is only
++supported on Linux.
+ 
+ The default for @option{-mfloat128} is enabled on PowerPC Linux
+ systems using the VSX instruction set, and disabled on other systems.
+@@ -26654,24 +26684,25 @@ the offset with a symbol reference to a canary in the TLS block.
+ @itemx -mno-pcrel
+ @opindex mpcrel
+ @opindex mno-pcrel
+-Generate (do not generate) pc-relative addressing when the option
+-@option{-mcpu=future} is used.  The @option{-mpcrel} option requires
+-that the medium code model (@option{-mcmodel=medium}) and prefixed
+-addressing (@option{-mprefixed}) options are enabled.
++Generate (do not generate) pc-relative addressing.  The @option{-mpcrel}
++option requires that the medium code model (@option{-mcmodel=medium})
++and prefixed addressing (@option{-mprefixed}) options are enabled.
+ 
+ @item -mprefixed
+ @itemx -mno-prefixed
+ @opindex mprefixed
+ @opindex mno-prefixed
+ Generate (do not generate) addressing modes using prefixed load and
+-store instructions when the option @option{-mcpu=future} is used.
++store instructions.  The @option{-mprefixed} option requires that
++the option @option{-mcpu=power10} (or later) is enabled.
+ 
+ @item -mmma
+ @itemx -mno-mma
+ @opindex mmma
+ @opindex mno-mma
+-Generate (do not generate) the MMA instructions when the option
+-@option{-mcpu=future} is used.
++Generate (do not generate) the MMA instructions.  The @option{-mma}
++option requires that the option @option{-mcpu=power10} (or later)
++is enabled.
+ @end table
+ 
+ @node RX Options
 @@ -27817,10 +27848,11 @@ so @option{-mno-lra} needs to be passed to get old Reload.
  Set the instruction set, register set, and instruction scheduling parameters
  for machine type @var{cpu_type}.  Supported values for @var{cpu_type} are
@@ -13494,10 +13562,72 @@ index 6e635382fb4..7b4c9c0eb7f 100644
  	      tree ntype = TYPE_UNSIGNED (type)
  			   ? signed_type_for (type)
 diff --git a/gcc/fortran/ChangeLog b/gcc/fortran/ChangeLog
-index aa5932be872..a3a890dc5a7 100644
+index aa5932be872..0aeafc3b3ed 100644
 --- a/gcc/fortran/ChangeLog
 +++ b/gcc/fortran/ChangeLog
-@@ -1,3 +1,373 @@
+@@ -1,3 +1,435 @@
++2021-11-13  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2021-11-10  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/103137
++	PR fortran/103138
++	* check.c (gfc_check_shape): Avoid NULL pointer dereference on
++	missing ref.
++	* simplify.c (gfc_simplify_cshift): Avoid NULL pointer dereference
++	when shape not set.
++	(gfc_simplify_transpose): Likewise.
++
++2021-11-13  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2021-10-26  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/102816
++	* resolve.c (resolve_structure_cons): Reject invalid array spec of
++	a DT component referenced in a structure constructor.
++
++2021-11-13  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2021-10-15  Harald Anlauf  <anlauf@gmx.de>
++		    Tobias Burnus  <tobias@codesourcery.com>
++
++	PR fortran/102685
++	* decl.c (match_clist_expr): Set rank/shape of clist initializer
++	to match LHS.
++	* resolve.c (resolve_structure_cons): In a structure constructor,
++	compare shapes of array components against declared shape.
++
++2021-11-13  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2021-11-06  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/102715
++	* decl.c (add_init_expr_to_sym): Reject rank mismatch between
++	array and its initializer.
++
++2021-11-13  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2021-11-05  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/102817
++	* expr.c (simplify_parameter_variable): Copy shape of referenced
++	subobject when simplifying.
++
++2021-11-13  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2021-10-10  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/99348
++	PR fortran/102521
++	* decl.c (add_init_expr_to_sym): Extend initialization of
++	parameter arrays from scalars to handle derived types.
++
 +2021-10-23  Harald Anlauf  <anlauf@gmx.de>
 +
 +	Backported from master:
@@ -13886,7 +14016,7 @@ index 471523fb767..e5ce3328471 100644
  	empty_ts = e->ts;
  
 diff --git a/gcc/fortran/check.c b/gcc/fortran/check.c
-index ca6f582625d..5ecfea077a1 100644
+index ca6f582625d..f37016bced5 100644
 --- a/gcc/fortran/check.c
 +++ b/gcc/fortran/check.c
 @@ -289,7 +289,7 @@ bin2real (gfc_expr *x, int kind)
@@ -13969,7 +14099,7 @@ index ca6f582625d..5ecfea077a1 100644
    d = ap->next->next->expr;
    m = ap->next->next->next->expr;
    k = ap->next->next->next->next->expr;
-@@ -5068,6 +5075,13 @@ gfc_check_shape (gfc_expr *source, gfc_expr *kind)
+@@ -5068,9 +5075,19 @@ gfc_check_shape (gfc_expr *source, gfc_expr *kind)
    if (gfc_invalid_null_arg (source))
      return false;
  
@@ -13983,7 +14113,13 @@ index ca6f582625d..5ecfea077a1 100644
    if (source->rank == 0 || source->expr_type != EXPR_VARIABLE)
      return true;
  
-@@ -5080,13 +5094,6 @@ gfc_check_shape (gfc_expr *source, gfc_expr *kind)
++  if (source->ref == NULL)
++    return false;
++
+   ar = gfc_find_array_ref (source);
+ 
+   if (ar->as && ar->as->type == AS_ASSUMED_SIZE && ar->type == AR_FULL)
+@@ -5080,13 +5097,6 @@ gfc_check_shape (gfc_expr *source, gfc_expr *kind)
        return false;
      }
  
@@ -13997,7 +14133,7 @@ index ca6f582625d..5ecfea077a1 100644
    return true;
  }
  
-@@ -5681,6 +5688,19 @@ gfc_check_spread (gfc_expr *source, gfc_expr *dim, gfc_expr *ncopies)
+@@ -5681,6 +5691,19 @@ gfc_check_spread (gfc_expr *source, gfc_expr *dim, gfc_expr *ncopies)
  /* Functions for checking FGETC, FPUTC, FGET and FPUT (subroutines and
     functions).  */
  
@@ -14017,7 +14153,7 @@ index ca6f582625d..5ecfea077a1 100644
  bool
  gfc_check_fgetputc_sub (gfc_expr *unit, gfc_expr *c, gfc_expr *status)
  {
-@@ -5694,13 +5714,19 @@ gfc_check_fgetputc_sub (gfc_expr *unit, gfc_expr *c, gfc_expr *status)
+@@ -5694,13 +5717,19 @@ gfc_check_fgetputc_sub (gfc_expr *unit, gfc_expr *c, gfc_expr *status)
      return false;
    if (!kind_value_check (c, 1, gfc_default_character_kind))
      return false;
@@ -14038,7 +14174,7 @@ index ca6f582625d..5ecfea077a1 100644
      return false;
  
    return true;
-@@ -5721,13 +5747,19 @@ gfc_check_fgetput_sub (gfc_expr *c, gfc_expr *status)
+@@ -5721,13 +5750,19 @@ gfc_check_fgetput_sub (gfc_expr *c, gfc_expr *status)
      return false;
    if (!kind_value_check (c, 0, gfc_default_character_kind))
      return false;
@@ -14118,10 +14254,48 @@ index f017fbe3be7..51bd6d18317 100644
      {
        gfc_symtree *st;
 diff --git a/gcc/fortran/decl.c b/gcc/fortran/decl.c
-index 9273976aa9a..66baf11a249 100644
+index 9273976aa9a..2ad9fb63399 100644
 --- a/gcc/fortran/decl.c
 +++ b/gcc/fortran/decl.c
-@@ -2078,6 +2078,24 @@ add_init_expr_to_sym (const char *name, gfc_expr **initp, locus *var_locus)
+@@ -896,9 +896,6 @@ match_clist_expr (gfc_expr **result, gfc_typespec *ts, gfc_array_spec *as)
+       expr->ts = *ts;
+       expr->value.constructor = array_head;
+ 
+-      expr->rank = as->rank;
+-      expr->shape = gfc_get_shape (expr->rank);
+-
+       /* Validate sizes.  We built expr ourselves, so cons_size will be
+ 	 constant (we fail above for non-constant expressions).
+ 	 We still need to verify that the sizes match.  */
+@@ -911,6 +908,12 @@ match_clist_expr (gfc_expr **result, gfc_typespec *ts, gfc_array_spec *as)
+       mpz_clear (cons_size);
+       if (cmp)
+ 	goto cleanup;
++
++      /* Set the rank/shape to match the LHS as auto-reshape is implied. */
++      expr->rank = as->rank;
++      expr->shape = gfc_get_shape (as->rank);
++      for (int i = 0; i < as->rank; ++i)
++	spec_dimen_size (as, i, &expr->shape[i]);
+     }
+ 
+   /* Make sure scalar types match. */
+@@ -2020,6 +2023,14 @@ add_init_expr_to_sym (const char *name, gfc_expr **initp, locus *var_locus)
+ 	    }
+ 	}
+ 
++      if (sym->attr.flavor == FL_PARAMETER && sym->attr.dimension && sym->as
++	  && sym->as->rank && init->rank && init->rank != sym->as->rank)
++	{
++	  gfc_error ("Rank mismatch of array at %L and its initializer "
++		     "(%d/%d)", &sym->declared_at, sym->as->rank, init->rank);
++	  return false;
++	}
++
+       /* If sym is implied-shape, set its upper bounds from init.  */
+       if (sym->attr.flavor == FL_PARAMETER && sym->attr.dimension
+ 	  && sym->as->type == AS_IMPLIED_SHAPE)
+@@ -2078,6 +2089,24 @@ add_init_expr_to_sym (const char *name, gfc_expr **initp, locus *var_locus)
  	  sym->as->type = AS_EXPLICIT;
  	}
  
@@ -14146,8 +14320,28 @@ index 9273976aa9a..66baf11a249 100644
        /* Need to check if the expression we initialized this
  	 to was one of the iso_c_binding named constants.  If so,
  	 and we're a parameter (constant), let it be iso_c.
+@@ -2105,12 +2134,16 @@ add_init_expr_to_sym (const char *name, gfc_expr **initp, locus *var_locus)
+ 	  gfc_expr *array;
+ 	  int n;
+ 	  if (sym->attr.flavor == FL_PARAMETER
+-		&& init->expr_type == EXPR_CONSTANT
+-		&& spec_size (sym->as, &size)
+-		&& mpz_cmp_si (size, 0) > 0)
++	      && gfc_is_constant_expr (init)
++	      && (init->expr_type == EXPR_CONSTANT
++		  || init->expr_type == EXPR_STRUCTURE)
++	      && spec_size (sym->as, &size)
++	      && mpz_cmp_si (size, 0) > 0)
+ 	    {
+ 	      array = gfc_get_array_expr (init->ts.type, init->ts.kind,
+ 					  &init->where);
++	      if (init->ts.type == BT_DERIVED)
++		array->ts.u.derived = init->ts.u.derived;
+ 	      for (n = 0; n < (int)mpz_get_si (size); n++)
+ 		gfc_constructor_append_expr (&array->value.constructor,
+ 					     n == 0
 diff --git a/gcc/fortran/expr.c b/gcc/fortran/expr.c
-index f946145eb1b..3fb93d4ed18 100644
+index f946145eb1b..9c091fe74e1 100644
 --- a/gcc/fortran/expr.c
 +++ b/gcc/fortran/expr.c
 @@ -990,6 +990,34 @@ done:
@@ -14228,7 +14422,16 @@ index f946145eb1b..3fb93d4ed18 100644
    if (end >= start)
      length = end - start + 1;
    else
-@@ -3809,6 +3840,9 @@ gfc_check_pointer_assign (gfc_expr *lvalue, gfc_expr *rvalue,
+@@ -2095,6 +2126,8 @@ simplify_parameter_variable (gfc_expr *p, int type)
+       if (e == NULL)
+ 	return false;
+ 
++      gfc_free_shape (&e->shape, e->rank);
++      e->shape = gfc_copy_shape (p->shape, p->rank);
+       e->rank = p->rank;
+ 
+       if (e->ts.type == BT_CHARACTER && p->ts.u.cl)
+@@ -3809,6 +3842,9 @@ gfc_check_pointer_assign (gfc_expr *lvalue, gfc_expr *rvalue,
    int proc_pointer;
    bool same_rank;
  
@@ -14514,10 +14717,52 @@ index 8edc83a42c3..b03961a9981 100644
  	    {
  	      gfc_error ("No initializer for component %qs given in the"
 diff --git a/gcc/fortran/resolve.c b/gcc/fortran/resolve.c
-index 7ca5f44f419..21e3332b5c0 100644
+index 7ca5f44f419..0489184302c 100644
 --- a/gcc/fortran/resolve.c
 +++ b/gcc/fortran/resolve.c
-@@ -4858,6 +4858,8 @@ gfc_resolve_dim_arg (gfc_expr *dim)
+@@ -1436,6 +1436,41 @@ resolve_structure_cons (gfc_expr *expr, int init)
+ 	    }
+ 	}
+ 
++      /* Validate shape, except for dynamic or PDT arrays.  */
++      if (cons->expr->expr_type == EXPR_ARRAY && rank == cons->expr->rank
++	  && comp->as && !comp->attr.allocatable && !comp->attr.pointer
++	  && !comp->attr.pdt_array)
++	{
++	  mpz_t len;
++	  mpz_init (len);
++	  for (int n = 0; n < rank; n++)
++	    {
++	      if (comp->as->upper[n]->expr_type != EXPR_CONSTANT
++		  || comp->as->lower[n]->expr_type != EXPR_CONSTANT)
++		{
++		  gfc_error ("Bad array spec of component %qs referenced in "
++			     "structure constructor at %L",
++			     comp->name, &cons->expr->where);
++		  t = false;
++		  break;
++		};
++	      mpz_set_ui (len, 1);
++	      mpz_add (len, len, comp->as->upper[n]->value.integer);
++	      mpz_sub (len, len, comp->as->lower[n]->value.integer);
++	      if (mpz_cmp (cons->expr->shape[n], len) != 0)
++		{
++		  gfc_error ("The shape of component %qs in the structure "
++			     "constructor at %L differs from the shape of the "
++			     "declared component for dimension %d (%ld/%ld)",
++			     comp->name, &cons->expr->where, n+1,
++			     mpz_get_si (cons->expr->shape[n]),
++			     mpz_get_si (len));
++		  t = false;
++		}
++	    }
++	  mpz_clear (len);
++	}
++
+       if (!comp->attr.pointer || comp->attr.proc_pointer
+ 	  || cons->expr->expr_type == EXPR_NULL)
+ 	continue;
+@@ -4858,6 +4893,8 @@ gfc_resolve_dim_arg (gfc_expr *dim)
     base symbol.  We traverse the list of reference structures, setting
     the stored reference to references.  Component references can
     provide an additional array specification.  */
@@ -14526,7 +14771,7 @@ index 7ca5f44f419..21e3332b5c0 100644
  
  static void
  find_array_spec (gfc_expr *e)
-@@ -4867,6 +4869,13 @@ find_array_spec (gfc_expr *e)
+@@ -4867,6 +4904,13 @@ find_array_spec (gfc_expr *e)
    gfc_ref *ref;
    bool class_as = false;
  
@@ -14540,7 +14785,7 @@ index 7ca5f44f419..21e3332b5c0 100644
    if (e->symtree->n.sym->ts.type == BT_CLASS)
      {
        as = CLASS_DATA (e->symtree->n.sym)->as;
-@@ -11733,8 +11742,9 @@ gfc_resolve_code (gfc_code *code, gfc_namespace *ns)
+@@ -11733,8 +11777,9 @@ gfc_resolve_code (gfc_code *code, gfc_namespace *ns)
  	      gfc_resolve_omp_do_blocks (code, ns);
  	      break;
  	    case EXEC_SELECT_TYPE:
@@ -14553,10 +14798,20 @@ index 7ca5f44f419..21e3332b5c0 100644
              case EXEC_DO_CONCURRENT:
  	      gfc_do_concurrent_flag = 1;
 diff --git a/gcc/fortran/simplify.c b/gcc/fortran/simplify.c
-index d28aa7a3c16..48a109c1481 100644
+index d28aa7a3c16..0e5c383f9bd 100644
 --- a/gcc/fortran/simplify.c
 +++ b/gcc/fortran/simplify.c
-@@ -7379,6 +7379,7 @@ simplify_size (gfc_expr *array, gfc_expr *dim, int k)
+@@ -2077,6 +2077,9 @@ gfc_simplify_cshift (gfc_expr *array, gfc_expr *shift, gfc_expr *dim)
+   else
+     which = 0;
+ 
++  if (array->shape == NULL)
++    return NULL;
++
+   gfc_array_size (array, &size);
+   arraysize = mpz_get_ui (size);
+   mpz_clear (size);
+@@ -7379,6 +7382,7 @@ simplify_size (gfc_expr *array, gfc_expr *dim, int k)
    mpz_t size;
    gfc_expr *return_value;
    int d;
@@ -14564,7 +14819,7 @@ index d28aa7a3c16..48a109c1481 100644
  
    /* For unary operations, the size of the result is given by the size
       of the operand.  For binary ones, it's the size of the first operand
-@@ -7435,6 +7436,10 @@ simplify_size (gfc_expr *array, gfc_expr *dim, int k)
+@@ -7435,6 +7439,10 @@ simplify_size (gfc_expr *array, gfc_expr *dim, int k)
        return simplified;
      }
  
@@ -14575,6 +14830,16 @@ index d28aa7a3c16..48a109c1481 100644
    if (dim == NULL)
      {
        if (!gfc_array_size (array, &size))
+@@ -8071,6 +8079,9 @@ gfc_simplify_transpose (gfc_expr *matrix)
+ 
+   gcc_assert (matrix->rank == 2);
+ 
++  if (matrix->shape == NULL)
++    return NULL;
++
+   result = gfc_get_array_expr (matrix->ts.type, matrix->ts.kind,
+ 			       &matrix->where);
+   result->rank = 2;
 diff --git a/gcc/fortran/target-memory.c b/gcc/fortran/target-memory.c
 index 7f209913028..a3ef392b5d7 100644
 --- a/gcc/fortran/target-memory.c
@@ -15768,10 +16033,56 @@ index 99edad8a950..f33489286a9 100644
  
  #endif
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index 2913065bf31..731bb3c414c 100644
+index 2913065bf31..536e5ff27b3 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,1502 @@
+@@ -1,3 +1,1548 @@
++2021-11-13  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2021-10-26  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/102816
++	* gfortran.dg/pr102816.f90: New test.
++
++2021-11-13  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2021-10-15  Harald Anlauf  <anlauf@gmx.de>
++		    Tobias Burnus  <tobias@codesourcery.com>
++
++	PR fortran/102685
++	* gfortran.dg/derived_constructor_char_1.f90: Fix invalid code.
++	* gfortran.dg/pr70931.f90: Likewise.
++	* gfortran.dg/transfer_simplify_2.f90: Likewise.
++	* gfortran.dg/pr102685.f90: New test.
++
++2021-11-13  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2021-11-06  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/102715
++	* gfortran.dg/pr68019.f90: Adjust error message.
++	* gfortran.dg/pr102715.f90: New test.
++
++2021-11-13  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2021-11-05  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/102817
++	* gfortran.dg/pr102817.f90: New test.
++
++2021-11-13  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2021-10-10  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/99348
++	PR fortran/102521
++	* gfortran.dg/parameter_array_init_8.f90: New test.
++
 +2021-11-09  Richard Biener  <rguenther@suse.de>
 +
 +	Backported from master:
@@ -24652,6 +24963,19 @@ index 00000000000..c28f52f79ff
 +      print *, y
 +   end associate
 +end
+diff --git a/gcc/testsuite/gfortran.dg/derived_constructor_char_1.f90 b/gcc/testsuite/gfortran.dg/derived_constructor_char_1.f90
+index 892a9c9f4c1..91fc4c902d8 100644
+--- a/gcc/testsuite/gfortran.dg/derived_constructor_char_1.f90
++++ b/gcc/testsuite/gfortran.dg/derived_constructor_char_1.f90
+@@ -5,7 +5,7 @@
+ !
+ !
+   Type :: t5
+-    character (len=5) :: txt(4)
++    character (len=5) :: txt(2)
+   End Type t5
+ 
+   character (len=3), parameter :: str3(2) = [ "ABC", "ZYX" ]
 diff --git a/gcc/testsuite/gfortran.dg/elemental_function_5.f90 b/gcc/testsuite/gfortran.dg/elemental_function_5.f90
 new file mode 100644
 index 00000000000..315ff9162b3
@@ -24801,6 +25125,37 @@ index 00000000000..e5994635008
 +program p
 +  use m
 +  call a ()
++end
+diff --git a/gcc/testsuite/gfortran.dg/parameter_array_init_8.f90 b/gcc/testsuite/gfortran.dg/parameter_array_init_8.f90
+new file mode 100644
+index 00000000000..2e5f7694d3a
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/parameter_array_init_8.f90
+@@ -0,0 +1,25 @@
++! { dg-do run }
++! PR fortran/99348
++! PR fortran/102521
++! Check simplifications for initialization of DT parameter arrays
++
++program p
++  type t
++     integer :: n
++  end type
++  type(t), parameter :: a(4)   = t(1)
++  type(t), parameter :: d(*)   = a
++  type(t), parameter :: b(2,2) = reshape(d, [2,2])
++  integer, parameter :: nn     = b(2,2)% n
++  type u
++     character(3) :: c
++  end type
++  type(u),      parameter :: x(2,3) = u('ab')
++  type(u),      parameter :: y(*,*) = transpose (x)
++  character(*), parameter :: c      = y(3,2)% c
++  integer,      parameter :: lc     = c% len
++  integer,      parameter :: lyc    = len (y(3,2)% c)
++! integer,      parameter :: lxc    = x(1,1)% c% len    ! fails (pr101735?)
++  if (nn /= 1) stop 1
++  if (lc /= 3 .or. lyc /= 3 .or. c /= "ab ") stop 2
 +end
 diff --git a/gcc/testsuite/gfortran.dg/pdt_26.f03 b/gcc/testsuite/gfortran.dg/pdt_26.f03
 index bf1273743d3..59ddcfb6cc4 100644
@@ -25106,6 +25461,99 @@ index 00000000000..1c98c185c17
 +end
 +
 +! { dg-error "Different shape for array assignment" " " { target *-*-* } 7 }
+diff --git a/gcc/testsuite/gfortran.dg/pr102685.f90 b/gcc/testsuite/gfortran.dg/pr102685.f90
+new file mode 100644
+index 00000000000..d325c27b32a
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/pr102685.f90
+@@ -0,0 +1,30 @@
++! { dg-do compile }
++! PR fortran/102685
++
++program p
++  type t
++     integer :: a(2)
++  end type
++  type(t), parameter :: x0    = t([2])         ! { dg-error "shape of component" }
++  type(t), parameter :: x1(2) = t([2])         ! { dg-error "shape of component" }
++  type(t), parameter :: x(2)  = t([integer::]) ! { dg-error "shape of component" }
++
++  type u
++     integer :: a
++     integer :: b(0)
++  end type
++  type(u), parameter :: z0(2) = u(1, [integer::]) ! valid
++  type(u), parameter :: z1    = u(1,  2 )         ! valid
++  type(u), parameter :: z2(2) = u(1,  2 )         ! valid
++  type(u), parameter :: z3    = u(1, [2])         ! { dg-error "shape of component" }
++  type(u), parameter :: z4(2) = u(1, [2])         ! { dg-error "shape of component" }
++
++  type v
++     integer :: a(2,1)
++  end type
++  type(v), parameter :: y0   = v(reshape([1,2],[2,1])) ! valid
++  type(v), parameter :: y1   = v(reshape([1,2],[1,2])) ! { dg-error "shape of component" }
++  type(v), parameter :: y(1) = v(reshape([1,2],[1,2])) ! { dg-error "shape of component" }
++
++  print *, x0,x,x1,y0,y1,y,z0,z1,z2,z3,z4
++end
+diff --git a/gcc/testsuite/gfortran.dg/pr102715.f90 b/gcc/testsuite/gfortran.dg/pr102715.f90
+new file mode 100644
+index 00000000000..7b29a1c05a6
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/pr102715.f90
+@@ -0,0 +1,13 @@
++! { dg-do compile }
++! PR fortran/102715 - ICE in gfc_simplify_transpose
++
++program p
++  type t
++  end type
++  type(t), parameter :: a(4)   = t()
++  type(t), parameter :: b(2,2) = reshape(a, [2]) ! { dg-error "Rank mismatch" }
++  type(t), parameter :: c(2,2) = transpose(b)    ! { dg-error "must be of rank 2" }
++  type(t), parameter :: s2(*)  = b(2,:)          ! { dg-error "Syntax error" }
++  type(t), parameter :: x(*,*) = reshape(a, [2]) ! { dg-error "Rank mismatch" }
++  type(t), parameter :: s3(*)  = x(2,:)          ! { dg-error "Syntax error" }
++end
+diff --git a/gcc/testsuite/gfortran.dg/pr102816.f90 b/gcc/testsuite/gfortran.dg/pr102816.f90
+new file mode 100644
+index 00000000000..46831743b2b
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/pr102816.f90
+@@ -0,0 +1,9 @@
++! { dg-do compile }
++! PR fortran/102816
++
++program p
++  type t
++     integer :: a([2])     ! { dg-error "must be scalar" }
++  end type
++  type(t) :: x = t([3, 4]) ! { dg-error "Bad array spec of component" }
++end
+diff --git a/gcc/testsuite/gfortran.dg/pr102817.f90 b/gcc/testsuite/gfortran.dg/pr102817.f90
+new file mode 100644
+index 00000000000..c081a69f0ea
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/pr102817.f90
+@@ -0,0 +1,17 @@
++! { dg-do compile }
++! PR fortran/102817 - ICE in gfc_clear_shape
++
++program test
++  type t
++     integer :: a(1,2) = 3
++  end type t
++  type(t), parameter :: u    = t(4)
++  type(t), parameter :: x(1) = t(4)
++  integer, parameter :: p(1,2) = (x(1)%a)
++  integer            :: z(1,2) = (x(1)%a) 
++  integer            :: y(1,2), v(1,2), w(1,2)
++  v = (u   %a)
++  w =  x(1)%a
++  y = (x(1)%a)
++  print *, v, w, y, z, p
++end
 diff --git a/gcc/testsuite/gfortran.dg/pr63797.f90 b/gcc/testsuite/gfortran.dg/pr63797.f90
 new file mode 100644
 index 00000000000..1131e8167b1
@@ -25172,6 +25620,30 @@ index 00000000000..1131e8167b1
 +  y% a = sqrt (x% a) + z - w + root (x% a)
 +  y% a = real_root (x% a)
 +end program test
+diff --git a/gcc/testsuite/gfortran.dg/pr68019.f90 b/gcc/testsuite/gfortran.dg/pr68019.f90
+index 2e304c3a260..77fd55bd331 100644
+--- a/gcc/testsuite/gfortran.dg/pr68019.f90
++++ b/gcc/testsuite/gfortran.dg/pr68019.f90
+@@ -9,5 +9,5 @@ program p
+       integer :: n
+    end type
+    type(t), parameter :: vec(*) = [(t(i), i = 1, 4)]
+-   type(t), parameter :: arr(*) = reshape(vec, [2, 2])   ! { dg-error "ranks 1 and 2 in assignment" }
++   type(t), parameter :: arr(*) = reshape(vec, [2, 2])   ! { dg-error "Rank mismatch" }
+ end
+diff --git a/gcc/testsuite/gfortran.dg/pr70931.f90 b/gcc/testsuite/gfortran.dg/pr70931.f90
+index 08ecd687752..4444b5eec3b 100644
+--- a/gcc/testsuite/gfortran.dg/pr70931.f90
++++ b/gcc/testsuite/gfortran.dg/pr70931.f90
+@@ -5,6 +5,7 @@ program p
+       integer :: a
+       integer :: b(0)
+    end type
+-   type(t), parameter :: z = t(1, [2])
++!  type(t), parameter :: z = t(1, [2])         ! original invalid code
++   type(t), parameter :: z = t(1, [integer::])
+    print *, z
+ end
 diff --git a/gcc/testsuite/gfortran.dg/pr82314.f90 b/gcc/testsuite/gfortran.dg/pr82314.f90
 new file mode 100644
 index 00000000000..3a147e22711
@@ -25407,6 +25879,19 @@ index 0d5e3d75e88..83e788a55a6 100644
  c = (/ c0(1)(1:5) /)
  do i=1,5
     if (c(1)(i:i) /= c1(i)) STOP 2
+diff --git a/gcc/testsuite/gfortran.dg/transfer_simplify_2.f90 b/gcc/testsuite/gfortran.dg/transfer_simplify_2.f90
+index e0f3f94c4ca..b428fa64b56 100644
+--- a/gcc/testsuite/gfortran.dg/transfer_simplify_2.f90
++++ b/gcc/testsuite/gfortran.dg/transfer_simplify_2.f90
+@@ -145,7 +145,7 @@ contains
+       real(4) :: x(2)
+     end type mytype
+ 
+-    type (mytype), parameter :: dt1(2) = transfer (c1, mytype ((/1.0,2.0,3.0,4.0/)), 2)
++    type (mytype), parameter :: dt1(2) = transfer (c1, mytype ((/1.0,2.0/)), 2)
+     type (mytype)            :: dt2(2)
+ 
+     dt2 = transfer (c2, dt2);
 diff --git a/gcc/testsuite/gnat.dg/derived_type7.adb b/gcc/testsuite/gnat.dg/derived_type7.adb
 new file mode 100644
 index 00000000000..61e7abaa1d7
