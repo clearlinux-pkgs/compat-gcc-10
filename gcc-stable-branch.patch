@@ -75,7 +75,8 @@ François Dumont (3):
       libstdc++: Fix unordered containers move constructors noexcept qualification
       libstdc++: [_GLIBCXX_DEBUG] Fix management of __dp_sign_max_size [PR 99402]
 
-GCC Administrator (217):
+GCC Administrator (218):
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -3363,10 +3364,18 @@ index 0719d810258..a9368325816 100644
 -10.3.0
 +10.3.1
 diff --git a/gcc/ChangeLog b/gcc/ChangeLog
-index 3b1384e707f..08f00489a74 100644
+index 3b1384e707f..19b4fe6c622 100644
 --- a/gcc/ChangeLog
 +++ b/gcc/ChangeLog
-@@ -1,3 +1,1358 @@
+@@ -1,3 +1,1366 @@
++2021-11-15  Kewen Lin  <linkw@linux.ibm.com>
++
++	Backported from master:
++	2021-11-11  Kewen Lin  <linkw@linux.ibm.com>
++
++	* doc/invoke.texi: Change references to "future cpu" to "power10",
++	"-mcpu=future" to "-mcpu=power10".  Adjust words for float128.
++
 +2021-11-09  Richard Biener  <rguenther@suse.de>
 +
 +	Backported from master:
