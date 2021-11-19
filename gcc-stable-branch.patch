@@ -75,7 +75,10 @@ François Dumont (3):
       libstdc++: Fix unordered containers move constructors noexcept qualification
       libstdc++: [_GLIBCXX_DEBUG] Fix management of __dp_sign_max_size [PR 99402]
 
-GCC Administrator (218):
+GCC Administrator (221):
+      Daily bump.
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -333,7 +336,7 @@ Harald Anlauf (27):
       Fortran: error recovery on initializing invalid derived type array component
       Fortran: avoid NULL pointer dereferences
 
-Iain Buclaw (13):
+Iain Buclaw (16):
       d: Fix ICE in when formating a string with '%' or '`' characters (PR98457)
       d: Fix ICE in gimplify_var_or_parm_decl, at gimplify.c:2755 (PR100882)
       d: Respect explicit align(N) type alignment (PR100935)
@@ -347,6 +350,9 @@ Iain Buclaw (13):
       d: Wrong evaluation order of binary expressions (PR101640)
       d: Ensure casting from bool results in either 0 or 1 (PR96435)
       d: gdc driver ignores -static-libstdc++ when automatically linking libstdc++ library
+      d: Use HOST_WIDE_INT for type size temporaries.
+      libphobos: Don't call __gthread_key_delete in the emutls destroy function.
+      libphobos: Increase size of defaultStackPages on OSX X86_64 targets.
 
 Iain Sandoe (4):
       coroutines: Fix a typo in rewriting the function.
@@ -12065,10 +12071,18 @@ index 53e9603868d..5ecedef0bb4 100644
        return DEBUG_IMPLICIT_PTR_DECL (x)
  	     == DEBUG_IMPLICIT_PTR_DECL (y);
 diff --git a/gcc/d/ChangeLog b/gcc/d/ChangeLog
-index 8bc729ae32d..1c2c374c3f2 100644
+index 8bc729ae32d..ea6b918cf1f 100644
 --- a/gcc/d/ChangeLog
 +++ b/gcc/d/ChangeLog
-@@ -1,3 +1,163 @@
+@@ -1,3 +1,171 @@
++2021-11-18  Iain Buclaw  <ibuclaw@gdcproject.org>
++
++	Backported from master:
++	2021-11-18  Iain Buclaw  <ibuclaw@gdcproject.org>
++
++	* decl.cc (d_finish_decl): Use HOST_WIDE_INT for type size
++	temporaries.
++
 +2021-10-13  Iain Sandoe  <iain@sandoe.co.uk>
 +
 +	Backported from master:
@@ -12703,6 +12717,22 @@ index 4d039adb0fa..7989033366e 100644
  extern tree build_typeinfo (const Loc &, Type *);
  extern void create_typeinfo (Type *, Module *);
  extern void create_tinfo_types (Module *);
+diff --git a/gcc/d/decl.cc b/gcc/d/decl.cc
+index f342688ba91..1ccd983af9c 100644
+--- a/gcc/d/decl.cc
++++ b/gcc/d/decl.cc
+@@ -1585,8 +1585,9 @@ d_finish_decl (tree decl)
+   if (flag_checking && DECL_INITIAL (decl))
+     {
+       /* Initializer must never be bigger than symbol size.  */
+-      dinteger_t tsize = int_size_in_bytes (TREE_TYPE (decl));
+-      dinteger_t dtsize = int_size_in_bytes (TREE_TYPE (DECL_INITIAL (decl)));
++      HOST_WIDE_INT tsize = int_size_in_bytes (TREE_TYPE (decl));
++      HOST_WIDE_INT dtsize =
++	int_size_in_bytes (TREE_TYPE (DECL_INITIAL (decl)));
+ 
+       if (tsize < dtsize)
+ 	{
 diff --git a/gcc/d/dmd/cond.c b/gcc/d/dmd/cond.c
 index b021f62c29b..54cd897d2fa 100644
 --- a/gcc/d/dmd/cond.c
@@ -30285,6 +30315,77 @@ index 053809c0ea7..f47e999cc94 100644
  2021-04-08  Release Manager
  
  	* GCC 10.3.0 released.
+diff --git a/libphobos/libdruntime/core/thread.d b/libphobos/libdruntime/core/thread.d
+index e1a68057ca1..79cd40c6fdd 100644
+--- a/libphobos/libdruntime/core/thread.d
++++ b/libphobos/libdruntime/core/thread.d
+@@ -4146,6 +4146,24 @@ class Fiber
+     // Initialization
+     ///////////////////////////////////////////////////////////////////////////
+ 
++    version (Windows)
++        // exception handling walks the stack, invoking DbgHelp.dll which
++        // needs up to 16k of stack space depending on the version of DbgHelp.dll,
++        // the existence of debug symbols and other conditions. Avoid causing
++        // stack overflows by defaulting to a larger stack size
++        enum defaultStackPages = 8;
++    else version (OSX)
++    {
++        version (X86_64)
++            // libunwind on macOS 11 now requires more stack space than 16k, so
++            // default to a larger stack size. This is only applied to X86 as
++            // the PAGESIZE is still 4k, however on AArch64 it is 16k.
++            enum defaultStackPages = 8;
++        else
++            enum defaultStackPages = 4;
++    }
++    else
++        enum defaultStackPages = 4;
+ 
+     /**
+      * Initializes a fiber object which is associated with a static
+@@ -4160,7 +4178,7 @@ class Fiber
+      * In:
+      *  fn must not be null.
+      */
+-    this( void function() fn, size_t sz = PAGESIZE*4,
++    this( void function() fn, size_t sz = PAGESIZE * defaultStackPages,
+           size_t guardPageSize = PAGESIZE ) nothrow
+     in
+     {
+@@ -4186,7 +4204,7 @@ class Fiber
+      * In:
+      *  dg must not be null.
+      */
+-    this( void delegate() dg, size_t sz = PAGESIZE*4,
++    this( void delegate() dg, size_t sz = PAGESIZE * defaultStackPages,
+           size_t guardPageSize = PAGESIZE ) nothrow
+     in
+     {
+diff --git a/libphobos/libdruntime/gcc/emutls.d b/libphobos/libdruntime/gcc/emutls.d
+index 1436cdb35a5..7e4a1d6f8de 100644
+--- a/libphobos/libdruntime/gcc/emutls.d
++++ b/libphobos/libdruntime/gcc/emutls.d
+@@ -229,9 +229,6 @@ void** emutlsAlloc(shared __emutls_object* obj) nothrow @nogc
+ extern (C) void emutlsDestroyThread(void* ptr) nothrow @nogc
+ {
+     auto arr = cast(TlsArray*) ptr;
+-    emutlsMutex.lock_nothrow();
+-    emutlsArrays.remove(arr);
+-    emutlsMutex.unlock_nothrow();
+ 
+     foreach (entry; *arr)
+     {
+@@ -308,9 +305,6 @@ void _d_emutls_scan(scope void delegate(void* pbeg, void* pend) nothrow cb) noth
+ // Call this after druntime has been unloaded
+ void _d_emutls_destroy() nothrow @nogc
+ {
+-    if (__gthread_key_delete(emutlsKey) != 0)
+-        abort();
+-
+     (cast(Mutex) _emutlsMutex.ptr).__dtor();
+     destroy(emutlsArrays);
+ }
 diff --git a/libphobos/src/std/typecons.d b/libphobos/src/std/typecons.d
 index a63227cee8b..e0a9ad6c519 100644
 --- a/libphobos/src/std/typecons.d
