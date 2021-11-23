@@ -75,7 +75,8 @@ François Dumont (3):
       libstdc++: Fix unordered containers move constructors noexcept qualification
       libstdc++: [_GLIBCXX_DEBUG] Fix management of __dp_sign_max_size [PR 99402]
 
-GCC Administrator (224):
+GCC Administrator (225):
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -3375,10 +3376,19 @@ index 0719d810258..a9368325816 100644
 -10.3.0
 +10.3.1
 diff --git a/gcc/ChangeLog b/gcc/ChangeLog
-index 3b1384e707f..19b4fe6c622 100644
+index 3b1384e707f..df34ae8f0dd 100644
 --- a/gcc/ChangeLog
 +++ b/gcc/ChangeLog
-@@ -1,3 +1,1366 @@
+@@ -1,3 +1,1375 @@
++2021-11-22  Stefan Schulze Frielinghaus  <stefansf@linux.ibm.com>
++
++	Backported from master:
++	2021-11-19  Stefan Schulze Frielinghaus  <stefansf@linux.ibm.com>
++
++	* config/s390/s390.md (define_peephole2): Variable insn points
++	to the first matched insn.  Use peep2_next_insn(1) to refer to
++	the second matched insn.
++
 +2021-11-15  Kewen Lin  <linkw@linux.ibm.com>
 +
 +	Backported from master:
@@ -13619,10 +13629,24 @@ index 6e635382fb4..7b4c9c0eb7f 100644
  	      tree ntype = TYPE_UNSIGNED (type)
  			   ? signed_type_for (type)
 diff --git a/gcc/fortran/ChangeLog b/gcc/fortran/ChangeLog
-index aa5932be872..0aeafc3b3ed 100644
+index aa5932be872..7597957831c 100644
 --- a/gcc/fortran/ChangeLog
 +++ b/gcc/fortran/ChangeLog
-@@ -1,3 +1,435 @@
+@@ -1,3 +1,449 @@
++2021-11-22  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2021-11-21  Harald Anlauf  <anlauf@gmx.de>
++		    Steven G. Kargl  <kargl@gcc.gnu.org>
++
++	PR fortran/99061
++	* trans-intrinsic.c (gfc_lookup_intrinsic): Helper function for
++	looking up gfortran builtin intrinsics.
++	(gfc_conv_intrinsic_atrigd): Use it.
++	(gfc_conv_intrinsic_cotan): Likewise.
++	(gfc_conv_intrinsic_cotand): Likewise.
++	(gfc_conv_intrinsic_atan2d): Likewise.
++
 +2021-11-13  Harald Anlauf  <anlauf@gmx.de>
 +
 +	Backported from master:
@@ -16208,10 +16232,26 @@ index 99edad8a950..f33489286a9 100644
  
  #endif
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index 2913065bf31..536e5ff27b3 100644
+index 2913065bf31..b7702eb2895 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,1548 @@
+@@ -1,3 +1,1564 @@
++2021-11-22  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2021-11-21  Harald Anlauf  <anlauf@gmx.de>
++		    Steven G. Kargl  <kargl@gcc.gnu.org>
++
++	PR fortran/99061
++	* gfortran.dg/dec_math_5.f90: New test.
++
++2021-11-22  Stefan Schulze Frielinghaus  <stefansf@linux.ibm.com>
++
++	Backported from master:
++	2021-11-19  Stefan Schulze Frielinghaus  <stefansf@linux.ibm.com>
++
++	* gcc.target/s390/20211119.c: New test.
++
 +2021-11-13  Harald Anlauf  <anlauf@gmx.de>
 +
 +	Backported from master:
