@@ -21,9 +21,10 @@ Andrew Pinski (1):
 Avi Kivity (1):
       libstdc++: add missing typename for dependent type in ranges::elements_view [PR100900]
 
-Bill Schmidt (2):
+Bill Schmidt (3):
       rs6000: Don't let swaps pass break multiply low-part (PR101129)
       rs6000: Add int128 target check to pr101129.c (PR101531)
+      rs6000: Fix vec_cpsgn parameter order (PR101985)
 
 Bin Cheng (1):
       tree-optimization/98736 - use programing order preserved RPO in ldist
@@ -75,7 +76,8 @@ François Dumont (3):
       libstdc++: Fix unordered containers move constructors noexcept qualification
       libstdc++: [_GLIBCXX_DEBUG] Fix management of __dp_sign_max_size [PR 99402]
 
-GCC Administrator (225):
+GCC Administrator (226):
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -418,7 +420,7 @@ John David Anglin (5):
       Don't use 'G' constraint in integer move patterns
       Fix warnings building linux-atomic.c and fptr.c on hppa64-linux
 
-Jonathan Wakely (75):
+Jonathan Wakely (76):
       libstdc++: Fix Doxygen warning about ambiguous file name
       maintainer-scripts: Disable multilib when generating libstdc++ docs
       libstdc++: Fix doxygen markup for group close commands
@@ -494,6 +496,7 @@ Jonathan Wakely (75):
       libstdc++: Rename file with the wrong extension
       libstdc++: Fix range access for empty std::valarray [PR103022]
       libstdc++: Remove [[nodiscard]] from <valarray>
+      libstdc++: Fix circular dependency for bitmap_allocator [PR103381]
 
 José Rui Faustino de Sousa (1):
       Fortran: Fix double function call with -fcheck=pointer [PR]
@@ -525,7 +528,7 @@ Martin Jambor (2):
       ipa-sra: Fix thinko when overriding safe_to_import_accesses (PR 101066)
       sra: Fix corner case of total scalarization with virtual inheritance (PR 102505)
 
-Martin Liska (8):
+Martin Liska (9):
       Sync gcc-changelog scripts.
       gcc-changelog: sync scripts.
       contrib: add git-commit-mklog wrapper
@@ -534,6 +537,7 @@ Martin Liska (8):
       coverage: handle function beginning
       coroutines: init struct members to NULL
       gcc-changelog: sync from master
+      jit: Initialize function::m_blocks in ctor
 
 Martin Sebor (2):
       PR middle-end/100571 - bogus -Wstringop-overflow with VLA of elements larger than byte
@@ -3376,10 +3380,15 @@ index 0719d810258..a9368325816 100644
 -10.3.0
 +10.3.1
 diff --git a/gcc/ChangeLog b/gcc/ChangeLog
-index 3b1384e707f..df34ae8f0dd 100644
+index 3b1384e707f..7c4b33e01a0 100644
 --- a/gcc/ChangeLog
 +++ b/gcc/ChangeLog
-@@ -1,3 +1,1375 @@
+@@ -1,3 +1,1380 @@
++2021-11-23  Bill Schmidt  <wschmidt@linux.ibm.com>
++
++	PR target/101985
++	* config/rs6000/altivec.h (vec_cpsgn): Swap operand order.
++
 +2021-11-22  Stefan Schulze Frielinghaus  <stefansf@linux.ibm.com>
 +
 +	Backported from master:
@@ -9130,6 +9139,19 @@ index 48135ce5b17..6f693166159 100644
 +
 +m32
 +Driver
+diff --git a/gcc/config/rs6000/altivec.h b/gcc/config/rs6000/altivec.h
+index b40e750dc13..c03d7c9b149 100644
+--- a/gcc/config/rs6000/altivec.h
++++ b/gcc/config/rs6000/altivec.h
+@@ -129,7 +129,7 @@
+ #define vec_vcfux __builtin_vec_vcfux
+ #define vec_cts __builtin_vec_cts
+ #define vec_ctu __builtin_vec_ctu
+-#define vec_cpsgn __builtin_vec_copysign
++#define vec_cpsgn(x,y) __builtin_vec_copysign(y,x)
+ #define vec_double __builtin_vec_double
+ #define vec_doublee __builtin_vec_doublee
+ #define vec_doubleo __builtin_vec_doubleo
 diff --git a/gcc/config/rs6000/predicates.md b/gcc/config/rs6000/predicates.md
 index 956f7dd5b46..fad45a6e1ac 100644
 --- a/gcc/config/rs6000/predicates.md
@@ -15610,6 +15632,20 @@ index b706fceff42..8ad57493ea6 100644
  		{
  		  if (dump_file && (dump_flags & TDF_DETAILS))
  		    fprintf (dump_file, "  %u->%u: cannot import accesses.\n",
+diff --git a/gcc/jit/jit-playback.c b/gcc/jit/jit-playback.c
+index d2c8bb4c154..0d21251c9ab 100644
+--- a/gcc/jit/jit-playback.c
++++ b/gcc/jit/jit-playback.c
+@@ -1357,7 +1357,8 @@ function (context *ctxt,
+ : m_ctxt(ctxt),
+   m_inner_fndecl (fndecl),
+   m_inner_bind_expr (NULL),
+-  m_kind (kind)
++  m_kind (kind),
++  m_blocks ()
+ {
+   if (m_kind != GCC_JIT_FUNCTION_IMPORTED)
+     {
 diff --git a/gcc/jump.c b/gcc/jump.c
 index 34a8f209e20..803c297b0fc 100644
 --- a/gcc/jump.c
@@ -16232,10 +16268,16 @@ index 99edad8a950..f33489286a9 100644
  
  #endif
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index 2913065bf31..b7702eb2895 100644
+index 2913065bf31..8ecb99c8595 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,1564 @@
+@@ -1,3 +1,1570 @@
++2021-11-23  Bill Schmidt  <wschmidt@linux.ibm.com>
++
++	PR target/101985
++	* gcc.target/powerpc/pr101985-1.c: New.
++	* gcc.target/powerpc/pr101985-2.c: New.
++
 +2021-11-22  Harald Anlauf  <anlauf@gmx.de>
 +
 +	Backported from master:
@@ -23474,6 +23516,54 @@ index 00000000000..823fbfe9647
 +  __builtin_vsx_stxvp (src[0], 0, (__vector_pair *)(void *)x);
 +  __builtin_vsx_stxvp (src[1], 32, (__vector_pair *)(void *)x);
 +  __builtin_vsx_stxvp (src[2], offset, (__vector_pair *)(void *)x);
++}
+diff --git a/gcc/testsuite/gcc.target/powerpc/pr101985-1.c b/gcc/testsuite/gcc.target/powerpc/pr101985-1.c
+new file mode 100644
+index 00000000000..b4753ab83d7
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/powerpc/pr101985-1.c
+@@ -0,0 +1,18 @@
++/* PR target/101985 */
++/* { dg-do run } */
++/* { dg-require-effective-target vsx_hw } */
++/* { dg-options "-O2 -mvsx" } */
++
++#include <altivec.h>
++
++int
++main (void)
++{
++  vector float a = {  1,  2, - 3, - 4};
++  vector float b = {-10, 20, -30,  40};
++  vector float c = { 10, 20, -30, -40};
++  a = vec_cpsgn (a, b);
++  if (! vec_all_eq (a, c))
++    __builtin_abort ();
++  return 0;
++}
+diff --git a/gcc/testsuite/gcc.target/powerpc/pr101985-2.c b/gcc/testsuite/gcc.target/powerpc/pr101985-2.c
+new file mode 100644
+index 00000000000..148ad657366
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/powerpc/pr101985-2.c
+@@ -0,0 +1,18 @@
++/* PR target/101985 */
++/* { dg-do run } */
++/* { dg-require-effective-target vsx_hw } */
++/* { dg-options "-O2 -mvsx" } */
++
++#include <altivec.h>
++
++int
++main (void)
++{
++  vector double a = {   1,  -4};
++  vector double b = { -10,  40};
++  vector double c = {  10, -40};
++  a = vec_cpsgn (a, b);
++  if (! vec_all_eq (a, c))
++    __builtin_abort ();
++  return 0;
 +}
 diff --git a/gcc/testsuite/gcc.target/powerpc/pr97142.c b/gcc/testsuite/gcc.target/powerpc/pr97142.c
 new file mode 100644
@@ -30901,10 +30991,19 @@ index 304b3a01a08..44359b3d1ac 100644
    UnmapOrDie(oldstack.ss_sp, oldstack.ss_size);
  }
 diff --git a/libstdc++-v3/ChangeLog b/libstdc++-v3/ChangeLog
-index fdd63cbff1a..27c6d1eab5d 100644
+index fdd63cbff1a..d9ec6274b9e 100644
 --- a/libstdc++-v3/ChangeLog
 +++ b/libstdc++-v3/ChangeLog
-@@ -1,3 +1,1396 @@
+@@ -1,3 +1,1405 @@
++2021-11-23  Jonathan Wakely  <jwakely@redhat.com>
++
++	Backported from master:
++	2021-11-23  Jonathan Wakely  <jwakely@redhat.com>
++
++	PR libstdc++/103381
++	* include/ext/bitmap_allocator.h: Include <bits/stl_function.h>
++	instead of <functional>.
++
 +2021-11-01  Jonathan Wakely  <jwakely@redhat.com>
 +
 +	* include/std/valarray (begin, end): Remove nodiscard attribute.
@@ -37547,6 +37646,19 @@ index 4c47348373b..725fee4e71a 100644
  
  } // namespace v1
  } // namespace net
+diff --git a/libstdc++-v3/include/ext/bitmap_allocator.h b/libstdc++-v3/include/ext/bitmap_allocator.h
+index edddf32fb97..7e34f97cdb7 100644
+--- a/libstdc++-v3/include/ext/bitmap_allocator.h
++++ b/libstdc++-v3/include/ext/bitmap_allocator.h
+@@ -31,7 +31,7 @@
+ 
+ #include <utility> // For std::pair.
+ #include <bits/functexcept.h> // For __throw_bad_alloc().
+-#include <functional> // For greater_equal, and less_equal.
++#include <bits/stl_function.h> // For greater_equal, and less_equal.
+ #include <new> // For operator new.
+ #include <debug/debug.h> // _GLIBCXX_DEBUG_ASSERT
+ #include <ext/concurrence.h>
 diff --git a/libstdc++-v3/include/ext/malloc_allocator.h b/libstdc++-v3/include/ext/malloc_allocator.h
 index 366c766f25b..8de833f3641 100644
 --- a/libstdc++-v3/include/ext/malloc_allocator.h
