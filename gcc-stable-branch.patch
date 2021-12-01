@@ -18,6 +18,9 @@ Andreas Larsson (1):
 Andrew Pinski (1):
       [GCC 10 branch] tree-optimization: [PR102622]: wrong code due to signed one bit integer and "a?-1:0"
 
+Antony Polukhin (1):
+      libstdc++: Optimize std::seed_seq construction
+
 Avi Kivity (1):
       libstdc++: add missing typename for dependent type in ranges::elements_view [PR100900]
 
@@ -47,7 +50,7 @@ David Edelsohn (1):
 Diane Meirowitz (1):
       doc: improve -fsanitize=undefined description
 
-Eric Botcazou (22):
+Eric Botcazou (23):
       Fix thinko in libcpp preparation patch for modules
       Further increase the limit on the size of accepted Ada files
       Fix another -freorder-blocks-and-partition glitch with Windows SEH
@@ -70,13 +73,20 @@ Eric Botcazou (22):
       Fix ICE with stack checking emulation at -O2
       Fix PR target/102588
       Update documentation of %X spec
+      Fix -freorder-blocks-and-partition glitch with Windows SEH (continued)
 
 François Dumont (3):
       libstdc++: Fix [multi]map/[multi]set move constructors noexcept qualification
       libstdc++: Fix unordered containers move constructors noexcept qualification
       libstdc++: [_GLIBCXX_DEBUG] Fix management of __dp_sign_max_size [PR 99402]
 
-GCC Administrator (227):
+GCC Administrator (233):
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -314,7 +324,7 @@ H.J. Lu (1):
 Hafiz Abid Qadeer (1):
       [OpenACC] Fix an ICE where a loop with GT condition is collapsed.
 
-Harald Anlauf (28):
+Harald Anlauf (29):
       PR fortran/63797 - Bogus ambiguous reference to 'sqrt'
       PR fortran/100154 - ICE in gfc_conv_procedure_call, at fortran/trans-expr.c:6131
       PR fortran/100274 - ICE in gfc_conv_procedure_call, at fortran/trans-expr.c:6131
@@ -343,6 +353,7 @@ Harald Anlauf (28):
       Fortran: error recovery on initializing invalid derived type array component
       Fortran: avoid NULL pointer dereferences
       Fortran: fix lookup for gfortran builtin math intrinsics used by DEC extensions
+      Fortran: do not attempt simplification of [LU]BOUND for pointer/allocatable
 
 Iain Buclaw (16):
       d: Fix ICE in when formating a string with '%' or '`' characters (PR98457)
@@ -424,7 +435,7 @@ John David Anglin (5):
       Don't use 'G' constraint in integer move patterns
       Fix warnings building linux-atomic.c and fptr.c on hppa64-linux
 
-Jonathan Wakely (76):
+Jonathan Wakely (90):
       libstdc++: Fix Doxygen warning about ambiguous file name
       maintainer-scripts: Disable multilib when generating libstdc++ docs
       libstdc++: Fix doxygen markup for group close commands
@@ -501,6 +512,20 @@ Jonathan Wakely (76):
       libstdc++: Fix range access for empty std::valarray [PR103022]
       libstdc++: Remove [[nodiscard]] from <valarray>
       libstdc++: Fix circular dependency for bitmap_allocator [PR103381]
+      libstdc++: Do not use memset in constexpr calls to ranges::fill_n [PR101608]
+      libstdc++: Add missing header to <bits/stl_iterator.h>
+      libstdc++: Skip failing std::array test for debug mode
+      libstdc++: Fix tests that fail in C++98 mode
+      libstdc++: Fix test that fails for C++98 mode
+      libstdc++: Add additional overload of std::lerp [PR101870]
+      libstdc++: Improve std::forward static assert message
+      libstdc++: Value-initialize objects held by EBO helpers [PR 100863]
+      libstdc++: fix is_default_constructible for hash containers [PR 100863]
+      libstdc++: Make allocator equality comparable in tests
+      libstdc++: Add missing 'constexpr' to std::tuple [PR102270]
+      libstdc++: Constrain std::make_any [PR102894]
+      libstdc++: Don't check always-true condition [PR101965]
+      libstdc++: Use std::addressof in ranges::uninitialized_xxx [PR101571]
 
 José Rui Faustino de Sousa (1):
       Fortran: Fix double function call with -fcheck=pointer [PR]
@@ -3384,10 +3409,27 @@ index 0719d810258..a9368325816 100644
 -10.3.0
 +10.3.1
 diff --git a/gcc/ChangeLog b/gcc/ChangeLog
-index 3b1384e707f..7c4b33e01a0 100644
+index 3b1384e707f..98dc0d8c9f0 100644
 --- a/gcc/ChangeLog
 +++ b/gcc/ChangeLog
-@@ -1,3 +1,1380 @@
+@@ -1,3 +1,1397 @@
++2021-11-30  Eric Botcazou  <ebotcazou@adacore.com>
++
++	PR target/103274
++	* config/i386/i386.c (ix86_output_call_insn): Beef up comment about
++	nops emitted with SEH.
++	* config/i386/winnt.c (i386_pe_seh_unwind_emit): When switching to
++	the cold section, emit a nop before the directive if the previous
++	active instruction is a call.
++
++2021-11-25  Jan Hubicka  <jh@suse.cz>
++
++	Backported from master:
++	2021-11-20  Jan Hubicka  <hubicka@ucw.cz>
++
++	PR ipa/103052
++	* ipa-pure-const.c (propagate_pure_const): Fix merging of loping flag.
++
 +2021-11-23  Bill Schmidt  <wschmidt@linux.ibm.com>
 +
 +	PR target/101985
@@ -8334,7 +8376,7 @@ index d28dfab8e4e..bdc8f1dc0b1 100644
  #define _mm_reduce_sd(A, B, C)						\
    ((__m128d) __builtin_ia32_reducesd_mask ((__v2df)(__m128d)(A),	\
 diff --git a/gcc/config/i386/i386.c b/gcc/config/i386/i386.c
-index 2f838840e96..fe381331c5e 100644
+index 2f838840e96..44e4be58c39 100644
 --- a/gcc/config/i386/i386.c
 +++ b/gcc/config/i386/i386.c
 @@ -6356,12 +6356,29 @@ ix86_compute_frame_layout (void)
@@ -8415,7 +8457,20 @@ index 2f838840e96..fe381331c5e 100644
  }
  
  /* Implementation of TARGET_ASM_OUTPUT_ADDR_CONST_EXTRA.  */
-@@ -21333,10 +21348,12 @@ ix86_stack_protect_fail (void)
+@@ -15836,8 +15851,10 @@ ix86_output_call_insn (rtx_insn *insn, rtx call_op)
+ 	    break;
+ 
+ 	  /* If we get to the epilogue note, prevent a catch region from
+-	     being adjacent to the standard epilogue sequence.  If non-
+-	     call-exceptions, we'll have done this during epilogue emission. */
++	     being adjacent to the standard epilogue sequence.  Note that,
++	     if non-call exceptions are enabled, we already did it during
++	     epilogue expansion, or else, if the insn can throw internally,
++	     we already did it during the reorg pass.  */
+ 	  if (NOTE_P (i) && NOTE_KIND (i) == NOTE_INSN_EPILOGUE_BEG
+ 	      && !flag_non_call_exceptions
+ 	      && !can_throw_internal (insn))
+@@ -21333,10 +21350,12 @@ ix86_stack_protect_fail (void)
     After all, the relocation needed is the same as for the call insn.
     Whether or not a particular assembler allows us to enter such, I
     guess we'll have to see.  */
@@ -8429,7 +8484,7 @@ index 2f838840e96..fe381331c5e 100644
      {
        int type = DW_EH_PE_sdata8;
        if (!TARGET_64BIT
-@@ -21345,9 +21362,11 @@ asm_preferred_eh_data_format (int code, int global)
+@@ -21345,9 +21364,11 @@ asm_preferred_eh_data_format (int code, int global)
  	type = DW_EH_PE_sdata4;
        return (global ? DW_EH_PE_indirect : 0) | DW_EH_PE_pcrel | type;
      }
@@ -8736,7 +8791,7 @@ index 502d5673789..b8ce2b99877 100644
  ;; operations.  But the fix_trunc patterns want way more setup than we want
  ;; to provide.  Note that the scratch is DFmode instead of XFmode in order
 diff --git a/gcc/config/i386/winnt.c b/gcc/config/i386/winnt.c
-index 201f69e74c4..a39d09f06da 100644
+index 201f69e74c4..92510efa985 100644
 --- a/gcc/config/i386/winnt.c
 +++ b/gcc/config/i386/winnt.c
 @@ -921,15 +921,17 @@ i386_pe_seh_cold_init (FILE *f, const char *name)
@@ -8772,6 +8827,18 @@ index 201f69e74c4..a39d09f06da 100644
      {
        offset = seh->sp_offset - alloc_offset;
        if (offset > 0 && offset < SEH_MAX_FRAME_SIZE)
+@@ -1242,9 +1244,9 @@ i386_pe_seh_unwind_emit (FILE *asm_out_file, rtx_insn *insn)
+   seh = cfun->machine->seh;
+   if (NOTE_P (insn) && NOTE_KIND (insn) == NOTE_INSN_SWITCH_TEXT_SECTIONS)
+     {
+-      /* See ix86_seh_fixup_eh_fallthru for the rationale.  */
++      /* See ix86_output_call_insn/seh_fixup_eh_fallthru for the rationale.  */
+       rtx_insn *prev = prev_active_insn (insn);
+-      if (prev && !insn_nothrow_p (prev))
++      if (prev && (CALL_P (prev) || !insn_nothrow_p (prev)))
+ 	fputs ("\tnop\n", asm_out_file);
+       fputs ("\t.seh_endproc\n", asm_out_file);
+       seh->in_cold_section = true;
 diff --git a/gcc/config/mips/mips.c b/gcc/config/mips/mips.c
 index 513fc5fe295..c1bd2332eb8 100644
 --- a/gcc/config/mips/mips.c
@@ -13655,10 +13722,19 @@ index 6e635382fb4..7b4c9c0eb7f 100644
  	      tree ntype = TYPE_UNSIGNED (type)
  			   ? signed_type_for (type)
 diff --git a/gcc/fortran/ChangeLog b/gcc/fortran/ChangeLog
-index aa5932be872..7597957831c 100644
+index aa5932be872..950df66ce0d 100644
 --- a/gcc/fortran/ChangeLog
 +++ b/gcc/fortran/ChangeLog
-@@ -1,3 +1,449 @@
+@@ -1,3 +1,458 @@
++2021-11-26  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2021-11-23  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/103392
++	* simplify.c (simplify_bound): Do not try to simplify
++	LBOUND/UBOUND for arrays with POINTER or ALLOCATABLE attribute.
++
 +2021-11-22  Harald Anlauf  <anlauf@gmx.de>
 +
 +	Backported from master:
@@ -14905,7 +14981,7 @@ index 7ca5f44f419..0489184302c 100644
              case EXEC_DO_CONCURRENT:
  	      gfc_do_concurrent_flag = 1;
 diff --git a/gcc/fortran/simplify.c b/gcc/fortran/simplify.c
-index d28aa7a3c16..0e5c383f9bd 100644
+index d28aa7a3c16..804be5aee56 100644
 --- a/gcc/fortran/simplify.c
 +++ b/gcc/fortran/simplify.c
 @@ -2077,6 +2077,9 @@ gfc_simplify_cshift (gfc_expr *array, gfc_expr *shift, gfc_expr *dim)
@@ -14918,7 +14994,20 @@ index d28aa7a3c16..0e5c383f9bd 100644
    gfc_array_size (array, &size);
    arraysize = mpz_get_ui (size);
    mpz_clear (size);
-@@ -7379,6 +7382,7 @@ simplify_size (gfc_expr *array, gfc_expr *dim, int k)
+@@ -4231,6 +4234,12 @@ simplify_bound (gfc_expr *array, gfc_expr *dim, gfc_expr *kind, int upper)
+ 	     || (as->type == AS_ASSUMED_SHAPE && upper)))
+     return NULL;
+ 
++  /* 'array' shall not be an unallocated allocatable variable or a pointer that
++     is not associated.  */
++  if (array->expr_type == EXPR_VARIABLE
++      && (gfc_expr_attr (array).allocatable || gfc_expr_attr (array).pointer))
++    return NULL;
++
+   gcc_assert (!as
+ 	      || (as->type != AS_DEFERRED
+ 		  && array->expr_type == EXPR_VARIABLE
+@@ -7379,6 +7388,7 @@ simplify_size (gfc_expr *array, gfc_expr *dim, int k)
    mpz_t size;
    gfc_expr *return_value;
    int d;
@@ -14926,7 +15015,7 @@ index d28aa7a3c16..0e5c383f9bd 100644
  
    /* For unary operations, the size of the result is given by the size
       of the operand.  For binary ones, it's the size of the first operand
-@@ -7435,6 +7439,10 @@ simplify_size (gfc_expr *array, gfc_expr *dim, int k)
+@@ -7435,6 +7445,10 @@ simplify_size (gfc_expr *array, gfc_expr *dim, int k)
        return simplified;
      }
  
@@ -14937,7 +15026,7 @@ index d28aa7a3c16..0e5c383f9bd 100644
    if (dim == NULL)
      {
        if (!gfc_array_size (array, &size))
-@@ -8071,6 +8079,9 @@ gfc_simplify_transpose (gfc_expr *matrix)
+@@ -8071,6 +8085,9 @@ gfc_simplify_transpose (gfc_expr *matrix)
  
    gcc_assert (matrix->rank == 2);
  
@@ -16303,10 +16392,26 @@ index 99edad8a950..f33489286a9 100644
  
  #endif
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index 2913065bf31..8ecb99c8595 100644
+index 2913065bf31..572c88f517a 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,1570 @@
+@@ -1,3 +1,1586 @@
++2021-11-26  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2021-11-23  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/103392
++	* gfortran.dg/bound_simplification_7.f90: New test.
++
++2021-11-25  Jan Hubicka  <jh@suse.cz>
++
++	Backported from master:
++	2021-11-20  Jan Hubicka  <hubicka@ucw.cz>
++
++	PR ipa/103052
++	* gcc.c-torture/execute/pr103052.c: New test.
++
 +2021-11-23  Bill Schmidt  <wschmidt@linux.ibm.com>
 +
 +	PR target/101985
@@ -25115,6 +25220,30 @@ index 00000000000..97f93b3c742
 +   OELE%PGRID => GRID1
 +   IF (SELF%ASGOELE (OELE) .NE. 1) STOP 3
 +END
+diff --git a/gcc/testsuite/gfortran.dg/bound_simplification_7.f90 b/gcc/testsuite/gfortran.dg/bound_simplification_7.f90
+new file mode 100644
+index 00000000000..3efecdff769
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/bound_simplification_7.f90
+@@ -0,0 +1,18 @@
++! { dg-do compile }
++! PR fortran/103392 - ICE in simplify_bound
++
++program p
++  integer, allocatable :: a(1:1) ! { dg-error "deferred shape or assumed rank" }
++  integer :: b(1) = lbound(a)    ! { dg-error "does not reduce" }
++  integer :: c(1) = ubound(a)    ! { dg-error "does not reduce" }
++end
++
++subroutine s(x, y)
++  type t
++     integer :: i(3)
++  end type t
++  type(t), pointer     :: x(:)
++  type(t), allocatable :: y(:)
++  integer, parameter   :: m(1) = ubound (x(1)% i)
++  integer              :: n(1) = ubound (y(1)% i)
++end subroutine s
 diff --git a/gcc/testsuite/gfortran.dg/bounds_check_23.f90 b/gcc/testsuite/gfortran.dg/bounds_check_23.f90
 new file mode 100644
 index 00000000000..8de90c77c01
@@ -31067,10 +31196,158 @@ index 304b3a01a08..44359b3d1ac 100644
    UnmapOrDie(oldstack.ss_sp, oldstack.ss_size);
  }
 diff --git a/libstdc++-v3/ChangeLog b/libstdc++-v3/ChangeLog
-index fdd63cbff1a..d9ec6274b9e 100644
+index fdd63cbff1a..f48c04dd400 100644
 --- a/libstdc++-v3/ChangeLog
 +++ b/libstdc++-v3/ChangeLog
-@@ -1,3 +1,1405 @@
+@@ -1,3 +1,1553 @@
++2021-11-26  Jonathan Wakely  <jwakely@redhat.com>
++
++	Backported from master:
++	2021-07-22  Jonathan Wakely  <jwakely@redhat.com>
++
++	PR libstdc++/101571
++	* include/bits/ranges_uninitialized.h (_DestroyGuard): Change
++	constructor parameter to reference and use addressof.
++	* testsuite/util/testsuite_iterators.h: Define deleted operator&
++	overloads for test iterators.
++
++2021-11-26  Jonathan Wakely  <jwakely@redhat.com>
++
++	Backported from master:
++	2021-08-19  Jonathan Wakely  <jwakely@redhat.com>
++
++	PR libstdc++/101965
++	* include/std/charconv (__to_chars_i): Remove redundant check.
++
++2021-11-26  Jonathan Wakely  <jwakely@redhat.com>
++
++	Backported from master:
++	2021-10-22  Jonathan Wakely  <jwakely@redhat.com>
++
++	PR libstdc++/102894
++	* include/std/any (make_any): Add SFINAE constraint.
++	* testsuite/20_util/any/102894.cc: New test.
++
++2021-11-26  Jonathan Wakely  <jwakely@redhat.com>
++
++	PR libstdc++/102270
++	* include/std/tuple (_Head_base, _Tuple_impl): Add
++	_GLIBCXX20_CONSTEXPR to allocator-extended constructors.
++	(tuple<>::swap(tuple&)): Add _GLIBCXX20_CONSTEXPR.
++	* testsuite/20_util/tuple/cons/102270.cc: New test.
++	* testsuite/util/testsuite_allocator.h (SimpleAllocator): Add
++	constexpr to constructor so it can be used for C++20 tests.
++
++2021-11-26  Jonathan Wakely  <jwakely@redhat.com>
++
++	Backported from master:
++	2021-08-09  Jonathan Wakely  <jwakely@redhat.com>
++
++	* testsuite/23_containers/unordered_map/cons/default.cc: Add
++	equality comparison operators to allocator.
++	* testsuite/23_containers/unordered_set/cons/default.cc:
++	Likewise.
++
++2021-11-26  Jonathan Wakely  <jwakely@redhat.com>
++
++	Backported from master:
++	2021-07-20  Jonathan Wakely  <jwakely@redhat.com>
++
++	PR libstdc++/100863
++	* include/bits/hashtable.h (_Hashtable): Conditionally delete
++	default constructor by deriving from _Enable_default_constructor.
++	Construct that base-class explicitly in all non-forwarding,
++	non-defaulted constructors.
++	* testsuite/23_containers/unordered_map/cons/default.cc: New test.
++	* testsuite/23_containers/unordered_set/cons/default.cc: New test.
++
++2021-11-26  Jonathan Wakely  <jwakely@redhat.com>
++
++	Backported from master:
++	2021-06-02  Jonathan Wakely  <jwakely@redhat.com>
++
++	PR libstdc++/100863
++	PR libstdc++/65816
++	* include/bits/hashtable_policy.h (_Hashtable_ebo_helper):
++	Value-initialize subobject.
++	* testsuite/23_containers/unordered_map/allocator/default_init.cc:
++	Remove XFAIL.
++	* testsuite/23_containers/unordered_set/allocator/default_init.cc:
++	Remove XFAIL.
++
++2021-11-26  Jonathan Wakely  <jwakely@redhat.com>
++
++	Backported from master:
++	2021-09-28  Jonathan Wakely  <jwakely@redhat.com>
++
++	* include/bits/move.h (forward(remove_reference_t<T>&&)):
++	Improve text of static_assert.
++	* testsuite/20_util/forward/c_neg.cc: Adjust dg-error.
++	* testsuite/20_util/forward/f_neg.cc: Likewise.
++
++2021-11-26  Antony Polukhin  <antoshkka@gmail.com>
++
++	Backported from master:
++	2021-08-17  Antony Polukhin  <antoshkka@gmail.com>
++		    Jonathan Wakely  <jwakely@redhat.com>
++
++	* include/bits/random.tcc (seed_seq::seed_seq): Reserve capacity
++	if distance is O(1).
++	* testsuite/26_numerics/random/pr60037-neg.cc: Adjust dg-error
++	line number.
++
++2021-11-26  Jonathan Wakely  <jwakely@redhat.com>
++
++	Backported from master:
++	2021-08-12  Jonathan Wakely  <jwakely@redhat.com>
++
++	PR libstdc++/101870
++	* include/c_global/cmath (hypot): Use __promoted_t.
++	(lerp): Add new overload accepting any arithmetic types.
++	* include/ext/type_traits.h (__promoted_t): New alias template.
++	* testsuite/26_numerics/lerp.cc: Moved to...
++	* testsuite/26_numerics/lerp/1.cc: ...here.
++	* testsuite/26_numerics/lerp/constexpr.cc: New test.
++	* testsuite/26_numerics/lerp/version.cc: New test.
++
++2021-11-26  Jonathan Wakely  <jwakely@redhat.com>
++
++	* testsuite/27_io/types/1.cc: Add c++11 target selector to
++	warnings.
++
++2021-11-26  Jonathan Wakely  <jwakely@redhat.com>
++
++	Backported from master:
++	2021-05-11  Jonathan Wakely  <jwakely@redhat.com>
++
++	* testsuite/20_util/headers/memory/synopsis.cc: Define C++98
++	alternative for macro.
++	* testsuite/20_util/shared_ptr/creation/99006.cc: Add effective
++	target keyword.
++	* testsuite/25_algorithms/copy/debug/99402.cc: Avoid C++11
++	syntax.
++
++2021-11-26  Jonathan Wakely  <jwakely@redhat.com>
++
++	* testsuite/23_containers/array/comparison_operators/96851.cc:
++	Skip test in debug mode.
++
++2021-11-26  Jonathan Wakely  <jwakely@redhat.com>
++
++	* include/bits/stl_iterator.h: Include required header for
++	std::iterator class template and iterator category tags.
++
++2021-11-26  Jonathan Wakely  <jwakely@redhat.com>
++
++	Backported from master:
++	2021-11-25  Jonathan Wakely  <jwakely@redhat.com>
++
++	PR libstdc++/101608
++	* include/bits/ranges_algobase.h (__fill_n_fn): Check for
++	constant evaluation before using memset.
++	* testsuite/25_algorithms/fill_n/constrained.cc: Check
++	byte-sized values as well.
++
 +2021-11-23  Jonathan Wakely  <jwakely@redhat.com>
 +
 +	Backported from master:
@@ -32933,11 +33210,60 @@ index 89fdda537a4..da60e3bf3c7 100644
  _GLIBCXX_END_NAMESPACE_VERSION
  } // namespace
 diff --git a/libstdc++-v3/include/bits/hashtable.h b/libstdc++-v3/include/bits/hashtable.h
-index b00319a668b..310eb52dd51 100644
+index b00319a668b..961e83049a5 100644
 --- a/libstdc++-v3/include/bits/hashtable.h
 +++ b/libstdc++-v3/include/bits/hashtable.h
-@@ -446,6 +446,30 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
- 	__hashtable_alloc(__node_alloc_type(__a))
+@@ -33,6 +33,7 @@
+ #pragma GCC system_header
+ 
+ #include <bits/hashtable_policy.h>
++#include <bits/enable_special_members.h>
+ #if __cplusplus > 201402L
+ # include <bits/node_handle.h>
+ #endif
+@@ -48,6 +49,16 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+ 		       // Mandatory to have erase not throwing.
+ 		       __is_nothrow_invocable<const _Hash&, const _Tp&>>>;
+ 
++  // Helper to conditionally delete the default constructor.
++  // The _Hash_node_base type is used to distinguish this specialization
++  // from any other potentially-overlapping subobjects of the hashtable.
++  template<typename _Equal, typename _Hash, typename _Allocator>
++    using _Hashtable_enable_default_ctor
++      = _Enable_default_constructor<__and_<is_default_constructible<_Equal>,
++				       is_default_constructible<_Hash>,
++				       is_default_constructible<_Allocator>>{},
++				    __detail::_Hash_node_base>;
++
+   /**
+    *  Primary class template _Hashtable.
+    *
+@@ -184,7 +195,8 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+       private __detail::_Hashtable_alloc<
+ 	__alloc_rebind<_Alloc,
+ 		       __detail::_Hash_node<_Value,
+-					    _Traits::__hash_cached::value>>>
++					    _Traits::__hash_cached::value>>>,
++      private _Hashtable_enable_default_ctor<_Equal, _H1, _Alloc>
+     {
+       static_assert(is_same<typename remove_cv<_Value>::type, _Value>::value,
+ 	  "unordered container must have a non-const, non-volatile value_type");
+@@ -206,6 +218,8 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+ 	typename __hashtable_alloc::__node_alloc_traits;
+       using __node_base = typename __hashtable_alloc::__node_base;
+       using __bucket_type = typename __hashtable_alloc::__bucket_type;
++      using __enable_default_ctor
++	= _Hashtable_enable_default_ctor<_Equal, _H1, _Alloc>;
+ 
+     public:
+       typedef _Key						key_type;
+@@ -443,9 +457,34 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+ 		 const _Equal& __eq, const _ExtractKey& __exk,
+ 		 const allocator_type& __a)
+       : __hashtable_base(__exk, __h1, __h2, __h, __eq),
+-	__hashtable_alloc(__node_alloc_type(__a))
++	__hashtable_alloc(__node_alloc_type(__a)),
++	__enable_default_ctor(_Enable_default_constructor_tag{})
        { }
  
 +      template<bool _No_realloc = true>
@@ -32967,7 +33293,7 @@ index b00319a668b..310eb52dd51 100644
      public:
        // Constructor, destructor, assignment, swap
        _Hashtable() = default;
-@@ -463,11 +487,19 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+@@ -463,16 +502,25 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
  
        _Hashtable(const _Hashtable&);
  
@@ -32989,7 +33315,22 @@ index b00319a668b..310eb52dd51 100644
  
        // Use delegating constructors.
        explicit
-@@ -1285,18 +1317,20 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+       _Hashtable(const allocator_type& __a)
+-      : __hashtable_alloc(__node_alloc_type(__a))
++      : __hashtable_alloc(__node_alloc_type(__a)),
++	__enable_default_ctor(_Enable_default_constructor_tag{})
+       { }
+ 
+       explicit
+@@ -1270,6 +1318,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+       __rehash_base(__ht),
+       __hashtable_alloc(
+ 	__node_alloc_traits::_S_select_on_copy(__ht._M_node_allocator())),
++      __enable_default_ctor(__ht),
+       _M_buckets(nullptr),
+       _M_bucket_count(__ht._M_bucket_count),
+       _M_element_count(__ht._M_element_count),
+@@ -1285,18 +1334,21 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
  	   typename _Traits>
      _Hashtable<_Key, _Value, _Alloc, _ExtractKey, _Equal,
  	       _H1, _H2, _Hash, _RehashPolicy, _Traits>::
@@ -33002,6 +33343,7 @@ index b00319a668b..310eb52dd51 100644
        __rehash_base(__ht),
 -      __hashtable_alloc(std::move(__ht._M_base_alloc())),
 +      __hashtable_alloc(std::move(__a)),
++      __enable_default_ctor(__ht),
        _M_buckets(__ht._M_buckets),
        _M_bucket_count(__ht._M_bucket_count),
        _M_before_begin(__ht._M_before_begin._M_nxt),
@@ -33013,7 +33355,15 @@ index b00319a668b..310eb52dd51 100644
        if (__ht._M_uses_single_bucket())
  	{
  	  _M_buckets = &_M_single_bucket;
-@@ -1337,11 +1371,12 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+@@ -1322,6 +1374,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+       __map_base(__ht),
+       __rehash_base(__ht),
+       __hashtable_alloc(__node_alloc_type(__a)),
++      __enable_default_ctor(__ht),
+       _M_buckets(),
+       _M_bucket_count(__ht._M_bucket_count),
+       _M_element_count(__ht._M_element_count),
+@@ -1337,11 +1390,13 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
  	   typename _Traits>
      _Hashtable<_Key, _Value, _Alloc, _ExtractKey, _Equal,
  	       _H1, _H2, _Hash, _RehashPolicy, _Traits>::
@@ -33025,14 +33375,41 @@ index b00319a668b..310eb52dd51 100644
        __rehash_base(__ht),
 -      __hashtable_alloc(__node_alloc_type(__a)),
 +      __hashtable_alloc(std::move(__a)),
++      __enable_default_ctor(__ht),
        _M_buckets(nullptr),
        _M_bucket_count(__ht._M_bucket_count),
        _M_element_count(__ht._M_element_count),
 diff --git a/libstdc++-v3/include/bits/hashtable_policy.h b/libstdc++-v3/include/bits/hashtable_policy.h
-index ef120134914..d34fc39a973 100644
+index ef120134914..63958cc1d9c 100644
 --- a/libstdc++-v3/include/bits/hashtable_policy.h
 +++ b/libstdc++-v3/include/bits/hashtable_policy.h
-@@ -2099,7 +2099,7 @@ namespace __detail
+@@ -1109,7 +1109,7 @@ namespace __detail
+     struct _Hashtable_ebo_helper<_Nm, _Tp, true>
+     : private _Tp
+     {
+-      _Hashtable_ebo_helper() = default;
++      _Hashtable_ebo_helper() noexcept(noexcept(_Tp())) : _Tp() { }
+ 
+       template<typename _OtherTp>
+ 	_Hashtable_ebo_helper(_OtherTp&& __tp)
+@@ -1135,7 +1135,7 @@ namespace __detail
+       _Tp& _M_get() { return _M_tp; }
+ 
+     private:
+-      _Tp _M_tp;
++      _Tp _M_tp{};
+     };
+ 
+   /**
+@@ -1789,6 +1789,7 @@ namespace __detail
+ 
+   protected:
+     _Hashtable_base() = default;
++
+     _Hashtable_base(const _ExtractKey& __ex, const _H1& __h1, const _H2& __h2,
+ 		    const _Hash& __hash, const _Equal& __eq)
+     : __hash_code_base(__ex, __h1, __h2, __hash), _EqualEBO(__eq)
+@@ -2099,7 +2100,7 @@ namespace __detail
        __bucket_alloc_traits::deallocate(__alloc, __ptr, __bkt_count);
      }
  
@@ -33447,6 +33824,21 @@ index af1a1c69c64..8f7a5a96250 100644
  #endif
  
    /// @} group memory
+diff --git a/libstdc++-v3/include/bits/move.h b/libstdc++-v3/include/bits/move.h
+index 5a4dbdc823c..b5a4020eeee 100644
+--- a/libstdc++-v3/include/bits/move.h
++++ b/libstdc++-v3/include/bits/move.h
+@@ -86,8 +86,8 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+     constexpr _Tp&&
+     forward(typename std::remove_reference<_Tp>::type&& __t) noexcept
+     {
+-      static_assert(!std::is_lvalue_reference<_Tp>::value, "template argument"
+-		    " substituting _Tp is an lvalue reference type");
++      static_assert(!std::is_lvalue_reference<_Tp>::value,
++	  "std::forward must not be used to convert an rvalue to an lvalue");
+       return static_cast<_Tp&&>(__t);
+     }
+ 
 diff --git a/libstdc++-v3/include/bits/random.h b/libstdc++-v3/include/bits/random.h
 index cba11299360..2bd6bc1e120 100644
 --- a/libstdc++-v3/include/bits/random.h
@@ -33521,10 +33913,10 @@ index cba11299360..2bd6bc1e120 100644
  _GLIBCXX_END_NAMESPACE_VERSION
  } // namespace std
 diff --git a/libstdc++-v3/include/bits/random.tcc b/libstdc++-v3/include/bits/random.tcc
-index a921b9bf815..d7503ee7094 100644
+index a921b9bf815..74ee6ada13a 100644
 --- a/libstdc++-v3/include/bits/random.tcc
 +++ b/libstdc++-v3/include/bits/random.tcc
-@@ -3197,7 +3197,7 @@ namespace __detail
+@@ -3197,9 +3197,10 @@ namespace __detail
      }
  
  
@@ -33532,7 +33924,20 @@ index a921b9bf815..d7503ee7094 100644
 +  template<typename _IntType, typename>
      seed_seq::seed_seq(std::initializer_list<_IntType> __il)
      {
++      _M_v.reserve(__il.size());
        for (auto __iter = __il.begin(); __iter != __il.end(); ++__iter)
+ 	_M_v.push_back(__detail::__mod<result_type,
+ 		       __detail::_Shift<result_type, 32>::__value>(*__iter));
+@@ -3208,6 +3209,9 @@ namespace __detail
+   template<typename _InputIterator>
+     seed_seq::seed_seq(_InputIterator __begin, _InputIterator __end)
+     {
++      if _GLIBCXX17_CONSTEXPR (__is_random_access_iter<_InputIterator>::value)
++	_M_v.reserve(std::distance(__begin, __end));
++
+       for (_InputIterator __iter = __begin; __iter != __end; ++__iter)
+ 	_M_v.push_back(__detail::__mod<result_type,
+ 		       __detail::_Shift<result_type, 32>::__value>(*__iter));
 diff --git a/libstdc++-v3/include/bits/range_access.h b/libstdc++-v3/include/bits/range_access.h
 index c93d1e37f34..bf46f366486 100644
 --- a/libstdc++-v3/include/bits/range_access.h
@@ -34258,7 +34663,7 @@ index 095730974cd..2774afb2dd1 100644
  		}
  	      ++__dest_head;
 diff --git a/libstdc++-v3/include/bits/ranges_algobase.h b/libstdc++-v3/include/bits/ranges_algobase.h
-index 2adff643ac2..aef80a38586 100644
+index 2adff643ac2..2fb558918f8 100644
 --- a/libstdc++-v3/include/bits/ranges_algobase.h
 +++ b/libstdc++-v3/include/bits/ranges_algobase.h
 @@ -245,7 +245,7 @@ namespace ranges
@@ -34270,6 +34675,156 @@ index 2adff643ac2..aef80a38586 100644
  	  return {std::move(__in), decltype(__result){__out}};
  	}
        else if constexpr (sized_sentinel_for<_Sent, _Iter>)
+@@ -526,17 +526,25 @@ namespace ranges
+ 	if (__n <= 0)
+ 	  return __first;
+ 
+-	// TODO: Generalize this optimization to contiguous iterators.
+-	if constexpr (is_pointer_v<_Out>
+-		      // Note that __is_byte already implies !is_volatile.
+-		      && __is_byte<remove_pointer_t<_Out>>::__value
+-		      && integral<_Tp>)
+-	  {
+-	    __builtin_memset(__first, static_cast<unsigned char>(__value), __n);
+-	    return __first + __n;
+-	  }
+-	else if constexpr (is_scalar_v<_Tp>)
++	if constexpr (is_scalar_v<_Tp>)
+ 	  {
++	    // TODO: Generalize this optimization to contiguous iterators.
++	    if constexpr (is_pointer_v<_Out>
++			  // Note that __is_byte already implies !is_volatile.
++			  && __is_byte<remove_pointer_t<_Out>>::__value
++			  && integral<_Tp>)
++	      {
++#ifdef __cpp_lib_is_constant_evaluated
++		if (!std::is_constant_evaluated())
++#endif
++		  {
++		    __builtin_memset(__first,
++				     static_cast<unsigned char>(__value),
++				     __n);
++		    return __first + __n;
++		  }
++	      }
++
+ 	    const auto __tmp = __value;
+ 	    for (; __n > 0; --__n, (void)++__first)
+ 	      *__first = __tmp;
+diff --git a/libstdc++-v3/include/bits/ranges_uninitialized.h b/libstdc++-v3/include/bits/ranges_uninitialized.h
+index 25e664de753..434df6da2b7 100644
+--- a/libstdc++-v3/include/bits/ranges_uninitialized.h
++++ b/libstdc++-v3/include/bits/ranges_uninitialized.h
+@@ -106,8 +106,8 @@ namespace ranges
+ 
+       public:
+ 	explicit
+-	_DestroyGuard(const _Iter* __iter)
+-	  : _M_first(*__iter), _M_cur(__iter)
++	_DestroyGuard(const _Iter& __iter)
++	  : _M_first(__iter), _M_cur(std::__addressof(__iter))
+ 	{ }
+ 
+ 	void
+@@ -127,7 +127,7 @@ namespace ranges
+       struct _DestroyGuard<_Iter>
+       {
+ 	explicit
+-	_DestroyGuard(const _Iter*)
++	_DestroyGuard(const _Iter&)
+ 	{ }
+ 
+ 	void
+@@ -149,7 +149,7 @@ namespace ranges
+ 	  return ranges::next(__first, __last);
+ 	else
+ 	  {
+-	    auto __guard = __detail::_DestroyGuard(&__first);
++	    auto __guard = __detail::_DestroyGuard(__first);
+ 	    for (; __first != __last; ++__first)
+ 	      ::new (__detail::__voidify(*__first)) _ValueType;
+ 	    __guard.release();
+@@ -181,7 +181,7 @@ namespace ranges
+ 	  return ranges::next(__first, __n);
+ 	else
+ 	  {
+-	    auto __guard = __detail::_DestroyGuard(&__first);
++	    auto __guard = __detail::_DestroyGuard(__first);
+ 	    for (; __n > 0; ++__first, (void) --__n)
+ 	      ::new (__detail::__voidify(*__first)) _ValueType;
+ 	    __guard.release();
+@@ -207,7 +207,7 @@ namespace ranges
+ 	  return ranges::fill(__first, __last, _ValueType());
+ 	else
+ 	  {
+-	    auto __guard = __detail::_DestroyGuard(&__first);
++	    auto __guard = __detail::_DestroyGuard(__first);
+ 	    for (; __first != __last; ++__first)
+ 	      ::new (__detail::__voidify(*__first)) _ValueType();
+ 	    __guard.release();
+@@ -240,7 +240,7 @@ namespace ranges
+ 	  return ranges::fill_n(__first, __n, _ValueType());
+ 	else
+ 	  {
+-	    auto __guard = __detail::_DestroyGuard(&__first);
++	    auto __guard = __detail::_DestroyGuard(__first);
+ 	    for (; __n > 0; ++__first, (void) --__n)
+ 	      ::new (__detail::__voidify(*__first)) _ValueType();
+ 	    __guard.release();
+@@ -279,7 +279,7 @@ namespace ranges
+ 	  }
+ 	else
+ 	  {
+-	    auto __guard = __detail::_DestroyGuard(&__ofirst);
++	    auto __guard = __detail::_DestroyGuard(__ofirst);
+ 	    for (; __ifirst != __ilast && __ofirst != __olast;
+ 		 ++__ofirst, (void)++__ifirst)
+ 	      ::new (__detail::__voidify(*__ofirst)) _OutType(*__ifirst);
+@@ -326,7 +326,7 @@ namespace ranges
+ 	  }
+ 	else
+ 	  {
+-	    auto __guard = __detail::_DestroyGuard(&__ofirst);
++	    auto __guard = __detail::_DestroyGuard(__ofirst);
+ 	    for (; __n > 0 && __ofirst != __olast;
+ 		 ++__ofirst, (void)++__ifirst, (void)--__n)
+ 	      ::new (__detail::__voidify(*__ofirst)) _OutType(*__ifirst);
+@@ -368,7 +368,7 @@ namespace ranges
+ 	  }
+ 	else
+ 	  {
+-	    auto __guard = __detail::_DestroyGuard(&__ofirst);
++	    auto __guard = __detail::_DestroyGuard(__ofirst);
+ 	    for (; __ifirst != __ilast && __ofirst != __olast;
+ 		 ++__ofirst, (void)++__ifirst)
+ 	      ::new (__detail::__voidify(*__ofirst))
+@@ -419,7 +419,7 @@ namespace ranges
+ 	  }
+ 	else
+ 	  {
+-	    auto __guard = __detail::_DestroyGuard(&__ofirst);
++	    auto __guard = __detail::_DestroyGuard(__ofirst);
+ 	    for (; __n > 0 && __ofirst != __olast;
+ 		 ++__ofirst, (void)++__ifirst, (void)--__n)
+ 	      ::new (__detail::__voidify(*__ofirst))
+@@ -446,7 +446,7 @@ namespace ranges
+ 	  return ranges::fill(__first, __last, __x);
+ 	else
+ 	  {
+-	    auto __guard = __detail::_DestroyGuard(&__first);
++	    auto __guard = __detail::_DestroyGuard(__first);
+ 	    for (; __first != __last; ++__first)
+ 	      ::new (__detail::__voidify(*__first)) _ValueType(__x);
+ 	    __guard.release();
+@@ -479,7 +479,7 @@ namespace ranges
+ 	  return ranges::fill_n(__first, __n, __x);
+ 	else
+ 	  {
+-	    auto __guard = __detail::_DestroyGuard(&__first);
++	    auto __guard = __detail::_DestroyGuard(__first);
+ 	    for (; __n > 0; ++__first, (void)--__n)
+ 	      ::new (__detail::__voidify(*__first)) _ValueType(__x);
+ 	    __guard.release();
 diff --git a/libstdc++-v3/include/bits/refwrap.h b/libstdc++-v3/include/bits/refwrap.h
 index 717aa01629c..4b84ac7f039 100644
 --- a/libstdc++-v3/include/bits/refwrap.h
@@ -34905,10 +35460,18 @@ index 3959dd7899d..2d7f7e11b3f 100644
  #if __cplusplus >= 201103L
        // Constant-time, nothrow move assignment when source object's memory
 diff --git a/libstdc++-v3/include/bits/stl_iterator.h b/libstdc++-v3/include/bits/stl_iterator.h
-index d950e896928..ae971ba12a1 100644
+index d950e896928..8857813e691 100644
 --- a/libstdc++-v3/include/bits/stl_iterator.h
 +++ b/libstdc++-v3/include/bits/stl_iterator.h
-@@ -136,11 +136,11 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+@@ -61,6 +61,7 @@
+ #define _STL_ITERATOR_H 1
+ 
+ #include <bits/cpp_type_traits.h>
++#include <bits/stl_iterator_base_types.h>
+ #include <ext/type_traits.h>
+ #include <bits/move.h>
+ #include <bits/ptr_traits.h>
+@@ -136,11 +137,11 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
  
      public:
        typedef _Iterator					iterator_type;
@@ -34923,7 +35486,7 @@ index d950e896928..ae971ba12a1 100644
        using iterator_concept
  	= conditional_t<random_access_iterator<_Iterator>,
  			random_access_iterator_tag,
-@@ -148,6 +148,9 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+@@ -148,6 +149,9 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
        using iterator_category
  	= __detail::__clamp_iter_cat<typename __traits_type::iterator_category,
  				     random_access_iterator_tag>;
@@ -34933,7 +35496,7 @@ index d950e896928..ae971ba12a1 100644
  #endif
  
        /**
-@@ -369,7 +372,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+@@ -369,7 +373,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
          { return __t.operator->(); }
      };
  
@@ -34942,7 +35505,7 @@ index d950e896928..ae971ba12a1 100644
    /**
     *  @param  __x  A %reverse_iterator.
     *  @param  __y  A %reverse_iterator.
-@@ -503,7 +506,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+@@ -503,7 +507,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
  		const reverse_iterator<_IteratorR>& __y)
      { return __y.base() <=> __x.base(); }
  #endif // C++20
@@ -34951,7 +35514,7 @@ index d950e896928..ae971ba12a1 100644
  
  #if __cplusplus < 201103L
    template<typename _Iterator>
-@@ -932,7 +935,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+@@ -932,7 +936,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
      { return insert_iterator<_Container>(__x, __i); }
  #endif
  
@@ -34960,7 +35523,7 @@ index d950e896928..ae971ba12a1 100644
  
  _GLIBCXX_END_NAMESPACE_VERSION
  } // namespace
-@@ -1270,6 +1273,24 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+@@ -1270,6 +1274,24 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
      };
  #endif // C++20
  
@@ -34985,7 +35548,7 @@ index d950e896928..ae971ba12a1 100644
    // 24.4.3  Move iterators
    /**
     *  Class template move_iterator is an iterator adapter with the same
-@@ -1281,13 +1302,14 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+@@ -1281,13 +1303,14 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     */
    template<typename _Iterator>
      class move_iterator
@@ -35003,7 +35566,7 @@ index d950e896928..ae971ba12a1 100644
        using __base_ref = typename __traits_type::reference;
  #endif
  
-@@ -1296,8 +1318,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+@@ -1296,8 +1319,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
  
  #if __cplusplus > 201703L && __cpp_lib_concepts
        using iterator_concept = input_iterator_tag;
@@ -35013,7 +35576,7 @@ index d950e896928..ae971ba12a1 100644
        using value_type = iter_value_t<_Iterator>;
        using difference_type = iter_difference_t<_Iterator>;
        using pointer = _Iterator;
-@@ -1341,11 +1362,8 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+@@ -1341,11 +1363,8 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
        base() const
        { return _M_current; }
  #else
@@ -35027,7 +35590,7 @@ index d950e896928..ae971ba12a1 100644
        { return _M_current; }
  
        constexpr iterator_type
-@@ -1612,6 +1630,11 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+@@ -1612,6 +1631,11 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
  	    || is_reference_v<iter_reference_t<_It>>
  	    || constructible_from<iter_value_t<_It>, iter_reference_t<_It>>);
  
@@ -35039,7 +35602,7 @@ index d950e896928..ae971ba12a1 100644
    } // namespace __detail
  
    /// An iterator/sentinel adaptor for representing a non-common range.
-@@ -1634,11 +1657,11 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+@@ -1634,11 +1658,11 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
        _S_noexcept()
        { return _S_noexcept1<_It, _It2>() && _S_noexcept1<_Sent, _Sent2>(); }
  
@@ -35053,7 +35616,7 @@ index d950e896928..ae971ba12a1 100644
        : _M_keep(std::move(__x)) { }
  
        friend class common_iterator;
-@@ -1649,6 +1672,21 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+@@ -1649,6 +1673,21 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
        { return std::__addressof(_M_keep); }
      };
  
@@ -35075,7 +35638,7 @@ index d950e896928..ae971ba12a1 100644
    public:
      constexpr
      common_iterator()
-@@ -1805,7 +1843,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+@@ -1805,7 +1844,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
  	  return std::__addressof(__tmp);
  	}
        else
@@ -35084,7 +35647,7 @@ index d950e896928..ae971ba12a1 100644
      }
  
      common_iterator&
-@@ -1826,8 +1864,14 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+@@ -1826,8 +1865,14 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
  	  ++*this;
  	  return __tmp;
  	}
@@ -35100,7 +35663,7 @@ index d950e896928..ae971ba12a1 100644
      }
  
      template<typename _It2, sentinel_for<_It> _Sent2>
-@@ -1958,12 +2002,21 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+@@ -1958,12 +2003,21 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
  	  using type = decltype(std::declval<const _CIter&>().operator->());
  	};
  
@@ -35125,7 +35688,7 @@ index d950e896928..ae971ba12a1 100644
        using value_type = iter_value_t<_It>;
        using difference_type = iter_difference_t<_It>;
        using pointer = typename __ptr<_It>::type;
-@@ -1972,12 +2025,48 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+@@ -1972,12 +2026,48 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
  
    // [iterators.counted] Counted iterators
  
@@ -35174,7 +35737,7 @@ index d950e896928..ae971ba12a1 100644
  
        constexpr counted_iterator() = default;
  
-@@ -2003,10 +2092,8 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+@@ -2003,10 +2093,8 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
  	  return *this;
  	}
  
@@ -35187,7 +35750,7 @@ index d950e896928..ae971ba12a1 100644
        { return _M_current; }
  
        constexpr _It
-@@ -2028,6 +2115,11 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+@@ -2028,6 +2116,11 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
        requires __detail::__dereferenceable<const _It>
        { return *_M_current; }
  
@@ -35199,7 +35762,7 @@ index d950e896928..ae971ba12a1 100644
        constexpr counted_iterator&
        operator++()
        {
-@@ -2170,20 +2262,17 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+@@ -2170,20 +2263,17 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
        iter_difference_t<_It> _M_length = 0;
      };
  
@@ -36737,6 +37300,47 @@ index c9c9e9f38b7..c942978557d 100644
  
        // hash policy.
  
+diff --git a/libstdc++-v3/include/c_global/cmath b/libstdc++-v3/include/c_global/cmath
+index b99aaf8df40..d27980ae916 100644
+--- a/libstdc++-v3/include/c_global/cmath
++++ b/libstdc++-v3/include/c_global/cmath
+@@ -1844,7 +1844,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+ #endif // _GLIBCXX_USE_C99_MATH_TR1
+ #endif // C++11
+ 
+-#if __cplusplus > 201402L
++#if __cplusplus >= 201703L
+ 
+   // [c.math.hypot3], three-dimensional hypotenuse
+ #define __cpp_lib_hypot 201603
+@@ -1877,10 +1877,10 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+   { return std::__hypot3<long double>(__x, __y, __z); }
+ 
+   template<typename _Tp, typename _Up, typename _Vp>
+-    typename __gnu_cxx::__promote_3<_Tp, _Up, _Vp>::__type
++    __gnu_cxx::__promoted_t<_Tp, _Up, _Vp>
+     hypot(_Tp __x, _Up __y, _Vp __z)
+     {
+-      using __type = typename __gnu_cxx::__promote_3<_Tp, _Up, _Vp>::__type;
++      using __type = __gnu_cxx::__promoted_t<_Tp, _Up, _Vp>;
+       return std::__hypot3<__type>(__x, __y, __z);
+     }
+ #endif // C++17
+@@ -1918,6 +1918,14 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+   constexpr long double
+   lerp(long double __a, long double __b, long double __t) noexcept
+   { return std::__lerp(__a, __b, __t); }
++
++  template<typename _Tp, typename _Up, typename _Vp>
++    constexpr __gnu_cxx::__promoted_t<_Tp, _Up, _Vp>
++    lerp(_Tp __x, _Up __y, _Vp __z) noexcept
++    {
++      using __type = __gnu_cxx::__promoted_t<_Tp, _Up, _Vp>;
++      return std::__lerp<__type>(__x, __y, __z);
++    }
+ #endif // C++20
+ 
+ _GLIBCXX_END_NAMESPACE_VERSION
 diff --git a/libstdc++-v3/include/debug/helper_functions.h b/libstdc++-v3/include/debug/helper_functions.h
 index 62d5309257f..9e2d206f06c 100644
 --- a/libstdc++-v3/include/debug/helper_functions.h
@@ -38072,8 +38676,34 @@ index 25d725015ec..bbd8c61e5d4 100644
  
        /**
         * @brief Resets the distribution state.
+diff --git a/libstdc++-v3/include/ext/type_traits.h b/libstdc++-v3/include/ext/type_traits.h
+index cf773cf2d59..a6f5db23682 100644
+--- a/libstdc++-v3/include/ext/type_traits.h
++++ b/libstdc++-v3/include/ext/type_traits.h
+@@ -163,7 +163,8 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+   { return true; }
+ #endif
+ 
+-  // For complex and cmath
++  // For arithmetic promotions in <complex> and <cmath>
++
+   template<typename _Tp, bool = std::__is_integer<_Tp>::__value>
+     struct __promote
+     { typedef double __type; };
+@@ -187,6 +188,11 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+     struct __promote<float>
+     { typedef float __type; };
+ 
++#if __cpp_fold_expressions
++  template<typename... _Tp>
++    using __promoted_t = decltype((typename __promote<_Tp>::__type(0) + ...));
++#endif
++
+   template<typename _Tp, typename _Up,
+            typename _Tp2 = typename __promote<_Tp>::__type,
+            typename _Up2 = typename __promote<_Up>::__type>
 diff --git a/libstdc++-v3/include/std/any b/libstdc++-v3/include/std/any
-index e13292296d3..16723c3a304 100644
+index e13292296d3..1428858d600 100644
 --- a/libstdc++-v3/include/std/any
 +++ b/libstdc++-v3/include/std/any
 @@ -205,7 +205,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
@@ -38094,7 +38724,33 @@ index e13292296d3..16723c3a304 100644
        emplace(initializer_list<_Up> __il, _Args&&... __args)
        {
  	using _VTp = decay_t<_Tp>;
-@@ -488,7 +488,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+@@ -411,16 +411,21 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+   /// Exchange the states of two @c any objects.
+   inline void swap(any& __x, any& __y) noexcept { __x.swap(__y); }
+ 
+-  /// Create an any holding a @c _Tp constructed from @c __args.
++  /// Create an `any` holding a `_Tp` constructed from `__args...`.
+   template <typename _Tp, typename... _Args>
+-    any make_any(_Args&&... __args)
++    inline
++    enable_if_t<is_constructible_v<any, in_place_type_t<_Tp>, _Args...>, any>
++    make_any(_Args&&... __args)
+     {
+       return any(in_place_type<_Tp>, std::forward<_Args>(__args)...);
+     }
+ 
+-  /// Create an any holding a @c _Tp constructed from @c __il and @c __args.
++  /// Create an `any` holding a `_Tp` constructed from `__il` and `__args...`.
+   template <typename _Tp, typename _Up, typename... _Args>
+-    any make_any(initializer_list<_Up> __il, _Args&&... __args)
++    inline
++    enable_if_t<is_constructible_v<any, in_place_type_t<_Tp>,
++				   initializer_list<_Up>&, _Args...>, any>
++    make_any(initializer_list<_Up> __il, _Args&&... __args)
+     {
+       return any(in_place_type<_Tp>, __il, std::forward<_Args>(__args)...);
+     }
+@@ -488,7 +493,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
  	return static_cast<_ValueType>(std::move(*__p));
        __throw_bad_any_cast();
      }
@@ -38103,7 +38759,7 @@ index e13292296d3..16723c3a304 100644
  
    /// @cond undocumented
    template<typename _Tp>
-@@ -547,7 +547,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+@@ -547,7 +552,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
  	  return static_cast<_ValueType*>(__any_caster<_ValueType>(__any));
        return nullptr;
      }
@@ -38284,6 +38940,25 @@ index 5364e59f466..681f2116d67 100644
  
  _GLIBCXX_END_NAMESPACE_CONTAINER
  } // namespace std
+diff --git a/libstdc++-v3/include/std/charconv b/libstdc++-v3/include/std/charconv
+index cc7dd0e3758..daad423570a 100644
+--- a/libstdc++-v3/include/std/charconv
++++ b/libstdc++-v3/include/std/charconv
+@@ -335,12 +335,10 @@ namespace __detail
+ 	  *__first = '0';
+ 	  return { __first + 1, errc{} };
+ 	}
+-
+-      if _GLIBCXX17_CONSTEXPR (std::is_signed<_Tp>::value)
++      else if _GLIBCXX17_CONSTEXPR (std::is_signed<_Tp>::value)
+ 	if (__value < 0)
+ 	  {
+-	    if (__builtin_expect(__first != __last, 1))
+-	      *__first++ = '-';
++	    *__first++ = '-';
+ 	    __unsigned_val = _Up(~__value) + _Up(1);
+ 	  }
+ 
 diff --git a/libstdc++-v3/include/std/chrono b/libstdc++-v3/include/std/chrono
 index 1eab4b74cb7..62a200c73b0 100644
 --- a/libstdc++-v3/include/std/chrono
@@ -40340,6 +41015,94 @@ index b1ed458ba21..f25e74a685e 100644
  
  #ifdef __cpp_lib_jthread
  
+diff --git a/libstdc++-v3/include/std/tuple b/libstdc++-v3/include/std/tuple
+index 99121532101..fac6d4d656b 100644
+--- a/libstdc++-v3/include/std/tuple
++++ b/libstdc++-v3/include/std/tuple
+@@ -90,26 +90,32 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+         constexpr _Head_base(_UHead&& __h)
+ 	: _Head(std::forward<_UHead>(__h)) { }
+ 
++      _GLIBCXX20_CONSTEXPR
+       _Head_base(allocator_arg_t, __uses_alloc0)
+       : _Head() { }
+ 
+       template<typename _Alloc>
++	_GLIBCXX20_CONSTEXPR
+ 	_Head_base(allocator_arg_t, __uses_alloc1<_Alloc> __a)
+ 	: _Head(allocator_arg, *__a._M_a) { }
+ 
+       template<typename _Alloc>
++	_GLIBCXX20_CONSTEXPR
+ 	_Head_base(allocator_arg_t, __uses_alloc2<_Alloc> __a)
+ 	: _Head(*__a._M_a) { }
+ 
+       template<typename _UHead>
++	_GLIBCXX20_CONSTEXPR
+ 	_Head_base(__uses_alloc0, _UHead&& __uhead)
+ 	: _Head(std::forward<_UHead>(__uhead)) { }
+ 
+       template<typename _Alloc, typename _UHead>
++	_GLIBCXX20_CONSTEXPR
+ 	_Head_base(__uses_alloc1<_Alloc> __a, _UHead&& __uhead)
+ 	: _Head(allocator_arg, *__a._M_a, std::forward<_UHead>(__uhead)) { }
+ 
+       template<typename _Alloc, typename _UHead>
++	_GLIBCXX20_CONSTEXPR
+ 	_Head_base(__uses_alloc2<_Alloc> __a, _UHead&& __uhead)
+ 	: _Head(std::forward<_UHead>(__uhead), *__a._M_a) { }
+ 
+@@ -141,10 +147,12 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+       : _M_head_impl() { }
+ 
+       template<typename _Alloc>
++	_GLIBCXX20_CONSTEXPR
+ 	_Head_base(allocator_arg_t, __uses_alloc1<_Alloc> __a)
+ 	: _M_head_impl(allocator_arg, *__a._M_a) { }
+ 
+       template<typename _Alloc>
++	_GLIBCXX20_CONSTEXPR
+ 	_Head_base(allocator_arg_t, __uses_alloc2<_Alloc> __a)
+ 	: _M_head_impl(*__a._M_a) { }
+ 
+@@ -154,11 +162,13 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+ 	: _M_head_impl(std::forward<_UHead>(__uhead)) { }
+ 
+       template<typename _Alloc, typename _UHead>
++	_GLIBCXX20_CONSTEXPR
+ 	_Head_base(__uses_alloc1<_Alloc> __a, _UHead&& __uhead)
+ 	: _M_head_impl(allocator_arg, *__a._M_a, std::forward<_UHead>(__uhead))
+ 	{ }
+ 
+       template<typename _Alloc, typename _UHead>
++	_GLIBCXX20_CONSTEXPR
+ 	_Head_base(__uses_alloc2<_Alloc> __a, _UHead&& __uhead)
+ 	: _M_head_impl(std::forward<_UHead>(__uhead), *__a._M_a) { }
+ 
+@@ -255,6 +265,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+           _Base(__tag, __use_alloc<_Head>(__a)) { }
+ 
+       template<typename _Alloc>
++	_GLIBCXX20_CONSTEXPR
+ 	_Tuple_impl(allocator_arg_t __tag, const _Alloc& __a,
+ 		    const _Head& __head, const _Tail&... __tail)
+ 	: _Inherited(__tag, __a, __tail...),
+@@ -389,6 +400,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+ 	: _Base(__tag, __use_alloc<_Head>(__a)) { }
+ 
+       template<typename _Alloc>
++	_GLIBCXX20_CONSTEXPR
+ 	_Tuple_impl(allocator_arg_t __tag, const _Alloc& __a,
+ 		    const _Head& __head)
+ 	: _Base(__use_alloc<_Head, _Alloc, _Head>(__a), __head) { }
+@@ -872,6 +884,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+     class tuple<>
+     {
+     public:
++      _GLIBCXX20_CONSTEXPR
+       void swap(tuple&) noexcept { /* no-op */ }
+       // We need the default since we're going to define no-op
+       // allocator constructors.
 diff --git a/libstdc++-v3/include/std/type_traits b/libstdc++-v3/include/std/type_traits
 index c62dc72d3d7..cc34f82a31d 100644
 --- a/libstdc++-v3/include/std/type_traits
@@ -41734,6 +42497,32 @@ index 86dde5416ea..309f3b5f850 100644
  
  int
  main()
+diff --git a/libstdc++-v3/testsuite/20_util/any/102894.cc b/libstdc++-v3/testsuite/20_util/any/102894.cc
+new file mode 100644
+index 00000000000..66ea9a03fea
+--- /dev/null
++++ b/libstdc++-v3/testsuite/20_util/any/102894.cc
+@@ -0,0 +1,20 @@
++// { dg-do compile { target c++17 } }
++#include <any>
++
++template<typename T, typename = void>
++struct can_make_any
++: std::false_type
++{ };
++
++template<typename T>
++struct can_make_any<T, std::void_t<decltype(std::make_any<T>())>>
++: std::true_type
++{ };
++
++struct move_only
++{
++  move_only() = default;
++  move_only(move_only&&) = default;
++};
++
++static_assert( ! can_make_any<move_only>::value ); // PR libstdc++/102894
 diff --git a/libstdc++-v3/testsuite/20_util/any/cons/101034.cc b/libstdc++-v3/testsuite/20_util/any/cons/101034.cc
 new file mode 100644
 index 00000000000..55f550a839e
@@ -41766,6 +42555,32 @@ index 00000000000..5e144768002
 +struct A {};
 +struct B { B(A); };
 +static_assert( std::is_same_v<std::common_reference_t<A&, B&&>, B> );
+diff --git a/libstdc++-v3/testsuite/20_util/forward/c_neg.cc b/libstdc++-v3/testsuite/20_util/forward/c_neg.cc
+index 8b6736d42f0..5e318ed67f4 100644
+--- a/libstdc++-v3/testsuite/20_util/forward/c_neg.cc
++++ b/libstdc++-v3/testsuite/20_util/forward/c_neg.cc
+@@ -17,7 +17,7 @@
+ // with this library; see the file COPYING3.  If not see
+ // <http://www.gnu.org/licenses/>.
+ 
+-// { dg-error "static assertion failed" "" { target *-*-* } 89 }
++// { dg-error "convert an rvalue to an lvalue" "" { target *-*-* } 0 }
+ 
+ #include <list>
+ 
+diff --git a/libstdc++-v3/testsuite/20_util/forward/f_neg.cc b/libstdc++-v3/testsuite/20_util/forward/f_neg.cc
+index 4b697f1cd5d..c6cf880bd15 100644
+--- a/libstdc++-v3/testsuite/20_util/forward/f_neg.cc
++++ b/libstdc++-v3/testsuite/20_util/forward/f_neg.cc
+@@ -17,7 +17,7 @@
+ // with this library; see the file COPYING3.  If not see
+ // <http://www.gnu.org/licenses/>.
+ 
+-// { dg-error "static assertion failed" "" { target *-*-* } 89 }
++// { dg-error "convert an rvalue to an lvalue" "" { target *-*-* } 0 }
+ 
+ #include <utility>
+ 
 diff --git a/libstdc++-v3/testsuite/20_util/from_chars/3.cc b/libstdc++-v3/testsuite/20_util/from_chars/3.cc
 index 9d4a77f5c31..d1f93bba2cb 100644
 --- a/libstdc++-v3/testsuite/20_util/from_chars/3.cc
@@ -41779,6 +42594,32 @@ index 9d4a77f5c31..d1f93bba2cb 100644
    while (last > first)
    {
      val += (*--last - '0') * place;
+diff --git a/libstdc++-v3/testsuite/20_util/headers/memory/synopsis.cc b/libstdc++-v3/testsuite/20_util/headers/memory/synopsis.cc
+index 187de621257..dd4324a3915 100644
+--- a/libstdc++-v3/testsuite/20_util/headers/memory/synopsis.cc
++++ b/libstdc++-v3/testsuite/20_util/headers/memory/synopsis.cc
+@@ -20,6 +20,12 @@
+ 
+ #include <memory>
+ 
++#if __cplusplus >= 201103L
++# define NOTHROW noexcept
++#else
++# define NOTHROW
++#endif
++
+ namespace std {
+   //  lib.default.allocator, the default allocator:
+   template <class T> class allocator;
+@@ -40,7 +46,7 @@ namespace std {
+ 
+   //  lib.temporary.buffer, temporary buffers:
+   template <class T>
+-  pair<T*,ptrdiff_t> get_temporary_buffer(ptrdiff_t n);
++  pair<T*,ptrdiff_t> get_temporary_buffer(ptrdiff_t n) NOTHROW;
+   template <class T>
+   void return_temporary_buffer(T* p);
+ 
 diff --git a/libstdc++-v3/testsuite/20_util/integer_comparisons/greater.cc b/libstdc++-v3/testsuite/20_util/integer_comparisons/greater.cc
 new file mode 100644
 index 00000000000..e564d8d03f2
@@ -41973,12 +42814,12 @@ index 3205cc37f1f..506e1823c8f 100644
  }
 diff --git a/libstdc++-v3/testsuite/20_util/shared_ptr/creation/99006.cc b/libstdc++-v3/testsuite/20_util/shared_ptr/creation/99006.cc
 new file mode 100644
-index 00000000000..d5f7a5da5e9
+index 00000000000..e070fb9d420
 --- /dev/null
 +++ b/libstdc++-v3/testsuite/20_util/shared_ptr/creation/99006.cc
 @@ -0,0 +1,9 @@
-+// FIXME: This should use { target { ! c++20 } }
-+// { dg-do compile }
++// FIXME: This should use { target { c++11 && { ! c++20 } } }
++// { dg-do compile { target { c++11 } } }
 +
 +#include <memory>
 +
@@ -42001,6 +42842,76 @@ index 9d6b0189525..b64d8818365 100644
 +auto c = std::make_tuple("", Compares{}, 2, 'U');
 +auto d = c < c;
 +#endif
+diff --git a/libstdc++-v3/testsuite/20_util/tuple/cons/102270.cc b/libstdc++-v3/testsuite/20_util/tuple/cons/102270.cc
+new file mode 100644
+index 00000000000..5500cacab6d
+--- /dev/null
++++ b/libstdc++-v3/testsuite/20_util/tuple/cons/102270.cc
+@@ -0,0 +1,64 @@
++// { dg-options "-std=gnu++20" }
++// { dg-do compile { target c++20 } }
++
++#include <tuple>
++
++// PR libstdc++/102270 - std::tuple<>::swap missing constexpr specifier
++
++constexpr bool swap_empty_tuple()
++{
++  std::tuple<> t, u;
++  t.swap(u);
++  return true;
++}
++static_assert( swap_empty_tuple() );
++
++#include <testsuite_allocator.h>
++
++constexpr bool construct_using_allocator()
++{
++  using Alloc = __gnu_test::SimpleAllocator<int>;
++
++  Alloc a;
++  const int i = 0;
++
++  struct X0a {
++    using allocator_type = Alloc;
++    /* not constexpr */ X0a() { }
++    constexpr X0a(allocator_type) { }
++  };
++  std::tuple<X0a> t0a(std::allocator_arg, a);
++  std::tuple<X0a, X0a> t00a(std::allocator_arg, a);
++
++  struct X0b {
++    using allocator_type = Alloc;
++    /* not constexpr */ X0b() { }
++    constexpr X0b(std::allocator_arg_t, allocator_type) { }
++  };
++  std::tuple<X0b> t0b(std::allocator_arg, a);
++  std::tuple<X0b, X0b> t00b(std::allocator_arg, a);
++
++  struct X1a {
++    using allocator_type = Alloc;
++    /* not constexpr */ X1a(int) { }
++    constexpr X1a(int, allocator_type) { }
++  };
++  std::tuple<X1a> t1a(std::allocator_arg, a, 1);
++  std::tuple<X1a, X1a> t11a(std::allocator_arg, a, 1, i);
++
++  struct X1b {
++    using allocator_type = Alloc;
++    /* not constexpr */ X1b(int) { }
++    constexpr X1b(std::allocator_arg_t, allocator_type, int) { }
++  };
++  std::tuple<X1b> t1b(std::allocator_arg, a, 1);
++  std::tuple<X1b, X1b> t11b(std::allocator_arg, a, 1, i);
++
++  std::tuple<X1a, X1a, X1b, X1b> t1a1b(std::allocator_arg, a, 1, i, 1, i);
++
++  const int c = 0;
++  std::tuple<int, int> tii(std::allocator_arg, a, c, c);
++
++  return true;
++}
++static_assert( construct_using_allocator() );
 diff --git a/libstdc++-v3/testsuite/20_util/uses_allocator/69293_neg.cc b/libstdc++-v3/testsuite/20_util/uses_allocator/69293_neg.cc
 index 423ecc4d90e..6626e5a9713 100644
 --- a/libstdc++-v3/testsuite/20_util/uses_allocator/69293_neg.cc
@@ -42120,6 +43031,18 @@ index 00000000000..6f571f48010
 +#elif __cpp_lib_constexpr_char_traits != (__cplusplus == 201703 ? 201611 : 201811)
 +# error Feature-test macro for constexpr char_traits has the wrong value in <version>
 +#endif
+diff --git a/libstdc++-v3/testsuite/23_containers/array/comparison_operators/96851.cc b/libstdc++-v3/testsuite/23_containers/array/comparison_operators/96851.cc
+index b2a464b8f68..96d6e94d5ae 100644
+--- a/libstdc++-v3/testsuite/23_containers/array/comparison_operators/96851.cc
++++ b/libstdc++-v3/testsuite/23_containers/array/comparison_operators/96851.cc
+@@ -17,6 +17,7 @@
+ 
+ // { dg-options "-std=gnu++2a" }
+ // { dg-do run { target c++2a } }
++// { dg-require-normal-mode "" }
+ 
+ #include <array>
+ #include <testsuite_hooks.h>
 diff --git a/libstdc++-v3/testsuite/23_containers/map/cons/noexcept_move_construct.cc b/libstdc++-v3/testsuite/23_containers/map/cons/noexcept_move_construct.cc
 index 119b199ddff..25d1c9b5aca 100644
 --- a/libstdc++-v3/testsuite/23_containers/map/cons/noexcept_move_construct.cc
@@ -42358,10 +43281,10 @@ index 00000000000..e3748293555
 +static_assert( std::is_trivially_copyable_v<std::span<NonTrivial, 99>> );
 diff --git a/libstdc++-v3/testsuite/23_containers/unordered_map/allocator/default_init.cc b/libstdc++-v3/testsuite/23_containers/unordered_map/allocator/default_init.cc
 new file mode 100644
-index 00000000000..473a5f1ce47
+index 00000000000..3da42453152
 --- /dev/null
 +++ b/libstdc++-v3/testsuite/23_containers/unordered_map/allocator/default_init.cc
-@@ -0,0 +1,69 @@
+@@ -0,0 +1,68 @@
 +// Copyright (C) 2020 Free Software Foundation, Inc.
 +//
 +// This file is part of the GNU ISO C++ Library.  This library is free
@@ -42381,7 +43304,6 @@ index 00000000000..473a5f1ce47
 +
 +// { dg-do run { target c++11 } }
 +// { dg-options "-O0" }
-+// { dg-xfail-run-if "PR c++/65816" { *-*-* } }
 +
 +#include <unordered_map>
 +#include <testsuite_hooks.h>
@@ -42431,6 +43353,63 @@ index 00000000000..473a5f1ce47
 +  test02();
 +  return 0;
 +}
+diff --git a/libstdc++-v3/testsuite/23_containers/unordered_map/cons/default.cc b/libstdc++-v3/testsuite/23_containers/unordered_map/cons/default.cc
+new file mode 100644
+index 00000000000..7a785e980b1
+--- /dev/null
++++ b/libstdc++-v3/testsuite/23_containers/unordered_map/cons/default.cc
+@@ -0,0 +1,51 @@
++// { dg-do compile { target c++11 } }
++#include <unordered_map>
++
++static_assert( std::is_default_constructible<std::unordered_map<int, int>>{}, "" );
++
++template<typename T>
++  struct NoDefaultConsAlloc
++  {
++    using value_type = T;
++
++    NoDefaultConsAlloc(int) noexcept { }
++
++    template<typename U>
++      NoDefaultConsAlloc(const NoDefaultConsAlloc<U>&) { }
++
++    T *allocate(std::size_t n)
++    { return std::allocator<T>().allocate(n); }
++
++    void deallocate(T *p, std::size_t n)
++    { std::allocator<T>().deallocate(p, n); }
++
++    bool operator==(const NoDefaultConsAlloc&) const { return true; }
++    bool operator!=(const NoDefaultConsAlloc&) const { return false; }
++  };
++
++using Map = std::unordered_map<int, int, std::hash<int>, std::equal_to<int>,
++			       NoDefaultConsAlloc<std::pair<const int, int>>>;
++static_assert( ! std::is_default_constructible<Map>{}, "PR libstdc++/100863" );
++
++struct Hash : std::hash<int> { Hash(int) { } };
++using Map2 = std::unordered_map<int, int, Hash>;
++static_assert( ! std::is_default_constructible<Map2>{}, "PR libstdc++/100863" );
++
++struct Equal : std::equal_to<int> { Equal(int) { } };
++using Map3 = std::unordered_map<int, int, std::hash<int>, Equal>;
++static_assert( ! std::is_default_constructible<Map3>{}, "PR libstdc++/100863" );
++
++// PR libstdc++/101583
++// verify non-default ctors can still be used
++using Map4 = std::unordered_map<int, int, Hash, Equal,
++			        NoDefaultConsAlloc<std::pair<const int, int>>>;
++Hash h(1);
++Equal eq(1);
++Map4::allocator_type a(1);
++Map4 m{1, h, eq, a};
++Map4 m2{m.begin(), m.end(), m.size(), h, eq, a};
++Map4 m3{{{1,1}, {2,2}, {3,3}}, 3, h, eq, a};
++Map4 m4{m};
++Map4 m5{m, a};
++Map4 m6{std::move(m)};
++Map4 m7{std::move(m6), a};
 diff --git a/libstdc++-v3/testsuite/23_containers/unordered_map/cons/noexcept_default_construct.cc b/libstdc++-v3/testsuite/23_containers/unordered_map/cons/noexcept_default_construct.cc
 new file mode 100644
 index 00000000000..f859ec939d0
@@ -42955,10 +43934,10 @@ index 00000000000..1ccb8b0cf41
 +	       "not noexcept move constructor with allocator" );
 diff --git a/libstdc++-v3/testsuite/23_containers/unordered_set/allocator/default_init.cc b/libstdc++-v3/testsuite/23_containers/unordered_set/allocator/default_init.cc
 new file mode 100644
-index 00000000000..37110dd6eb0
+index 00000000000..1f2f3516859
 --- /dev/null
 +++ b/libstdc++-v3/testsuite/23_containers/unordered_set/allocator/default_init.cc
-@@ -0,0 +1,69 @@
+@@ -0,0 +1,68 @@
 +// Copyright (C) 2020 Free Software Foundation, Inc.
 +//
 +// This file is part of the GNU ISO C++ Library.  This library is free
@@ -42978,7 +43957,6 @@ index 00000000000..37110dd6eb0
 +
 +// { dg-do run { target c++11 } }
 +// { dg-options "-O0" }
-+// { dg-xfail-run-if "PR c++/65816" { *-*-* } }
 +
 +#include <unordered_set>
 +#include <testsuite_hooks.h>
@@ -43081,6 +44059,62 @@ index 00000000000..b209f7627f5
 +  static_assert( noexcept( Set<A>(std::move(s)) ), "non-throwing" );
 +  static_assert( ! noexcept( Set<A>(std::move(s), a) ), "throwing" );
 +}
+diff --git a/libstdc++-v3/testsuite/23_containers/unordered_set/cons/default.cc b/libstdc++-v3/testsuite/23_containers/unordered_set/cons/default.cc
+new file mode 100644
+index 00000000000..fb87c96ce9d
+--- /dev/null
++++ b/libstdc++-v3/testsuite/23_containers/unordered_set/cons/default.cc
+@@ -0,0 +1,50 @@
++// { dg-do compile { target c++11 } }
++#include <unordered_set>
++
++static_assert( std::is_default_constructible<std::unordered_set<int>>{}, "" );
++
++template<typename T>
++  struct NoDefaultConsAlloc
++  {
++    using value_type = T;
++
++    NoDefaultConsAlloc(int) noexcept { }
++
++    template<typename U>
++      NoDefaultConsAlloc(const NoDefaultConsAlloc<U>&) { }
++
++    T *allocate(std::size_t n)
++    { return std::allocator<T>().allocate(n); }
++
++    void deallocate(T *p, std::size_t n)
++    { std::allocator<T>().deallocate(p, n); }
++
++    bool operator==(const NoDefaultConsAlloc&) const { return true; }
++    bool operator!=(const NoDefaultConsAlloc&) const { return false; }
++  };
++
++using Set = std::unordered_set<int, std::hash<int>, std::equal_to<int>,
++			       NoDefaultConsAlloc<int>>;
++static_assert( ! std::is_default_constructible<Set>{}, "PR libstdc++/100863" );
++
++struct Hash : std::hash<int> { Hash(int) { } };
++using Set2 = std::unordered_set<int, Hash>;
++static_assert( ! std::is_default_constructible<Set2>{}, "PR libstdc++/100863" );
++
++struct Equal : std::equal_to<int> { Equal(int) { } };
++using Set3 = std::unordered_set<int, std::hash<int>, Equal>;
++static_assert( ! std::is_default_constructible<Set3>{}, "PR libstdc++/100863" );
++
++// PR libstdc++/101583
++// verify non-default ctors can still be used
++using Set4 = std::unordered_set<int, Hash, Equal, NoDefaultConsAlloc<int>>;
++Hash h(1);
++Equal eq(1);
++Set4::allocator_type a(1);
++Set4 s{1, h, eq, a};
++Set4 s2{s.begin(), s.end(), s.size(), h, eq, a};
++Set4 s3{{1, 2, 3}, 3, h, eq, a};
++Set4 s4{s};
++Set4 s5{s, a};
++Set4 s6{std::move(s)};
++Set4 s7{std::move(s6), a};
 diff --git a/libstdc++-v3/testsuite/23_containers/unordered_set/cons/noexcept_default_construct.cc b/libstdc++-v3/testsuite/23_containers/unordered_set/cons/noexcept_default_construct.cc
 new file mode 100644
 index 00000000000..44db4aec6cf
@@ -43719,10 +44753,10 @@ index aafe845db3a..b7b3569ff83 100644
  }
 diff --git a/libstdc++-v3/testsuite/25_algorithms/copy/debug/99402.cc b/libstdc++-v3/testsuite/25_algorithms/copy/debug/99402.cc
 new file mode 100644
-index 00000000000..041d222d079
+index 00000000000..9a9c97af605
 --- /dev/null
 +++ b/libstdc++-v3/testsuite/25_algorithms/copy/debug/99402.cc
-@@ -0,0 +1,35 @@
+@@ -0,0 +1,36 @@
 +// Copyright (C) 2021 Free Software Foundation, Inc.
 +//
 +// This file is part of the GNU ISO C++ Library.  This library is free
@@ -43753,8 +44787,9 @@ index 00000000000..041d222d079
 +
 +int main()
 +{
++    int two[] = { 0, 1 };
 +    // any container with non-random access iterators:
-+    const set<int> source = { 0, 1 };
++    const set<int> source(two, two + 2);
 +    vector<int> dest(1);
 +    copy(source.begin(), ++source.begin(), dest.begin());
 +}
@@ -43770,6 +44805,32 @@ index 1d779df10d6..2ed14fe110a 100644
 +  copy_backward(std::make_move_iterator(a), std::make_move_iterator(a+1), b+1);
  }
  // { dg-prune-output "use of deleted" }
+diff --git a/libstdc++-v3/testsuite/25_algorithms/fill_n/constrained.cc b/libstdc++-v3/testsuite/25_algorithms/fill_n/constrained.cc
+index e9ce8e8fb0a..09d3bd37630 100644
+--- a/libstdc++-v3/testsuite/25_algorithms/fill_n/constrained.cc
++++ b/libstdc++-v3/testsuite/25_algorithms/fill_n/constrained.cc
+@@ -73,11 +73,12 @@ test01()
+     }
+ }
+ 
++template<typename T>
+ constexpr bool
+ test02()
+ {
+   bool ok = true;
+-  int x[6] = { 1, 2, 3, 4, 5, 6 };
++  T x[6] = { 1, 2, 3, 4, 5, 6 };
+   const int y[6] = { 1, 2, 3, 4, 5, 6 };
+   const int z[6] = { 17, 17, 17, 4, 5, 6 };
+ 
+@@ -94,5 +95,6 @@ int
+ main()
+ {
+   test01();
+-  static_assert(test02());
++  static_assert(test02<int>());
++  static_assert(test02<unsigned char>()); // PR libstdc++/101608
+ }
 diff --git a/libstdc++-v3/testsuite/25_algorithms/is_permutation/2.cc b/libstdc++-v3/testsuite/25_algorithms/is_permutation/2.cc
 index f2c28412515..e7ce1f3e184 100644
 --- a/libstdc++-v3/testsuite/25_algorithms/is_permutation/2.cc
@@ -43991,6 +45052,63 @@ index 0720c377011..5ecf2ce3616 100644
                      in[i] = value;
  
                  invoke_on_all_policies(test_one_policy(), in.begin(), in.begin() + n1, n2, value, std::equal_to<T>());
+diff --git a/libstdc++-v3/testsuite/26_numerics/lerp.cc b/libstdc++-v3/testsuite/26_numerics/lerp/1.cc
+similarity index 100%
+rename from libstdc++-v3/testsuite/26_numerics/lerp.cc
+rename to libstdc++-v3/testsuite/26_numerics/lerp/1.cc
+diff --git a/libstdc++-v3/testsuite/26_numerics/lerp/constexpr.cc b/libstdc++-v3/testsuite/26_numerics/lerp/constexpr.cc
+new file mode 100644
+index 00000000000..f1ab42b5a42
+--- /dev/null
++++ b/libstdc++-v3/testsuite/26_numerics/lerp/constexpr.cc
+@@ -0,0 +1,21 @@
++// { dg-options "-std=gnu++2a" }
++// { dg-do compile { target c++2a } }
++
++#include <cmath>
++
++// Fails template argument deduction unless both arguments are the same type.
++template<typename T>
++constexpr bool
++eq(T result, T expected) { return result == expected; }
++
++static_assert( eq( std::lerp(-10.0, 10.0, 0.25), -5.0 ) );
++static_assert( eq( std::lerp(2.0f, 2.0f, 200.0f), 2.0f ) );
++static_assert( eq( std::lerp(2.0L, 4.0L, 200.0L), 402.0L ) );
++// at least one type is long double, so result is long double
++static_assert( eq( std::lerp(2.0L, 4.0f, -20.0), -38.0L ) );
++// at least one type is double, so result is double:
++static_assert( eq( std::lerp(-8.0f, 10.0, 0.5f), 1.0 ) );
++// int promotes to double, so result is double
++static_assert( eq( std::lerp(0, 1, 0), 0.0 ) );
++// int promotes to double, so result is double
++static_assert( eq( std::lerp(2.0f, -10.0f, 1), -10.0 ) );
+diff --git a/libstdc++-v3/testsuite/26_numerics/lerp/version.cc b/libstdc++-v3/testsuite/26_numerics/lerp/version.cc
+new file mode 100644
+index 00000000000..3ccb032bc67
+--- /dev/null
++++ b/libstdc++-v3/testsuite/26_numerics/lerp/version.cc
+@@ -0,0 +1,10 @@
++// { dg-options "-std=gnu++2a" }
++// { dg-do preprocess { target c++2a } }
++
++#include <version>
++
++#ifndef __cpp_lib_interpolate
++# error "Feature-test macro for midpoint and lerp missing in <version>"
++#elif __cpp_lib_interpolate != 201902L
++# error "Feature-test macro for midpoint and lerp has wrong value in <version>"
++#endif
+diff --git a/libstdc++-v3/testsuite/26_numerics/random/pr60037-neg.cc b/libstdc++-v3/testsuite/26_numerics/random/pr60037-neg.cc
+index 9cffc3d06f9..1291967b0d1 100644
+--- a/libstdc++-v3/testsuite/26_numerics/random/pr60037-neg.cc
++++ b/libstdc++-v3/testsuite/26_numerics/random/pr60037-neg.cc
+@@ -12,4 +12,4 @@ auto x = std::generate_canonical<std::size_t,
+ 
+ // { dg-error "static assertion failed: template argument must be a floating point type" "" { target *-*-* } 167 }
+ 
+-// { dg-error "static assertion failed: template argument must be a floating point type" "" { target *-*-* } 3284 }
++// { dg-error "static assertion failed: template argument must be a floating point type" "" { target *-*-* } 3288 }
 diff --git a/libstdc++-v3/testsuite/26_numerics/random/seed_seq/cons/default.cc b/libstdc++-v3/testsuite/26_numerics/random/seed_seq/cons/default.cc
 index 73a4390da26..3c4e38a7408 100644
 --- a/libstdc++-v3/testsuite/26_numerics/random/seed_seq/cons/default.cc
@@ -44641,6 +45759,30 @@ index cf3724025f7..16175c4072a 100644
    test01();
    test02();
 +  test03();
+ }
+diff --git a/libstdc++-v3/testsuite/27_io/types/1.cc b/libstdc++-v3/testsuite/27_io/types/1.cc
+index a565c205b35..b2838e429c9 100644
+--- a/libstdc++-v3/testsuite/27_io/types/1.cc
++++ b/libstdc++-v3/testsuite/27_io/types/1.cc
+@@ -27,14 +27,14 @@
+ // Annex D, deprecated.
+ void test01()
+ {
+-  typedef std::ios_base::streampos streampos_type; // { dg-warning "is deprecated: use 'std::streampos' instead" }
+-  typedef std::ios_base::streamoff streamoff_type; // { dg-warning "is deprecated: use 'std::streamoff' instead" }
++  typedef std::ios_base::streampos streampos_type; // { dg-warning "is deprecated: use 'std::streampos' instead" "" { target c++11 } }
++  typedef std::ios_base::streamoff streamoff_type; // { dg-warning "is deprecated: use 'std::streamoff' instead" "" { target c++11 } }
+ }
+ 
+ // Annex D, deprecated.
+ void test02()
+ {
+-  typedef std::ios_base::io_state iostate_type; // { dg-warning "is deprecated: use 'std::iostate' instead" }
+-  typedef std::ios_base::open_mode openmode_type; // { dg-warning "is deprecated: use 'std::openmode' instead" }
+-  typedef std::ios_base::seek_dir seekdir_type; // { dg-warning "is deprecated: use 'std::seekdir' instead" }
++  typedef std::ios_base::io_state iostate_type; // { dg-warning "is deprecated: use 'std::iostate' instead" "" { target c++11 } }
++  typedef std::ios_base::open_mode openmode_type; // { dg-warning "is deprecated: use 'std::openmode' instead" "" { target c++11 } }
++  typedef std::ios_base::seek_dir seekdir_type; // { dg-warning "is deprecated: use 'std::seekdir' instead" "" { target c++11 } }
  }
 diff --git a/libstdc++-v3/testsuite/28_regex/match_results/102667.cc b/libstdc++-v3/testsuite/28_regex/match_results/102667.cc
 new file mode 100644
@@ -45609,6 +46751,19 @@ index 6547d931c29..80a8f9c7b87 100644
  {
  #if _PSTL_ICC_16_VC14_TEST_SIMD_LAMBDA_DEBUG_32_BROKEN || _PSTL_ICC_17_VC141_TEST_SIMD_LAMBDA_DEBUG_32_BROKEN
      __pstl::__internal::invoke_if_not(__pstl::__internal::allow_unsequenced<Policy>(), f);
+diff --git a/libstdc++-v3/testsuite/util/testsuite_allocator.h b/libstdc++-v3/testsuite/util/testsuite_allocator.h
+index e52ef788467..dacb4daf6b0 100644
+--- a/libstdc++-v3/testsuite/util/testsuite_allocator.h
++++ b/libstdc++-v3/testsuite/util/testsuite_allocator.h
+@@ -512,7 +512,7 @@ namespace __gnu_test
+     {
+       typedef Tp value_type;
+ 
+-      SimpleAllocator() noexcept { }
++      constexpr SimpleAllocator() noexcept { }
+ 
+       template <class T>
+         SimpleAllocator(const SimpleAllocator<T>&) { }
 diff --git a/libstdc++-v3/testsuite/util/testsuite_fs.h b/libstdc++-v3/testsuite/util/testsuite_fs.h
 index df2344fae92..54fb42598f0 100644
 --- a/libstdc++-v3/testsuite/util/testsuite_fs.h
@@ -45645,7 +46800,7 @@ index df2344fae92..54fb42598f0 100644
  } // namespace __gnu_test
  #endif
 diff --git a/libstdc++-v3/testsuite/util/testsuite_iterators.h b/libstdc++-v3/testsuite/util/testsuite_iterators.h
-index 60eba26eab4..8c4b8b7c6cc 100644
+index 60eba26eab4..241b8a9ec2c 100644
 --- a/libstdc++-v3/testsuite/util/testsuite_iterators.h
 +++ b/libstdc++-v3/testsuite/util/testsuite_iterators.h
 @@ -122,7 +122,7 @@ namespace __gnu_test
@@ -45657,6 +46812,36 @@ index 60eba26eab4..8c4b8b7c6cc 100644
    {
    protected:
      output_iterator_wrapper() : ptr(0), SharedInfo(0)
+@@ -175,10 +175,14 @@ namespace __gnu_test
+ #if __cplusplus >= 201103L
+     template<typename U>
+       void operator,(const U&) const = delete;
++
++    void operator&() const = delete;
+ #else
+   private:
+     template<typename U>
+       void operator,(const U&) const;
++
++    void operator&() const;
+ #endif
+   };
+ 
+@@ -275,10 +279,14 @@ namespace __gnu_test
+ #if __cplusplus >= 201103L
+     template<typename U>
+       void operator,(const U&) const = delete;
++
++    void operator&() const = delete;
+ #else
+   private:
+     template<typename U>
+       void operator,(const U&) const;
++
++    void operator&() const;
+ #endif
+   };
+ 
 diff --git a/maintainer-scripts/ChangeLog b/maintainer-scripts/ChangeLog
 index 2be23318cd4..982fdf70563 100644
 --- a/maintainer-scripts/ChangeLog
