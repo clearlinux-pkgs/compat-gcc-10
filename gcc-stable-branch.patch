@@ -356,7 +356,7 @@ Harald Anlauf (29):
       Fortran: fix lookup for gfortran builtin math intrinsics used by DEC extensions
       Fortran: do not attempt simplification of [LU]BOUND for pointer/allocatable
 
-Iain Buclaw (16):
+Iain Buclaw (17):
       d: Fix ICE in when formating a string with '%' or '`' characters (PR98457)
       d: Fix ICE in gimplify_var_or_parm_decl, at gimplify.c:2755 (PR100882)
       d: Respect explicit align(N) type alignment (PR100935)
@@ -373,6 +373,7 @@ Iain Buclaw (16):
       d: Use HOST_WIDE_INT for type size temporaries.
       libphobos: Don't call __gthread_key_delete in the emutls destroy function.
       libphobos: Increase size of defaultStackPages on OSX X86_64 targets.
+      libphobos: Push all callee-save registers on the stack before GC scan
 
 Iain Sandoe (4):
       coroutines: Fix a typo in rewriting the function.
@@ -30952,10 +30953,120 @@ index 053809c0ea7..3afbd127a19 100644
  
  	* GCC 10.3.0 released.
 diff --git a/libphobos/libdruntime/core/thread.d b/libphobos/libdruntime/core/thread.d
-index e1a68057ca1..79cd40c6fdd 100644
+index e1a68057ca1..3570e3fdc98 100644
 --- a/libphobos/libdruntime/core/thread.d
 +++ b/libphobos/libdruntime/core/thread.d
-@@ -4146,6 +4146,24 @@ class Fiber
+@@ -2422,8 +2422,107 @@ body
+ 
+     version (GNU)
+     {
+-        __builtin_unwind_init();
+-        sp = &sp;
++        // The generic solution below using a call to __builtin_unwind_init ()
++        // followed by an assignment to sp has two issues:
++        // 1) On some archs it stores a huge amount of FP and Vector state which
++        //    is not the subject of the scan - and, indeed might produce false
++        //    hits.
++        // 2) Even on archs like X86, where there are no callee-saved FPRs/VRs there
++        //    tend to be 'holes' in the frame allocations (to deal with alignment) which
++        //    also will  contain random data which could produce false positives.
++        // This solution stores only the integer callee-saved registers.
++        version (X86)
++        {
++            void*[3] regs = void;
++            asm pure nothrow @nogc
++            {
++                "movl   %%ebx, %0" : "=m" (regs[0]);
++                "movl   %%esi, %0" : "=m" (regs[1]);
++                "movl   %%edi, %0" : "=m" (regs[2]);
++            }
++            sp = cast(void*)&regs[0];
++        }
++        else version (X86_64)
++        {
++            void*[5] regs = void;
++            asm pure nothrow @nogc
++            {
++                "movq   %%rbx, %0" : "=m" (regs[0]);
++                "movq   %%r12, %0" : "=m" (regs[1]);
++                "movq   %%r13, %0" : "=m" (regs[2]);
++                "movq   %%r14, %0" : "=m" (regs[3]);
++                "movq   %%r15, %0" : "=m" (regs[4]);
++            }
++            sp = cast(void*)&regs[0];
++        }
++        else version (PPC)
++        {
++            void*[19] regs = void;
++            version (Darwin)
++                enum regname = "r";
++            else
++                enum regname = "";
++            static foreach (i; 0 .. regs.length)
++            {{
++                enum int j = 13 + i; // source register
++                asm pure nothrow @nogc
++                {
++                    "stw "~regname~j.stringof~", %0" : "=m" (regs[i]);
++                }
++            }}
++            sp = cast(void*)&regs[0];
++        }
++        else version (PPC64)
++        {
++            void*[19] regs = void;
++            version (Darwin)
++                enum regname = "r";
++            else
++                enum regname = "";
++            static foreach (i; 0 .. regs.length)
++            {{
++                enum int j = 13 + i; // source register
++                asm pure nothrow @nogc
++                {
++                    "std "~regname~j.stringof~", %0" : "=m" (regs[i]);
++                }
++            }}
++            sp = cast(void*)&regs[0];
++        }
++        else version (AArch64)
++        {
++            // Callee-save registers, x19-x28 according to AAPCS64, section
++            // 5.1.1.  Include x29 fp because it optionally can be a callee
++            // saved reg
++            size_t[11] regs = void;
++            // store the registers in pairs
++            asm pure nothrow @nogc
++            {
++                "stp x19, x20, %0" : "=m" (regs[ 0]), "=m" (regs[1]);
++                "stp x21, x22, %0" : "=m" (regs[ 2]), "=m" (regs[3]);
++                "stp x23, x24, %0" : "=m" (regs[ 4]), "=m" (regs[5]);
++                "stp x25, x26, %0" : "=m" (regs[ 6]), "=m" (regs[7]);
++                "stp x27, x28, %0" : "=m" (regs[ 8]), "=m" (regs[9]);
++                "str x29, %0"      : "=m" (regs[10]);
++                "mov %0, sp"       : "=r" (sp);
++            }
++        }
++        else version (ARM)
++        {
++            // Callee-save registers, according to AAPCS, section 5.1.1.
++            // arm and thumb2 instructions
++            size_t[8] regs = void;
++            asm pure nothrow @nogc
++            {
++                "stm %0, {r4-r11}" : : "r" (regs.ptr) : "memory";
++                "mov %0, sp"       : "=r" (sp);
++            }
++        }
++        else
++        {
++            __builtin_unwind_init();
++            sp = &sp;
++        }
+     }
+     else version (AsmX86_Posix)
+     {
+@@ -4146,6 +4245,24 @@ class Fiber
      // Initialization
      ///////////////////////////////////////////////////////////////////////////
  
@@ -30980,7 +31091,7 @@ index e1a68057ca1..79cd40c6fdd 100644
  
      /**
       * Initializes a fiber object which is associated with a static
-@@ -4160,7 +4178,7 @@ class Fiber
+@@ -4160,7 +4277,7 @@ class Fiber
       * In:
       *  fn must not be null.
       */
@@ -30989,7 +31100,7 @@ index e1a68057ca1..79cd40c6fdd 100644
            size_t guardPageSize = PAGESIZE ) nothrow
      in
      {
-@@ -4186,7 +4204,7 @@ class Fiber
+@@ -4186,7 +4303,7 @@ class Fiber
       * In:
       *  dg must not be null.
       */
