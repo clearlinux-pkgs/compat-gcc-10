@@ -80,7 +80,8 @@ François Dumont (3):
       libstdc++: Fix unordered containers move constructors noexcept qualification
       libstdc++: [_GLIBCXX_DEBUG] Fix management of __dp_sign_max_size [PR 99402]
 
-GCC Administrator (233):
+GCC Administrator (234):
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -553,9 +554,10 @@ Marek Polacek (13):
 Marius Hillenbrand (1):
       IBM Z: Fix vector intrinsics vec_double and vec_floate
 
-Martin Jambor (2):
+Martin Jambor (3):
       ipa-sra: Fix thinko when overriding safe_to_import_accesses (PR 101066)
       sra: Fix corner case of total scalarization with virtual inheritance (PR 102505)
+      ipa-sra: Check also ECF_LOOPING_CONST_OR_PURE when evaluating calls
 
 Martin Liska (9):
       Sync gcc-changelog scripts.
@@ -3409,10 +3411,18 @@ index 0719d810258..a9368325816 100644
 -10.3.0
 +10.3.1
 diff --git a/gcc/ChangeLog b/gcc/ChangeLog
-index 3b1384e707f..98dc0d8c9f0 100644
+index 3b1384e707f..f21d81e3c3a 100644
 --- a/gcc/ChangeLog
 +++ b/gcc/ChangeLog
-@@ -1,3 +1,1397 @@
+@@ -1,3 +1,1405 @@
++2021-12-01  Martin Jambor  <mjambor@suse.cz>
++
++	Backported from master:
++	2021-11-30  Martin Jambor  <mjambor@suse.cz>
++
++	PR ipa/103267
++	* ipa-sra.c (scan_function): Also check ECF_LOOPING_CONST_OR_PURE flag.
++
 +2021-11-30  Eric Botcazou  <ebotcazou@adacore.com>
 +
 +	PR target/103274
@@ -15613,7 +15623,7 @@ index 564c6629c92..890826aea4c 100644
  	  if (!this_looping && self_recursive_p (w))
  	    this_looping = true;
 diff --git a/gcc/ipa-sra.c b/gcc/ipa-sra.c
-index b706fceff42..8ad57493ea6 100644
+index b706fceff42..2f7fa9f9fc8 100644
 --- a/gcc/ipa-sra.c
 +++ b/gcc/ipa-sra.c
 @@ -340,7 +340,7 @@ class isra_call_summary
@@ -15707,7 +15717,17 @@ index b706fceff42..8ad57493ea6 100644
  	    }
  	}
  
-@@ -2355,6 +2366,7 @@ process_scan_results (cgraph_node *node, struct function *fun,
+@@ -1901,7 +1912,8 @@ scan_function (cgraph_node *node, struct function *fun)
+ 		if (lhs)
+ 		  scan_expr_access (lhs, stmt, ISRA_CTX_STORE, bb);
+ 		int flags = gimple_call_flags (stmt);
+-		if ((flags & (ECF_CONST | ECF_PURE)) == 0)
++		if (((flags & (ECF_CONST | ECF_PURE)) == 0)
++		    || (flags & ECF_LOOPING_CONST_OR_PURE))
+ 		  bitmap_set_bit (final_bbs, bb->index);
+ 	      }
+ 	      break;
+@@ -2355,6 +2367,7 @@ process_scan_results (cgraph_node *node, struct function *fun,
  	unsigned count = gimple_call_num_args (call_stmt);
  	isra_call_summary *csum = call_sums->get_create (cs);
  	csum->init_inputs (count);
@@ -15715,7 +15735,7 @@ index b706fceff42..8ad57493ea6 100644
  	for (unsigned argidx = 0; argidx < count; argidx++)
  	  {
  	    if (!csum->m_arg_flow[argidx].pointer_pass_through)
-@@ -2601,6 +2613,7 @@ isra_write_edge_summary (output_block *ob, cgraph_edge *e)
+@@ -2601,6 +2614,7 @@ isra_write_edge_summary (output_block *ob, cgraph_edge *e)
    bp_pack_value (&bp, csum->m_return_ignored, 1);
    bp_pack_value (&bp, csum->m_return_returned, 1);
    bp_pack_value (&bp, csum->m_bit_aligned_arg, 1);
@@ -15723,7 +15743,7 @@ index b706fceff42..8ad57493ea6 100644
    streamer_write_bitpack (&bp);
  }
  
-@@ -2719,6 +2732,7 @@ isra_read_edge_summary (struct lto_input_block *ib, cgraph_edge *cs)
+@@ -2719,6 +2733,7 @@ isra_read_edge_summary (struct lto_input_block *ib, cgraph_edge *cs)
    csum->m_return_ignored = bp_unpack_value (&bp, 1);
    csum->m_return_returned = bp_unpack_value (&bp, 1);
    csum->m_bit_aligned_arg = bp_unpack_value (&bp, 1);
@@ -15731,7 +15751,7 @@ index b706fceff42..8ad57493ea6 100644
  }
  
  /* Read intraprocedural analysis information about NODE and all of its outgoing
-@@ -3475,7 +3489,8 @@ param_splitting_across_edge (cgraph_edge *cs)
+@@ -3475,7 +3490,8 @@ param_splitting_across_edge (cgraph_edge *cs)
  	    }
  	  else if (!ipf->safe_to_import_accesses)
  	    {
