@@ -80,7 +80,17 @@ François Dumont (3):
       libstdc++: Fix unordered containers move constructors noexcept qualification
       libstdc++: [_GLIBCXX_DEBUG] Fix management of __dp_sign_max_size [PR 99402]
 
-GCC Administrator (235):
+GCC Administrator (245):
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -326,7 +336,7 @@ H.J. Lu (1):
 Hafiz Abid Qadeer (1):
       [OpenACC] Fix an ICE where a loop with GT condition is collapsed.
 
-Harald Anlauf (29):
+Harald Anlauf (33):
       PR fortran/63797 - Bogus ambiguous reference to 'sqrt'
       PR fortran/100154 - ICE in gfc_conv_procedure_call, at fortran/trans-expr.c:6131
       PR fortran/100274 - ICE in gfc_conv_procedure_call, at fortran/trans-expr.c:6131
@@ -356,8 +366,12 @@ Harald Anlauf (29):
       Fortran: avoid NULL pointer dereferences
       Fortran: fix lookup for gfortran builtin math intrinsics used by DEC extensions
       Fortran: do not attempt simplification of [LU]BOUND for pointer/allocatable
+      Fortran: perform array subscript checks only for valid INTEGER bounds
+      Fortran: improve check of arguments to the RESHAPE intrinsic
+      Fortran: generate error message for negative elements in SHAPE array
+      Fortran: improve expansion of constant array expressions within constructors
 
-Iain Buclaw (17):
+Iain Buclaw (18):
       d: Fix ICE in when formating a string with '%' or '`' characters (PR98457)
       d: Fix ICE in gimplify_var_or_parm_decl, at gimplify.c:2755 (PR100882)
       d: Respect explicit align(N) type alignment (PR100935)
@@ -375,6 +389,7 @@ Iain Buclaw (17):
       libphobos: Don't call __gthread_key_delete in the emutls destroy function.
       libphobos: Increase size of defaultStackPages on OSX X86_64 targets.
       libphobos: Push all callee-save registers on the stack before GC scan
+      d: Align methods to MINIMUM_METHOD_BOUNDARY.
 
 Iain Sandoe (4):
       coroutines: Fix a typo in rewriting the function.
@@ -12204,10 +12219,17 @@ index 53e9603868d..5ecedef0bb4 100644
        return DEBUG_IMPLICIT_PTR_DECL (x)
  	     == DEBUG_IMPLICIT_PTR_DECL (y);
 diff --git a/gcc/d/ChangeLog b/gcc/d/ChangeLog
-index 8bc729ae32d..ea6b918cf1f 100644
+index 8bc729ae32d..23ef4f15d9a 100644
 --- a/gcc/d/ChangeLog
 +++ b/gcc/d/ChangeLog
-@@ -1,3 +1,171 @@
+@@ -1,3 +1,178 @@
++2021-12-10  Iain Buclaw  <ibuclaw@gdcproject.org>
++
++	Backported from master:
++	2021-12-10  Iain Buclaw  <ibuclaw@gdcproject.org>
++
++	* decl.cc (get_symbol_decl): Align methods to MINIMUM_METHOD_BOUNDARY.
++
 +2021-11-18  Iain Buclaw  <ibuclaw@gdcproject.org>
 +
 +	Backported from master:
@@ -12851,10 +12873,20 @@ index 4d039adb0fa..7989033366e 100644
  extern void create_typeinfo (Type *, Module *);
  extern void create_tinfo_types (Module *);
 diff --git a/gcc/d/decl.cc b/gcc/d/decl.cc
-index f342688ba91..1ccd983af9c 100644
+index f342688ba91..94f941f65a3 100644
 --- a/gcc/d/decl.cc
 +++ b/gcc/d/decl.cc
-@@ -1585,8 +1585,9 @@ d_finish_decl (tree decl)
+@@ -1253,6 +1253,9 @@ get_symbol_decl (Declaration *decl)
+ 	      DECL_VINDEX (decl->csym) = size_int (fd->vtblIndex);
+ 	      DECL_VIRTUAL_P (decl->csym) = 1;
+ 	    }
++
++	  /* Align method to the minimum boundary for target.  */
++	  SET_DECL_ALIGN (decl->csym, MINIMUM_METHOD_BOUNDARY);
+ 	}
+       else if (fd->isMain () || fd->isCMain ())
+ 	{
+@@ -1585,8 +1588,9 @@ d_finish_decl (tree decl)
    if (flag_checking && DECL_INITIAL (decl))
      {
        /* Initializer must never be bigger than symbol size.  */
@@ -13734,10 +13766,49 @@ index 6e635382fb4..7b4c9c0eb7f 100644
  	      tree ntype = TYPE_UNSIGNED (type)
  			   ? signed_type_for (type)
 diff --git a/gcc/fortran/ChangeLog b/gcc/fortran/ChangeLog
-index aa5932be872..950df66ce0d 100644
+index aa5932be872..f5a02938ff8 100644
 --- a/gcc/fortran/ChangeLog
 +++ b/gcc/fortran/ChangeLog
-@@ -1,3 +1,458 @@
+@@ -1,3 +1,497 @@
++2021-12-11  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2021-11-30  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/102787
++	* array.c (expand_constructor): When encountering a constant array
++	expression or array section within a constructor, simplify it to
++	enable better expansion.
++
++2021-12-11  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2021-10-14  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/102717
++	* simplify.c (gfc_simplify_reshape): Replace assert by error
++	message for negative elements in SHAPE array.
++
++2021-12-11  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2021-11-26  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/103411
++	* check.c (gfc_check_reshape): Improve check of size of source
++	array for the RESHAPE intrinsic against the given shape when pad
++	is not given, and shape is a parameter.  Try other simplifications
++	of shape.
++
++2021-12-10  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2021-12-07  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/103607
++	* frontend-passes.c (do_subscript): Ensure that array bounds are
++	of type INTEGER before performing checks on array subscripts.
++
 +2021-11-26  Harald Anlauf  <anlauf@gmx.de>
 +
 +	Backported from master:
@@ -14197,10 +14268,10 @@ index aa5932be872..950df66ce0d 100644
  
  	* GCC 10.3.0 released.
 diff --git a/gcc/fortran/array.c b/gcc/fortran/array.c
-index 471523fb767..e5ce3328471 100644
+index 471523fb767..b304efdad50 100644
 --- a/gcc/fortran/array.c
 +++ b/gcc/fortran/array.c
-@@ -1798,6 +1798,9 @@ expand_constructor (gfc_constructor_base base)
+@@ -1798,9 +1798,18 @@ expand_constructor (gfc_constructor_base base)
  
        e = c->expr;
  
@@ -14210,8 +14281,17 @@ index 471523fb767..e5ce3328471 100644
        if (empty_constructor)
  	empty_ts = e->ts;
  
++      /* Simplify constant array expression/section within constructor.  */
++      if (e->expr_type == EXPR_VARIABLE && e->rank > 0 && e->ref
++	  && e->symtree && e->symtree->n.sym
++	  && e->symtree->n.sym->attr.flavor == FL_PARAMETER)
++	gfc_simplify_expr (e, 0);
++
+       if (e->expr_type == EXPR_ARRAY)
+ 	{
+ 	  if (!expand_constructor (e->value.constructor))
 diff --git a/gcc/fortran/check.c b/gcc/fortran/check.c
-index ca6f582625d..f37016bced5 100644
+index ca6f582625d..74d36cca1ac 100644
 --- a/gcc/fortran/check.c
 +++ b/gcc/fortran/check.c
 @@ -289,7 +289,7 @@ bin2real (gfc_expr *x, int kind)
@@ -14294,7 +14374,78 @@ index ca6f582625d..f37016bced5 100644
    d = ap->next->next->expr;
    m = ap->next->next->next->expr;
    k = ap->next->next->next->next->expr;
-@@ -5068,9 +5075,19 @@ gfc_check_shape (gfc_expr *source, gfc_expr *kind)
+@@ -4681,6 +4688,7 @@ gfc_check_reshape (gfc_expr *source, gfc_expr *shape,
+   mpz_t size;
+   mpz_t nelems;
+   int shape_size;
++  bool shape_is_const;
+ 
+   if (!array_check (source, 0))
+     return false;
+@@ -4714,7 +4722,11 @@ gfc_check_reshape (gfc_expr *source, gfc_expr *shape,
+ 		 "than %d elements", &shape->where, GFC_MAX_DIMENSIONS);
+       return false;
+     }
+-  else if (shape->expr_type == EXPR_ARRAY && gfc_is_constant_expr (shape))
++
++  gfc_simplify_expr (shape, 0);
++  shape_is_const = gfc_is_constant_expr (shape);
++
++  if (shape->expr_type == EXPR_ARRAY && shape_is_const)
+     {
+       gfc_expr *e;
+       int i, extent;
+@@ -4730,38 +4742,7 @@ gfc_check_reshape (gfc_expr *source, gfc_expr *shape,
+ 	      gfc_error ("%qs argument of %qs intrinsic at %L has "
+ 			 "negative element (%d)",
+ 			 gfc_current_intrinsic_arg[1]->name,
+-			 gfc_current_intrinsic, &e->where, extent);
+-	      return false;
+-	    }
+-	}
+-    }
+-  else if (shape->expr_type == EXPR_VARIABLE && shape->ref
+-	   && shape->ref->u.ar.type == AR_FULL && shape->ref->u.ar.dimen == 1
+-	   && shape->ref->u.ar.as
+-	   && shape->ref->u.ar.as->lower[0]->expr_type == EXPR_CONSTANT
+-	   && shape->ref->u.ar.as->lower[0]->ts.type == BT_INTEGER
+-	   && shape->ref->u.ar.as->upper[0]->expr_type == EXPR_CONSTANT
+-	   && shape->ref->u.ar.as->upper[0]->ts.type == BT_INTEGER
+-	   && shape->symtree->n.sym->attr.flavor == FL_PARAMETER
+-	   && shape->symtree->n.sym->value)
+-    {
+-      int i, extent;
+-      gfc_expr *e, *v;
+-
+-      v = shape->symtree->n.sym->value;
+-
+-      for (i = 0; i < shape_size; i++)
+-	{
+-	  e = gfc_constructor_lookup_expr (v->value.constructor, i);
+-	  if (e == NULL)
+-	     break;
+-
+-	  gfc_extract_int (e, &extent);
+-
+-	  if (extent < 0)
+-	    {
+-	      gfc_error ("Element %d of actual argument of RESHAPE at %L "
+-			 "cannot be negative", i + 1, &shape->where);
++			 gfc_current_intrinsic, &shape->where, extent);
+ 	      return false;
+ 	    }
+ 	}
+@@ -4838,8 +4819,7 @@ gfc_check_reshape (gfc_expr *source, gfc_expr *shape,
+ 	}
+     }
+ 
+-  if (pad == NULL && shape->expr_type == EXPR_ARRAY
+-      && gfc_is_constant_expr (shape)
++  if (pad == NULL && shape->expr_type == EXPR_ARRAY && shape_is_const
+       && !(source->expr_type == EXPR_VARIABLE && source->symtree->n.sym->as
+ 	   && source->symtree->n.sym->as->type == AS_ASSUMED_SIZE))
+     {
+@@ -5068,9 +5048,19 @@ gfc_check_shape (gfc_expr *source, gfc_expr *kind)
    if (gfc_invalid_null_arg (source))
      return false;
  
@@ -14314,7 +14465,7 @@ index ca6f582625d..f37016bced5 100644
    ar = gfc_find_array_ref (source);
  
    if (ar->as && ar->as->type == AS_ASSUMED_SIZE && ar->type == AR_FULL)
-@@ -5080,13 +5097,6 @@ gfc_check_shape (gfc_expr *source, gfc_expr *kind)
+@@ -5080,13 +5070,6 @@ gfc_check_shape (gfc_expr *source, gfc_expr *kind)
        return false;
      }
  
@@ -14328,7 +14479,7 @@ index ca6f582625d..f37016bced5 100644
    return true;
  }
  
-@@ -5681,6 +5691,19 @@ gfc_check_spread (gfc_expr *source, gfc_expr *dim, gfc_expr *ncopies)
+@@ -5681,6 +5664,19 @@ gfc_check_spread (gfc_expr *source, gfc_expr *dim, gfc_expr *ncopies)
  /* Functions for checking FGETC, FPUTC, FGET and FPUT (subroutines and
     functions).  */
  
@@ -14348,7 +14499,7 @@ index ca6f582625d..f37016bced5 100644
  bool
  gfc_check_fgetputc_sub (gfc_expr *unit, gfc_expr *c, gfc_expr *status)
  {
-@@ -5694,13 +5717,19 @@ gfc_check_fgetputc_sub (gfc_expr *unit, gfc_expr *c, gfc_expr *status)
+@@ -5694,13 +5690,19 @@ gfc_check_fgetputc_sub (gfc_expr *unit, gfc_expr *c, gfc_expr *status)
      return false;
    if (!kind_value_check (c, 1, gfc_default_character_kind))
      return false;
@@ -14369,7 +14520,7 @@ index ca6f582625d..f37016bced5 100644
      return false;
  
    return true;
-@@ -5721,13 +5750,19 @@ gfc_check_fgetput_sub (gfc_expr *c, gfc_expr *status)
+@@ -5721,13 +5723,19 @@ gfc_check_fgetput_sub (gfc_expr *c, gfc_expr *status)
      return false;
    if (!kind_value_check (c, 0, gfc_default_character_kind))
      return false;
@@ -14637,7 +14788,7 @@ index f946145eb1b..9c091fe74e1 100644
    if (lvalue->ts.type == BT_UNKNOWN && !lhs_attr.proc_pointer)
      {
 diff --git a/gcc/fortran/frontend-passes.c b/gcc/fortran/frontend-passes.c
-index 5e768b12854..706cbe1e0e6 100644
+index 5e768b12854..de9eff82630 100644
 --- a/gcc/fortran/frontend-passes.c
 +++ b/gcc/fortran/frontend-passes.c
 @@ -1299,8 +1299,8 @@ traverse_io_block (gfc_code *code, bool *has_reached, gfc_code *prev)
@@ -14651,7 +14802,39 @@ index 5e768b12854..706cbe1e0e6 100644
  		  || start->value.op.op1->ref)
  		return false;
  	      if (!stack_top || !stack_top->iter
-@@ -3919,6 +3919,19 @@ inline_matmul_assign (gfc_code **c, int *walk_subtrees,
+@@ -2677,6 +2677,7 @@ do_subscript (gfc_expr **e)
+ 		    {
+ 		      if (ar->as->lower[i]
+ 			  && ar->as->lower[i]->expr_type == EXPR_CONSTANT
++			  && ar->as->lower[i]->ts.type == BT_INTEGER
+ 			  && mpz_cmp (val, ar->as->lower[i]->value.integer) < 0)
+ 			gfc_warning (warn, "Array reference at %L out of bounds "
+ 				     "(%ld < %ld) in loop beginning at %L",
+@@ -2686,6 +2687,7 @@ do_subscript (gfc_expr **e)
+ 
+ 		      if (ar->as->upper[i]
+ 			  && ar->as->upper[i]->expr_type == EXPR_CONSTANT
++			  && ar->as->upper[i]->ts.type == BT_INTEGER
+ 			  && mpz_cmp (val, ar->as->upper[i]->value.integer) > 0)
+ 			    gfc_warning (warn, "Array reference at %L out of bounds "
+ 					 "(%ld > %ld) in loop beginning at %L",
+@@ -2701,6 +2703,7 @@ do_subscript (gfc_expr **e)
+ 		    {
+ 		      if (ar->as->lower[i]
+ 			  && ar->as->lower[i]->expr_type == EXPR_CONSTANT
++			  && ar->as->lower[i]->ts.type == BT_INTEGER
+ 			  && mpz_cmp (val, ar->as->lower[i]->value.integer) < 0)
+ 			gfc_warning (warn, "Array reference at %L out of bounds "
+ 				     "(%ld < %ld) in loop beginning at %L",
+@@ -2710,6 +2713,7 @@ do_subscript (gfc_expr **e)
+ 
+ 		      if (ar->as->upper[i]
+ 			  && ar->as->upper[i]->expr_type == EXPR_CONSTANT
++			  && ar->as->upper[i]->ts.type == BT_INTEGER
+ 			  && mpz_cmp (val, ar->as->upper[i]->value.integer) > 0)
+ 			gfc_warning (warn, "Array reference at %L out of bounds "
+ 				     "(%ld > %ld) in loop beginning at %L",
+@@ -3919,6 +3923,19 @@ inline_matmul_assign (gfc_code **c, int *walk_subtrees,
    if (m_case == none)
      return 0;
  
@@ -14993,7 +15176,7 @@ index 7ca5f44f419..0489184302c 100644
              case EXEC_DO_CONCURRENT:
  	      gfc_do_concurrent_flag = 1;
 diff --git a/gcc/fortran/simplify.c b/gcc/fortran/simplify.c
-index d28aa7a3c16..804be5aee56 100644
+index d28aa7a3c16..8d40fdf251a 100644
 --- a/gcc/fortran/simplify.c
 +++ b/gcc/fortran/simplify.c
 @@ -2077,6 +2077,9 @@ gfc_simplify_cshift (gfc_expr *array, gfc_expr *shift, gfc_expr *dim)
@@ -15019,7 +15202,22 @@ index d28aa7a3c16..804be5aee56 100644
    gcc_assert (!as
  	      || (as->type != AS_DEFERRED
  		  && array->expr_type == EXPR_VARIABLE
-@@ -7379,6 +7388,7 @@ simplify_size (gfc_expr *array, gfc_expr *dim, int k)
+@@ -6759,7 +6768,13 @@ gfc_simplify_reshape (gfc_expr *source, gfc_expr *shape_exp,
+       gfc_extract_int (e, &shape[rank]);
+ 
+       gcc_assert (rank >= 0 && rank < GFC_MAX_DIMENSIONS);
+-      gcc_assert (shape[rank] >= 0);
++      if (shape[rank] < 0)
++	{
++	  gfc_error ("The SHAPE array for the RESHAPE intrinsic at %L has a "
++		     "negative value %d for dimension %d",
++		     &shape_exp->where, shape[rank], rank+1);
++	  return &gfc_bad_expr;
++	}
+ 
+       rank++;
+     }
+@@ -7379,6 +7394,7 @@ simplify_size (gfc_expr *array, gfc_expr *dim, int k)
    mpz_t size;
    gfc_expr *return_value;
    int d;
@@ -15027,7 +15225,7 @@ index d28aa7a3c16..804be5aee56 100644
  
    /* For unary operations, the size of the result is given by the size
       of the operand.  For binary ones, it's the size of the first operand
-@@ -7435,6 +7445,10 @@ simplify_size (gfc_expr *array, gfc_expr *dim, int k)
+@@ -7435,6 +7451,10 @@ simplify_size (gfc_expr *array, gfc_expr *dim, int k)
        return simplified;
      }
  
@@ -15038,7 +15236,7 @@ index d28aa7a3c16..804be5aee56 100644
    if (dim == NULL)
      {
        if (!gfc_array_size (array, &size))
-@@ -8071,6 +8085,9 @@ gfc_simplify_transpose (gfc_expr *matrix)
+@@ -8071,6 +8091,9 @@ gfc_simplify_transpose (gfc_expr *matrix)
  
    gcc_assert (matrix->rank == 2);
  
@@ -16414,10 +16612,43 @@ index 99edad8a950..f33489286a9 100644
  
  #endif
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index 2913065bf31..572c88f517a 100644
+index 2913065bf31..62d4646b659 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,1586 @@
+@@ -1,3 +1,1619 @@
++2021-12-11  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2021-11-30  Harald Anlauf  <anlauf@gmx.de>
++
++	* gfortran.dg/array_constructor_54.f90: New test.
++
++2021-12-11  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2021-10-14  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/102717
++	* gfortran.dg/reshape_shape_2.f90: New test.
++
++2021-12-11  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2021-11-26  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/103411
++	* gfortran.dg/pr68153.f90: Adjust test to improved check.
++	* gfortran.dg/reshape_7.f90: Likewise.
++	* gfortran.dg/reshape_9.f90: New test.
++
++2021-12-10  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2021-12-07  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/103607
++	* gfortran.dg/pr103607.f90: New test.
++
 +2021-11-26  Harald Anlauf  <anlauf@gmx.de>
 +
 +	Backported from master:
@@ -25026,6 +25257,35 @@ index 00000000000..e699160fee1
 +end
 +
 +! { dg-error "in variable definition context"  " " { target *-*-* } 5 }
+diff --git a/gcc/testsuite/gfortran.dg/array_constructor_54.f90 b/gcc/testsuite/gfortran.dg/array_constructor_54.f90
+new file mode 100644
+index 00000000000..44d2f9fdf42
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/array_constructor_54.f90
+@@ -0,0 +1,23 @@
++! { dg-do compile }
++! { dg-options "-fdump-tree-original -Warray-temporaries" }
++! { dg-final { scan-tree-dump-not "stride" "original" } }
++! Verify that no temporary array is generated for a constant array constructor
++! See e.g. PR fortran/102717, PR fortran/102787
++
++program p
++  integer, parameter :: a(*)   = [1,2,3,4]
++  integer, parameter :: b(2,3) = reshape([1,2,3,4,5,6], shape (b))
++  print *, [a]
++  print *, [a( : ) ]
++  print *, [a( ::1)]
++  print *, [a( ::2)]
++  print *, [a(1:2:1)]
++  print *, [a(4:1:-2)]
++  print *, [a([3,2])]
++  print *, [a,1]
++  print *, [1,a]
++  print *, [a,a]
++  print *, [b(:,3:1:-2)]
++  print *, [1,b(1,[2,1,3])]
++  print *, [a,b]
++end
 diff --git a/gcc/testsuite/gfortran.dg/associate_54.f90 b/gcc/testsuite/gfortran.dg/associate_54.f90
 new file mode 100644
 index 00000000000..003175a47fd
@@ -26214,6 +26474,24 @@ index 00000000000..c081a69f0ea
 +  y = (x(1)%a)
 +  print *, v, w, y, z, p
 +end
+diff --git a/gcc/testsuite/gfortran.dg/pr103607.f90 b/gcc/testsuite/gfortran.dg/pr103607.f90
+new file mode 100644
+index 00000000000..a6a2c4fdfd0
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/pr103607.f90
+@@ -0,0 +1,12 @@
++! { dg-do compile }
++! PR fortran/103607 - ICE in do_subscript, at fortran/frontend-passes.c:2927
++! Contributed by G.Steinmetz
++
++program p
++  integer :: i, x(abs(2.)) ! { dg-error "must be of INTEGER type" }
++  do i = 1, 2
++     x(i) = 0
++  end do
++end
++
++! { dg-prune-output "must have constant shape" }
 diff --git a/gcc/testsuite/gfortran.dg/pr63797.f90 b/gcc/testsuite/gfortran.dg/pr63797.f90
 new file mode 100644
 index 00000000000..1131e8167b1
@@ -26291,6 +26569,17 @@ index 2e304c3a260..77fd55bd331 100644
 -   type(t), parameter :: arr(*) = reshape(vec, [2, 2])   ! { dg-error "ranks 1 and 2 in assignment" }
 +   type(t), parameter :: arr(*) = reshape(vec, [2, 2])   ! { dg-error "Rank mismatch" }
  end
+diff --git a/gcc/testsuite/gfortran.dg/pr68153.f90 b/gcc/testsuite/gfortran.dg/pr68153.f90
+index 1a360f80cd6..46a3bc029d7 100644
+--- a/gcc/testsuite/gfortran.dg/pr68153.f90
++++ b/gcc/testsuite/gfortran.dg/pr68153.f90
+@@ -5,5 +5,5 @@
+ !
+ program foo
+    integer, parameter :: a(2) = [2, -2]
+-   integer, parameter :: b(2,2) = reshape([1, 2, 3, 4], a) ! { dg-error "cannot be negative" }
++   integer, parameter :: b(2,2) = reshape([1, 2, 3, 4], a) ! { dg-error "negative" }
+ end program foo
 diff --git a/gcc/testsuite/gfortran.dg/pr70931.f90 b/gcc/testsuite/gfortran.dg/pr70931.f90
 index 08ecd687752..4444b5eec3b 100644
 --- a/gcc/testsuite/gfortran.dg/pr70931.f90
@@ -26437,6 +26726,69 @@ index 00000000000..cb7cf7040a9
 +if (x .ne. y) stop 2
 +
 +end program classStar_map
+diff --git a/gcc/testsuite/gfortran.dg/reshape_7.f90 b/gcc/testsuite/gfortran.dg/reshape_7.f90
+index d752650aa4e..4216cb60cbb 100644
+--- a/gcc/testsuite/gfortran.dg/reshape_7.f90
++++ b/gcc/testsuite/gfortran.dg/reshape_7.f90
+@@ -4,7 +4,7 @@
+ subroutine p0
+    integer, parameter :: sh(2) = [2, 3]
+    integer, parameter :: &
+-   & a(2,2) = reshape([1, 2, 3, 4], sh)   ! { dg-error "Different shape" }
++   & a(2,2) = reshape([1, 2, 3, 4], sh)   ! { dg-error "not enough elements" }
+    if (a(1,1) /= 0) STOP 1
+ end subroutine p0
+ 
+diff --git a/gcc/testsuite/gfortran.dg/reshape_9.f90 b/gcc/testsuite/gfortran.dg/reshape_9.f90
+new file mode 100644
+index 00000000000..dc52e26cc86
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/reshape_9.f90
+@@ -0,0 +1,31 @@
++! { dg-do compile }
++! PR fortran/103411 - ICE in gfc_conv_array_initializer
++! Based on testcase by G. Steinmetz
++! Test simplifications for checks of shape argument to reshape intrinsic
++
++program p
++  integer :: i
++  integer, parameter :: a(2) = [2,2]
++  integer, parameter :: u(5) = [1,2,2,42,2]
++  integer, parameter :: v(1,3) = 2
++  integer, parameter :: d(2,2) = reshape([1,2,3,4,5], a)
++  integer, parameter :: c(2,2) = reshape([1,2,3,4], a)
++  integer, parameter :: b(2,2) = &
++           reshape([1,2,3], a) ! { dg-error "not enough elements" }
++  print *, reshape([1,2,3], a) ! { dg-error "not enough elements" }
++  print *, reshape([1,2,3,4], a)
++  print *, reshape([1,2,3,4,5], a)
++  print *, b, c, d
++  print *, reshape([1,2,3], [(u(i),i=1,2)])
++  print *, reshape([1,2,3], [(u(i),i=2,3)]) ! { dg-error "not enough elements" }
++  print *, reshape([1,2,3],              &
++                   [(u(i)*(-1)**i,i=2,3)]) ! { dg-error "has negative element" }
++  print *, reshape([1,2,3,4], u(5:3:-2))
++  print *, reshape([1,2,3],   u(5:3:-2))  ! { dg-error "not enough elements" }
++  print *, reshape([1,2,3,4], u([5,3]))
++  print *, reshape([1,2,3]  , u([5,3]))   ! { dg-error "not enough elements" }
++  print *, reshape([1,2,3,4], v(1,2:))
++  print *, reshape([1,2,3],   v(1,2:))    ! { dg-error "not enough elements" }
++  print *, reshape([1,2,3,4], v(1,[2,1]))
++  print *, reshape([1,2,3] ,  v(1,[2,1])) ! { dg-error "not enough elements" }
++end
+diff --git a/gcc/testsuite/gfortran.dg/reshape_shape_2.f90 b/gcc/testsuite/gfortran.dg/reshape_shape_2.f90
+new file mode 100644
+index 00000000000..8f1757687bc
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/reshape_shape_2.f90
+@@ -0,0 +1,7 @@
++! { dg-do compile }
++! PR fortran/102717
++
++program p
++  integer, parameter :: a(1) = 2
++  integer, parameter :: b(2) = reshape([3,4], -[a]) ! { dg-error "negative" }
++end
 diff --git a/gcc/testsuite/gfortran.dg/select_rank_5.f90 b/gcc/testsuite/gfortran.dg/select_rank_5.f90
 new file mode 100644
 index 00000000000..55aa9e1b9bf
