@@ -80,7 +80,9 @@ François Dumont (3):
       libstdc++: Fix unordered containers move constructors noexcept qualification
       libstdc++: [_GLIBCXX_DEBUG] Fix management of __dp_sign_max_size [PR 99402]
 
-GCC Administrator (245):
+GCC Administrator (247):
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -548,10 +550,11 @@ Jonathan Wakely (90):
 José Rui Faustino de Sousa (1):
       Fortran: Fix double function call with -fcheck=pointer [PR]
 
-Kewen Lin (3):
+Kewen Lin (4):
       ipa-fnsummary: Remove inconsistent bp_pack_value
       vect: Don't update inits for simd_lane_access DRs [PR102789]
       rs6000/doc: Rename future cpu with power10
+      rs6000: Remove builtin mask check from builtin_decl [PR102347]
 
 Marek Polacek (13):
       c++: ICE when late parsing noexcept/NSDMI [PR98333]
@@ -9321,7 +9324,7 @@ index 1766d325bfb..b3ae6fea640 100644
  BU_MMA_5 (PMXVF32GER,	    "pmxvf32ger",       MISC, mma_pmxvf32ger)
  BU_MMA_5 (PMXVF64GER,	    "pmxvf64ger",       PAIR, mma_pmxvf64ger)
 diff --git a/gcc/config/rs6000/rs6000-call.c b/gcc/config/rs6000/rs6000-call.c
-index a112593878a..b5e06eb08fd 100644
+index a112593878a..6a47389d564 100644
 --- a/gcc/config/rs6000/rs6000-call.c
 +++ b/gcc/config/rs6000/rs6000-call.c
 @@ -9434,12 +9434,23 @@ mma_expand_builtin (tree exp, rtx target, bool *expandedp)
@@ -9440,7 +9443,35 @@ index a112593878a..b5e06eb08fd 100644
    gimple_call_set_lhs (new_call, lhs);
    gimple_seq_add_stmt (&new_seq, new_call);
    gimplify_assign (build_simple_mem_ref (acc), lhs, &new_seq);
-@@ -13190,11 +13231,15 @@ mma_init_builtins (void)
+@@ -12544,23 +12585,17 @@ rs6000_init_builtins (void)
+     }
+ }
+ 
+-/* Returns the rs6000 builtin decl for CODE.  */
++/* Returns the rs6000 builtin decl for CODE.  Note that we don't check
++   the builtin mask here since there could be some #pragma/attribute
++   target functions and the rs6000_builtin_mask could be wrong when
++   this checking happens, though it will be updated properly later.  */
+ 
+ tree
+ rs6000_builtin_decl (unsigned code, bool initialize_p ATTRIBUTE_UNUSED)
+ {
+-  HOST_WIDE_INT fnmask;
+-
+   if (code >= RS6000_BUILTIN_COUNT)
+     return error_mark_node;
+ 
+-  fnmask = rs6000_builtin_info[code].mask;
+-  if ((fnmask & rs6000_builtin_mask) != fnmask)
+-    {
+-      rs6000_invalid_builtin ((enum rs6000_builtins)code);
+-      return error_mark_node;
+-    }
+-
+   return rs6000_builtin_decls[code];
+ }
+ 
+@@ -13190,11 +13225,15 @@ mma_init_builtins (void)
        if (gimple_func)
  	{
  	  gcc_assert (icode == CODE_FOR_nothing);
@@ -9458,7 +9489,7 @@ index a112593878a..b5e06eb08fd 100644
  	}
        else
  	{
-@@ -13205,18 +13250,30 @@ mma_init_builtins (void)
+@@ -13205,18 +13244,30 @@ mma_init_builtins (void)
  	  gcc_assert (attr_args == insn_data[icode].n_operands - 1);
  	}
  
@@ -9493,7 +9524,7 @@ index a112593878a..b5e06eb08fd 100644
        else
  	{
  	  /* This is a normal MMA built-in function.  */
-@@ -13226,8 +13283,10 @@ mma_init_builtins (void)
+@@ -13226,8 +13277,10 @@ mma_init_builtins (void)
  	      machine_mode mode = insn_data[icode].operand[j].mode;
  	      if (gimple_func && mode == PXImode)
  		op[nopnds++] = build_pointer_type (vector_quad_type_node);
@@ -9506,7 +9537,7 @@ index a112593878a..b5e06eb08fd 100644
  		op[nopnds++] = build_pointer_type (vector_pair_type_node);
  	      else
  		/* MMA uses unsigned types.  */
-@@ -13582,6 +13641,16 @@ builtin_function_type (machine_mode mode_ret, machine_mode mode_arg0,
+@@ -13582,6 +13635,16 @@ builtin_function_type (machine_mode mode_ret, machine_mode mode_arg0,
        h.uns_p[2] = 1;
        break;
  
@@ -23997,6 +24028,27 @@ index 00000000000..148ad657366
 +  a = vec_cpsgn (a, b);
 +  if (! vec_all_eq (a, c))
 +    __builtin_abort ();
++  return 0;
++}
+diff --git a/gcc/testsuite/gcc.target/powerpc/pr102347.c b/gcc/testsuite/gcc.target/powerpc/pr102347.c
+new file mode 100644
+index 00000000000..05c439a8dac
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/powerpc/pr102347.c
+@@ -0,0 +1,15 @@
++/* { dg-do link } */
++/* { dg-require-effective-target power10_ok } */
++/* { dg-require-effective-target lto } */
++/* { dg-options "-flto -mdejagnu-cpu=power9" } */
++
++/* Verify there are no error messages in LTO mode.  */
++
++#pragma GCC target "cpu=power10"
++int main ()
++{
++  float *b;
++  __vector_quad c;
++  __builtin_mma_disassemble_acc (b, &c);
 +  return 0;
 +}
 diff --git a/gcc/testsuite/gcc.target/powerpc/pr97142.c b/gcc/testsuite/gcc.target/powerpc/pr97142.c
