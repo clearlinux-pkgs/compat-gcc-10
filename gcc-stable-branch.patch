@@ -80,7 +80,8 @@ François Dumont (3):
       libstdc++: Fix unordered containers move constructors noexcept qualification
       libstdc++: [_GLIBCXX_DEBUG] Fix management of __dp_sign_max_size [PR 99402]
 
-GCC Administrator (247):
+GCC Administrator (248):
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -579,7 +580,7 @@ Martin Jambor (3):
       sra: Fix corner case of total scalarization with virtual inheritance (PR 102505)
       ipa-sra: Check also ECF_LOOPING_CONST_OR_PURE when evaluating calls
 
-Martin Liska (9):
+Martin Liska (10):
       Sync gcc-changelog scripts.
       gcc-changelog: sync scripts.
       contrib: add git-commit-mklog wrapper
@@ -589,10 +590,14 @@ Martin Liska (9):
       coroutines: init struct members to NULL
       gcc-changelog: sync from master
       jit: Initialize function::m_blocks in ctor
+      i386: Fix emissing of __builtin_cpu_supports.
 
 Martin Sebor (2):
       PR middle-end/100571 - bogus -Wstringop-overflow with VLA of elements larger than byte
       Backport from GCC 11 [PR99295].
+
+Martin Storsjö (1):
+      mh-mingw: Set __USE_MINGW_ACCESS in missed C++ flags variables
 
 Michael Meissner (1):
       Backport fix for PR target/98952
@@ -787,6 +792,20 @@ konglin1 (2):
       i386: Fix _mm512_fpclass_ps_mask in O0 [PR 101471]
       i386: Fix wrong optimization for consecutive masked scatters [PR 101472]
 
+diff --git a/config/mh-mingw b/config/mh-mingw
+index a795096f038..e91367a7112 100644
+--- a/config/mh-mingw
++++ b/config/mh-mingw
+@@ -1,7 +1,9 @@
+ # Add -D__USE_MINGW_ACCESS to enable the built compiler to work on Windows
+ # Vista (see PR33281 for details).
+ BOOT_CFLAGS += -D__USE_MINGW_ACCESS -Wno-pedantic-ms-format
++BOOT_CXXFLAGS += -D__USE_MINGW_ACCESS -Wno-pedantic-ms-format
+ CFLAGS += -D__USE_MINGW_ACCESS
++CXXFLAGS += -D__USE_MINGW_ACCESS
+ STAGE1_CXXFLAGS += -D__USE_MINGW_ACCESS
+ STAGE2_CXXFLAGS += -D__USE_MINGW_ACCESS
+ STAGE3_CXXFLAGS += -D__USE_MINGW_ACCESS
 diff --git a/contrib/ChangeLog b/contrib/ChangeLog
 index cfcc8b12b53..da635e2e5fb 100644
 --- a/contrib/ChangeLog
@@ -3431,10 +3450,19 @@ index 0719d810258..a9368325816 100644
 -10.3.0
 +10.3.1
 diff --git a/gcc/ChangeLog b/gcc/ChangeLog
-index 3b1384e707f..f21d81e3c3a 100644
+index 3b1384e707f..5da220b92e8 100644
 --- a/gcc/ChangeLog
 +++ b/gcc/ChangeLog
-@@ -1,3 +1,1405 @@
+@@ -1,3 +1,1414 @@
++2021-12-15  Kewen Lin  <linkw@linux.ibm.com>
++
++	Backported from master:
++	2021-11-30  Kewen Lin  <linkw@linux.ibm.com>
++
++	PR target/102347
++	* config/rs6000/rs6000-call.c (rs6000_builtin_decl): Remove builtin mask
++	check.
++
 +2021-12-01  Martin Jambor  <mjambor@suse.cz>
 +
 +	Backported from master:
@@ -8405,6 +8433,23 @@ index d28dfab8e4e..bdc8f1dc0b1 100644
  
  #define _mm_reduce_sd(A, B, C)						\
    ((__m128d) __builtin_ia32_reducesd_mask ((__v2df)(__m128d)(A),	\
+diff --git a/gcc/config/i386/i386-builtins.c b/gcc/config/i386/i386-builtins.c
+index 6f6a8328ef1..c24cbd5de28 100644
+--- a/gcc/config/i386/i386-builtins.c
++++ b/gcc/config/i386/i386-builtins.c
+@@ -2323,7 +2323,11 @@ fold_builtin_cpu (tree fndecl, tree *args)
+       /* Return __cpu_model.__cpu_features[0] & field_val  */
+       final = build2 (BIT_AND_EXPR, unsigned_type_node, array_elt,
+ 		      build_int_cstu (unsigned_type_node, field_val));
+-      return build1 (CONVERT_EXPR, integer_type_node, final);
++      if (isa_names_table[i].feature == (INT_TYPE_SIZE - 1))
++	return build2 (NE_EXPR, integer_type_node, final,
++		       build_int_cst (unsigned_type_node, 0));
++      else
++	return build1 (CONVERT_EXPR, integer_type_node, final);
+     }
+   gcc_unreachable ();
+ }
 diff --git a/gcc/config/i386/i386.c b/gcc/config/i386/i386.c
 index 2f838840e96..44e4be58c39 100644
 --- a/gcc/config/i386/i386.c
@@ -16643,10 +16688,18 @@ index 99edad8a950..f33489286a9 100644
  
  #endif
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index 2913065bf31..62d4646b659 100644
+index 2913065bf31..cca27a5b8ad 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,1619 @@
+@@ -1,3 +1,1627 @@
++2021-12-15  Kewen Lin  <linkw@linux.ibm.com>
++
++	Backported from master:
++	2021-11-30  Kewen Lin  <linkw@linux.ibm.com>
++
++	PR target/102347
++	* gcc.target/powerpc/pr102347.c: New test.
++
 +2021-12-11  Harald Anlauf  <anlauf@gmx.de>
 +
 +	Backported from master:
