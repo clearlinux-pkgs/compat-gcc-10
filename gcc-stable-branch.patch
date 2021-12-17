@@ -80,7 +80,8 @@ François Dumont (3):
       libstdc++: Fix unordered containers move constructors noexcept qualification
       libstdc++: [_GLIBCXX_DEBUG] Fix management of __dp_sign_max_size [PR 99402]
 
-GCC Administrator (248):
+GCC Administrator (249):
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -339,7 +340,7 @@ H.J. Lu (1):
 Hafiz Abid Qadeer (1):
       [OpenACC] Fix an ICE where a loop with GT condition is collapsed.
 
-Harald Anlauf (33):
+Harald Anlauf (35):
       PR fortran/63797 - Bogus ambiguous reference to 'sqrt'
       PR fortran/100154 - ICE in gfc_conv_procedure_call, at fortran/trans-expr.c:6131
       PR fortran/100274 - ICE in gfc_conv_procedure_call, at fortran/trans-expr.c:6131
@@ -373,6 +374,8 @@ Harald Anlauf (33):
       Fortran: improve check of arguments to the RESHAPE intrinsic
       Fortran: generate error message for negative elements in SHAPE array
       Fortran: improve expansion of constant array expressions within constructors
+      Fortran: prevent NULL pointer dereference in check of passed do-loop variable
+      Fortran: fix checking of elemental functions of type CLASS
 
 Iain Buclaw (18):
       d: Fix ICE in when formating a string with '%' or '`' characters (PR98457)
@@ -792,6 +795,22 @@ konglin1 (2):
       i386: Fix _mm512_fpclass_ps_mask in O0 [PR 101471]
       i386: Fix wrong optimization for consecutive masked scatters [PR 101472]
 
+diff --git a/config/ChangeLog b/config/ChangeLog
+index 4eccf8839f1..39ae1c5c28c 100644
+--- a/config/ChangeLog
++++ b/config/ChangeLog
+@@ -1,3 +1,11 @@
++2021-12-16  Martin Storsjö  <martin@martin.st>
++
++	Backported from master:
++	2021-04-13  Martin Storsjö  <martin@martin.st>
++
++	* mh-mingw: Set __USE_MINGW_ACCESS in missed C++ flags
++	variables
++
+ 2021-04-08  Release Manager
+ 
+ 	* GCC 10.3.0 released.
 diff --git a/config/mh-mingw b/config/mh-mingw
 index a795096f038..e91367a7112 100644
 --- a/config/mh-mingw
@@ -3450,10 +3469,22 @@ index 0719d810258..a9368325816 100644
 -10.3.0
 +10.3.1
 diff --git a/gcc/ChangeLog b/gcc/ChangeLog
-index 3b1384e707f..5da220b92e8 100644
+index 3b1384e707f..13190eaa9cd 100644
 --- a/gcc/ChangeLog
 +++ b/gcc/ChangeLog
-@@ -1,3 +1,1414 @@
+@@ -1,3 +1,1426 @@
++2021-12-16  Martin Liska  <mliska@suse.cz>
++
++	Backported from master:
++	2021-12-15  Martin Liska  <mliska@suse.cz>
++
++	PR target/103661
++	* config/i386/i386-builtins.c (fold_builtin_cpu): Compare to 0
++	as API expects that non-zero values are returned (do that
++	it mask == 31).
++	For "avx512vbmi2" argument, we return now 1 << 31, which is a
++	negative integer value.
++
 +2021-12-15  Kewen Lin  <linkw@linux.ibm.com>
 +
 +	Backported from master:
@@ -13842,10 +13873,29 @@ index 6e635382fb4..7b4c9c0eb7f 100644
  	      tree ntype = TYPE_UNSIGNED (type)
  			   ? signed_type_for (type)
 diff --git a/gcc/fortran/ChangeLog b/gcc/fortran/ChangeLog
-index aa5932be872..f5a02938ff8 100644
+index aa5932be872..bb73c74f292 100644
 --- a/gcc/fortran/ChangeLog
 +++ b/gcc/fortran/ChangeLog
-@@ -1,3 +1,497 @@
+@@ -1,3 +1,516 @@
++2021-12-16  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2021-12-11  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/103606
++	* resolve.c (resolve_fl_procedure): Do not access CLASS components
++	before class container has been built.
++
++2021-12-16  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2021-12-14  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/103717
++	* frontend-passes.c (doloop_code): Prevent NULL pointer
++	dereference when checking for passing a do-loop variable to a
++	contained procedure with an interface mismatch.
++
 +2021-12-11  Harald Anlauf  <anlauf@gmx.de>
 +
 +	Backported from master:
@@ -14864,7 +14914,7 @@ index f946145eb1b..9c091fe74e1 100644
    if (lvalue->ts.type == BT_UNKNOWN && !lhs_attr.proc_pointer)
      {
 diff --git a/gcc/fortran/frontend-passes.c b/gcc/fortran/frontend-passes.c
-index 5e768b12854..de9eff82630 100644
+index 5e768b12854..cbadb9c1b22 100644
 --- a/gcc/fortran/frontend-passes.c
 +++ b/gcc/fortran/frontend-passes.c
 @@ -1299,8 +1299,8 @@ traverse_io_block (gfc_code *code, bool *has_reached, gfc_code *prev)
@@ -14878,6 +14928,15 @@ index 5e768b12854..de9eff82630 100644
  		  || start->value.op.op1->ref)
  		return false;
  	      if (!stack_top || !stack_top->iter
+@@ -2414,7 +2414,7 @@ doloop_code (gfc_code **c, int *walk_subtrees ATTRIBUTE_UNUSED,
+ 
+ 	      do_sym = cl->ext.iterator->var->symtree->n.sym;
+ 
+-	      if (a->expr && a->expr->symtree
++	      if (a->expr && a->expr->symtree && f->sym
+ 		  && a->expr->symtree->n.sym == do_sym)
+ 		{
+ 		  if (f->sym->attr.intent == INTENT_OUT)
 @@ -2677,6 +2677,7 @@ do_subscript (gfc_expr **e)
  		    {
  		      if (ar->as->lower[i]
@@ -15171,7 +15230,7 @@ index 8edc83a42c3..b03961a9981 100644
  	    {
  	      gfc_error ("No initializer for component %qs given in the"
 diff --git a/gcc/fortran/resolve.c b/gcc/fortran/resolve.c
-index 7ca5f44f419..0489184302c 100644
+index 7ca5f44f419..591b36fa4bd 100644
 --- a/gcc/fortran/resolve.c
 +++ b/gcc/fortran/resolve.c
 @@ -1436,6 +1436,41 @@ resolve_structure_cons (gfc_expr *expr, int init)
@@ -15251,6 +15310,16 @@ index 7ca5f44f419..0489184302c 100644
  	      break;
              case EXEC_DO_CONCURRENT:
  	      gfc_do_concurrent_flag = 1;
+@@ -13095,7 +13140,8 @@ resolve_fl_procedure (gfc_symbol *sym, int mp_flag)
+ 
+   /* An elemental function is required to return a scalar 12.7.1  */
+   if (sym->attr.elemental && sym->attr.function
+-      && (sym->as || (sym->ts.type == BT_CLASS && CLASS_DATA (sym)->as)))
++      && (sym->as || (sym->ts.type == BT_CLASS && sym->attr.class_ok
++		      && CLASS_DATA (sym)->as)))
+     {
+       gfc_error ("ELEMENTAL function %qs at %L must have a scalar "
+ 		 "result", sym->name, &sym->declared_at);
 diff --git a/gcc/fortran/simplify.c b/gcc/fortran/simplify.c
 index d28aa7a3c16..8d40fdf251a 100644
 --- a/gcc/fortran/simplify.c
@@ -16688,10 +16757,26 @@ index 99edad8a950..f33489286a9 100644
  
  #endif
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index 2913065bf31..cca27a5b8ad 100644
+index 2913065bf31..22dbf8414d9 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,1627 @@
+@@ -1,3 +1,1643 @@
++2021-12-16  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2021-12-11  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/103606
++	* gfortran.dg/pr103606.f90: New test.
++
++2021-12-16  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2021-12-14  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/103717
++	* gfortran.dg/do_check_19.f90: New test.
++
 +2021-12-15  Kewen Lin  <linkw@linux.ibm.com>
 +
 +	Backported from master:
@@ -26001,6 +26086,33 @@ index 892a9c9f4c1..91fc4c902d8 100644
    End Type t5
  
    character (len=3), parameter :: str3(2) = [ "ABC", "ZYX" ]
+diff --git a/gcc/testsuite/gfortran.dg/do_check_19.f90 b/gcc/testsuite/gfortran.dg/do_check_19.f90
+new file mode 100644
+index 00000000000..1373a7374ce
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/do_check_19.f90
+@@ -0,0 +1,21 @@
++! { dg-do compile }
++! { dg-prune-output "Obsolescent feature: Alternate-return argument" }
++! PR fortran/103717 - ICE in doloop_code
++! Contributed by G.Steinmetz
++
++program p
++  integer :: i
++  do i = 1, 2
++     call s(i) ! { dg-error "Missing alternate return specifier" }
++  end do
++contains
++  subroutine s(*)
++  end
++end
++
++recursive subroutine s(*)
++  integer :: i
++  do i = 1, 2
++     call s(i) ! { dg-error "Missing alternate return specifier" }
++  end do
++end
 diff --git a/gcc/testsuite/gfortran.dg/elemental_function_5.f90 b/gcc/testsuite/gfortran.dg/elemental_function_5.f90
 new file mode 100644
 index 00000000000..315ff9162b3
@@ -26578,6 +26690,24 @@ index 00000000000..c081a69f0ea
 +  w =  x(1)%a
 +  y = (x(1)%a)
 +  print *, v, w, y, z, p
++end
+diff --git a/gcc/testsuite/gfortran.dg/pr103606.f90 b/gcc/testsuite/gfortran.dg/pr103606.f90
+new file mode 100644
+index 00000000000..43283184e89
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/pr103606.f90
+@@ -0,0 +1,12 @@
++! { dg-do compile }
++! PR fortran/103606 -  ICE in resolve_fl_procedure
++! Contributed by G.Steinmetz
++
++program p
++  type t
++  end type
++contains
++  elemental function f() result(z) ! { dg-error "CLASS variable" }
++    class(t) :: z
++  end
 +end
 diff --git a/gcc/testsuite/gfortran.dg/pr103607.f90 b/gcc/testsuite/gfortran.dg/pr103607.f90
 new file mode 100644
