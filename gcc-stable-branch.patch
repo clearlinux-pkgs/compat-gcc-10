@@ -80,7 +80,9 @@ François Dumont (3):
       libstdc++: Fix unordered containers move constructors noexcept qualification
       libstdc++: [_GLIBCXX_DEBUG] Fix management of __dp_sign_max_size [PR 99402]
 
-GCC Administrator (249):
+GCC Administrator (251):
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -340,7 +342,7 @@ H.J. Lu (1):
 Hafiz Abid Qadeer (1):
       [OpenACC] Fix an ICE where a loop with GT condition is collapsed.
 
-Harald Anlauf (35):
+Harald Anlauf (36):
       PR fortran/63797 - Bogus ambiguous reference to 'sqrt'
       PR fortran/100154 - ICE in gfc_conv_procedure_call, at fortran/trans-expr.c:6131
       PR fortran/100274 - ICE in gfc_conv_procedure_call, at fortran/trans-expr.c:6131
@@ -376,6 +378,7 @@ Harald Anlauf (35):
       Fortran: improve expansion of constant array expressions within constructors
       Fortran: prevent NULL pointer dereference in check of passed do-loop variable
       Fortran: fix checking of elemental functions of type CLASS
+      Fortran: dimensions of an array have to be non-negative
 
 Iain Buclaw (18):
       d: Fix ICE in when formating a string with '%' or '`' characters (PR98457)
@@ -13873,10 +13876,19 @@ index 6e635382fb4..7b4c9c0eb7f 100644
  	      tree ntype = TYPE_UNSIGNED (type)
  			   ? signed_type_for (type)
 diff --git a/gcc/fortran/ChangeLog b/gcc/fortran/ChangeLog
-index aa5932be872..bb73c74f292 100644
+index aa5932be872..c47f7ff91cb 100644
 --- a/gcc/fortran/ChangeLog
 +++ b/gcc/fortran/ChangeLog
-@@ -1,3 +1,516 @@
+@@ -1,3 +1,525 @@
++2021-12-17  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2021-12-08  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/103610
++	* array.c (spec_dimen_size): Fix simplification of SHAPE:
++	dimensions must be non-negative.
++
 +2021-12-16  Harald Anlauf  <anlauf@gmx.de>
 +
 +	Backported from master:
@@ -14394,7 +14406,7 @@ index aa5932be872..bb73c74f292 100644
  
  	* GCC 10.3.0 released.
 diff --git a/gcc/fortran/array.c b/gcc/fortran/array.c
-index 471523fb767..b304efdad50 100644
+index 471523fb767..8e4782ac1ae 100644
 --- a/gcc/fortran/array.c
 +++ b/gcc/fortran/array.c
 @@ -1798,9 +1798,18 @@ expand_constructor (gfc_constructor_base base)
@@ -14416,6 +14428,26 @@ index 471523fb767..b304efdad50 100644
        if (e->expr_type == EXPR_ARRAY)
  	{
  	  if (!expand_constructor (e->value.constructor))
+@@ -2283,8 +2292,7 @@ gfc_copy_iterator (gfc_iterator *src)
+ /********* Subroutines for determining the size of an array *********/
+ 
+ /* These are needed just to accommodate RESHAPE().  There are no
+-   diagnostics here, we just return a negative number if something
+-   goes wrong.  */
++   diagnostics here, we just return false if something goes wrong.  */
+ 
+ 
+ /* Get the size of single dimension of an array specification.  The
+@@ -2317,6 +2325,9 @@ spec_dimen_size (gfc_array_spec *as, int dimen, mpz_t *result)
+ 
+   mpz_add_ui (*result, *result, 1);
+ 
++  if (mpz_cmp_si (*result, 0) < 0)
++    mpz_set_si (*result, 0);
++
+   return true;
+ }
+ 
 diff --git a/gcc/fortran/check.c b/gcc/fortran/check.c
 index ca6f582625d..74d36cca1ac 100644
 --- a/gcc/fortran/check.c
@@ -16757,10 +16789,18 @@ index 99edad8a950..f33489286a9 100644
  
  #endif
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index 2913065bf31..22dbf8414d9 100644
+index 2913065bf31..b002727a3e7 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,1643 @@
+@@ -1,3 +1,1651 @@
++2021-12-17  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2021-12-08  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/103610
++	* gfortran.dg/shape_11.f90: New test.
++
 +2021-12-16  Harald Anlauf  <anlauf@gmx.de>
 +
 +	Backported from master:
@@ -27086,6 +27126,28 @@ index 00000000000..4943c21b1d2
 +program p
 +  integer, parameter :: a(1) = shape([2], [1]) ! { dg-error "must be a scalar" }
 +end
+diff --git a/gcc/testsuite/gfortran.dg/shape_11.f90 b/gcc/testsuite/gfortran.dg/shape_11.f90
+new file mode 100644
+index 00000000000..127d221e710
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/shape_11.f90
+@@ -0,0 +1,16 @@
++! { dg-do compile }
++! { dg-options "-fdump-tree-original" }
++! PR fortran/103610 - ICE while simplifying SHAPE
++! Contributed by G.Steinmetz
++
++program p
++  integer, parameter :: a(-1) = 1
++  integer, parameter :: b(1)  = maskl(shape(a))
++  integer, parameter :: c(1)  = shape(a)
++  integer, parameter :: d(1)  = maskr(shape(a))
++  if (b(1) /= 0) stop 1
++  if (c(1) /= 0) stop 2
++  if (d(1) /= 0) stop 3
++end
++
++! { dg-final { scan-tree-dump-not "_gfortran_stop_numeric" "original" } }
 diff --git a/gcc/testsuite/gfortran.dg/structure_constructor_17.f90 b/gcc/testsuite/gfortran.dg/structure_constructor_17.f90
 new file mode 100644
 index 00000000000..8b8230c6f7e
