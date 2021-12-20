@@ -80,7 +80,8 @@ François Dumont (3):
       libstdc++: Fix unordered containers move constructors noexcept qualification
       libstdc++: [_GLIBCXX_DEBUG] Fix management of __dp_sign_max_size [PR 99402]
 
-GCC Administrator (251):
+GCC Administrator (252):
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -342,7 +343,7 @@ H.J. Lu (1):
 Hafiz Abid Qadeer (1):
       [OpenACC] Fix an ICE where a loop with GT condition is collapsed.
 
-Harald Anlauf (36):
+Harald Anlauf (39):
       PR fortran/63797 - Bogus ambiguous reference to 'sqrt'
       PR fortran/100154 - ICE in gfc_conv_procedure_call, at fortran/trans-expr.c:6131
       PR fortran/100274 - ICE in gfc_conv_procedure_call, at fortran/trans-expr.c:6131
@@ -379,6 +380,9 @@ Harald Anlauf (36):
       Fortran: prevent NULL pointer dereference in check of passed do-loop variable
       Fortran: fix checking of elemental functions of type CLASS
       Fortran: dimensions of an array have to be non-negative
+      Fortran: reject BOZ type argument to SIZEOF().
+      Fortran: improve checking of array specifications
+      Fortran: catch failed simplification of bad stride expression
 
 Iain Buclaw (18):
       d: Fix ICE in when formating a string with '%' or '`' characters (PR98457)
@@ -13876,10 +13880,41 @@ index 6e635382fb4..7b4c9c0eb7f 100644
  	      tree ntype = TYPE_UNSIGNED (type)
  			   ? signed_type_for (type)
 diff --git a/gcc/fortran/ChangeLog b/gcc/fortran/ChangeLog
-index aa5932be872..c47f7ff91cb 100644
+index aa5932be872..5b61852983e 100644
 --- a/gcc/fortran/ChangeLog
 +++ b/gcc/fortran/ChangeLog
-@@ -1,3 +1,525 @@
+@@ -1,3 +1,556 @@
++2021-12-19  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2021-12-07  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/103588
++	* array.c (gfc_ref_dimen_size): Do not generate internal error on
++	failed simplification of stride expression; just return failure.
++
++2021-12-19  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2021-12-03  Harald Anlauf  <anlauf@gmx.de>
++		    Steven G. Kargl  <kargl@gcc.gnu.org>
++
++	PR fortran/103505
++	* array.c (match_array_element_spec): Try to simplify array
++	element specifications to improve early checking.
++	* expr.c (gfc_try_simplify_expr): New.  Try simplification of an
++	expression via gfc_simplify_expr.  When an error occurs, roll
++	back.
++	* gfortran.h (gfc_try_simplify_expr): Declare it.
++
++2021-12-19  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2021-12-18  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/103412
++	* check.c (gfc_check_sizeof): Reject BOZ type argument.
++
 +2021-12-17  Harald Anlauf  <anlauf@gmx.de>
 +
 +	Backported from master:
@@ -14406,10 +14441,28 @@ index aa5932be872..c47f7ff91cb 100644
  
  	* GCC 10.3.0 released.
 diff --git a/gcc/fortran/array.c b/gcc/fortran/array.c
-index 471523fb767..8e4782ac1ae 100644
+index 471523fb767..edf5cef61ec 100644
 --- a/gcc/fortran/array.c
 +++ b/gcc/fortran/array.c
-@@ -1798,9 +1798,18 @@ expand_constructor (gfc_constructor_base base)
+@@ -492,6 +492,8 @@ match_array_element_spec (gfc_array_spec *as)
+   if (!gfc_expr_check_typed (*upper, gfc_current_ns, false))
+     return AS_UNKNOWN;
+ 
++  gfc_try_simplify_expr (*upper, 0);
++
+   if (((*upper)->expr_type == EXPR_CONSTANT
+ 	&& (*upper)->ts.type != BT_INTEGER) ||
+       ((*upper)->expr_type == EXPR_FUNCTION
+@@ -524,6 +526,8 @@ match_array_element_spec (gfc_array_spec *as)
+   if (!gfc_expr_check_typed (*upper, gfc_current_ns, false))
+     return AS_UNKNOWN;
+ 
++  gfc_try_simplify_expr (*upper, 0);
++
+   if (((*upper)->expr_type == EXPR_CONSTANT
+ 	&& (*upper)->ts.type != BT_INTEGER) ||
+       ((*upper)->expr_type == EXPR_FUNCTION
+@@ -1798,9 +1802,18 @@ expand_constructor (gfc_constructor_base base)
  
        e = c->expr;
  
@@ -14428,7 +14481,7 @@ index 471523fb767..8e4782ac1ae 100644
        if (e->expr_type == EXPR_ARRAY)
  	{
  	  if (!expand_constructor (e->value.constructor))
-@@ -2283,8 +2292,7 @@ gfc_copy_iterator (gfc_iterator *src)
+@@ -2283,8 +2296,7 @@ gfc_copy_iterator (gfc_iterator *src)
  /********* Subroutines for determining the size of an array *********/
  
  /* These are needed just to accommodate RESHAPE().  There are no
@@ -14438,7 +14491,7 @@ index 471523fb767..8e4782ac1ae 100644
  
  
  /* Get the size of single dimension of an array specification.  The
-@@ -2317,6 +2325,9 @@ spec_dimen_size (gfc_array_spec *as, int dimen, mpz_t *result)
+@@ -2317,6 +2329,9 @@ spec_dimen_size (gfc_array_spec *as, int dimen, mpz_t *result)
  
    mpz_add_ui (*result, *result, 1);
  
@@ -14448,8 +14501,25 @@ index 471523fb767..8e4782ac1ae 100644
    return true;
  }
  
+@@ -2390,12 +2405,11 @@ gfc_ref_dimen_size (gfc_array_ref *ar, int dimen, mpz_t *result, mpz_t *end)
+ 	{
+ 	  stride_expr = gfc_copy_expr(ar->stride[dimen]); 
+ 
+-	  if(!gfc_simplify_expr(stride_expr, 1))
+-	    gfc_internal_error("Simplification error");
+-
+-	  if (stride_expr->expr_type != EXPR_CONSTANT
+-	      || mpz_cmp_ui (stride_expr->value.integer, 0) == 0)
++	  if (!gfc_simplify_expr (stride_expr, 1)
++	     || stride_expr->expr_type != EXPR_CONSTANT
++	     || mpz_cmp_ui (stride_expr->value.integer, 0) == 0)
+ 	    {
++	      gfc_free_expr (stride_expr);
+ 	      mpz_clear (stride);
+ 	      return false;
+ 	    }
 diff --git a/gcc/fortran/check.c b/gcc/fortran/check.c
-index ca6f582625d..74d36cca1ac 100644
+index ca6f582625d..8a124582cc6 100644
 --- a/gcc/fortran/check.c
 +++ b/gcc/fortran/check.c
 @@ -289,7 +289,7 @@ bin2real (gfc_expr *x, int kind)
@@ -14637,7 +14707,17 @@ index ca6f582625d..74d36cca1ac 100644
    return true;
  }
  
-@@ -5681,6 +5664,19 @@ gfc_check_spread (gfc_expr *source, gfc_expr *dim, gfc_expr *ncopies)
+@@ -5161,6 +5144,9 @@ gfc_check_sizeof (gfc_expr *arg)
+       return false;
+     }
+ 
++  if (illegal_boz_arg (arg))
++    return false;
++
+   /* TYPE(*) is acceptable if and only if it uses an array descriptor.  */
+   if (arg->ts.type == BT_ASSUMED
+       && (arg->symtree->n.sym->as == NULL
+@@ -5681,6 +5667,19 @@ gfc_check_spread (gfc_expr *source, gfc_expr *dim, gfc_expr *ncopies)
  /* Functions for checking FGETC, FPUTC, FGET and FPUT (subroutines and
     functions).  */
  
@@ -14657,7 +14737,7 @@ index ca6f582625d..74d36cca1ac 100644
  bool
  gfc_check_fgetputc_sub (gfc_expr *unit, gfc_expr *c, gfc_expr *status)
  {
-@@ -5694,13 +5690,19 @@ gfc_check_fgetputc_sub (gfc_expr *unit, gfc_expr *c, gfc_expr *status)
+@@ -5694,13 +5693,19 @@ gfc_check_fgetputc_sub (gfc_expr *unit, gfc_expr *c, gfc_expr *status)
      return false;
    if (!kind_value_check (c, 1, gfc_default_character_kind))
      return false;
@@ -14678,7 +14758,7 @@ index ca6f582625d..74d36cca1ac 100644
      return false;
  
    return true;
-@@ -5721,13 +5723,19 @@ gfc_check_fgetput_sub (gfc_expr *c, gfc_expr *status)
+@@ -5721,13 +5726,19 @@ gfc_check_fgetput_sub (gfc_expr *c, gfc_expr *status)
      return false;
    if (!kind_value_check (c, 0, gfc_default_character_kind))
      return false;
@@ -14845,7 +14925,7 @@ index 9273976aa9a..2ad9fb63399 100644
  		gfc_constructor_append_expr (&array->value.constructor,
  					     n == 0
 diff --git a/gcc/fortran/expr.c b/gcc/fortran/expr.c
-index f946145eb1b..9c091fe74e1 100644
+index f946145eb1b..9f5e84cbb1c 100644
 --- a/gcc/fortran/expr.c
 +++ b/gcc/fortran/expr.c
 @@ -990,6 +990,34 @@ done:
@@ -14935,7 +15015,39 @@ index f946145eb1b..9c091fe74e1 100644
        e->rank = p->rank;
  
        if (e->ts.type == BT_CHARACTER && p->ts.u.cl)
-@@ -3809,6 +3842,9 @@ gfc_check_pointer_assign (gfc_expr *lvalue, gfc_expr *rvalue,
+@@ -2295,6 +2328,31 @@ gfc_simplify_expr (gfc_expr *p, int type)
+ }
+ 
+ 
++/* Try simplification of an expression via gfc_simplify_expr.
++   When an error occurs (arithmetic or otherwise), roll back.  */
++
++bool
++gfc_try_simplify_expr (gfc_expr *e, int type)
++{
++  gfc_expr *n;
++  bool t, saved_div0;
++
++  if (e == NULL || e->expr_type == EXPR_CONSTANT)
++    return true;
++
++  saved_div0 = gfc_seen_div0;
++  gfc_seen_div0 = false;
++  n = gfc_copy_expr (e);
++  t = gfc_simplify_expr (n, type) && !gfc_seen_div0;
++  if (t)
++    gfc_replace_expr (e, n);
++  else
++    gfc_free_expr (n);
++  gfc_seen_div0 = saved_div0;
++  return t;
++}
++
++
+ /* Returns the type of an expression with the exception that iterator
+    variables are automatically integers no matter what else they may
+    be declared as.  */
+@@ -3809,6 +3867,9 @@ gfc_check_pointer_assign (gfc_expr *lvalue, gfc_expr *rvalue,
    int proc_pointer;
    bool same_rank;
  
@@ -15021,6 +15133,18 @@ index 5e768b12854..cbadb9c1b22 100644
    ns = insert_block ();
  
    /* Assign the type of the zero expression for initializing the resulting
+diff --git a/gcc/fortran/gfortran.h b/gcc/fortran/gfortran.h
+index e4bb8b8591f..2a669a37708 100644
+--- a/gcc/fortran/gfortran.h
++++ b/gcc/fortran/gfortran.h
+@@ -3307,6 +3307,7 @@ void gfc_free_ref_list (gfc_ref *);
+ void gfc_type_convert_binary (gfc_expr *, int);
+ bool gfc_is_constant_expr (gfc_expr *);
+ bool gfc_simplify_expr (gfc_expr *, int);
++bool gfc_try_simplify_expr (gfc_expr *, int);
+ int gfc_has_vector_index (gfc_expr *);
+ 
+ gfc_expr *gfc_get_expr (void);
 diff --git a/gcc/fortran/interface.c b/gcc/fortran/interface.c
 index 70219a537b9..a09a09c925e 100644
 --- a/gcc/fortran/interface.c
@@ -16789,10 +16913,35 @@ index 99edad8a950..f33489286a9 100644
  
  #endif
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index 2913065bf31..b002727a3e7 100644
+index 2913065bf31..4bad9bb3bac 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,1651 @@
+@@ -1,3 +1,1676 @@
++2021-12-19  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2021-12-07  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/103588
++	* gfortran.dg/pr103588.f90: New test.
++
++2021-12-19  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2021-12-03  Harald Anlauf  <anlauf@gmx.de>
++		    Steven G. Kargl  <kargl@gcc.gnu.org>
++
++	PR fortran/103505
++	* gfortran.dg/pr103505.f90: New test.
++
++2021-12-19  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2021-12-18  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/103412
++	* gfortran.dg/illegal_boz_arg_2.f90: New test.
++
 +2021-12-17  Harald Anlauf  <anlauf@gmx.de>
 +
 +	Backported from master:
@@ -26236,6 +26385,18 @@ index 00000000000..5e9d5b214b2
 +!$omp end target
 +
 +end
+diff --git a/gcc/testsuite/gfortran.dg/illegal_boz_arg_2.f90 b/gcc/testsuite/gfortran.dg/illegal_boz_arg_2.f90
+new file mode 100644
+index 00000000000..3e5f6b6d1d4
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/illegal_boz_arg_2.f90
+@@ -0,0 +1,6 @@
++! { dg-do compile }
++! PR fortran/103412
++
++program p
++  integer, parameter :: a = sizeof(z'1') ! { dg-error "cannot be an actual" }
++end
 diff --git a/gcc/testsuite/gfortran.dg/implied_do_io_7.f90 b/gcc/testsuite/gfortran.dg/implied_do_io_7.f90
 new file mode 100644
 index 00000000000..63927aafea9
@@ -26730,6 +26891,35 @@ index 00000000000..c081a69f0ea
 +  w =  x(1)%a
 +  y = (x(1)%a)
 +  print *, v, w, y, z, p
++end
+diff --git a/gcc/testsuite/gfortran.dg/pr103505.f90 b/gcc/testsuite/gfortran.dg/pr103505.f90
+new file mode 100644
+index 00000000000..522e53efcb2
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/pr103505.f90
+@@ -0,0 +1,9 @@
++! { dg-do compile }
++! PR fortran/103505 - this used to ICE in compare_bound_mpz_t
++! Testcase by G.Steinmetz
++
++program p
++  integer, parameter :: a((2.))   = [4,8] ! { dg-error "scalar INTEGER" }
++  integer, parameter :: z(1:(2.)) = [4,8] ! { dg-error "scalar INTEGER" }
++  print *, a(1:1)                         ! { dg-error "Syntax error" }
++end
+diff --git a/gcc/testsuite/gfortran.dg/pr103588.f90 b/gcc/testsuite/gfortran.dg/pr103588.f90
+new file mode 100644
+index 00000000000..198e1766cd2
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/pr103588.f90
+@@ -0,0 +1,8 @@
++! { dg-do compile }
++! PR fortran/103588 - ICE: Simplification error in gfc_ref_dimen_size
++! Contributed by G.Steinmetz
++
++program p
++  integer, parameter :: a(:) = [1,2] ! { dg-error "cannot be automatic or of deferred shape" }
++  integer :: b(2) = a(::a(1))        ! { dg-error "Invalid" }
 +end
 diff --git a/gcc/testsuite/gfortran.dg/pr103606.f90 b/gcc/testsuite/gfortran.dg/pr103606.f90
 new file mode 100644
