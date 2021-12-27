@@ -80,7 +80,12 @@ François Dumont (3):
       libstdc++: Fix unordered containers move constructors noexcept qualification
       libstdc++: [_GLIBCXX_DEBUG] Fix management of __dp_sign_max_size [PR 99402]
 
-GCC Administrator (254):
+GCC Administrator (259):
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -345,7 +350,7 @@ H.J. Lu (1):
 Hafiz Abid Qadeer (1):
       [OpenACC] Fix an ICE where a loop with GT condition is collapsed.
 
-Harald Anlauf (39):
+Harald Anlauf (42):
       PR fortran/63797 - Bogus ambiguous reference to 'sqrt'
       PR fortran/100154 - ICE in gfc_conv_procedure_call, at fortran/trans-expr.c:6131
       PR fortran/100274 - ICE in gfc_conv_procedure_call, at fortran/trans-expr.c:6131
@@ -385,6 +390,9 @@ Harald Anlauf (39):
       Fortran: reject BOZ type argument to SIZEOF().
       Fortran: improve checking of array specifications
       Fortran: catch failed simplification of bad stride expression
+      Fortran: NULL() is not interoperable
+      Fortran: BOZ literal constants are not interoperable
+      Fortran: PACK intrinsic should not try to read from zero-sized array
 
 Iain Buclaw (19):
       d: Fix ICE in when formating a string with '%' or '`' characters (PR98457)
@@ -14522,7 +14530,7 @@ index 471523fb767..edf5cef61ec 100644
  	      return false;
  	    }
 diff --git a/gcc/fortran/check.c b/gcc/fortran/check.c
-index ca6f582625d..8a124582cc6 100644
+index ca6f582625d..eab12e93887 100644
 --- a/gcc/fortran/check.c
 +++ b/gcc/fortran/check.c
 @@ -289,7 +289,7 @@ bin2real (gfc_expr *x, int kind)
@@ -14720,7 +14728,26 @@ index ca6f582625d..8a124582cc6 100644
    /* TYPE(*) is acceptable if and only if it uses an array descriptor.  */
    if (arg->ts.type == BT_ASSUMED
        && (arg->symtree->n.sym->as == NULL
-@@ -5681,6 +5667,19 @@ gfc_check_spread (gfc_expr *source, gfc_expr *dim, gfc_expr *ncopies)
+@@ -5202,6 +5188,18 @@ is_c_interoperable (gfc_expr *expr, const char **msg, bool c_loc, bool c_f_ptr)
+ {
+   *msg = NULL;
+ 
++  if (expr->expr_type == EXPR_NULL)
++    {
++      *msg = "NULL() is not interoperable";
++      return false;
++    }
++
++  if (expr->ts.type == BT_BOZ)
++    {
++      *msg = "BOZ literal constant";
++      return false;
++    }
++
+   if (expr->ts.type == BT_CLASS)
+     {
+       *msg = "Expression is polymorphic";
+@@ -5681,6 +5679,19 @@ gfc_check_spread (gfc_expr *source, gfc_expr *dim, gfc_expr *ncopies)
  /* Functions for checking FGETC, FPUTC, FGET and FPUT (subroutines and
     functions).  */
  
@@ -14740,7 +14767,7 @@ index ca6f582625d..8a124582cc6 100644
  bool
  gfc_check_fgetputc_sub (gfc_expr *unit, gfc_expr *c, gfc_expr *status)
  {
-@@ -5694,13 +5693,19 @@ gfc_check_fgetputc_sub (gfc_expr *unit, gfc_expr *c, gfc_expr *status)
+@@ -5694,13 +5705,19 @@ gfc_check_fgetputc_sub (gfc_expr *unit, gfc_expr *c, gfc_expr *status)
      return false;
    if (!kind_value_check (c, 1, gfc_default_character_kind))
      return false;
@@ -14761,7 +14788,7 @@ index ca6f582625d..8a124582cc6 100644
      return false;
  
    return true;
-@@ -5721,13 +5726,19 @@ gfc_check_fgetput_sub (gfc_expr *c, gfc_expr *status)
+@@ -5721,13 +5738,19 @@ gfc_check_fgetput_sub (gfc_expr *c, gfc_expr *status)
      return false;
    if (!kind_value_check (c, 0, gfc_default_character_kind))
      return false;
@@ -26400,6 +26427,19 @@ index 00000000000..3e5f6b6d1d4
 +program p
 +  integer, parameter :: a = sizeof(z'1') ! { dg-error "cannot be an actual" }
 +end
+diff --git a/gcc/testsuite/gfortran.dg/illegal_boz_arg_3.f90 b/gcc/testsuite/gfortran.dg/illegal_boz_arg_3.f90
+new file mode 100644
+index 00000000000..59fefa90971
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/illegal_boz_arg_3.f90
+@@ -0,0 +1,7 @@
++! { dg-do compile }
++! PR fortran/103778
++
++program p
++  use iso_c_binding, only : c_sizeof
++  integer, parameter :: a = c_sizeof(z'1') ! { dg-error "cannot appear" }
++end
 diff --git a/gcc/testsuite/gfortran.dg/implied_do_io_7.f90 b/gcc/testsuite/gfortran.dg/implied_do_io_7.f90
 new file mode 100644
 index 00000000000..63927aafea9
@@ -26466,6 +26506,69 @@ index 00000000000..e5994635008
 +program p
 +  use m
 +  call a ()
++end
+diff --git a/gcc/testsuite/gfortran.dg/intrinsic_pack_6.f90 b/gcc/testsuite/gfortran.dg/intrinsic_pack_6.f90
+new file mode 100644
+index 00000000000..917944d8846
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/intrinsic_pack_6.f90
+@@ -0,0 +1,57 @@
++! { dg-do run }
++! PR libfortran/103634 - Runtime crash with PACK on zero-sized arrays
++! Exercise PACK intrinsic for cases when it calls pack_internal
++
++program p
++  implicit none
++  type t
++     real :: r(24) = -99.
++  end type
++  type(t), allocatable :: new(:), old(:), vec(:)
++  logical, allocatable :: mask(:)
++  integer              :: n, m
++! m = 1    ! works
++  m = 0    ! failed with SIGSEGV in pack_internal
++  do m = 0, 2
++     print *, m
++     allocate (old(m), mask(m), vec(m))
++     if (m > 0) vec(m)% r(1) = 42
++     mask(:) = .true.
++     n = count (mask)
++     allocate (new(n))
++
++     mask(:) = .false.
++     if (size (pack (old, mask)) /= 0) stop 1
++     mask(:) = .true.
++     if (size (pack (old, mask)) /= m) stop 2
++     new(:) = pack (old, mask)              ! this used to segfault for m=0
++
++     mask(:) = .false.
++     if (size (pack (old, mask, vector=vec)) /= m) stop 3
++     new(:) = t()
++     new(:) = pack (old, mask, vector=vec)  ! this used to segfault for m=0
++     if (m > 0) then
++        if (     new( m  )% r(1) /=  42)  stop 4
++        if (any (new(:m-1)% r(1) /= -99)) stop 5
++     end if
++
++     if (m > 0) mask(m) = .true.
++     if (size (pack (old, mask, vector=vec)) /= m) stop 6
++     new(:) = t()
++     new(:) = pack (old, mask, vector=vec)  ! this used to segfault for m=0
++     if (m > 0) then
++        if (new(1)% r(1) /= -99) stop 7
++     end if
++     if (m > 1) then
++        if (new(m)% r(1) /=  42) stop 8
++     end if
++
++     if (size (pack (old(:0), mask(:0), vector=vec)) /= m) stop 9
++     new(:) = t()
++     new(:) = pack (old(:0), mask(:0), vector=vec) ! did segfault for m=0
++     if (m > 0) then
++        if (new(m)% r(1) /= 42) stop 10
++     end if
++     deallocate (old, mask, new, vec)
++  end do
 +end
 diff --git a/gcc/testsuite/gfortran.dg/parameter_array_init_8.f90 b/gcc/testsuite/gfortran.dg/parameter_array_init_8.f90
 new file mode 100644
@@ -26614,6 +26717,25 @@ index 00000000000..f4377aabe7a
 +end
 +
 +! { dg-error "cannot be automatic or of deferred shape" " " { target *-*-* } 5 }
+diff --git a/gcc/testsuite/gfortran.dg/pr101329.f90 b/gcc/testsuite/gfortran.dg/pr101329.f90
+new file mode 100644
+index 00000000000..b82210d4e28
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/pr101329.f90
+@@ -0,0 +1,13 @@
++! { dg-do compile }
++! PR fortran/101329 - ICE: Invalid expression in gfc_element_size
++
++program p
++  use iso_c_binding
++  implicit none
++  integer(c_int),     pointer :: ip4
++  integer(c_int64_t), pointer :: ip8
++  print *, c_sizeof (c_null_ptr) ! valid
++  print *, c_sizeof (null ())    ! { dg-error "is not interoperable" }
++  print *, c_sizeof (null (ip4)) ! { dg-error "is not interoperable" }
++  print *, c_sizeof (null (ip8)) ! { dg-error "is not interoperable" }
++end
 diff --git a/gcc/testsuite/gfortran.dg/pr101514.f90 b/gcc/testsuite/gfortran.dg/pr101514.f90
 new file mode 100644
 index 00000000000..51fbf8a7e85
@@ -29515,6 +29637,44 @@ index 9b8fcfe34a3..47f97e93e6a 100644
  	srwi	r4,r4,3		/* # doublewords to move */
  	addi	r9,r3,-8	/* adjust pointer for stdu */
  	mtctr	r4
+diff --git a/libgfortran/intrinsics/pack_generic.c b/libgfortran/intrinsics/pack_generic.c
+index 9d265f34068..2feaa7730c6 100644
+--- a/libgfortran/intrinsics/pack_generic.c
++++ b/libgfortran/intrinsics/pack_generic.c
+@@ -85,6 +85,7 @@ pack_internal (gfc_array_char *ret, const gfc_array_char *array,
+ 
+   index_type count[GFC_MAX_DIMENSIONS];
+   index_type extent[GFC_MAX_DIMENSIONS];
++  bool zero_sized;
+   index_type n;
+   index_type dim;
+   index_type nelem;
+@@ -114,10 +115,13 @@ pack_internal (gfc_array_char *ret, const gfc_array_char *array,
+   else
+     runtime_error ("Funny sized logical array");
+ 
++  zero_sized = false;
+   for (n = 0; n < dim; n++)
+     {
+       count[n] = 0;
+       extent[n] = GFC_DESCRIPTOR_EXTENT(array,n);
++      if (extent[n] <= 0)
++	zero_sized = true;
+       sstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(array,n);
+       mstride[n] = GFC_DESCRIPTOR_STRIDE_BYTES(mask,n);
+     }
+@@ -126,6 +130,11 @@ pack_internal (gfc_array_char *ret, const gfc_array_char *array,
+   if (mstride[0] == 0)
+     mstride[0] = mask_kind;
+ 
++  if (zero_sized)
++    sptr = NULL;
++  else
++    sptr = array->base_addr;
++
+   if (ret->base_addr == NULL || unlikely (compile_options.bounds_check))
+     {
+       /* Count the elements, either for allocating memory or
 diff --git a/libgomp/ChangeLog b/libgomp/ChangeLog
 index f76d32e398c..d483bb4de8a 100644
 --- a/libgomp/ChangeLog
