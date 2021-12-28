@@ -80,7 +80,8 @@ François Dumont (3):
       libstdc++: Fix unordered containers move constructors noexcept qualification
       libstdc++: [_GLIBCXX_DEBUG] Fix management of __dp_sign_max_size [PR 99402]
 
-GCC Administrator (259):
+GCC Administrator (260):
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -350,7 +351,7 @@ H.J. Lu (1):
 Hafiz Abid Qadeer (1):
       [OpenACC] Fix an ICE where a loop with GT condition is collapsed.
 
-Harald Anlauf (42):
+Harald Anlauf (43):
       PR fortran/63797 - Bogus ambiguous reference to 'sqrt'
       PR fortran/100154 - ICE in gfc_conv_procedure_call, at fortran/trans-expr.c:6131
       PR fortran/100274 - ICE in gfc_conv_procedure_call, at fortran/trans-expr.c:6131
@@ -393,6 +394,7 @@ Harald Anlauf (42):
       Fortran: NULL() is not interoperable
       Fortran: BOZ literal constants are not interoperable
       Fortran: PACK intrinsic should not try to read from zero-sized array
+      Fortran: fix check for pointer dummy arguments with INTENT(IN)
 
 Iain Buclaw (19):
       d: Fix ICE in when formating a string with '%' or '`' characters (PR98457)
@@ -13891,10 +13893,41 @@ index 6e635382fb4..7b4c9c0eb7f 100644
  	      tree ntype = TYPE_UNSIGNED (type)
  			   ? signed_type_for (type)
 diff --git a/gcc/fortran/ChangeLog b/gcc/fortran/ChangeLog
-index aa5932be872..5b61852983e 100644
+index aa5932be872..afe48f1b56d 100644
 --- a/gcc/fortran/ChangeLog
 +++ b/gcc/fortran/ChangeLog
-@@ -1,3 +1,556 @@
+@@ -1,3 +1,587 @@
++2021-12-27  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2021-12-10  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/103418
++	* check.c (variable_check): Replace previous check of procedure
++	dummy arguments with INTENT(IN) attribute when passed to intrinsic
++	procedures by gfc_check_vardef_context.
++	* expr.c (gfc_check_vardef_context): Correct check of INTENT(IN)
++	dummy arguments for the case of sub-components of a CLASS pointer.
++
++2021-12-27  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2021-12-22  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/103778
++	* check.c (is_c_interoperable): A BOZ literal constant is not
++	interoperable.
++
++2021-12-27  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2021-11-18  Harald Anlauf  <anlauf@gmx.de>
++		    Steven G. Kargl  <kargl@gcc.gnu.org>
++
++	PR fortran/101329
++	* check.c (is_c_interoperable): Reject NULL() as it is not
++	interoperable.
++
 +2021-12-19  Harald Anlauf  <anlauf@gmx.de>
 +
 +	Backported from master:
@@ -14530,7 +14563,7 @@ index 471523fb767..edf5cef61ec 100644
  	      return false;
  	    }
 diff --git a/gcc/fortran/check.c b/gcc/fortran/check.c
-index ca6f582625d..eab12e93887 100644
+index ca6f582625d..392786ac48e 100644
 --- a/gcc/fortran/check.c
 +++ b/gcc/fortran/check.c
 @@ -289,7 +289,7 @@ bin2real (gfc_expr *x, int kind)
@@ -14581,7 +14614,47 @@ index ca6f582625d..eab12e93887 100644
      {
        gfc_error ("%qs argument of %qs intrinsic at %L must be ALLOCATABLE",
  		 gfc_current_intrinsic_arg[n]->name, gfc_current_intrinsic,
-@@ -1054,6 +1054,13 @@ variable_check (gfc_expr *e, int n, bool allow_proc)
+@@ -1011,33 +1011,13 @@ variable_check (gfc_expr *e, int n, bool allow_proc)
+   if (e->expr_type == EXPR_VARIABLE
+       && e->symtree->n.sym->attr.intent == INTENT_IN
+       && (gfc_current_intrinsic_arg[n]->intent == INTENT_OUT
+-	  || gfc_current_intrinsic_arg[n]->intent == INTENT_INOUT))
++	  || gfc_current_intrinsic_arg[n]->intent == INTENT_INOUT)
++      && !gfc_check_vardef_context (e, false, true, false, NULL))
+     {
+-      gfc_ref *ref;
+-      bool pointer = e->symtree->n.sym->ts.type == BT_CLASS
+-		     && CLASS_DATA (e->symtree->n.sym)
+-		     ? CLASS_DATA (e->symtree->n.sym)->attr.class_pointer
+-		     : e->symtree->n.sym->attr.pointer;
+-
+-      for (ref = e->ref; ref; ref = ref->next)
+-	{
+-	  if (pointer && ref->type == REF_COMPONENT)
+-	    break;
+-	  if (ref->type == REF_COMPONENT
+-	      && ((ref->u.c.component->ts.type == BT_CLASS
+-		   && CLASS_DATA (ref->u.c.component)->attr.class_pointer)
+-		  || (ref->u.c.component->ts.type != BT_CLASS
+-		      && ref->u.c.component->attr.pointer)))
+-	    break;
+-	}
+-
+-      if (!ref)
+-	{
+-	  gfc_error ("%qs argument of %qs intrinsic at %L cannot be "
+-		     "INTENT(IN)", gfc_current_intrinsic_arg[n]->name,
+-		     gfc_current_intrinsic, &e->where);
+-	  return false;
+-	}
++      gfc_error ("%qs argument of %qs intrinsic at %L cannot be INTENT(IN)",
++		 gfc_current_intrinsic_arg[n]->name,
++		 gfc_current_intrinsic, &e->where);
++      return false;
+     }
+ 
+   if (e->expr_type == EXPR_VARIABLE
+@@ -1054,6 +1034,13 @@ variable_check (gfc_expr *e, int n, bool allow_proc)
  	  return true;
      }
  
@@ -14595,7 +14668,7 @@ index ca6f582625d..eab12e93887 100644
    gfc_error ("%qs argument of %qs intrinsic at %L must be a variable",
  	     gfc_current_intrinsic_arg[n]->name, gfc_current_intrinsic, &e->where);
  
-@@ -3230,7 +3237,7 @@ gfc_check_intconv (gfc_expr *x)
+@@ -3230,7 +3217,7 @@ gfc_check_intconv (gfc_expr *x)
        || strcmp (gfc_current_intrinsic, "long") == 0)
      {
        gfc_error ("%qs intrinsic subprogram at %L has been deprecated.  "
@@ -14604,7 +14677,7 @@ index ca6f582625d..eab12e93887 100644
  		 &x->where);
        return false;
      }
-@@ -3958,7 +3965,7 @@ gfc_check_findloc (gfc_actual_arglist *ap)
+@@ -3958,7 +3945,7 @@ gfc_check_findloc (gfc_actual_arglist *ap)
    /* Check the kind of the characters argument match.  */
    if (a1 && v1 && a->ts.kind != v->ts.kind)
      goto incompat;
@@ -14613,7 +14686,7 @@ index ca6f582625d..eab12e93887 100644
    d = ap->next->next->expr;
    m = ap->next->next->next->expr;
    k = ap->next->next->next->next->expr;
-@@ -4681,6 +4688,7 @@ gfc_check_reshape (gfc_expr *source, gfc_expr *shape,
+@@ -4681,6 +4668,7 @@ gfc_check_reshape (gfc_expr *source, gfc_expr *shape,
    mpz_t size;
    mpz_t nelems;
    int shape_size;
@@ -14621,7 +14694,7 @@ index ca6f582625d..eab12e93887 100644
  
    if (!array_check (source, 0))
      return false;
-@@ -4714,7 +4722,11 @@ gfc_check_reshape (gfc_expr *source, gfc_expr *shape,
+@@ -4714,7 +4702,11 @@ gfc_check_reshape (gfc_expr *source, gfc_expr *shape,
  		 "than %d elements", &shape->where, GFC_MAX_DIMENSIONS);
        return false;
      }
@@ -14634,7 +14707,7 @@ index ca6f582625d..eab12e93887 100644
      {
        gfc_expr *e;
        int i, extent;
-@@ -4730,38 +4742,7 @@ gfc_check_reshape (gfc_expr *source, gfc_expr *shape,
+@@ -4730,38 +4722,7 @@ gfc_check_reshape (gfc_expr *source, gfc_expr *shape,
  	      gfc_error ("%qs argument of %qs intrinsic at %L has "
  			 "negative element (%d)",
  			 gfc_current_intrinsic_arg[1]->name,
@@ -14674,7 +14747,7 @@ index ca6f582625d..eab12e93887 100644
  	      return false;
  	    }
  	}
-@@ -4838,8 +4819,7 @@ gfc_check_reshape (gfc_expr *source, gfc_expr *shape,
+@@ -4838,8 +4799,7 @@ gfc_check_reshape (gfc_expr *source, gfc_expr *shape,
  	}
      }
  
@@ -14684,7 +14757,7 @@ index ca6f582625d..eab12e93887 100644
        && !(source->expr_type == EXPR_VARIABLE && source->symtree->n.sym->as
  	   && source->symtree->n.sym->as->type == AS_ASSUMED_SIZE))
      {
-@@ -5068,9 +5048,19 @@ gfc_check_shape (gfc_expr *source, gfc_expr *kind)
+@@ -5068,9 +5028,19 @@ gfc_check_shape (gfc_expr *source, gfc_expr *kind)
    if (gfc_invalid_null_arg (source))
      return false;
  
@@ -14704,7 +14777,7 @@ index ca6f582625d..eab12e93887 100644
    ar = gfc_find_array_ref (source);
  
    if (ar->as && ar->as->type == AS_ASSUMED_SIZE && ar->type == AR_FULL)
-@@ -5080,13 +5070,6 @@ gfc_check_shape (gfc_expr *source, gfc_expr *kind)
+@@ -5080,13 +5050,6 @@ gfc_check_shape (gfc_expr *source, gfc_expr *kind)
        return false;
      }
  
@@ -14718,7 +14791,7 @@ index ca6f582625d..eab12e93887 100644
    return true;
  }
  
-@@ -5161,6 +5144,9 @@ gfc_check_sizeof (gfc_expr *arg)
+@@ -5161,6 +5124,9 @@ gfc_check_sizeof (gfc_expr *arg)
        return false;
      }
  
@@ -14728,7 +14801,7 @@ index ca6f582625d..eab12e93887 100644
    /* TYPE(*) is acceptable if and only if it uses an array descriptor.  */
    if (arg->ts.type == BT_ASSUMED
        && (arg->symtree->n.sym->as == NULL
-@@ -5202,6 +5188,18 @@ is_c_interoperable (gfc_expr *expr, const char **msg, bool c_loc, bool c_f_ptr)
+@@ -5202,6 +5168,18 @@ is_c_interoperable (gfc_expr *expr, const char **msg, bool c_loc, bool c_f_ptr)
  {
    *msg = NULL;
  
@@ -14747,7 +14820,7 @@ index ca6f582625d..eab12e93887 100644
    if (expr->ts.type == BT_CLASS)
      {
        *msg = "Expression is polymorphic";
-@@ -5681,6 +5679,19 @@ gfc_check_spread (gfc_expr *source, gfc_expr *dim, gfc_expr *ncopies)
+@@ -5681,6 +5659,19 @@ gfc_check_spread (gfc_expr *source, gfc_expr *dim, gfc_expr *ncopies)
  /* Functions for checking FGETC, FPUTC, FGET and FPUT (subroutines and
     functions).  */
  
@@ -14767,7 +14840,7 @@ index ca6f582625d..eab12e93887 100644
  bool
  gfc_check_fgetputc_sub (gfc_expr *unit, gfc_expr *c, gfc_expr *status)
  {
-@@ -5694,13 +5705,19 @@ gfc_check_fgetputc_sub (gfc_expr *unit, gfc_expr *c, gfc_expr *status)
+@@ -5694,13 +5685,19 @@ gfc_check_fgetputc_sub (gfc_expr *unit, gfc_expr *c, gfc_expr *status)
      return false;
    if (!kind_value_check (c, 1, gfc_default_character_kind))
      return false;
@@ -14788,7 +14861,7 @@ index ca6f582625d..eab12e93887 100644
      return false;
  
    return true;
-@@ -5721,13 +5738,19 @@ gfc_check_fgetput_sub (gfc_expr *c, gfc_expr *status)
+@@ -5721,13 +5718,19 @@ gfc_check_fgetput_sub (gfc_expr *c, gfc_expr *status)
      return false;
    if (!kind_value_check (c, 0, gfc_default_character_kind))
      return false;
@@ -14955,7 +15028,7 @@ index 9273976aa9a..2ad9fb63399 100644
  		gfc_constructor_append_expr (&array->value.constructor,
  					     n == 0
 diff --git a/gcc/fortran/expr.c b/gcc/fortran/expr.c
-index f946145eb1b..9f5e84cbb1c 100644
+index f946145eb1b..95b35153941 100644
 --- a/gcc/fortran/expr.c
 +++ b/gcc/fortran/expr.c
 @@ -990,6 +990,34 @@ done:
@@ -15087,6 +15160,23 @@ index f946145eb1b..9f5e84cbb1c 100644
    lhs_attr = gfc_expr_attr (lvalue);
    if (lvalue->ts.type == BT_UNKNOWN && !lhs_attr.proc_pointer)
      {
+@@ -6168,10 +6229,13 @@ gfc_check_vardef_context (gfc_expr* e, bool pointer, bool alloc_obj,
+     {
+       if (ptr_component && ref->type == REF_COMPONENT)
+ 	check_intentin = false;
+-      if (ref->type == REF_COMPONENT && ref->u.c.component->attr.pointer)
++      if (ref->type == REF_COMPONENT)
+ 	{
+-	  ptr_component = true;
+-	  if (!pointer)
++	  gfc_component *comp = ref->u.c.component;
++	  ptr_component = (comp->ts.type == BT_CLASS && comp->attr.class_ok)
++			? CLASS_DATA (comp)->attr.class_pointer
++			: comp->attr.pointer;
++	  if (ptr_component && !pointer)
+ 	    check_intentin = false;
+ 	}
+     }
 diff --git a/gcc/fortran/frontend-passes.c b/gcc/fortran/frontend-passes.c
 index 5e768b12854..cbadb9c1b22 100644
 --- a/gcc/fortran/frontend-passes.c
@@ -16943,10 +17033,44 @@ index 99edad8a950..f33489286a9 100644
  
  #endif
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index 2913065bf31..4bad9bb3bac 100644
+index 2913065bf31..061bd8344eb 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,1676 @@
+@@ -1,3 +1,1710 @@
++2021-12-27  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2021-12-10  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/103418
++	* gfortran.dg/move_alloc_8.f90: Adjust error messages.
++	* gfortran.dg/pointer_intent_9.f90: New test.
++
++2021-12-27  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2021-12-14  Harald Anlauf  <anlauf@gmx.de>
++
++	PR libfortran/103634
++	* gfortran.dg/intrinsic_pack_6.f90: New test.
++
++2021-12-27  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2021-12-22  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/103778
++	* gfortran.dg/illegal_boz_arg_3.f90: New test.
++
++2021-12-27  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2021-11-18  Harald Anlauf  <anlauf@gmx.de>
++		    Steven G. Kargl  <kargl@gcc.gnu.org>
++
++	PR fortran/101329
++	* gfortran.dg/pr101329.f90: New test.
++
 +2021-12-19  Harald Anlauf  <anlauf@gmx.de>
 +
 +	Backported from master:
@@ -26570,6 +26694,28 @@ index 00000000000..917944d8846
 +     deallocate (old, mask, new, vec)
 +  end do
 +end
+diff --git a/gcc/testsuite/gfortran.dg/move_alloc_8.f90 b/gcc/testsuite/gfortran.dg/move_alloc_8.f90
+index f624b703cc9..d968ea0e5cd 100644
+--- a/gcc/testsuite/gfortran.dg/move_alloc_8.f90
++++ b/gcc/testsuite/gfortran.dg/move_alloc_8.f90
+@@ -60,7 +60,7 @@ subroutine test2 (x, px)
+   integer, allocatable :: a
+   type(t2), pointer :: ta
+ 
+-  call move_alloc (px, ta)      ! { dg-error "cannot be INTENT.IN." }
++  call move_alloc (px, ta)      ! { dg-error "must be ALLOCATABLE" }
+   call move_alloc (x%a, a)      ! { dg-error "cannot be INTENT.IN." }
+   call move_alloc (x%ptr%a, a)  ! OK (3)
+   call move_alloc (px%a, a)     ! OK (4)
+@@ -84,7 +84,7 @@ subroutine test3 (x, px)
+   integer, allocatable :: a
+   class(t2), pointer :: ta
+ 
+-  call move_alloc (px, ta)      ! { dg-error "cannot be INTENT.IN." }
++  call move_alloc (px, ta)      ! { dg-error "must be ALLOCATABLE" }
+   call move_alloc (x%a, a)      ! { dg-error "cannot be INTENT.IN." }
+   call move_alloc (x%ptr%a, a)  ! OK (6)
+   call move_alloc (px%a, a)     ! OK (7)
 diff --git a/gcc/testsuite/gfortran.dg/parameter_array_init_8.f90 b/gcc/testsuite/gfortran.dg/parameter_array_init_8.f90
 new file mode 100644
 index 00000000000..2e5f7694d3a
@@ -26652,6 +26798,45 @@ index 00000000000..708c9454217
 +    if (any (reshape (obj%arr, [4]) .ne. [1,2,3,4])) stop 5
 +  end subroutine
 +end program
+diff --git a/gcc/testsuite/gfortran.dg/pointer_intent_9.f90 b/gcc/testsuite/gfortran.dg/pointer_intent_9.f90
+new file mode 100644
+index 00000000000..30ddd028359
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/pointer_intent_9.f90
+@@ -0,0 +1,33 @@
++! { dg-do compile }
++! PR fortran/103418
++! Validate checks for dummy arguments with INTENT(IN), pointer attribute
++
++module m
++  type t
++     real, pointer :: a, b(:)
++  end type t
++contains
++  subroutine s1 (a, b, c, d, e)
++    real,    pointer, intent(in) :: a, b(:)
++    type(t),          intent(in) :: c
++    class(t),         intent(in) :: d
++    type(t), pointer, intent(in) :: e
++    real, pointer :: pa, pb(:)
++    call random_number (a)    ! legal
++    call random_number (b)
++    call cpu_time      (a)
++    call system_clock  (count_rate=a)
++    call random_number (c% a)
++    call random_number (c% b)
++    call random_number (d% a)
++    call random_number (d% b)
++    call random_number (e% a)
++    call random_number (e% b)
++    call move_alloc (a, pa)   ! { dg-error "must be ALLOCATABLE" }
++    call move_alloc (b, pb)   ! { dg-error "must be ALLOCATABLE" }
++    allocate (a)              ! { dg-error "pointer association context" }
++    allocate (b(10))          ! { dg-error "pointer association context" }
++    allocate (c% a)           ! { dg-error "pointer association context" }
++    allocate (c% b(10))       ! { dg-error "pointer association context" }
++  end subroutine s1
++end module
 diff --git a/gcc/testsuite/gfortran.dg/pr100154.f90 b/gcc/testsuite/gfortran.dg/pr100154.f90
 new file mode 100644
 index 00000000000..3a1489aaab8
@@ -29637,6 +29822,24 @@ index 9b8fcfe34a3..47f97e93e6a 100644
  	srwi	r4,r4,3		/* # doublewords to move */
  	addi	r9,r3,-8	/* adjust pointer for stdu */
  	mtctr	r4
+diff --git a/libgfortran/ChangeLog b/libgfortran/ChangeLog
+index 2282350136b..b29c6710987 100644
+--- a/libgfortran/ChangeLog
++++ b/libgfortran/ChangeLog
+@@ -1,3 +1,13 @@
++2021-12-27  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2021-12-14  Harald Anlauf  <anlauf@gmx.de>
++
++	PR libfortran/103634
++	* intrinsics/pack_generic.c (pack_internal): Handle case when the
++	array argument of PACK has one or more extents of size zero to
++	avoid invalid reads.
++
+ 2021-04-08  Release Manager
+ 
+ 	* GCC 10.3.0 released.
 diff --git a/libgfortran/intrinsics/pack_generic.c b/libgfortran/intrinsics/pack_generic.c
 index 9d265f34068..2feaa7730c6 100644
 --- a/libgfortran/intrinsics/pack_generic.c
