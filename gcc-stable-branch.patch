@@ -80,7 +80,16 @@ François Dumont (3):
       libstdc++: Fix unordered containers move constructors noexcept qualification
       libstdc++: [_GLIBCXX_DEBUG] Fix management of __dp_sign_max_size [PR 99402]
 
-GCC Administrator (260):
+GCC Administrator (269):
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -479,7 +488,7 @@ John David Anglin (5):
       Don't use 'G' constraint in integer move patterns
       Fix warnings building linux-atomic.c and fptr.c on hppa64-linux
 
-Jonathan Wakely (90):
+Jonathan Wakely (98):
       libstdc++: Fix Doxygen warning about ambiguous file name
       maintainer-scripts: Disable multilib when generating libstdc++ docs
       libstdc++: Fix doxygen markup for group close commands
@@ -570,6 +579,14 @@ Jonathan Wakely (90):
       libstdc++: Constrain std::make_any [PR102894]
       libstdc++: Don't check always-true condition [PR101965]
       libstdc++: Use std::addressof in ranges::uninitialized_xxx [PR101571]
+      libstdc++: Fix pretty printing of std::unique_ptr [PR103086]
+      libstdc++: Add another testcase for std::unique_ptr printer [PR103086]
+      libstdc++: Fix std::allocator<void> for versioned namespace
+      libstdc++: Fix std::error_code pretty printer for versioned namespace
+      libstdc++: Make Asan detection work for Clang [PR103453]
+      libstdc++: Initialize member in std::match_results [PR103549]
+      libstdc++: Fix example preprocessor command in FAQ [PR103877]
+      libstdc++: Fix std::char_traits<C>::move for constexpr
 
 José Rui Faustino de Sousa (1):
       Fortran: Fix double function call with -fcheck=pointer [PR]
@@ -32633,10 +32650,94 @@ index 304b3a01a08..44359b3d1ac 100644
    UnmapOrDie(oldstack.ss_sp, oldstack.ss_size);
  }
 diff --git a/libstdc++-v3/ChangeLog b/libstdc++-v3/ChangeLog
-index fdd63cbff1a..f48c04dd400 100644
+index fdd63cbff1a..e4d417d4c71 100644
 --- a/libstdc++-v3/ChangeLog
 +++ b/libstdc++-v3/ChangeLog
-@@ -1,3 +1,1553 @@
+@@ -1,3 +1,1637 @@
++2022-01-05  Jonathan Wakely  <jwakely@redhat.com>
++
++	Backported from master:
++	2021-11-18  Jonathan Wakely  <jwakely@redhat.com>
++
++	* include/bits/char_traits.h (__gnu_cxx::char_traits::move):
++	Do not compare unrelated pointers during constant evaluation.
++	* testsuite/21_strings/char_traits/requirements/constexpr_functions_c++20.cc:
++	Improve tests for char_traits::move.
++
++2022-01-05  Jonathan Wakely  <jwakely@redhat.com>
++
++	Backported from master:
++	2022-01-05  Jonathan Wakely  <jwakely@redhat.com>
++
++	PR libstdc++/103877
++	* doc/xml/faq.xml: Add '-x c++' to preprocessor command.
++	* doc/html/faq.html: Regenerate.
++
++2022-01-05  Jonathan Wakely  <jwakely@redhat.com>
++
++	Backported from master:
++	2021-12-04  Jonathan Wakely  <jwakely@redhat.com>
++
++	PR libstdc++/103549
++	* include/bits/regex.h (match_results): Give names to template
++	parameters in first declaration.
++	(match_results::_M_begin): Add default member-initializer.
++
++2022-01-05  Jonathan Wakely  <jwakely@redhat.com>
++
++	Backported from master:
++	2021-11-30  Jonathan Wakely  <jwakely@redhat.com>
++
++	PR libstdc++/103453
++	* config/allocator/malloc_allocator_base.h
++	(_GLIBCXX_SANITIZE_STD_ALLOCATOR): Define for Clang.
++	* config/allocator/new_allocator_base.h
++	(_GLIBCXX_SANITIZE_STD_ALLOCATOR): Likewise.
++
++2022-01-05  Jonathan Wakely  <jwakely@redhat.com>
++
++	Backported from master:
++	2022-01-05  Jonathan Wakely  <jwakely@redhat.com>
++
++	* python/libstdcxx/v6/printers.py (StdErrorCodePrinter): Strip
++	versioned namespace from the type name that is printed.
++
++2022-01-05  Jonathan Wakely  <jwakely@redhat.com>
++
++	Backported from master:
++	2021-08-28  Jonathan Wakely  <jwakely@redhat.com>
++
++	* include/bits/alloc_traits.h (allocator_traits): Add explicit
++	specialization for allocator<void>. Improve doxygen comments.
++	* include/bits/allocator.h (allocator<void>): Restore for the
++	versioned namespace.
++	(allocator<void>::construct, allocator<void>::destroy): Remove.
++	* include/ext/extptr_allocator.h (_Extptr_allocator<void>):
++	Add default constructor and converting constructor.
++
++2022-01-05  Jonathan Wakely  <jwakely@redhat.com>
++
++	Backported from master:
++	2021-11-23  Jonathan Wakely  <jwakely@redhat.com>
++
++	PR libstdc++/103086
++	* testsuite/libstdc++-prettyprinters/cxx11.cc: Check unique_ptr
++	with non-empty pointer and non-empty deleter.
++
++2022-01-05  Jonathan Wakely  <jwakely@redhat.com>
++
++	Backported from master:
++	2021-11-04  Jonathan Wakely  <jwakely@redhat.com>
++
++	PR libstdc++/103086
++	* python/libstdcxx/v6/printers.py (_tuple_impl_get): New helper
++	for accessing the tuple element stored in a _Tuple_impl node.
++	(tuple_get): New function for accessing a tuple element.
++	(unique_ptr_get): New function for accessing a unique_ptr.
++	(UniquePointerPrinter, StdPathPrinter): Use unique_ptr_get.
++	* python/libstdcxx/v6/xmethods.py (UniquePtrGetWorker): Cast
++	tuple to its base class before accessing _M_head_impl.
++
 +2021-11-26  Jonathan Wakely  <jwakely@redhat.com>
 +
 +	Backported from master:
@@ -34190,6 +34291,61 @@ index fdd63cbff1a..f48c04dd400 100644
  2021-04-08  Release Manager
  
  	* GCC 10.3.0 released.
+diff --git a/libstdc++-v3/config/allocator/malloc_allocator_base.h b/libstdc++-v3/config/allocator/malloc_allocator_base.h
+index dbe7c761548..692e9d1124b 100644
+--- a/libstdc++-v3/config/allocator/malloc_allocator_base.h
++++ b/libstdc++-v3/config/allocator/malloc_allocator_base.h
+@@ -52,8 +52,14 @@ namespace std
+ # define __allocator_base  __gnu_cxx::malloc_allocator
+ #endif
+ 
+-#if defined(__SANITIZE_ADDRESS__) && !defined(_GLIBCXX_SANITIZE_STD_ALLOCATOR)
+-# define _GLIBCXX_SANITIZE_STD_ALLOCATOR 1
++#ifndef _GLIBCXX_SANITIZE_STD_ALLOCATOR
++# if defined(__SANITIZE_ADDRESS__)
++#  define _GLIBCXX_SANITIZE_STD_ALLOCATOR 1
++# elif defined __has_feature
++#  if __has_feature(address_sanitizer)
++#   define _GLIBCXX_SANITIZE_STD_ALLOCATOR 1
++#  endif
++# endif
+ #endif
+ 
+ #endif
+diff --git a/libstdc++-v3/config/allocator/new_allocator_base.h b/libstdc++-v3/config/allocator/new_allocator_base.h
+index ea5425545e0..8e64b05a664 100644
+--- a/libstdc++-v3/config/allocator/new_allocator_base.h
++++ b/libstdc++-v3/config/allocator/new_allocator_base.h
+@@ -52,8 +52,14 @@ namespace std
+ # define __allocator_base  __gnu_cxx::new_allocator
+ #endif
+ 
+-#if defined(__SANITIZE_ADDRESS__) && !defined(_GLIBCXX_SANITIZE_STD_ALLOCATOR)
+-# define _GLIBCXX_SANITIZE_STD_ALLOCATOR 1
++#ifndef _GLIBCXX_SANITIZE_STD_ALLOCATOR
++# if defined(__SANITIZE_ADDRESS__)
++#  define _GLIBCXX_SANITIZE_STD_ALLOCATOR 1
++# elif defined __has_feature
++#  if __has_feature(address_sanitizer)
++#   define _GLIBCXX_SANITIZE_STD_ALLOCATOR 1
++#  endif
++# endif
+ #endif
+ 
+ #endif
+diff --git a/libstdc++-v3/doc/html/faq.html b/libstdc++-v3/doc/html/faq.html
+index 18407225d7a..aa85d85db46 100644
+--- a/libstdc++-v3/doc/html/faq.html
++++ b/libstdc++-v3/doc/html/faq.html
+@@ -456,7 +456,7 @@
+          <code class="varname">CPLUSPLUS_CPP_SPEC</code> in
+          the gcc config headers for your target (and try changing them to
+          see what happens when building complicated code).  You can also run
+-         <span class="command"><strong>g++ -E -dM - &lt; /dev/null"</strong></span> to display
++         <span class="command"><strong>g++ -E -dM -x c++ /dev/null</strong></span> to display
+          a list of predefined macros for any particular installation.
+       </p><p>This has been discussed on the mailing lists
+          <a class="link" href="http://gcc.gnu.org/cgi-bin/htsearch?method=and&amp;format=builtin-long&amp;sort=score&amp;words=_XOPEN_SOURCE+Solaris" target="_top">quite a bit</a>.
 diff --git a/libstdc++-v3/doc/html/manual/status.html b/libstdc++-v3/doc/html/manual/status.html
 index a956ac2721d..98f86e1ad78 100644
 --- a/libstdc++-v3/doc/html/manual/status.html
@@ -34215,6 +34371,19 @@ index a956ac2721d..98f86e1ad78 100644
          <span class="bold"><strong>Time, dates, calendars, time zones</strong></span>
        </td></tr><tr bgcolor="#C8B0B0"><td align="left">  Extending chrono to Calendars and Time Zones </td><td align="left">
          <a class="link" href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p0355r7.html" target="_top">
+diff --git a/libstdc++-v3/doc/xml/faq.xml b/libstdc++-v3/doc/xml/faq.xml
+index cf8684e1cea..ef673ef4954 100644
+--- a/libstdc++-v3/doc/xml/faq.xml
++++ b/libstdc++-v3/doc/xml/faq.xml
+@@ -580,7 +580,7 @@
+          <varname>CPLUSPLUS_CPP_SPEC</varname> in
+          the gcc config headers for your target (and try changing them to
+          see what happens when building complicated code).  You can also run
+-         <command>g++ -E -dM - &lt; /dev/null"</command> to display
++         <command>g++ -E -dM -x c++ /dev/null</command> to display
+          a list of predefined macros for any particular installation.
+       </para>
+       <para>This has been discussed on the mailing lists
 diff --git a/libstdc++-v3/doc/xml/manual/status_cxx2017.xml b/libstdc++-v3/doc/xml/manual/status_cxx2017.xml
 index 0c3c23b4b31..148e3d452a4 100644
 --- a/libstdc++-v3/doc/xml/manual/status_cxx2017.xml
@@ -34250,7 +34419,7 @@ index 1ae177113cb..5fced67db09 100644
  
      <row>
 diff --git a/libstdc++-v3/include/bits/alloc_traits.h b/libstdc++-v3/include/bits/alloc_traits.h
-index 86d8ed221ff..4fcaa533f46 100644
+index 86d8ed221ff..afc88fdafe9 100644
 --- a/libstdc++-v3/include/bits/alloc_traits.h
 +++ b/libstdc++-v3/include/bits/alloc_traits.h
 @@ -341,7 +341,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
@@ -34262,8 +34431,119 @@ index 86d8ed221ff..4fcaa533f46 100644
         *  @param  __a  An allocator.
         *  @param  __p  Pointer to memory of suitable size and alignment for Tp
         *  @param  __args Constructor arguments.
+@@ -559,6 +559,110 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+       { return __rhs; }
+     };
+ 
++  /// Explicit specialization for std::allocator<void>.
++  template<>
++    struct allocator_traits<allocator<void>>
++    {
++      /// The allocator type
++      using allocator_type = allocator<void>;
++
++      /// The allocated type
++      using value_type = void;
++
++      /// The allocator's pointer type.
++      using pointer = void*;
++
++      /// The allocator's const pointer type.
++      using const_pointer = const void*;
++
++      /// The allocator's void pointer type.
++      using void_pointer = void*;
++
++      /// The allocator's const void pointer type.
++      using const_void_pointer = const void*;
++
++      /// The allocator's difference type
++      using difference_type = std::ptrdiff_t;
++
++      /// The allocator's size type
++      using size_type = std::size_t;
++
++      /// How the allocator is propagated on copy assignment
++      using propagate_on_container_copy_assignment = false_type;
++
++      /// How the allocator is propagated on move assignment
++      using propagate_on_container_move_assignment = true_type;
++
++      /// How the allocator is propagated on swap
++      using propagate_on_container_swap = false_type;
++
++      /// Whether all instances of the allocator type compare equal.
++      using is_always_equal = true_type;
++
++      template<typename _Up>
++	using rebind_alloc = allocator<_Up>;
++
++      template<typename _Up>
++	using rebind_traits = allocator_traits<allocator<_Up>>;
++
++      /// allocate is ill-formed for allocator<void>
++      static void*
++      allocate(allocator_type&, size_type, const void* = nullptr) = delete;
++
++      /// deallocate is ill-formed for allocator<void>
++      static void
++      deallocate(allocator_type&, void*, size_type) = delete;
++
++      /**
++       *  @brief  Construct an object of type `_Up`
++       *  @param  __a  An allocator.
++       *  @param  __p  Pointer to memory of suitable size and alignment for
++       *	       an object of type `_Up`.
++       *  @param  __args Constructor arguments.
++       *
++       *  Calls `__a.construct(__p, std::forward<_Args>(__args)...)`
++       *  in C++11, C++14 and C++17. Changed in C++20 to call
++       *  `std::construct_at(__p, std::forward<_Args>(__args)...)` instead.
++      */
++      template<typename _Up, typename... _Args>
++	static _GLIBCXX20_CONSTEXPR void
++	construct(allocator_type&, _Up* __p, _Args&&... __args)
++	noexcept(std::is_nothrow_constructible<_Up, _Args...>::value)
++	{
++#if __cplusplus <= 201703L
++	  ::new((void *)__p) _Up(std::forward<_Args>(__args)...);
++#else
++	  std::construct_at(__p, std::forward<_Args>(__args)...);
++#endif
++	}
++
++      /**
++       *  @brief  Destroy an object of type `_Up`
++       *  @param  __a  An allocator.
++       *  @param  __p  Pointer to the object to destroy
++       *
++       *  Invokes the destructor for `*__p`.
++      */
++      template<typename _Up>
++	static _GLIBCXX20_CONSTEXPR void
++	destroy(allocator_type&, _Up* __p)
++	noexcept(is_nothrow_destructible<_Up>::value)
++	{ std::_Destroy(__p); }
++
++      /// max_size is ill-formed for allocator<void>
++      static size_type
++      max_size(const allocator_type&) = delete;
++
++      /**
++       *  @brief  Obtain an allocator to use when copying a container.
++       *  @param  __rhs  An allocator.
++       *  @return `__rhs`
++      */
++      static _GLIBCXX20_CONSTEXPR allocator_type
++      select_on_container_copy_construction(const allocator_type& __rhs)
++      { return __rhs; }
++    };
++
+ #if __cplusplus < 201703L
+   template<typename _Alloc>
+     inline void
 diff --git a/libstdc++-v3/include/bits/allocator.h b/libstdc++-v3/include/bits/allocator.h
-index d224aa3ec5e..8c538954caf 100644
+index d224aa3ec5e..33831936185 100644
 --- a/libstdc++-v3/include/bits/allocator.h
 +++ b/libstdc++-v3/include/bits/allocator.h
 @@ -60,6 +60,13 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
@@ -34271,22 +34551,22 @@ index d224aa3ec5e..8c538954caf 100644
     */
  
 +  // Since C++20 the primary template should be used for allocator<void>,
-+  // but then it would have a non-trivial default ctor and dtor, which
-+  // would be an ABI change. So C++20 still uses the allocator<void> explicit
-+  // specialization, with the historical ABI properties, but with the same
-+  // members that are present in the primary template.
++  // but then it would have a non-trivial default ctor and dtor for C++20,
++  // but trivial for C++98-17, which would be an ABI incompatibiliy between
++  // different standard dialects. So C++20 still uses the allocator<void>
++  // explicit specialization, with the historical ABI properties, but with
++  // the same members that are present in the primary template.
 +
-+#if ! _GLIBCXX_INLINE_VERSION
    /// allocator<void> specialization.
    template<>
      class allocator<void>
-@@ -68,28 +75,37 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+@@ -68,44 +75,43 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
        typedef void        value_type;
        typedef size_t      size_type;
        typedef ptrdiff_t   difference_type;
 +
  #if __cplusplus <= 201703L
-+      // These were removed for C++20.
++      // These were removed for C++20, allocator_traits does the right thing.
        typedef void*       pointer;
        typedef const void* const_pointer;
  
@@ -34310,31 +34590,32 @@ index d224aa3ec5e..8c538954caf 100644
  
        typedef true_type is_always_equal;
  
+-      template<typename _Up, typename... _Args>
+-	void
+-	construct(_Up* __p, _Args&&... __args)
+-	noexcept(std::is_nothrow_constructible<_Up, _Args...>::value)
+-	{ ::new((void *)__p) _Up(std::forward<_Args>(__args)...); }
 +#if __cplusplus > 201703L
++      // As noted above, these members are present for C++20 to provide the
++      // same API as the primary template, but still trivial as in pre-C++20.
 +      allocator() = default;
-+
-+      template<typename _Up>
++      ~allocator() = default;
+ 
+       template<typename _Up>
+-	void
+-	destroy(_Up* __p)
+-	noexcept(std::is_nothrow_destructible<_Up>::value)
+-	{ __p->~_Up(); }
+-#endif // C++11 to C++17
 +	constexpr
 +	allocator(const allocator<_Up>&) noexcept { }
 +
 +      // No allocate member because it's ill-formed by LWG 3307.
 +      // No deallocate member because it would be undefined to call it
 +      // with any pointer which wasn't obtained from allocate.
-+
-+#else // ! C++20
-+      // allocator_traits<allocator<void>> uses construct and destroy.
-       template<typename _Up, typename... _Args>
- 	void
- 	construct(_Up* __p, _Args&&... __args)
-@@ -101,11 +117,13 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
- 	destroy(_Up* __p)
- 	noexcept(std::is_nothrow_destructible<_Up>::value)
- 	{ __p->~_Up(); }
--#endif // C++11 to C++17
-+#endif // C++17
++#endif // C++20
 +#endif // C++11
      };
-+#endif // ! _GLIBCXX_INLINE_VERSION
  
    /**
 -   * @brief  The @a standard allocator, as per [20.4].
@@ -34342,7 +34623,7 @@ index d224aa3ec5e..8c538954caf 100644
     *
     *  See https://gcc.gnu.org/onlinedocs/libstdc++/manual/memory.html#std.util.memory.allocator
     *  for further details.
-@@ -119,7 +137,9 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+@@ -119,7 +125,9 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
        typedef _Tp        value_type;
        typedef size_t     size_type;
        typedef ptrdiff_t  difference_type;
@@ -34352,6 +34633,15 @@ index d224aa3ec5e..8c538954caf 100644
        typedef _Tp*       pointer;
        typedef const _Tp* const_pointer;
        typedef _Tp&       reference;
+@@ -184,7 +192,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+ 	    return;
+ 	  }
+ #endif
+-	  __allocator_base<_Tp>::deallocate(__p, __n);
++	__allocator_base<_Tp>::deallocate(__p, __n);
+       }
+ #endif // C++20
+ 
 diff --git a/libstdc++-v3/include/bits/atomic_base.h b/libstdc++-v3/include/bits/atomic_base.h
 index 41d5928e482..fe2a2453265 100644
 --- a/libstdc++-v3/include/bits/atomic_base.h
@@ -34471,10 +34761,63 @@ index 0b893bcea85..03f2f12d6b9 100644
         *  @return  Reference to this string.
        */
 diff --git a/libstdc++-v3/include/bits/char_traits.h b/libstdc++-v3/include/bits/char_traits.h
-index c798f844a73..962507c14e5 100644
+index c798f844a73..8570f30ef62 100644
 --- a/libstdc++-v3/include/bits/char_traits.h
 +++ b/libstdc++-v3/include/bits/char_traits.h
-@@ -237,12 +237,12 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+@@ -192,18 +192,46 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+     {
+       if (__n == 0)
+ 	return __s1;
+-#ifdef __cpp_lib_is_constant_evaluated
++#if __cpp_lib_is_constant_evaluated
+       if (std::is_constant_evaluated())
+ 	{
+-	  if (__s1 > __s2 && __s1 < __s2 + __n)
+-	    std::copy_backward(__s2, __s2 + __n, __s1 + __n);
++	  if (__s1 == __s2) // unlikely, but saves a lot of work
++	    return __s1;
++#if __cpp_constexpr_dynamic_alloc
++	  // The overlap detection below fails due to PR c++/89074,
++	  // so use a temporary buffer instead.
++	  char_type* __tmp = new char_type[__n];
++	  copy(__tmp, __s2, __n);
++	  copy(__s1, __tmp, __n);
++	  delete[] __tmp;
++#else
++	  const auto __end = __s2 + __n - 1;
++	  bool __overlap = false;
++	  for (std::size_t __i = 0; __i < __n - 1; ++__i)
++	    {
++	      if (__s1 + __i == __end)
++		{
++		  __overlap = true;
++		  break;
++		}
++	    }
++	  if (__overlap)
++	    {
++	      do
++		{
++		  --__n;
++		  assign(__s1[__n], __s2[__n]);
++		}
++	      while (__n > 0);
++	    }
+ 	  else
+-	    std::copy(__s2, __s2 + __n, __s1);
++	    copy(__s1, __s2, __n);
++#endif
+ 	  return __s1;
+ 	}
+ #endif
+-      return static_cast<_CharT*>(__builtin_memmove(__s1, __s2,
+-						    __n * sizeof(char_type)));
++      __builtin_memmove(__s1, __s2, __n * sizeof(char_type));
++      return __s1;
+     }
+ 
+   template<typename _CharT>
+@@ -237,12 +265,12 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
  
  #if __cplusplus >= 201703L
  
@@ -34492,7 +34835,7 @@ index c798f844a73..962507c14e5 100644
  #endif
  
    /**
-@@ -253,7 +253,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+@@ -253,7 +281,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     *  Assumes that _CharT is a built-in character type.
     */
    template<typename _CharT>
@@ -34501,7 +34844,7 @@ index c798f844a73..962507c14e5 100644
      __constant_string_p(const _CharT* __s)
      {
  #ifdef _GLIBCXX_HAVE_BUILTIN_IS_CONSTANT_EVALUATED
-@@ -276,7 +276,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+@@ -276,7 +304,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     *  Assumes that _CharT is a built-in character type.
     */
    template<typename _CharT>
@@ -36276,9 +36619,18 @@ index 717aa01629c..4b84ac7f039 100644
  _GLIBCXX_END_NAMESPACE_VERSION
  } // namespace std
 diff --git a/libstdc++-v3/include/bits/regex.h b/libstdc++-v3/include/bits/regex.h
-index 4032fd7559b..ab09dc76c8a 100644
+index 4032fd7559b..3fded333d47 100644
 --- a/libstdc++-v3/include/bits/regex.h
 +++ b/libstdc++-v3/include/bits/regex.h
+@@ -35,7 +35,7 @@ _GLIBCXX_BEGIN_NAMESPACE_CXX11
+   template<typename, typename>
+     class basic_regex;
+ 
+-  template<typename, typename>
++  template<typename _Bi_iter, typename _Alloc>
+     class match_results;
+ 
+ _GLIBCXX_END_NAMESPACE_CXX11
 @@ -402,7 +402,7 @@ _GLIBCXX_BEGIN_NAMESPACE_CXX11
         * @name Constants
         * std [28.8.1](1)
@@ -36474,6 +36826,15 @@ index 4032fd7559b..ab09dc76c8a 100644
  
      private:
        template<typename, typename, typename>
+@@ -2078,7 +2078,7 @@ _GLIBCXX_BEGIN_NAMESPACE_CXX11
+       _M_suffix()
+       { return _Base_type::operator[](_Base_type::size() - 1); }
+ 
+-      _Bi_iter _M_begin;
++      _Bi_iter _M_begin {};
+       /// @endcond
+     };
+ 
 @@ -2148,7 +2148,7 @@ _GLIBCXX_END_NAMESPACE_CXX11
    /**
     * @name Matching, Searching, and Replacing
@@ -39776,6 +40137,22 @@ index edddf32fb97..7e34f97cdb7 100644
  #include <new> // For operator new.
  #include <debug/debug.h> // _GLIBCXX_DEBUG_ASSERT
  #include <ext/concurrence.h>
+diff --git a/libstdc++-v3/include/ext/extptr_allocator.h b/libstdc++-v3/include/ext/extptr_allocator.h
+index 850ca286ef6..6b6bd61b08c 100644
+--- a/libstdc++-v3/include/ext/extptr_allocator.h
++++ b/libstdc++-v3/include/ext/extptr_allocator.h
+@@ -176,6 +176,11 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+       typedef _Pointer_adapter<_Relative_pointer_impl<const void> >
+                                                               const_pointer;
+ 
++      _ExtPtr_allocator() { }
++
++      template<typename _Up>
++	_ExtPtr_allocator(const _ExtPtr_allocator<_Up>&) { }
++
+       template<typename _Up>
+         struct rebind
+         { typedef _ExtPtr_allocator<_Up> other; };
 diff --git a/libstdc++-v3/include/ext/malloc_allocator.h b/libstdc++-v3/include/ext/malloc_allocator.h
 index 366c766f25b..8de833f3641 100644
 --- a/libstdc++-v3/include/ext/malloc_allocator.h
@@ -43534,7 +43911,7 @@ index 1817b3340aa..0955a44478a 100644
  # Tell versions [3.59,3.63) of GNU make to not export all variables.
  # Otherwise a system limit (for SysV at least) may be exceeded.
 diff --git a/libstdc++-v3/python/libstdcxx/v6/printers.py b/libstdc++-v3/python/libstdcxx/v6/printers.py
-index 27e0740af7e..52abcdedb2e 100644
+index 27e0740af7e..74c629a710c 100644
 --- a/libstdc++-v3/python/libstdcxx/v6/printers.py
 +++ b/libstdc++-v3/python/libstdcxx/v6/printers.py
 @@ -18,7 +18,7 @@
@@ -43557,7 +43934,99 @@ index 27e0740af7e..52abcdedb2e 100644
          try:
              return gdb.lookup_type(search)
          except RuntimeError:
-@@ -1465,6 +1465,45 @@ class StdCmpCatPrinter:
+@@ -240,32 +240,63 @@ class SharedPointerPrinter:
+                 state = 'use count %d, weak count %d' % (usecount, weakcount - 1)
+         return '%s<%s> (%s)' % (self.typename, str(self.val.type.template_argument(0)), state)
+ 
++def _tuple_impl_get(val):
++    "Return the tuple element stored in a _Tuple_impl<N, T> base class."
++    bases = val.type.fields()
++    if not bases[-1].is_base_class:
++        raise ValueError("Unsupported implementation for std::tuple: %s" % str(val.type))
++    # Get the _Head_base<N, T> base class:
++    head_base = val.cast(bases[-1].type)
++    fields = head_base.type.fields()
++    if len(fields) == 0:
++        raise ValueError("Unsupported implementation for std::tuple: %s" % str(val.type))
++    if fields[0].name == '_M_head_impl':
++        # The tuple element is the _Head_base::_M_head_impl data member.
++        return head_base['_M_head_impl']
++    elif fields[0].is_base_class:
++        # The tuple element is an empty base class of _Head_base.
++        # Cast to that empty base class.
++        return head_base.cast(fields[0].type)
++    else:
++        raise ValueError("Unsupported implementation for std::tuple: %s" % str(val.type))
++
++def tuple_get(n, val):
++    "Return the result of std::get<n>(val) on a std::tuple"
++    tuple_size = len(get_template_arg_list(val.type))
++    if n > tuple_size:
++        raise ValueError("Out of range index for std::get<N> on std::tuple")
++    # Get the first _Tuple_impl<0, T...> base class:
++    node = val.cast(val.type.fields()[0].type)
++    while n > 0:
++        # Descend through the base classes until the Nth one.
++        node = node.cast(node.type.fields()[0].type)
++        n -= 1
++    return _tuple_impl_get(node)
++
++def unique_ptr_get(val):
++    "Return the result of val.get() on a std::unique_ptr"
++    # std::unique_ptr<T, D> contains a std::tuple<D::pointer, D>,
++    # either as a direct data member _M_t (the old implementation)
++    # or within a data member of type __uniq_ptr_data.
++    impl_type = val.type.fields()[0].type.strip_typedefs()
++    # Check for new implementations first:
++    if is_specialization_of(impl_type, '__uniq_ptr_data') \
++        or is_specialization_of(impl_type, '__uniq_ptr_impl'):
++        tuple_member = val['_M_t']['_M_t']
++    elif is_specialization_of(impl_type, 'tuple'):
++        tuple_member = val['_M_t']
++    else:
++        raise ValueError("Unsupported implementation for unique_ptr: %s" % str(impl_type))
++    return tuple_get(0, tuple_member)
++
+ class UniquePointerPrinter:
+     "Print a unique_ptr"
+ 
+     def __init__ (self, typename, val):
+         self.val = val
+-        impl_type = val.type.fields()[0].type.strip_typedefs()
+-        # Check for new implementations first:
+-        if is_specialization_of(impl_type, '__uniq_ptr_data') \
+-            or is_specialization_of(impl_type, '__uniq_ptr_impl'):
+-            tuple_member = val['_M_t']['_M_t']
+-        elif is_specialization_of(impl_type, 'tuple'):
+-            tuple_member = val['_M_t']
+-        else:
+-            raise ValueError("Unsupported implementation for unique_ptr: %s" % str(impl_type))
+-        tuple_impl_type = tuple_member.type.fields()[0].type # _Tuple_impl
+-        tuple_head_type = tuple_impl_type.fields()[1].type   # _Head_base
+-        head_field = tuple_head_type.fields()[0]
+-        if head_field.name == '_M_head_impl':
+-            self.pointer = tuple_member['_M_head_impl']
+-        elif head_field.is_base_class:
+-            self.pointer = tuple_member.cast(head_field.type)
+-        else:
+-            raise ValueError("Unsupported implementation for tuple in unique_ptr: %s" % str(impl_type))
+ 
+     def children (self):
+-        return SmartPtrIterator(self.pointer)
++        return SmartPtrIterator(unique_ptr_get(self.val))
+ 
+     def to_string (self):
+         return ('std::unique_ptr<%s>' % (str(self.val.type.template_argument(0))))
+@@ -1351,7 +1382,7 @@ class StdPathPrinter:
+     def __init__ (self, typename, val):
+         self.val = val
+         self.typename = typename
+-        impl = self.val['_M_cmpts']['_M_impl']['_M_t']['_M_t']['_M_head_impl']
++        impl = unique_ptr_get(self.val['_M_cmpts']['_M_impl'])
+         self.type = impl.cast(gdb.lookup_type('uintptr_t')) & 3
+         if self.type == 0:
+             self.impl = impl
+@@ -1465,6 +1496,45 @@ class StdCmpCatPrinter:
              name = names[int(self.val)]
          return 'std::{}::{}'.format(self.typename, name)
  
@@ -43568,7 +44037,7 @@ index 27e0740af7e..52abcdedb2e 100644
 +
 +    def __init__ (self, typename, val):
 +        self.val = val
-+        self.typename = typename
++        self.typename = strip_versioned_namespace(typename)
 +        # Do this only once ...
 +        if StdErrorCodePrinter._errno_categories is None:
 +            StdErrorCodePrinter._errno_categories = ['generic']
@@ -43603,7 +44072,7 @@ index 27e0740af7e..52abcdedb2e 100644
  # A "regular expression" printer which conforms to the
  # "SubPrettyPrinter" protocol from gdb.printing.
  class RxPrinter(object):
-@@ -1867,6 +1906,8 @@ def build_libstdcxx_dictionary ():
+@@ -1867,6 +1937,8 @@ def build_libstdcxx_dictionary ():
      libstdcxx_printer.add_version('std::__cxx11::', 'basic_string', StdStringPrinter)
      libstdcxx_printer.add_container('std::', 'bitset', StdBitsetPrinter)
      libstdcxx_printer.add_container('std::', 'deque', StdDequePrinter)
@@ -43612,6 +44081,19 @@ index 27e0740af7e..52abcdedb2e 100644
      libstdcxx_printer.add_container('std::', 'list', StdListPrinter)
      libstdcxx_printer.add_container('std::__cxx11::', 'list', StdListPrinter)
      libstdcxx_printer.add_container('std::', 'map', StdMapPrinter)
+diff --git a/libstdc++-v3/python/libstdcxx/v6/xmethods.py b/libstdc++-v3/python/libstdcxx/v6/xmethods.py
+index e77f8504cc3..2617c189e40 100644
+--- a/libstdc++-v3/python/libstdcxx/v6/xmethods.py
++++ b/libstdc++-v3/python/libstdcxx/v6/xmethods.py
+@@ -597,7 +597,7 @@ class UniquePtrGetWorker(gdb.xmethod.XMethodWorker):
+         tuple_head_type = tuple_impl_type.fields()[1].type   # _Head_base
+         head_field = tuple_head_type.fields()[0]
+         if head_field.name == '_M_head_impl':
+-            return tuple_member['_M_head_impl']
++            return tuple_member.cast(tuple_head_type)['_M_head_impl']
+         elif head_field.is_base_class:
+             return tuple_member.cast(head_field.type)
+         else:
 diff --git a/libstdc++-v3/src/c++11/system_error.cc b/libstdc++-v3/src/c++11/system_error.cc
 index 1f06e67feea..2c8fd4bf161 100644
 --- a/libstdc++-v3/src/c++11/system_error.cc
@@ -44429,11 +44911,42 @@ index 55dcba48db6..ebde98be20e 100644
  
  static_assert( test_assign<std::char_traits<char>>() );
 diff --git a/libstdc++-v3/testsuite/21_strings/char_traits/requirements/constexpr_functions_c++20.cc b/libstdc++-v3/testsuite/21_strings/char_traits/requirements/constexpr_functions_c++20.cc
-index 63c7c9cbb57..2c1cf3d2432 100644
+index 63c7c9cbb57..878a08e8328 100644
 --- a/libstdc++-v3/testsuite/21_strings/char_traits/requirements/constexpr_functions_c++20.cc
 +++ b/libstdc++-v3/testsuite/21_strings/char_traits/requirements/constexpr_functions_c++20.cc
-@@ -30,6 +30,13 @@ template<typename CT>
-     return s1[0]==char_type{1} && s1[1]==char_type{1} && s1[2]==char_type{2};
+@@ -1,5 +1,5 @@
+-// { dg-options "-std=gnu++2a" }
+-// { dg-do compile { target c++2a } }
++// { dg-options "-std=gnu++20" }
++// { dg-do compile { target c++20 } }
+ 
+ // Copyright (C) 2017-2020 Free Software Foundation, Inc.
+ //
+@@ -25,11 +25,35 @@ template<typename CT>
+   test_move()
+   {
+     using char_type = typename CT::char_type;
++
++    // Overlapping strings
+     char_type s1[3] = {1, 2, 3};
+     CT::move(s1+1, s1, 2);
+-    return s1[0]==char_type{1} && s1[1]==char_type{1} && s1[2]==char_type{2};
++    if (s1[0] != char_type{1} || s1[1] != char_type{1} || s1[2] != char_type{2})
++      throw 1;
++    CT::move(s1, s1+1, 2);
++    if (s1[0] != char_type{1} || s1[1] != char_type{2} || s1[2] != char_type{2})
++      throw 2;
++
++    // Disjoint strings
++    char_type why_is_six_scared_of_seven[] = {4, 5, 6};
++    char_type because789[] = {7, 8, 9};
++    CT::move(why_is_six_scared_of_seven, because789, 3);
++    if (why_is_six_scared_of_seven[0] != char_type{7}
++	|| why_is_six_scared_of_seven[1] != char_type{8}
++	|| why_is_six_scared_of_seven[2] != char_type{9})
++      throw 3;
++
++    return true;
    }
  
 +#ifndef __cpp_lib_constexpr_string
@@ -47718,10 +48231,25 @@ index 3b8587cd01d..45dd2c8c02e 100644
  	    verbose -log "compiling and executing as C, not C++"
  	    set edit_tool_flags $extra_tool_flags
 diff --git a/libstdc++-v3/testsuite/libstdc++-prettyprinters/cxx11.cc b/libstdc++-v3/testsuite/libstdc++-prettyprinters/cxx11.cc
-index 001b121dcec..d66df64285f 100644
+index 001b121dcec..b03f8479d35 100644
 --- a/libstdc++-v3/testsuite/libstdc++-prettyprinters/cxx11.cc
 +++ b/libstdc++-v3/testsuite/libstdc++-prettyprinters/cxx11.cc
-@@ -155,6 +155,25 @@ main()
+@@ -151,10 +151,40 @@ main()
+   std::unique_ptr<int, Deleter>& rempty_ptr = empty_ptr;
+ // { dg-final { note-test rempty_ptr {std::unique_ptr<int> = {get() = {<No data fields>}}} } }
+ 
++  struct Deleter_pr103086
++  {
++    int deleter_member = -1;
++    void operator()(int*) const noexcept { }
++  };
++
++  std::unique_ptr<int, Deleter_pr103086> uniq_ptr;
++// { dg-final { note-test uniq_ptr {std::unique_ptr<int> = {get() = 0x0}} } }
++  std::unique_ptr<int, Deleter_pr103086>& runiq_ptr = uniq_ptr;
++// { dg-final { note-test runiq_ptr {std::unique_ptr<int> = {get() = 0x0}} } }
++
+   ExTuple tpl(6,7);
  // { dg-final { note-test tpl {std::tuple containing = {[1] = 6, [2] = 7}} } }
    ExTuple &rtpl = tpl;
  // { dg-final { note-test rtpl {std::tuple containing = {[1] = 6, [2] = 7}} } }
