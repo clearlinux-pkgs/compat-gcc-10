@@ -50,7 +50,7 @@ David Edelsohn (1):
 Diane Meirowitz (1):
       doc: improve -fsanitize=undefined description
 
-Eric Botcazou (23):
+Eric Botcazou (24):
       Fix thinko in libcpp preparation patch for modules
       Further increase the limit on the size of accepted Ada files
       Fix another -freorder-blocks-and-partition glitch with Windows SEH
@@ -74,13 +74,18 @@ Eric Botcazou (23):
       Fix PR target/102588
       Update documentation of %X spec
       Fix -freorder-blocks-and-partition glitch with Windows SEH (continued)
+      Properly enable -freorder-blocks-and-partition on 64-bit Windows
 
 François Dumont (3):
       libstdc++: Fix [multi]map/[multi]set move constructors noexcept qualification
       libstdc++: Fix unordered containers move constructors noexcept qualification
       libstdc++: [_GLIBCXX_DEBUG] Fix management of __dp_sign_max_size [PR 99402]
 
-GCC Administrator (269):
+GCC Administrator (273):
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -360,7 +365,7 @@ H.J. Lu (1):
 Hafiz Abid Qadeer (1):
       [OpenACC] Fix an ICE where a loop with GT condition is collapsed.
 
-Harald Anlauf (43):
+Harald Anlauf (44):
       PR fortran/63797 - Bogus ambiguous reference to 'sqrt'
       PR fortran/100154 - ICE in gfc_conv_procedure_call, at fortran/trans-expr.c:6131
       PR fortran/100274 - ICE in gfc_conv_procedure_call, at fortran/trans-expr.c:6131
@@ -404,6 +409,7 @@ Harald Anlauf (43):
       Fortran: BOZ literal constants are not interoperable
       Fortran: PACK intrinsic should not try to read from zero-sized array
       Fortran: fix check for pointer dummy arguments with INTENT(IN)
+      Fortran: fix passing return value to class(*) dummy argument
 
 Iain Buclaw (19):
       d: Fix ICE in when formating a string with '%' or '`' characters (PR98457)
@@ -10439,6 +10445,31 @@ index 84dceb8074a..d068618bd8f 100644
    case "$target" in
       *le-*-linux*)
       emul_name="-melf64lppc"
+diff --git a/gcc/coretypes.h b/gcc/coretypes.h
+index cda22697cc3..4b0618ab278 100644
+--- a/gcc/coretypes.h
++++ b/gcc/coretypes.h
+@@ -219,15 +219,17 @@ enum profile_reproducibility {
+     PROFILE_REPRODUCIBILITY_MULTITHREADED
+ };
+ 
+-/* Types of unwind/exception handling info that can be generated.  */
++/* Types of unwind/exception handling info that can be generated.
++   Note that a UI_TARGET (or larger) setting is considered to be
++   incompatible with -freorder-blocks-and-partition.  */
+ 
+ enum unwind_info_type
+ {
+   UI_NONE,
+   UI_SJLJ,
+   UI_DWARF2,
+-  UI_TARGET,
+-  UI_SEH
++  UI_SEH,
++  UI_TARGET
+ };
+ 
+ /* Callgraph node profile representation.  */
 diff --git a/gcc/coverage.c b/gcc/coverage.c
 index 38820bc170f..2747f8f1b4c 100644
 --- a/gcc/coverage.c
@@ -13910,10 +13941,20 @@ index 6e635382fb4..7b4c9c0eb7f 100644
  	      tree ntype = TYPE_UNSIGNED (type)
  			   ? signed_type_for (type)
 diff --git a/gcc/fortran/ChangeLog b/gcc/fortran/ChangeLog
-index aa5932be872..afe48f1b56d 100644
+index aa5932be872..033dec69c07 100644
 --- a/gcc/fortran/ChangeLog
 +++ b/gcc/fortran/ChangeLog
-@@ -1,3 +1,587 @@
+@@ -1,3 +1,597 @@
++2022-01-07  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2021-05-23  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/100551
++	* trans-expr.c (gfc_conv_procedure_call): Adjust check for
++	implicit conversion of actual argument to an unlimited polymorphic
++	procedure argument.
++
 +2021-12-27  Harald Anlauf  <anlauf@gmx.de>
 +
 +	Backported from master:
@@ -15818,7 +15859,7 @@ index 529417fa8aa..8aa71ede989 100644
  
    /* Dummy PDT 'len' parameters should be checked when they are explicit.  */
 diff --git a/gcc/fortran/trans-expr.c b/gcc/fortran/trans-expr.c
-index c2321a9ff5f..07e046cc2ac 100644
+index c2321a9ff5f..c0ade411991 100644
 --- a/gcc/fortran/trans-expr.c
 +++ b/gcc/fortran/trans-expr.c
 @@ -1648,8 +1648,9 @@ gfc_trans_class_init_assign (gfc_code *code)
@@ -15862,17 +15903,19 @@ index c2321a9ff5f..07e046cc2ac 100644
        && !c->attr.pdt_string)
      {
        tmp = c->ts.u.cl->backend_decl;
-@@ -5770,7 +5773,8 @@ gfc_conv_procedure_call (gfc_se * se, gfc_symbol * sym,
+@@ -5770,7 +5773,10 @@ gfc_conv_procedure_call (gfc_se * se, gfc_symbol * sym,
  				     CLASS_DATA (fsym)->attr.class_pointer
  				     || CLASS_DATA (fsym)->attr.allocatable);
  	}
 -      else if (UNLIMITED_POLY (fsym) && e->ts.type != BT_CLASS)
 +      else if (UNLIMITED_POLY (fsym) && e->ts.type != BT_CLASS
-+	       && gfc_expr_attr (e).flavor != FL_PROCEDURE)
++	       && e->ts.type != BT_PROCEDURE
++	       && (gfc_expr_attr (e).flavor != FL_PROCEDURE
++		   || gfc_expr_attr (e).proc != PROC_UNKNOWN))
  	{
  	  /* The intrinsic type needs to be converted to a temporary
  	     CLASS object for the unlimited polymorphic formal.  */
-@@ -5958,11 +5962,8 @@ gfc_conv_procedure_call (gfc_se * se, gfc_symbol * sym,
+@@ -5958,11 +5964,8 @@ gfc_conv_procedure_call (gfc_se * se, gfc_symbol * sym,
  			    || (!e->value.function.esym
  				&& e->symtree->n.sym->attr.pointer))
  			&& fsym && fsym->attr.target)
@@ -15886,7 +15929,7 @@ index c2321a9ff5f..07e046cc2ac 100644
  	      else if (e->expr_type == EXPR_FUNCTION
  		       && e->symtree->n.sym->result
  		       && e->symtree->n.sym->result != e->symtree->n.sym
-@@ -6072,6 +6073,7 @@ gfc_conv_procedure_call (gfc_se * se, gfc_symbol * sym,
+@@ -6072,6 +6075,7 @@ gfc_conv_procedure_call (gfc_se * se, gfc_symbol * sym,
  		      bool add_clobber;
  		      add_clobber = fsym && fsym->attr.intent == INTENT_OUT
  			&& !fsym->attr.allocatable && !fsym->attr.pointer
@@ -15894,7 +15937,7 @@ index c2321a9ff5f..07e046cc2ac 100644
  			&& !e->symtree->n.sym->attr.dimension
  			&& !e->symtree->n.sym->attr.pointer
  			&& !e->symtree->n.sym->attr.allocatable
-@@ -6364,6 +6366,15 @@ gfc_conv_procedure_call (gfc_se * se, gfc_symbol * sym,
+@@ -6364,6 +6368,15 @@ gfc_conv_procedure_call (gfc_se * se, gfc_symbol * sym,
  				fsym ? fsym->attr.intent : INTENT_INOUT,
  				fsym && fsym->attr.pointer);
  
@@ -15910,7 +15953,7 @@ index c2321a9ff5f..07e046cc2ac 100644
  	      else if (gfc_is_class_array_ref (e, NULL)
  		       && fsym && fsym->ts.type == BT_DERIVED)
  		/* The actual argument is a component reference to an
-@@ -6435,6 +6446,17 @@ gfc_conv_procedure_call (gfc_se * se, gfc_symbol * sym,
+@@ -6435,6 +6448,17 @@ gfc_conv_procedure_call (gfc_se * se, gfc_symbol * sym,
  		    // deallocate the components first
  		    tmp = gfc_deallocate_alloc_comp (fsym->ts.u.derived,
  						     parmse.expr, e->rank);
@@ -15928,7 +15971,7 @@ index c2321a9ff5f..07e046cc2ac 100644
  		    if (tmp != NULL_TREE)
  		      gfc_add_expr_to_block (&se->pre, tmp);
  		  }
-@@ -11046,7 +11068,8 @@ gfc_trans_assignment_1 (gfc_expr * expr1, gfc_expr * expr2, bool init_flag,
+@@ -11046,7 +11070,8 @@ gfc_trans_assignment_1 (gfc_expr * expr1, gfc_expr * expr2, bool init_flag,
  		       || gfc_is_class_array_ref (expr1, NULL)
  		       || gfc_is_class_scalar_expr (expr1)
  		       || gfc_is_class_array_ref (expr2, NULL)
@@ -17050,10 +17093,18 @@ index 99edad8a950..f33489286a9 100644
  
  #endif
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index 2913065bf31..061bd8344eb 100644
+index 2913065bf31..5276e5f80e9 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,1710 @@
+@@ -1,3 +1,1718 @@
++2022-01-07  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2021-05-23  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/100551
++	* gfortran.dg/pr100551.f90: New test.
++
 +2021-12-27  Harald Anlauf  <anlauf@gmx.de>
 +
 +	Backported from master:
@@ -26886,6 +26937,42 @@ index 00000000000..3a1489aaab8
 +    res => c
 +  end
 +end
+diff --git a/gcc/testsuite/gfortran.dg/pr100551.f90 b/gcc/testsuite/gfortran.dg/pr100551.f90
+new file mode 100644
+index 00000000000..f82f505e734
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/pr100551.f90
+@@ -0,0 +1,30 @@
++! { dg-do run }
++! PR fortran/100551 - Passing return value to class(*) dummy argument
++
++program p
++  implicit none
++  integer :: result
++  result = 1
++  result = test (    (result)) ! works
++  if (result /= 1) stop 1
++  result = test (int (result)) ! issue 1
++! write(*,*) result
++  if (result /= 1) stop 2
++  result = test (f   (result)) ! issue 2
++! write(*,*) result
++  if (result /= 2) stop 3
++contains
++  integer function test(x)
++    class(*), intent(in) :: x
++    select type (x)
++    type is (integer)
++       test = x
++    class default
++       test = -1
++    end select
++  end function test
++  integer function f(x)
++    integer, intent(in) :: x
++    f = 2*x
++  end function f
++end program
 diff --git a/gcc/testsuite/gfortran.dg/pr100949.f90 b/gcc/testsuite/gfortran.dg/pr100949.f90
 new file mode 100644
 index 00000000000..6c736fd7f72
