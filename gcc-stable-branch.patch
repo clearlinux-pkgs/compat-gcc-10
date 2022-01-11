@@ -81,7 +81,8 @@ François Dumont (3):
       libstdc++: Fix unordered containers move constructors noexcept qualification
       libstdc++: [_GLIBCXX_DEBUG] Fix management of __dp_sign_max_size [PR 99402]
 
-GCC Administrator (273):
+GCC Administrator (274):
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -3512,10 +3513,15 @@ index 0719d810258..a9368325816 100644
 -10.3.0
 +10.3.1
 diff --git a/gcc/ChangeLog b/gcc/ChangeLog
-index 3b1384e707f..13190eaa9cd 100644
+index 3b1384e707f..4f2952a6276 100644
 --- a/gcc/ChangeLog
 +++ b/gcc/ChangeLog
-@@ -1,3 +1,1426 @@
+@@ -1,3 +1,1431 @@
++2022-01-10  Eric Botcazou  <ebotcazou@adacore.com>
++
++	PR target/103465
++	* coretypes.h (unwind_info_type): Swap UI_SEH and UI_TARGET.
++
 +2021-12-16  Martin Liska  <mliska@suse.cz>
 +
 +	Backported from master:
