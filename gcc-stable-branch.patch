@@ -81,7 +81,8 @@ François Dumont (3):
       libstdc++: Fix unordered containers move constructors noexcept qualification
       libstdc++: [_GLIBCXX_DEBUG] Fix management of __dp_sign_max_size [PR 99402]
 
-GCC Administrator (274):
+GCC Administrator (275):
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -711,7 +712,7 @@ Philippe Blain (1):
 Piotr Kubaj (1):
       gcc/configure: Check for powerpc64le*-*-freebsd*
 
-Richard Biener (33):
+Richard Biener (34):
       Increment BASE-VER after release
       testsuite/100176 - fix struct-layout-1_generate.c compile
       middle-end/98726 - fix VECTOR_CST element access
@@ -745,6 +746,7 @@ Richard Biener (33):
       tree-optimization/100253 - fix bogus aligned vectorized loads/stores
       middle-end/100672 - fix bogus right shift folding
       ipa/102714 - IPA SRA eliding volatile
+      tree-optimization/97953 - fix bougs range recorded by EVRP
 
 Richard Earnshaw (12):
       arm: fix UB due to missing mode check [PR100311]
@@ -16236,6 +16238,23 @@ index 2379848808f..6f9f612b39f 100644
  	    return false;
  	}
      }
+diff --git a/gcc/gimple-ssa-evrp-analyze.c b/gcc/gimple-ssa-evrp-analyze.c
+index 9f8ce5575a2..8389a58b00d 100644
+--- a/gcc/gimple-ssa-evrp-analyze.c
++++ b/gcc/gimple-ssa-evrp-analyze.c
+@@ -220,7 +220,11 @@ evrp_range_analyzer::record_ranges_from_incoming_edge (basic_block bb)
+ 	      push_value_range (vrs[i].first, vrs[i].second);
+ 	      if (is_fallthru
+ 		  && m_update_global_ranges
+-		  && all_uses_feed_or_dominated_by_stmt (vrs[i].first, stmt))
++		  && all_uses_feed_or_dominated_by_stmt (vrs[i].first, stmt)
++		  /* The condition must post-dominate the definition point.  */
++		  && (SSA_NAME_IS_DEFAULT_DEF (vrs[i].first)
++		      || (gimple_bb (SSA_NAME_DEF_STMT (vrs[i].first))
++			  == pred_e->src)))
+ 		{
+ 		  set_ssa_range_info (vrs[i].first, vrs[i].second);
+ 		  maybe_set_nonzero_bits (pred_e, vrs[i].first);
 diff --git a/gcc/go/gofrontend/expressions.cc b/gcc/go/gofrontend/expressions.cc
 index 8f59b18d47f..f27375d52a6 100644
 --- a/gcc/go/gofrontend/expressions.cc
@@ -21746,6 +21765,36 @@ index cd1c17c9661..89002b85c8e 100644
  
  #include <limits.h>
  enum a {test1, test2, test3=INT_MAX};
+diff --git a/gcc/testsuite/gcc.dg/pr97953.c b/gcc/testsuite/gcc.dg/pr97953.c
+new file mode 100644
+index 00000000000..6219619d67b
+--- /dev/null
++++ b/gcc/testsuite/gcc.dg/pr97953.c
+@@ -0,0 +1,24 @@
++/* { dg-do run } */
++/* { dg-options "-O2 -fno-tree-fre" } */
++
++int __attribute__((noipa))
++foo (int flag, int *p)
++{
++  int val = *p;
++  if (flag)
++    {
++      if (val != 1)
++        __builtin_unreachable ();
++      return 0;
++    }
++  int val2 = *p;
++  return val2 == 2;
++}
++
++int main()
++{
++  int i = 2;
++  if (foo (0, &i) != 1)
++    __builtin_abort ();
++  return 0;
++}
 diff --git a/gcc/testsuite/gcc.dg/pr99830.c b/gcc/testsuite/gcc.dg/pr99830.c
 new file mode 100644
 index 00000000000..75226f5c3a9
