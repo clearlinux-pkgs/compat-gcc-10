@@ -81,7 +81,8 @@ François Dumont (3):
       libstdc++: Fix unordered containers move constructors noexcept qualification
       libstdc++: [_GLIBCXX_DEBUG] Fix management of __dp_sign_max_size [PR 99402]
 
-GCC Administrator (276):
+GCC Administrator (277):
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -368,7 +369,7 @@ H.J. Lu (1):
 Hafiz Abid Qadeer (1):
       [OpenACC] Fix an ICE where a loop with GT condition is collapsed.
 
-Harald Anlauf (44):
+Harald Anlauf (45):
       PR fortran/63797 - Bogus ambiguous reference to 'sqrt'
       PR fortran/100154 - ICE in gfc_conv_procedure_call, at fortran/trans-expr.c:6131
       PR fortran/100274 - ICE in gfc_conv_procedure_call, at fortran/trans-expr.c:6131
@@ -413,6 +414,7 @@ Harald Anlauf (44):
       Fortran: PACK intrinsic should not try to read from zero-sized array
       Fortran: fix check for pointer dummy arguments with INTENT(IN)
       Fortran: fix passing return value to class(*) dummy argument
+      Fortran: avoid several NULL pointer dereferences during error recovery
 
 Iain Buclaw (19):
       d: Fix ICE in when formating a string with '%' or '`' characters (PR98457)
@@ -13961,10 +13963,23 @@ index 6e635382fb4..7b4c9c0eb7f 100644
  	      tree ntype = TYPE_UNSIGNED (type)
  			   ? signed_type_for (type)
 diff --git a/gcc/fortran/ChangeLog b/gcc/fortran/ChangeLog
-index aa5932be872..033dec69c07 100644
+index aa5932be872..50518a77e98 100644
 --- a/gcc/fortran/ChangeLog
 +++ b/gcc/fortran/ChangeLog
-@@ -1,3 +1,597 @@
+@@ -1,3 +1,610 @@
++2022-01-13  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2021-12-29  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/102332
++	* expr.c (gfc_get_variable_expr): Avoid NULL pointer dereferences
++	during handling of errors with invalid uses of CLASS variables.
++	* match.c (select_type_set_tmp): Likewise.
++	* primary.c (gfc_match_varspec): Likewise.
++	* resolve.c (resolve_variable): Likewise.
++	(resolve_select_type): Likewise.
++
 +2022-01-07  Harald Anlauf  <anlauf@gmx.de>
 +
 +	Backported from master:
@@ -15106,7 +15121,7 @@ index 9273976aa9a..2ad9fb63399 100644
  		gfc_constructor_append_expr (&array->value.constructor,
  					     n == 0
 diff --git a/gcc/fortran/expr.c b/gcc/fortran/expr.c
-index f946145eb1b..95b35153941 100644
+index f946145eb1b..e8c7c212e70 100644
 --- a/gcc/fortran/expr.c
 +++ b/gcc/fortran/expr.c
 @@ -990,6 +990,34 @@ done:
@@ -15238,7 +15253,17 @@ index f946145eb1b..95b35153941 100644
    lhs_attr = gfc_expr_attr (lvalue);
    if (lvalue->ts.type == BT_UNKNOWN && !lhs_attr.proc_pointer)
      {
-@@ -6168,10 +6229,13 @@ gfc_check_vardef_context (gfc_expr* e, bool pointer, bool alloc_obj,
+@@ -5088,7 +5149,8 @@ gfc_get_variable_expr (gfc_symtree *var)
+ 
+   if (var->n.sym->attr.flavor != FL_PROCEDURE
+       && ((var->n.sym->as != NULL && var->n.sym->ts.type != BT_CLASS)
+-	   || (var->n.sym->ts.type == BT_CLASS && CLASS_DATA (var->n.sym)
++	   || (var->n.sym->ts.type == BT_CLASS && var->n.sym->ts.u.derived
++	       && CLASS_DATA (var->n.sym)
+ 	       && CLASS_DATA (var->n.sym)->as)))
+     {
+       e->rank = var->n.sym->ts.type == BT_CLASS
+@@ -6168,10 +6230,13 @@ gfc_check_vardef_context (gfc_expr* e, bool pointer, bool alloc_obj,
      {
        if (ptr_component && ref->type == REF_COMPONENT)
  	check_intentin = false;
@@ -15471,7 +15496,7 @@ index 2a387535d05..5d444edccd7 100644
  	  gfc_error ("Non-character non-Hollerith in FORMAT tag at %L",
  		     &e->where);
 diff --git a/gcc/fortran/match.c b/gcc/fortran/match.c
-index e1e4c1caeb4..ef6c86af2f9 100644
+index e1e4c1caeb4..7d06e0eef30 100644
 --- a/gcc/fortran/match.c
 +++ b/gcc/fortran/match.c
 @@ -1409,7 +1409,7 @@ gfc_match_pointer_assignment (void)
@@ -15483,6 +15508,16 @@ index e1e4c1caeb4..ef6c86af2f9 100644
      {
        m = MATCH_NO;
        goto cleanup;
+@@ -6338,7 +6338,8 @@ select_type_set_tmp (gfc_typespec *ts)
+       sym = tmp->n.sym;
+       gfc_add_type (sym, ts, NULL);
+ 
+-      if (selector->ts.type == BT_CLASS && selector->attr.class_ok)
++      if (selector->ts.type == BT_CLASS && selector->attr.class_ok
++	  && selector->ts.u.derived && CLASS_DATA (selector))
+ 	{
+ 	  sym->attr.pointer
+ 		= CLASS_DATA (selector)->attr.class_pointer;
 diff --git a/gcc/fortran/module.c b/gcc/fortran/module.c
 index 9a5b1cb7625..0c14f2a8105 100644
 --- a/gcc/fortran/module.c
@@ -15532,10 +15567,18 @@ index 3e19d5fdfbe..1501abfffd2 100644
      if (s->do_variable == st)
        {
 diff --git a/gcc/fortran/primary.c b/gcc/fortran/primary.c
-index 8edc83a42c3..b03961a9981 100644
+index 8edc83a42c3..78c4b634db3 100644
 --- a/gcc/fortran/primary.c
 +++ b/gcc/fortran/primary.c
-@@ -3062,26 +3062,36 @@ build_actual_constructor (gfc_structure_ctor_component **comp_head,
+@@ -2172,6 +2172,7 @@ gfc_match_varspec (gfc_expr *primary, int equiv_flag, bool sub_flag,
+ 	  && !(gfc_matching_procptr_assignment
+ 	       && sym->attr.flavor == FL_PROCEDURE))
+       || (sym->ts.type == BT_CLASS && sym->attr.class_ok
++	  && sym->ts.u.derived && CLASS_DATA (sym)
+ 	  && (CLASS_DATA (sym)->attr.dimension
+ 	      || CLASS_DATA (sym)->attr.codimension)))
+     {
+@@ -3062,26 +3063,36 @@ build_actual_constructor (gfc_structure_ctor_component **comp_head,
  	  continue;
  	}
  
@@ -15584,7 +15627,7 @@ index 8edc83a42c3..b03961a9981 100644
  	    {
  	      gfc_error ("No initializer for component %qs given in the"
 diff --git a/gcc/fortran/resolve.c b/gcc/fortran/resolve.c
-index 7ca5f44f419..591b36fa4bd 100644
+index 7ca5f44f419..9104b17988b 100644
 --- a/gcc/fortran/resolve.c
 +++ b/gcc/fortran/resolve.c
 @@ -1436,6 +1436,41 @@ resolve_structure_cons (gfc_expr *expr, int init)
@@ -15652,7 +15695,44 @@ index 7ca5f44f419..591b36fa4bd 100644
    if (e->symtree->n.sym->ts.type == BT_CLASS)
      {
        as = CLASS_DATA (e->symtree->n.sym)->as;
-@@ -11733,8 +11777,9 @@ gfc_resolve_code (gfc_code *code, gfc_namespace *ns)
+@@ -5633,6 +5677,8 @@ resolve_variable (gfc_expr *e)
+      can't be translated that way.  */
+   if (sym->assoc && e->rank == 0 && e->ref && sym->ts.type == BT_CLASS
+       && sym->assoc->target && sym->assoc->target->ts.type == BT_CLASS
++      && sym->assoc->target->ts.u.derived
++      && CLASS_DATA (sym->assoc->target)
+       && CLASS_DATA (sym->assoc->target)->as)
+     {
+       gfc_ref *ref = e->ref;
+@@ -5697,7 +5743,8 @@ resolve_variable (gfc_expr *e)
+   /* Like above, but for class types, where the checking whether an array
+      ref is present is more complicated.  Furthermore make sure not to add
+      the full array ref to _vptr or _len refs.  */
+-  if (sym->assoc && sym->ts.type == BT_CLASS
++  if (sym->assoc && sym->ts.type == BT_CLASS && sym->ts.u.derived
++      && CLASS_DATA (sym)
+       && CLASS_DATA (sym)->attr.dimension
+       && (e->ts.type != BT_DERIVED || !e->ts.u.derived->attr.vtype))
+     {
+@@ -9301,6 +9348,7 @@ resolve_select_type (gfc_code *code, gfc_namespace *old_ns)
+ 
+       /* Check F03:C815.  */
+       if ((c->ts.type == BT_DERIVED || c->ts.type == BT_CLASS)
++	  && selector_type
+ 	  && !selector_type->attr.unlimited_polymorphic
+ 	  && !gfc_type_is_extensible (c->ts.u.derived))
+ 	{
+@@ -9311,7 +9359,8 @@ resolve_select_type (gfc_code *code, gfc_namespace *old_ns)
+ 	}
+ 
+       /* Check F03:C816.  */
+-      if (c->ts.type != BT_UNKNOWN && !selector_type->attr.unlimited_polymorphic
++      if (c->ts.type != BT_UNKNOWN
++	  && selector_type && !selector_type->attr.unlimited_polymorphic
+ 	  && ((c->ts.type != BT_DERIVED && c->ts.type != BT_CLASS)
+ 	      || !gfc_type_is_extension_of (selector_type, c->ts.u.derived)))
+ 	{
+@@ -11733,8 +11782,9 @@ gfc_resolve_code (gfc_code *code, gfc_namespace *ns)
  	      gfc_resolve_omp_do_blocks (code, ns);
  	      break;
  	    case EXEC_SELECT_TYPE:
@@ -15664,7 +15744,7 @@ index 7ca5f44f419..591b36fa4bd 100644
  	      break;
              case EXEC_DO_CONCURRENT:
  	      gfc_do_concurrent_flag = 1;
-@@ -13095,7 +13140,8 @@ resolve_fl_procedure (gfc_symbol *sym, int mp_flag)
+@@ -13095,7 +13145,8 @@ resolve_fl_procedure (gfc_symbol *sym, int mp_flag)
  
    /* An elemental function is required to return a scalar 12.7.1  */
    if (sym->attr.elemental && sym->attr.function
@@ -17130,10 +17210,18 @@ index 99edad8a950..f33489286a9 100644
  
  #endif
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index 2913065bf31..ae4a9d33d7f 100644
+index 2913065bf31..77b2c1940de 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,1726 @@
+@@ -1,3 +1,1734 @@
++2022-01-13  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2021-12-29  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/102332
++	* gfortran.dg/pr102332.f90: New test.
++
 +2022-01-12  Richard Biener  <rguenther@suse.de>
 +
 +	Backported from master:
@@ -27179,6 +27267,81 @@ index 00000000000..b16af00d919
 +    f = size (z)         ! { dg-error "must be an array" }
 +    f = size (z% c)      ! { dg-error "must be an array" }
 +  end
++end
+diff --git a/gcc/testsuite/gfortran.dg/pr102332.f90 b/gcc/testsuite/gfortran.dg/pr102332.f90
+new file mode 100644
+index 00000000000..f9557094083
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/pr102332.f90
+@@ -0,0 +1,69 @@
++! { dg-do compile }
++! PR fortran/102332 - ICE in select_type_set_tmp
++! Contributed by G.Steinmetz
++
++program p
++  type t
++     real :: a, b
++  end type
++  class(t), allocatable :: x ! Valid
++  select type (y => x)
++  type is (t)
++     y%a = 0
++  end select
++end
++
++subroutine s0 (x)
++  type t
++     real :: a, b
++  end type
++  class(t) :: x ! Valid
++  select type (y => x)
++  type is (t)
++     y%a = 0
++  end select
++end
++
++subroutine s1
++  type t
++     real :: a, b
++  end type
++  class(t) :: x         ! { dg-error "must be dummy, allocatable or pointer" }
++  select type (y => x)
++  type is (t)
++     y%a = 0
++  end select
++end
++
++subroutine s3
++  type t
++     real :: a, b
++  end type
++  class(t) :: x         ! { dg-error "must be dummy, allocatable or pointer" }
++  select type (y => x)
++  class is (t)
++     y%a = 0
++  end select
++end
++
++subroutine s2
++  type t
++     real :: a, b
++  end type
++  class(t) :: x         ! { dg-error "must be dummy, allocatable or pointer" }
++  select type (y => x)
++  type default          ! { dg-error "Expected" }
++     y%a = 0
++  end select
++end
++
++subroutine s4
++  type t
++     real :: a, b
++  end type
++  class(t) :: x         ! { dg-error "must be dummy, allocatable or pointer" }
++  select type (y => x)
++  class default
++     y%a = 0
++  end select
 +end
 diff --git a/gcc/testsuite/gfortran.dg/pr102366.f90 b/gcc/testsuite/gfortran.dg/pr102366.f90
 new file mode 100644
