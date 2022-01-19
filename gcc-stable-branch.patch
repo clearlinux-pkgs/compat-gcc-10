@@ -82,7 +82,8 @@ François Dumont (3):
       libstdc++: Fix unordered containers move constructors noexcept qualification
       libstdc++: [_GLIBCXX_DEBUG] Fix management of __dp_sign_max_size [PR 99402]
 
-GCC Administrator (281):
+GCC Administrator (282):
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -636,7 +637,7 @@ Martin Jambor (3):
       sra: Fix corner case of total scalarization with virtual inheritance (PR 102505)
       ipa-sra: Check also ECF_LOOPING_CONST_OR_PURE when evaluating calls
 
-Martin Liska (11):
+Martin Liska (12):
       Sync gcc-changelog scripts.
       gcc-changelog: sync scripts.
       contrib: add git-commit-mklog wrapper
@@ -648,6 +649,7 @@ Martin Liska (11):
       jit: Initialize function::m_blocks in ctor
       i386: Fix emissing of __builtin_cpu_supports.
       git-backport: support renamed .cc files in commit message.
+      git scripts: sync from master.
 
 Martin Sebor (2):
       PR middle-end/100571 - bogus -Wstringop-overflow with VLA of elements larger than byte
@@ -2593,42 +2595,23 @@ index ffd13682d5c..98a0d3f1ee0 100644
 ++
 +-- 
 diff --git a/contrib/git-backport.py b/contrib/git-backport.py
-index 2b8e4686719..f5b487197d9 100755
+index 2b8e4686719..fc369d97754 100755
 --- a/contrib/git-backport.py
 +++ b/contrib/git-backport.py
-@@ -20,7 +20,31 @@
+@@ -20,46 +20,16 @@
  # Boston, MA 02110-1301, USA.
  
  import argparse
 +import os
  import subprocess
-+import tempfile
-+
-+script_folder = os.path.dirname(os.path.abspath(__file__))
-+verify_script = os.path.join(script_folder,
-+                             'gcc-changelog/git_check_commit.py')
-+
-+
-+def replace_file_in_changelog(lines, filename):
-+    if not filename.endswith('.cc'):
-+        return
-+
-+    # consider all componenets of a path: gcc/ipa-icf.cc
-+    while filename:
-+        for i, line in enumerate(lines):
-+            if filename in line:
-+                line = line.replace(filename, filename[:-1])
-+                lines[i] = line
-+                return
-+        parts = filename.split('/')
-+        if len(parts) == 1:
-+            return
-+        filename = '/'.join(parts[1:])
-+
  
++script_folder = os.path.dirname(os.path.abspath(__file__))
++fixup_script = os.path.join(script_folder, 'git-fix-changelog.py')
++
  if __name__ == '__main__':
-     parser = argparse.ArgumentParser(description='Backport a git revision and '
-@@ -28,38 +52,28 @@ if __name__ == '__main__':
+-    parser = argparse.ArgumentParser(description='Backport a git revision and '
+-                                     'stash all ChangeLog files.')
++    parser = argparse.ArgumentParser(description='Backport a git revision.')
      parser.add_argument('revision', help='Revision')
      args = parser.parse_args()
  
@@ -2660,43 +2643,21 @@ index 2b8e4686719..f5b487197d9 100755
 -        for m in modified:
 -            subprocess.check_output('git reset %s' % m, shell=True)
 -            subprocess.check_output('git checkout %s' % m, shell=True)
-+    subprocess.run('git cherry-pick -x %s' % args.revision, shell=True)
-+
-+    # Update commit message if change for a .cc file was taken
-+    r = subprocess.run(f'{verify_script} HEAD', shell=True, encoding='utf8',
-+                       stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-+    if r.returncode != 0:
-+        lines = r.stdout.splitlines()
-+        cmd = 'git show -s --format=%B'
-+        commit_message = subprocess.check_output(cmd, shell=True,
-+                                                 encoding='utf8').strip()
-+        commit_message = commit_message.splitlines()
-+
-+        todo = [line for line in lines if 'unchanged file mentioned' in line]
-+        for item in todo:
-+            filename = item.split()[-1].strip('"')
-+            replace_file_in_changelog(commit_message, filename)
- 
+-
 -        # try to continue
 -        if len(conflicts) == len(changelogs):
 -            cmd = 'git -c core.editor=true cherry-pick --continue'
 -            subprocess.check_output(cmd, shell=True)
 -        else:
 -            print('Please resolve all remaining file conflicts.')
-+        with tempfile.NamedTemporaryFile('w', encoding='utf8',
-+                                         delete=False) as w:
-+            w.write('\n'.join(commit_message))
-+            w.close()
-+            subprocess.check_output(f'git commit --amend -F {w.name}',
-+                                    shell=True, encoding='utf8')
-+            os.unlink(w.name)
-+            print(f'Commit message updated: {len(todo)} .cc file(s) changed.')
++    subprocess.run('git cherry-pick -x %s' % args.revision, shell=True)
++    subprocess.run(fixup_script, shell=True)
 diff --git a/contrib/git-commit-mklog.py b/contrib/git-commit-mklog.py
 new file mode 100755
-index 00000000000..9c59fb97809
+index 00000000000..eda3fc4a892
 --- /dev/null
 +++ b/contrib/git-commit-mklog.py
-@@ -0,0 +1,53 @@
+@@ -0,0 +1,59 @@
 +#!/usr/bin/env python3
 +
 +# Copyright (C) 2020 Free Software Foundation, Inc.
@@ -2736,6 +2697,8 @@ index 00000000000..9c59fb97809
 +                        help='Add the specified PRs (comma separated)')
 +    parser.add_argument('-p', '--fill-up-bug-titles', action='store_true',
 +                        help='Download title of mentioned PRs')
++    parser.add_argument('--co',
++                        help='Add Co-Authored-By trailer (comma separated)')
 +    args, unknown_args = parser.parse_known_args()
 +
 +    myenv['GCC_FORCE_MKLOG'] = '1'
@@ -2748,8 +2711,110 @@ index 00000000000..9c59fb97809
 +    if mklog_args:
 +        myenv['GCC_MKLOG_ARGS'] = ' '.join(mklog_args)
 +
++    if args.co:
++        for author in args.co.split(','):
++            unknown_args.append(f'--trailer "Co-Authored-By: {author}"')
++
 +    commit_args = ' '.join(unknown_args)
 +    subprocess.run(f'git commit {commit_args}', shell=True, env=myenv)
+diff --git a/contrib/git-fix-changelog.py b/contrib/git-fix-changelog.py
+new file mode 100755
+index 00000000000..c15e45c11fa
+--- /dev/null
++++ b/contrib/git-fix-changelog.py
+@@ -0,0 +1,92 @@
++#!/usr/bin/env python3
++
++# Copyright (C) 2020 Free Software Foundation, Inc.
++#
++# This file is part of GCC.
++#
++# GCC is free software; you can redistribute it and/or modify
++# it under the terms of the GNU General Public License as published by
++# the Free Software Foundation; either version 3, or (at your option)
++# any later version.
++#
++# GCC is distributed in the hope that it will be useful,
++# but WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++# GNU General Public License for more details.
++#
++# You should have received a copy of the GNU General Public License
++# along with GCC; see the file COPYING.  If not, write to
++# the Free Software Foundation, 51 Franklin Street, Fifth Floor,
++# Boston, MA 02110-1301, USA.
++#
++# The script tries to fix commit message where ChangeLog entries
++# can point to .cc renamed files.
++
++import argparse
++import os
++import subprocess
++import tempfile
++
++DESCRIPTION = 'Fix up ChangeLog of the current commit.'
++
++script_folder = os.path.dirname(os.path.abspath(__file__))
++verify_script = os.path.join(script_folder,
++                             'gcc-changelog/git_check_commit.py')
++
++
++def replace_file_in_changelog(lines, filename, fixed):
++    # consider all componenets of a path: gcc/ipa-icf.cc
++    while filename:
++        for i, line in enumerate(lines):
++            if filename in line:
++                lines[i] = line.replace(filename, fixed)
++                return
++
++        parts = filename.split('/')
++        if len(parts) == 1:
++            return
++        filename = '/'.join(parts[1:])
++        fixed = '/'.join(fixed.split('/')[1:])
++
++
++if __name__ == '__main__':
++    parser = argparse.ArgumentParser(description=DESCRIPTION)
++    args = parser.parse_args()
++
++    # Update commit message if change for a .cc file was taken
++    r = subprocess.run(f'{verify_script} HEAD', shell=True, encoding='utf8',
++                       stdout=subprocess.PIPE, stderr=subprocess.PIPE)
++    if r.returncode != 0:
++        lines = r.stdout.splitlines()
++        cmd = 'git show -s --format=%B'
++        commit_message = subprocess.check_output(cmd, shell=True,
++                                                 encoding='utf8').strip()
++        commit_message = commit_message.splitlines()
++
++        # Parse the following lines:
++        # ERR: unchanged file mentioned in a ChangeLog \
++        # (did you mean "gcc/ipa-icf.cc"?): "gcc/ipa-icf.c"
++        replaced = 0
++        for line in lines:
++            if ('unchanged file mentioned' in line and
++                    'did you mean' in line):
++                filename = line.split()[-1].strip('"')
++                fixed = line[line.index('did you mean'):]
++                fixed = fixed[fixed.index('"') + 1:]
++                fixed = fixed[:fixed.index('"')]
++
++                if filename.count('/') == fixed.count('/'):
++                    replace_file_in_changelog(commit_message, filename, fixed)
++                    replaced += 1
++
++        if replaced:
++            with tempfile.NamedTemporaryFile('w', encoding='utf8',
++                                             delete=False) as w:
++                w.write('\n'.join(commit_message))
++                w.close()
++                subprocess.check_output(f'git commit --amend -F {w.name}',
++                                        shell=True, encoding='utf8')
++                os.unlink(w.name)
++                print(f'Commit message updated: {replaced} file(s) renamed.')
++        else:
++            print('Commit message has not been updated.')
 diff --git a/contrib/mklog.py b/contrib/mklog.py
 new file mode 100755
 index 00000000000..674c1dcd78b
