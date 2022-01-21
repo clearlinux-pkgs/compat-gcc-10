@@ -379,7 +379,7 @@ H.J. Lu (4):
 Hafiz Abid Qadeer (1):
       [OpenACC] Fix an ICE where a loop with GT condition is collapsed.
 
-Harald Anlauf (45):
+Harald Anlauf (46):
       PR fortran/63797 - Bogus ambiguous reference to 'sqrt'
       PR fortran/100154 - ICE in gfc_conv_procedure_call, at fortran/trans-expr.c:6131
       PR fortran/100274 - ICE in gfc_conv_procedure_call, at fortran/trans-expr.c:6131
@@ -425,6 +425,7 @@ Harald Anlauf (45):
       Fortran: fix check for pointer dummy arguments with INTENT(IN)
       Fortran: fix passing return value to class(*) dummy argument
       Fortran: avoid several NULL pointer dereferences during error recovery
+      Fortran: handle expansion of zero-sized array constructors
 
 Iain Buclaw (19):
       d: Fix ICE in when formating a string with '%' or '`' characters (PR98457)
@@ -15044,7 +15045,7 @@ index aa5932be872..50518a77e98 100644
  
  	* GCC 10.3.0 released.
 diff --git a/gcc/fortran/array.c b/gcc/fortran/array.c
-index 471523fb767..edf5cef61ec 100644
+index 471523fb767..e7a14e9106d 100644
 --- a/gcc/fortran/array.c
 +++ b/gcc/fortran/array.c
 @@ -492,6 +492,8 @@ match_array_element_spec (gfc_array_spec *as)
@@ -15084,7 +15085,17 @@ index 471523fb767..edf5cef61ec 100644
        if (e->expr_type == EXPR_ARRAY)
  	{
  	  if (!expand_constructor (e->value.constructor))
-@@ -2283,8 +2296,7 @@ gfc_copy_iterator (gfc_iterator *src)
+@@ -1870,6 +1883,9 @@ gfc_expand_constructor (gfc_expr *e, bool fatal)
+   gfc_expr *f;
+   bool rc;
+ 
++  if (gfc_is_size_zero_array (e))
++    return true;
++
+   /* If we can successfully get an array element at the max array size then
+      the array is too big to expand, so we just return.  */
+   f = gfc_get_array_element (e, flag_max_array_constructor);
+@@ -2283,8 +2299,7 @@ gfc_copy_iterator (gfc_iterator *src)
  /********* Subroutines for determining the size of an array *********/
  
  /* These are needed just to accommodate RESHAPE().  There are no
@@ -15094,7 +15105,7 @@ index 471523fb767..edf5cef61ec 100644
  
  
  /* Get the size of single dimension of an array specification.  The
-@@ -2317,6 +2329,9 @@ spec_dimen_size (gfc_array_spec *as, int dimen, mpz_t *result)
+@@ -2317,6 +2332,9 @@ spec_dimen_size (gfc_array_spec *as, int dimen, mpz_t *result)
  
    mpz_add_ui (*result, *result, 1);
  
@@ -15104,7 +15115,7 @@ index 471523fb767..edf5cef61ec 100644
    return true;
  }
  
-@@ -2390,12 +2405,11 @@ gfc_ref_dimen_size (gfc_array_ref *ar, int dimen, mpz_t *result, mpz_t *end)
+@@ -2390,12 +2408,11 @@ gfc_ref_dimen_size (gfc_array_ref *ar, int dimen, mpz_t *result, mpz_t *end)
  	{
  	  stride_expr = gfc_copy_expr(ar->stride[dimen]); 
  
@@ -28215,10 +28226,10 @@ index 00000000000..3e1026e635a
 +end
 diff --git a/gcc/testsuite/gfortran.dg/pr102520.f90 b/gcc/testsuite/gfortran.dg/pr102520.f90
 new file mode 100644
-index 00000000000..1c98c185c17
+index 00000000000..d2ea8f3a424
 --- /dev/null
 +++ b/gcc/testsuite/gfortran.dg/pr102520.f90
-@@ -0,0 +1,12 @@
+@@ -0,0 +1,10 @@
 +! { dg-do compile }
 +! PR fortran/102520 - ICE in expand_constructor, at fortran/array.c:1802
 +
@@ -28226,11 +28237,9 @@ index 00000000000..1c98c185c17
 +  type t
 +  end type
 +  type(t), parameter :: a(4)   = shape(1)         ! { dg-error "Incompatible" }
-+  type(t), parameter :: b(2,2) = reshape(a,[2,2]) ! { dg-error "Incompatible" }
-+  type(t), parameter :: c(2,2) = transpose(b)     ! { dg-error "Unclassifiable" }
++  type(t), parameter :: b(2,2) = reshape(a,[2,2]) ! { dg-error "must be an array" }
++  type(t), parameter :: c(2,2) = transpose(b)     ! { dg-error "must be of rank 2" }
 +end
-+
-+! { dg-error "Different shape for array assignment" " " { target *-*-* } 7 }
 diff --git a/gcc/testsuite/gfortran.dg/pr102685.f90 b/gcc/testsuite/gfortran.dg/pr102685.f90
 new file mode 100644
 index 00000000000..d325c27b32a
@@ -28389,6 +28398,35 @@ index 00000000000..a6a2c4fdfd0
 +end
 +
 +! { dg-prune-output "must have constant shape" }
+diff --git a/gcc/testsuite/gfortran.dg/pr103692.f90 b/gcc/testsuite/gfortran.dg/pr103692.f90
+new file mode 100644
+index 00000000000..9687a3cec9d
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/pr103692.f90
+@@ -0,0 +1,23 @@
++! { dg-do compile }
++! { dg-options "-fdump-tree-original" }
++! PR fortran/103692 - ICE in expand_constructor
++! Contributed by G.Steinmetz
++
++program p
++  character(3), parameter :: a(4) = 'abc'
++  character(*), parameter :: b(*) =  (a(2:1))
++  character(*), parameter :: y(*) = [(a(2:1))]
++  character(*), parameter :: u(*) =  a(2:1)
++  character(*), parameter :: v(*) = [a(2:1)]
++  character(*), parameter :: w(-1) = (a(2:1))
++  character(*), parameter :: x(-1) =  a(2:1)
++  character(5), parameter :: c(3,3) = 'def'
++  character(*), parameter :: d(*)   = [(c(2:1,2:))]
++  character(*), parameter :: e(*,*) =  (c(2:1,2:))
++  if (len(b) /= 3 .or. size (b) /= 0) stop 1
++  if (len(y) /= 3 .or. size (y) /= 0) stop 2
++  if (len(d) /= 5 .or. size (d) /= 0) stop 3
++  if (len(e) /= 5 .or. any (shape (e) /= [0,2])) stop 4
++end
++
++! { dg-final { scan-tree-dump-not "_gfortran_stop_numeric" "original" } }
 diff --git a/gcc/testsuite/gfortran.dg/pr63797.f90 b/gcc/testsuite/gfortran.dg/pr63797.f90
 new file mode 100644
 index 00000000000..1131e8167b1
