@@ -82,7 +82,8 @@ François Dumont (3):
       libstdc++: Fix unordered containers move constructors noexcept qualification
       libstdc++: [_GLIBCXX_DEBUG] Fix management of __dp_sign_max_size [PR 99402]
 
-GCC Administrator (283):
+GCC Administrator (284):
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -14430,10 +14431,19 @@ index 6e635382fb4..7b4c9c0eb7f 100644
  	      tree ntype = TYPE_UNSIGNED (type)
  			   ? signed_type_for (type)
 diff --git a/gcc/fortran/ChangeLog b/gcc/fortran/ChangeLog
-index aa5932be872..50518a77e98 100644
+index aa5932be872..fe1bed50131 100644
 --- a/gcc/fortran/ChangeLog
 +++ b/gcc/fortran/ChangeLog
-@@ -1,3 +1,610 @@
+@@ -1,3 +1,619 @@
++2022-01-20  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2022-01-18  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/103692
++	* array.c (gfc_expand_constructor): Handle zero-sized array
++	constructors.
++
 +2022-01-13  Harald Anlauf  <anlauf@gmx.de>
 +
 +	Backported from master:
@@ -17932,10 +17942,19 @@ index 99edad8a950..f33489286a9 100644
  
  #endif
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index 2913065bf31..d23eed672d0 100644
+index 2913065bf31..e0667a0f455 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,1756 @@
+@@ -1,3 +1,1765 @@
++2022-01-20  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2022-01-18  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/103692
++	* gfortran.dg/pr102520.f90: Adjust error messages.
++	* gfortran.dg/pr103692.f90: New test.
++
 +2022-01-15  Peter Bergner  <bergner@linux.ibm.com>
 +
 +	Backported from master:
