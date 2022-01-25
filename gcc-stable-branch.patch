@@ -82,7 +82,8 @@ François Dumont (3):
       libstdc++: Fix unordered containers move constructors noexcept qualification
       libstdc++: [_GLIBCXX_DEBUG] Fix management of __dp_sign_max_size [PR 99402]
 
-GCC Administrator (287):
+GCC Administrator (288):
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -897,10 +898,16 @@ index a795096f038..e91367a7112 100644
  STAGE2_CXXFLAGS += -D__USE_MINGW_ACCESS
  STAGE3_CXXFLAGS += -D__USE_MINGW_ACCESS
 diff --git a/contrib/ChangeLog b/contrib/ChangeLog
-index cfcc8b12b53..ae9e5c1b147 100644
+index cfcc8b12b53..a79c9dcef55 100644
 --- a/contrib/ChangeLog
 +++ b/contrib/ChangeLog
-@@ -1,3 +1,69 @@
+@@ -1,3 +1,75 @@
++2022-01-24  Martin Liska  <mliska@suse.cz>
++
++	* gcc-changelog/git_commit.py: Sync from master.
++	* gcc-changelog/test_email.py: Likewise.
++	* gcc-changelog/test_patches.txt: Likewise.
++
 +2022-01-19  Martin Liska  <mliska@suse.cz>
 +
 +	* git-backport.py: Sync from master.
