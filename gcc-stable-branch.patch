@@ -385,7 +385,7 @@ H.J. Lu (4):
 Hafiz Abid Qadeer (1):
       [OpenACC] Fix an ICE where a loop with GT condition is collapsed.
 
-Harald Anlauf (49):
+Harald Anlauf (50):
       PR fortran/63797 - Bogus ambiguous reference to 'sqrt'
       PR fortran/100154 - ICE in gfc_conv_procedure_call, at fortran/trans-expr.c:6131
       PR fortran/100274 - ICE in gfc_conv_procedure_call, at fortran/trans-expr.c:6131
@@ -435,6 +435,7 @@ Harald Anlauf (49):
       Fortran: fix ICE overloading elemental intrinsics
       Fortran: fix error recovery on bad structure constructor in DATA statement
       Fortran: reject invalid non-constant pointer initialization targets
+      Fortran: MOLD argument to TRANSFER intrinsic having storage size zero
 
 Iain Buclaw (19):
       d: Fix ICE in when formating a string with '%' or '`' characters (PR98457)
@@ -15293,7 +15294,7 @@ index 471523fb767..e7a14e9106d 100644
  	      return false;
  	    }
 diff --git a/gcc/fortran/check.c b/gcc/fortran/check.c
-index ca6f582625d..392786ac48e 100644
+index ca6f582625d..df2fe1ff828 100644
 --- a/gcc/fortran/check.c
 +++ b/gcc/fortran/check.c
 @@ -289,7 +289,7 @@ bin2real (gfc_expr *x, int kind)
@@ -15612,6 +15613,15 @@ index ca6f582625d..392786ac48e 100644
      return false;
  
    return true;
+@@ -6124,7 +6127,7 @@ gfc_calculate_transfer_sizes (gfc_expr *source, gfc_expr *mold, gfc_expr *size,
+    * If SIZE is present, the result is an array of rank one and size SIZE.
+    */
+   if (result_elt_size == 0 && *source_size > 0 && !size
+-      && mold->expr_type == EXPR_ARRAY)
++      && (mold->expr_type == EXPR_ARRAY || mold->rank))
+     {
+       gfc_error ("%<MOLD%> argument of %<TRANSFER%> intrinsic at %L is an "
+ 		 "array and shall not have storage size 0 when %<SOURCE%> "
 diff --git a/gcc/fortran/class.c b/gcc/fortran/class.c
 index f017fbe3be7..51bd6d18317 100644
 --- a/gcc/fortran/class.c
@@ -29238,6 +29248,23 @@ index 0d5e3d75e88..83e788a55a6 100644
  c = (/ c0(1)(1:5) /)
  do i=1,5
     if (c(1)(i:i) /= c1(i)) STOP 2
+diff --git a/gcc/testsuite/gfortran.dg/transfer_check_6.f90 b/gcc/testsuite/gfortran.dg/transfer_check_6.f90
+new file mode 100644
+index 00000000000..dffd0913f0d
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/transfer_check_6.f90
+@@ -0,0 +1,11 @@
++! { dg-do compile }
++! PR fortran/104227 - ICE virtual memory exhausted
++! Contributed by G.Steinmetz
++
++program p
++  type t
++  end type
++  type(t) :: x(2)
++  print *, transfer(1, x) ! { dg-error "shall not have storage size 0" }
++  x = transfer(1, x)      ! { dg-error "shall not have storage size 0" }
++end
 diff --git a/gcc/testsuite/gfortran.dg/transfer_simplify_2.f90 b/gcc/testsuite/gfortran.dg/transfer_simplify_2.f90
 index e0f3f94c4ca..b428fa64b56 100644
 --- a/gcc/testsuite/gfortran.dg/transfer_simplify_2.f90
