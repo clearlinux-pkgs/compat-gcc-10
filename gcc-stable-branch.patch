@@ -82,7 +82,8 @@ François Dumont (3):
       libstdc++: Fix unordered containers move constructors noexcept qualification
       libstdc++: [_GLIBCXX_DEBUG] Fix management of __dp_sign_max_size [PR 99402]
 
-GCC Administrator (288):
+GCC Administrator (289):
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -384,7 +385,7 @@ H.J. Lu (4):
 Hafiz Abid Qadeer (1):
       [OpenACC] Fix an ICE where a loop with GT condition is collapsed.
 
-Harald Anlauf (47):
+Harald Anlauf (49):
       PR fortran/63797 - Bogus ambiguous reference to 'sqrt'
       PR fortran/100154 - ICE in gfc_conv_procedure_call, at fortran/trans-expr.c:6131
       PR fortran/100274 - ICE in gfc_conv_procedure_call, at fortran/trans-expr.c:6131
@@ -432,6 +433,8 @@ Harald Anlauf (47):
       Fortran: avoid several NULL pointer dereferences during error recovery
       Fortran: handle expansion of zero-sized array constructors
       Fortran: fix ICE overloading elemental intrinsics
+      Fortran: fix error recovery on bad structure constructor in DATA statement
+      Fortran: reject invalid non-constant pointer initialization targets
 
 Iain Buclaw (19):
       d: Fix ICE in when formating a string with '%' or '`' characters (PR98457)
@@ -14549,10 +14552,30 @@ index 6e635382fb4..7b4c9c0eb7f 100644
  	      tree ntype = TYPE_UNSIGNED (type)
  			   ? signed_type_for (type)
 diff --git a/gcc/fortran/ChangeLog b/gcc/fortran/ChangeLog
-index aa5932be872..61967529d6b 100644
+index aa5932be872..2248498be9f 100644
 --- a/gcc/fortran/ChangeLog
 +++ b/gcc/fortran/ChangeLog
-@@ -1,3 +1,628 @@
+@@ -1,3 +1,648 @@
++2022-01-25  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2022-01-09  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/101762
++	* expr.c (gfc_check_pointer_assign): For pointer initialization
++	targets, check that subscripts and substring indices in
++	specifications are constant expressions.
++
++2022-01-25  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2022-01-13  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/67804
++	* primary.c (gfc_match_structure_constructor): Recover from errors
++	that occurred while checking for a valid structure constructor in
++	a DATA statement.
++
 +2022-01-21  Harald Anlauf  <anlauf@gmx.de>
 +
 +	Backported from master:
@@ -15735,7 +15758,7 @@ index 9273976aa9a..2ad9fb63399 100644
  		gfc_constructor_append_expr (&array->value.constructor,
  					     n == 0
 diff --git a/gcc/fortran/expr.c b/gcc/fortran/expr.c
-index f946145eb1b..278b07135e3 100644
+index f946145eb1b..d19c6c9980b 100644
 --- a/gcc/fortran/expr.c
 +++ b/gcc/fortran/expr.c
 @@ -990,6 +990,34 @@ done:
@@ -15880,7 +15903,55 @@ index f946145eb1b..278b07135e3 100644
    lhs_attr = gfc_expr_attr (lvalue);
    if (lvalue->ts.type == BT_UNKNOWN && !lhs_attr.proc_pointer)
      {
-@@ -5088,7 +5148,8 @@ gfc_get_variable_expr (gfc_symtree *var)
+@@ -4273,6 +4333,7 @@ gfc_check_pointer_assign (gfc_expr *lvalue, gfc_expr *rvalue,
+     {
+       gfc_symbol *sym;
+       bool target;
++      gfc_ref *ref;
+ 
+       if (gfc_is_size_zero_array (rvalue))
+ 	{
+@@ -4302,6 +4363,39 @@ gfc_check_pointer_assign (gfc_expr *lvalue, gfc_expr *rvalue,
+ 		     &rvalue->where);
+ 	  return false;
+ 	}
++
++      for (ref = rvalue->ref; ref; ref = ref->next)
++	{
++	  switch (ref->type)
++	    {
++	    case REF_ARRAY:
++	      for (int n = 0; n < ref->u.ar.dimen; n++)
++		if (!gfc_is_constant_expr (ref->u.ar.start[n])
++		    || !gfc_is_constant_expr (ref->u.ar.end[n])
++		    || !gfc_is_constant_expr (ref->u.ar.stride[n]))
++		  {
++		    gfc_error ("Every subscript of target specification "
++			       "at %L must be a constant expression",
++			       &ref->u.ar.where);
++		    return false;
++		  }
++	      break;
++
++	    case REF_SUBSTRING:
++	      if (!gfc_is_constant_expr (ref->u.ss.start)
++		  || !gfc_is_constant_expr (ref->u.ss.end))
++		{
++		  gfc_error ("Substring starting and ending points of target "
++			     "specification at %L must be constant expressions",
++			     &ref->u.ss.start->where);
++		  return false;
++		}
++	      break;
++
++	    default:
++	      break;
++	    }
++	}
+     }
+   else
+     {
+@@ -5088,7 +5182,8 @@ gfc_get_variable_expr (gfc_symtree *var)
  
    if (var->n.sym->attr.flavor != FL_PROCEDURE
        && ((var->n.sym->as != NULL && var->n.sym->ts.type != BT_CLASS)
@@ -15890,7 +15961,7 @@ index f946145eb1b..278b07135e3 100644
  	       && CLASS_DATA (var->n.sym)->as)))
      {
        e->rank = var->n.sym->ts.type == BT_CLASS
-@@ -6168,10 +6229,13 @@ gfc_check_vardef_context (gfc_expr* e, bool pointer, bool alloc_obj,
+@@ -6168,10 +6263,13 @@ gfc_check_vardef_context (gfc_expr* e, bool pointer, bool alloc_obj,
      {
        if (ptr_component && ref->type == REF_COMPONENT)
  	check_intentin = false;
@@ -16194,7 +16265,7 @@ index 3e19d5fdfbe..1501abfffd2 100644
      if (s->do_variable == st)
        {
 diff --git a/gcc/fortran/primary.c b/gcc/fortran/primary.c
-index 8edc83a42c3..78c4b634db3 100644
+index 8edc83a42c3..56b05795c27 100644
 --- a/gcc/fortran/primary.c
 +++ b/gcc/fortran/primary.c
 @@ -2172,6 +2172,7 @@ gfc_match_varspec (gfc_expr *primary, int equiv_flag, bool sub_flag,
@@ -16253,6 +16324,36 @@ index 8edc83a42c3..78c4b634db3 100644
  	  else if (!comp->attr.artificial)
  	    {
  	      gfc_error ("No initializer for component %qs given in the"
+@@ -3365,6 +3376,7 @@ gfc_match_structure_constructor (gfc_symbol *sym, gfc_expr **result)
+   match m;
+   gfc_expr *e;
+   gfc_symtree *symtree;
++  bool t = true;
+ 
+   gfc_get_ha_sym_tree (sym->name, &symtree);
+ 
+@@ -3395,10 +3407,18 @@ gfc_match_structure_constructor (gfc_symbol *sym, gfc_expr **result)
+      in the structure constructor must be a constant.  Try to reduce the
+      expression here.  */
+   if (gfc_in_match_data ())
+-    gfc_reduce_init_expr (e);
++    t = gfc_reduce_init_expr (e);
+ 
+-  *result = e;
+-  return MATCH_YES;
++  if (t)
++    {
++      *result = e;
++      return MATCH_YES;
++    }
++  else
++    {
++      gfc_free_expr (e);
++      return MATCH_ERROR;
++    }
+ }
+ 
+ 
 diff --git a/gcc/fortran/resolve.c b/gcc/fortran/resolve.c
 index 7ca5f44f419..9104b17988b 100644
 --- a/gcc/fortran/resolve.c
@@ -18082,10 +18183,27 @@ index 99edad8a950..f33489286a9 100644
  
  #endif
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index 2913065bf31..929e7587d1f 100644
+index 2913065bf31..0ddc4c3dc4a 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,1773 @@
+@@ -1,3 +1,1790 @@
++2022-01-25  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2022-01-09  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/101762
++	* gfortran.dg/pr101762.f90: New test.
++
++2022-01-25  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2022-01-13  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/67804
++	* gfortran.dg/pr93604.f90: Adjust to changed diagnostics.
++	* gfortran.dg/pr67804.f90: New test.
++
 +2022-01-21  Harald Anlauf  <anlauf@gmx.de>
 +
 +	Backported from master:
@@ -28259,6 +28377,35 @@ index 00000000000..b16af00d919
 +    f = size (z% c)      ! { dg-error "must be an array" }
 +  end
 +end
+diff --git a/gcc/testsuite/gfortran.dg/pr101762.f90 b/gcc/testsuite/gfortran.dg/pr101762.f90
+new file mode 100644
+index 00000000000..9ffd7540d81
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/pr101762.f90
+@@ -0,0 +1,23 @@
++! { dg-do compile }
++! PR fortran/101762 - ICE on non-constant pointer initialization targets
++! Contributed by G.Steinmetz
++
++program p
++  integer,      target  :: a(3) = [7, 8, 9]
++  integer,      pointer :: x    => a(3)
++  integer,      pointer :: y    => a(n())  ! { dg-error "constant expression" }
++  integer,      pointer :: z(:) => a(:n()) ! { dg-error "constant expression" }
++  character(7), target  :: c    = "abcdefg"
++  character(3), pointer :: c0   => c(2:4)
++  character(3), pointer :: c1   => c(m():) ! { dg-error "constant expression" }
++  character(3), pointer :: c2   => c(:m()) ! { dg-error "constant expression" }
++  print *, x, y
++contains
++  pure integer function k ()
++    k = 2
++  end function k
++  subroutine s ()
++    integer, pointer :: yy => a(k()) ! { dg-error "constant expression" }
++    print *, yy
++  end subroutine s
++end
 diff --git a/gcc/testsuite/gfortran.dg/pr102332.f90 b/gcc/testsuite/gfortran.dg/pr102332.f90
 new file mode 100644
 index 00000000000..f9557094083
@@ -28693,6 +28840,37 @@ index 00000000000..1131e8167b1
 +  y% a = sqrt (x% a) + z - w + root (x% a)
 +  y% a = real_root (x% a)
 +end program test
+diff --git a/gcc/testsuite/gfortran.dg/pr67804.f90 b/gcc/testsuite/gfortran.dg/pr67804.f90
+new file mode 100644
+index 00000000000..e2009a5bfdb
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/pr67804.f90
+@@ -0,0 +1,25 @@
++! { dg-do compile }
++! PR fortran/67804 - ICE on bad type in structure constructor in DATA statement
++! Contributed by G.Steinmetz
++
++program p
++  type t
++     character :: c
++  end type
++  type u
++     character, pointer :: c
++  end type
++  type(t) :: x0, x1, x2, x3, x4, x5, x6, x7, x8, x9
++  type(u) :: y6
++  data x0 /t('a')/     ! OK
++  data x1 /t(1)/       ! { dg-error "Cannot convert" }
++  data x2 /t(1.)/      ! { dg-error "Cannot convert" }
++  data x3 /t(1d1)/     ! { dg-error "Cannot convert" }
++  data x4 /t((0.,1.))/ ! { dg-error "Cannot convert" }
++  data x5 /t(.true.)/  ! { dg-error "Cannot convert" }
++  data x6 /t(null())/  ! { dg-error "neither a POINTER nor ALLOCATABLE" }
++  data x7 /t(['1'])/   ! { dg-error "The rank of the element" }
++  data x8 /t([1])/     ! { dg-error "Cannot convert" }
++  data x9 /t(z'0')/    ! { dg-error "Cannot convert" }
++  data y6 /u(null())/  ! OK
++end
 diff --git a/gcc/testsuite/gfortran.dg/pr68019.f90 b/gcc/testsuite/gfortran.dg/pr68019.f90
 index 2e304c3a260..77fd55bd331 100644
 --- a/gcc/testsuite/gfortran.dg/pr68019.f90
@@ -28745,6 +28923,18 @@ index 00000000000..3a147e22711
 +  integer, parameter :: u = ubound (karray,1)
 +  if (l /= 3 .or. u /= 7 .or. i /= 5) stop 1
 +end
+diff --git a/gcc/testsuite/gfortran.dg/pr93604.f90 b/gcc/testsuite/gfortran.dg/pr93604.f90
+index 2c695d37829..4040155120c 100644
+--- a/gcc/testsuite/gfortran.dg/pr93604.f90
++++ b/gcc/testsuite/gfortran.dg/pr93604.f90
+@@ -5,6 +5,6 @@ program p
+       integer :: a
+    end type
+    type(t) :: x
+-   data x /t(z'1')/ ! { dg-error "cannot appear in a structure constructor" }
++   data x /t(z'1')/ ! { dg-error "BOZ" }
+ end
+ 
 diff --git a/gcc/testsuite/gfortran.dg/pr95502.f90 b/gcc/testsuite/gfortran.dg/pr95502.f90
 new file mode 100644
 index 00000000000..d40fd9a5508
