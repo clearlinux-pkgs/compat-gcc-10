@@ -82,7 +82,10 @@ François Dumont (3):
       libstdc++: Fix unordered containers move constructors noexcept qualification
       libstdc++: [_GLIBCXX_DEBUG] Fix management of __dp_sign_max_size [PR 99402]
 
-GCC Administrator (289):
+GCC Administrator (292):
+      Daily bump.
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -652,7 +655,7 @@ Martin Jambor (3):
       sra: Fix corner case of total scalarization with virtual inheritance (PR 102505)
       ipa-sra: Check also ECF_LOOPING_CONST_OR_PURE when evaluating calls
 
-Martin Liska (13):
+Martin Liska (14):
       Sync gcc-changelog scripts.
       gcc-changelog: sync scripts.
       contrib: add git-commit-mklog wrapper
@@ -666,6 +669,7 @@ Martin Liska (13):
       git-backport: support renamed .cc files in commit message.
       git scripts: sync from master.
       gcc-changelog: sync from master.
+      Sync git aliases from master.
 
 Martin Sebor (2):
       PR middle-end/100571 - bogus -Wstringop-overflow with VLA of elements larger than byte
@@ -902,10 +906,16 @@ index a795096f038..e91367a7112 100644
  STAGE2_CXXFLAGS += -D__USE_MINGW_ACCESS
  STAGE3_CXXFLAGS += -D__USE_MINGW_ACCESS
 diff --git a/contrib/ChangeLog b/contrib/ChangeLog
-index cfcc8b12b53..a79c9dcef55 100644
+index cfcc8b12b53..1fa9549c73c 100644
 --- a/contrib/ChangeLog
 +++ b/contrib/ChangeLog
-@@ -1,3 +1,75 @@
+@@ -1,3 +1,81 @@
++2022-01-27  Martin Liska  <mliska@suse.cz>
++
++	* gcc-git-customization.sh: Sync from master.
++	* git-descr.sh: New file.
++	* git-undescr.sh: New file.
++
 +2022-01-24  Martin Liska  <mliska@suse.cz>
 +
 +	* gcc-changelog/git_commit.py: Sync from master.
@@ -2728,6 +2738,55 @@ index ffd13682d5c..95ad961f2d3 100644
 ++xxx
 +-- 
 +2.34.1
+diff --git a/contrib/gcc-git-customization.sh b/contrib/gcc-git-customization.sh
+index a932bf8c06a..b24948d9874 100755
+--- a/contrib/gcc-git-customization.sh
++++ b/contrib/gcc-git-customization.sh
+@@ -22,14 +22,24 @@ git config alias.svn-rev '!f() { rev=$1; shift; git log --all --grep="^From-SVN:
+ 
+ # Add git commands to convert git commit to monotonically increasing revision number
+ # and vice versa
+-git config alias.gcc-descr \!"f() { if test \${1:-no} = --full; then c=\${2:-master}; r=\$(git describe --all --abbrev=40 --match 'basepoints/gcc-[0-9]*' \$c | sed -n 's,^\\(tags/\\)\\?basepoints/gcc-,r,p'); expr match \${r:-no} '^r[0-9]\\+\$' >/dev/null && r=\${r}-0-g\$(git rev-parse \${2:-master}); else c=\${1:-master}; r=\$(git describe --all --match 'basepoints/gcc-[0-9]*' \$c | sed -n 's,^\\(tags/\\)\\?basepoints/gcc-\\([0-9]\\+\\)-\\([0-9]\\+\\)-g[0-9a-f]*\$,r\\2-\\3,p;s,^\\(tags/\\)\\?basepoints/gcc-\\([0-9]\\+\\)\$,r\\2-0,p'); fi; if test -n \$r; then o=\$(git config --get gcc-config.upstream); rr=\$(echo \$r | sed -n 's,^r\\([0-9]\\+\\)-[0-9]\\+\\(-g[0-9a-f]\\+\\)\\?\$,\\1,p'); if git rev-parse --verify --quiet \${o:-origin}/releases/gcc-\$rr >/dev/null; then m=releases/gcc-\$rr; else m=master; fi; git merge-base --is-ancestor \$c \${o:-origin}/\$m && \echo \${r}; fi; }; f"
+-git config alias.gcc-undescr \!"f() { o=\$(git config --get gcc-config.upstream); r=\$(echo \$1 | sed -n 's,^r\\([0-9]\\+\\)-[0-9]\\+\$,\\1,p'); n=\$(echo \$1 | sed -n 's,^r[0-9]\\+-\\([0-9]\\+\\)\$,\\1,p'); test -z \$r && echo Invalid id \$1 && exit 1; h=\$(git rev-parse --verify --quiet \${o:-origin}/releases/gcc-\$r); test -z \$h && h=\$(git rev-parse --verify --quiet \${o:-origin}/master); p=\$(git describe --all --match 'basepoints/gcc-'\$r \$h | sed -n 's,^\\(tags/\\)\\?basepoints/gcc-[0-9]\\+-\\([0-9]\\+\\)-g[0-9a-f]*\$,\\2,p;s,^\\(tags/\\)\\?basepoints/gcc-[0-9]\\+\$,0,p'); git rev-parse --verify \$h~\$(expr \$p - \$n); }; f"
++git config alias.gcc-descr '!f() { "`git rev-parse --show-toplevel`/contrib/git-descr.sh" $@; } ; f'
++git config alias.gcc-undescr '!f() { "`git rev-parse --show-toplevel`/contrib/git-undescr.sh" $@; } ; f'
++
++git config alias.gcc-verify '!f() { "`git rev-parse --show-toplevel`/contrib/gcc-changelog/git_check_commit.py" $@; } ; f'
++git config alias.gcc-backport '!f() { "`git rev-parse --show-toplevel`/contrib/git-backport.py" $@; } ; f'
++git config alias.gcc-fix-changelog '!f() { "`git rev-parse --show-toplevel`/contrib/git-fix-changelog.py" $@; } ; f'
++git config alias.gcc-mklog '!f() { "`git rev-parse --show-toplevel`/contrib/mklog.py" $@; } ; f'
++git config alias.gcc-commit-mklog '!f() { "`git rev-parse --show-toplevel`/contrib/git-commit-mklog.py" "$@"; }; f'
+ 
+ # Make diff on MD files use "(define" as a function marker.
+ # Use this in conjunction with a .gitattributes file containing
+ # *.md    diff=md
+ git config diff.md.xfuncname '^\(define.*$'
+ 
++# Tell git send-email where patches go.
++# ??? Maybe also set sendemail.tocmd to guess from MAINTAINERS?
++git config sendemail.to 'gcc-patches@gcc.gnu.org'
++
+ set_user=$(git config --get "user.name")
+ set_email=$(git config --get "user.email")
+ 
+@@ -122,6 +132,17 @@ echo "(local branches starting <prefix>/ can be pushed directly to your"
+ ask "personal area on the gcc server)" $old_pfx new_pfx
+ git config "gcc-config.userpfx" "$new_pfx"
+ 
++echo
++ask "Install prepare-commit-msg git hook for 'git commit-mklog' alias" yes dohook
++if [ "x$dohook" = xyes ]; then
++    hookdir=`git rev-parse --git-path hooks`
++    if [ -f "$hookdir/prepare-commit-msg" ]; then
++	echo " Moving existing prepare-commit-msg hook to prepare-commit-msg.bak"
++	mv "$hookdir/prepare-commit-msg" "$hookdir/prepare-commit-msg.bak"
++    fi
++    install -c "`git rev-parse --show-toplevel`/contrib/prepare-commit-msg" "$hookdir"
++fi
++
+ # Scan the existing settings to see if there are any we need to rewrite.
+ vendors=$(git config --get-all "remote.${upstream}.fetch" "refs/vendors/" | sed -r "s:.*refs/vendors/([^/]+)/.*:\1:" | sort | uniq)
+ url=$(git config --get "remote.${upstream}.url")
 diff --git a/contrib/git-backport.py b/contrib/git-backport.py
 index 2b8e4686719..fc369d97754 100755
 --- a/contrib/git-backport.py
@@ -2851,6 +2910,49 @@ index 00000000000..eda3fc4a892
 +
 +    commit_args = ' '.join(unknown_args)
 +    subprocess.run(f'git commit {commit_args}', shell=True, env=myenv)
+diff --git a/contrib/git-descr.sh b/contrib/git-descr.sh
+new file mode 100755
+index 00000000000..eb258148a66
+--- /dev/null
++++ b/contrib/git-descr.sh
+@@ -0,0 +1,37 @@
++#!/bin/sh
++
++# Script to describe a GCC revision based on git hash
++
++short=no
++long=no
++c=master
++
++for arg in "$@"
++do
++    case "$arg" in
++      --short) short=yes long=no
++	;;
++      --long|--full) long=yes short=no
++	;;
++      *) c=$arg
++    esac
++done
++
++if test x$short = xyes; then
++    r=$(git describe --all --match 'basepoints/gcc-[0-9]*' $c | sed -n 's,^\(tags/\)\?basepoints/gcc-\([0-9]\+\)-\([0-9]\+\)-g[0-9a-f]*$,r\2-\3,p;s,^\(tags/\)\?basepoints/gcc-\([0-9]\+\)$,r\2-0,p');
++elif test x$long = xyes; then
++    r=$(git describe --all --abbrev=40 --match 'basepoints/gcc-[0-9]*' $c | sed -n 's,^\(tags/\)\?basepoints/gcc-,r,p')
++else
++    r=$(git describe --all --abbrev=14 --match 'basepoints/gcc-[0-9]*' $c | sed -n 's,^\(tags/\)\?basepoints/gcc-,r,p');
++    expr match ${r:-no} 'r[0-9]\+$' >/dev/null && r=${r}-0-g$(git rev-parse $c);
++fi;
++if test -n $r; then
++    o=$(git config --get gcc-config.upstream);
++    rr=$(echo $r | sed -n 's,^r\([0-9]\+\)-[0-9]\+\(-g[0-9a-f]\+\)\?$,\1,p');
++    if git rev-parse --verify --quiet ${o:-origin}/releases/gcc-$rr >/dev/null; then
++	m=releases/gcc-$rr;
++    else
++	m=master;
++    fi;
++    git merge-base --is-ancestor $c ${o:-origin}/$m && echo ${r};
++fi;
 diff --git a/contrib/git-fix-changelog.py b/contrib/git-fix-changelog.py
 new file mode 100755
 index 00000000000..c15e45c11fa
@@ -2949,6 +3051,25 @@ index 00000000000..c15e45c11fa
 +                print(f'Commit message updated: {replaced} file(s) renamed.')
 +        else:
 +            print('Commit message has not been updated.')
+diff --git a/contrib/git-undescr.sh b/contrib/git-undescr.sh
+new file mode 100755
+index 00000000000..9d882a6814e
+--- /dev/null
++++ b/contrib/git-undescr.sh
+@@ -0,0 +1,13 @@
++#!/bin/sh
++
++# Script to undescribe a GCC revision
++
++o=$(git config --get gcc-config.upstream);
++r=$(echo $1 | sed -n 's,^r\([0-9]\+\)-[0-9]\+\(-g[0-9a-f]\+\)\?$,\1,p');
++n=$(echo $1 | sed -n 's,^r[0-9]\+-\([0-9]\+\)\(-g[0-9a-f]\+\)\?$,\1,p');
++
++test -z $r && echo Invalid id $1 && exit 1;
++h=$(git rev-parse --verify --quiet ${o:-origin}/releases/gcc-$r);
++test -z $h && h=$(git rev-parse --verify --quiet ${o:-origin}/master);
++p=$(git describe --all --match 'basepoints/gcc-'$r $h | sed -n 's,^\(tags/\)\?basepoints/gcc-[0-9]\+-\([0-9]\+\)-g[0-9a-f]*$,\2,p;s,^\(tags/\)\?basepoints/gcc-[0-9]\+$,0,p');
++git rev-parse --verify $h~$(expr $p - $n);
 diff --git a/contrib/mklog.py b/contrib/mklog.py
 new file mode 100755
 index 00000000000..674c1dcd78b
@@ -14553,10 +14674,20 @@ index 6e635382fb4..7b4c9c0eb7f 100644
  	      tree ntype = TYPE_UNSIGNED (type)
  			   ? signed_type_for (type)
 diff --git a/gcc/fortran/ChangeLog b/gcc/fortran/ChangeLog
-index aa5932be872..2248498be9f 100644
+index aa5932be872..b21f7d8120b 100644
 --- a/gcc/fortran/ChangeLog
 +++ b/gcc/fortran/ChangeLog
-@@ -1,3 +1,648 @@
+@@ -1,3 +1,658 @@
++2022-01-26  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2022-01-25  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/104227
++	* check.c (gfc_calculate_transfer_sizes): Fix checking of arrays
++	passed as MOLD argument to the TRANSFER intrinsic for having
++	storage size zero.
++
 +2022-01-25  Harald Anlauf  <anlauf@gmx.de>
 +
 +	Backported from master:
@@ -18193,10 +18324,18 @@ index 99edad8a950..f33489286a9 100644
  
  #endif
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index 2913065bf31..0ddc4c3dc4a 100644
+index 2913065bf31..e67bcddb4a1 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,1790 @@
+@@ -1,3 +1,1798 @@
++2022-01-26  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2022-01-25  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/104227
++	* gfortran.dg/transfer_check_6.f90: New test.
++
 +2022-01-25  Harald Anlauf  <anlauf@gmx.de>
 +
 +	Backported from master:
