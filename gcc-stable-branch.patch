@@ -82,7 +82,8 @@ François Dumont (3):
       libstdc++: Fix unordered containers move constructors noexcept qualification
       libstdc++: [_GLIBCXX_DEBUG] Fix management of __dp_sign_max_size [PR 99402]
 
-GCC Administrator (292):
+GCC Administrator (293):
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -388,7 +389,7 @@ H.J. Lu (4):
 Hafiz Abid Qadeer (1):
       [OpenACC] Fix an ICE where a loop with GT condition is collapsed.
 
-Harald Anlauf (50):
+Harald Anlauf (52):
       PR fortran/63797 - Bogus ambiguous reference to 'sqrt'
       PR fortran/100154 - ICE in gfc_conv_procedure_call, at fortran/trans-expr.c:6131
       PR fortran/100274 - ICE in gfc_conv_procedure_call, at fortran/trans-expr.c:6131
@@ -439,6 +440,8 @@ Harald Anlauf (50):
       Fortran: fix error recovery on bad structure constructor in DATA statement
       Fortran: reject invalid non-constant pointer initialization targets
       Fortran: MOLD argument to TRANSFER intrinsic having storage size zero
+      Fortran: fix simplification of TRANSFER for zero-sized character array result
+      Fortran: fix ICE and wrong code with TRANSFER and CHARACTER(kind=4)
 
 Iain Buclaw (19):
       d: Fix ICE in when formating a string with '%' or '`' characters (PR98457)
@@ -14674,10 +14677,33 @@ index 6e635382fb4..7b4c9c0eb7f 100644
  	      tree ntype = TYPE_UNSIGNED (type)
  			   ? signed_type_for (type)
 diff --git a/gcc/fortran/ChangeLog b/gcc/fortran/ChangeLog
-index aa5932be872..b21f7d8120b 100644
+index aa5932be872..c45491958df 100644
 --- a/gcc/fortran/ChangeLog
 +++ b/gcc/fortran/ChangeLog
-@@ -1,3 +1,658 @@
+@@ -1,3 +1,681 @@
++2022-01-29  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2022-01-15  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/83079
++	* target-memory.c (gfc_interpret_character): Result length is
++	in bytes and thus depends on the character kind.
++	* trans-intrinsic.c (gfc_conv_intrinsic_transfer): Compute correct
++	string length for the result of the TRANSFER intrinsic and for
++	temporaries for the different character kinds.
++
++2022-01-29  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2022-01-22  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/104127
++	* simplify.c (gfc_simplify_transfer): Ensure that the result
++	typespec is set up for TRANSFER with MOLD of type CHARACTER
++	including character length even if the result is a zero-sized
++	array.
++
 +2022-01-26  Harald Anlauf  <anlauf@gmx.de>
 +
 +	Backported from master:
@@ -16624,7 +16650,7 @@ index 7ca5f44f419..9104b17988b 100644
        gfc_error ("ELEMENTAL function %qs at %L must have a scalar "
  		 "result", sym->name, &sym->declared_at);
 diff --git a/gcc/fortran/simplify.c b/gcc/fortran/simplify.c
-index d28aa7a3c16..8d40fdf251a 100644
+index d28aa7a3c16..bce6f066ee6 100644
 --- a/gcc/fortran/simplify.c
 +++ b/gcc/fortran/simplify.c
 @@ -2077,6 +2077,9 @@ gfc_simplify_cshift (gfc_expr *array, gfc_expr *shift, gfc_expr *dim)
@@ -16684,7 +16710,27 @@ index d28aa7a3c16..8d40fdf251a 100644
    if (dim == NULL)
      {
        if (!gfc_array_size (array, &size))
-@@ -8071,6 +8091,9 @@ gfc_simplify_transpose (gfc_expr *matrix)
+@@ -8031,7 +8051,18 @@ gfc_simplify_transfer (gfc_expr *source, gfc_expr *mold, gfc_expr *size)
+      set even for array expressions, in order to pass this information into
+      gfc_target_interpret_expr.  */
+   if (result->ts.type == BT_CHARACTER && gfc_is_constant_expr (mold_element))
+-    result->value.character.length = mold_element->value.character.length;
++    {
++      result->value.character.length = mold_element->value.character.length;
++
++      /* Let the typespec of the result inherit the string length.
++	 This is crucial if a resulting array has size zero.  */
++      if (mold_element->ts.u.cl->length)
++	result->ts.u.cl->length = gfc_copy_expr (mold_element->ts.u.cl->length);
++      else
++	result->ts.u.cl->length =
++	  gfc_get_int_expr (gfc_charlen_int_kind, NULL,
++			    mold_element->value.character.length);
++    }
+ 
+   /* Set the number of elements in the result, and determine its size.  */
+ 
+@@ -8071,6 +8102,9 @@ gfc_simplify_transpose (gfc_expr *matrix)
  
    gcc_assert (matrix->rank == 2);
  
@@ -16695,9 +16741,18 @@ index d28aa7a3c16..8d40fdf251a 100644
  			       &matrix->where);
    result->rank = 2;
 diff --git a/gcc/fortran/target-memory.c b/gcc/fortran/target-memory.c
-index 7f209913028..a3ef392b5d7 100644
+index 7f209913028..82d762cbd1f 100644
 --- a/gcc/fortran/target-memory.c
 +++ b/gcc/fortran/target-memory.c
+@@ -486,7 +486,7 @@ gfc_interpret_character (unsigned char *buffer, size_t buffer_size,
+ 
+   result->value.character.string[result->value.character.length] = '\0';
+ 
+-  return result->value.character.length;
++  return size_character (result->value.character.length, result->ts.kind);
+ }
+ 
+ 
 @@ -534,6 +534,9 @@ gfc_interpret_derived (unsigned char *buffer, size_t buffer_size, gfc_expr *resu
  	{
  	  int n;
@@ -16951,7 +17006,7 @@ index c2321a9ff5f..c0ade411991 100644
    realloc_flag = flag_realloc_lhs
  		 && gfc_is_reallocatable_lhs (expr1)
 diff --git a/gcc/fortran/trans-intrinsic.c b/gcc/fortran/trans-intrinsic.c
-index 29f8f932aa3..aa396691c9c 100644
+index 29f8f932aa3..9a4aa08f889 100644
 --- a/gcc/fortran/trans-intrinsic.c
 +++ b/gcc/fortran/trans-intrinsic.c
 @@ -4411,6 +4411,18 @@ rad2deg (int kind)
@@ -17072,7 +17127,45 @@ index 29f8f932aa3..aa396691c9c 100644
    atan2d = build_call_expr_loc (input_location, atan2d, 2, args[0], args[1]);
  
    se->expr = fold_build2_loc (input_location, MULT_EXPR, type, atan2d,
-@@ -8822,7 +8826,8 @@ gfc_conv_associated (gfc_se *se, gfc_expr *expr)
+@@ -8451,7 +8455,8 @@ gfc_conv_intrinsic_transfer (gfc_se * se, gfc_expr * expr)
+     {
+     case BT_CHARACTER:
+       tmp = size_of_string_in_bytes (arg->expr->ts.kind, argse.string_length);
+-      mold_type = gfc_get_character_type_len (arg->expr->ts.kind, tmp);
++      mold_type = gfc_get_character_type_len (arg->expr->ts.kind,
++					      argse.string_length);
+       break;
+     case BT_CLASS:
+       tmp = gfc_class_vtab_size_get (argse.expr);
+@@ -8553,7 +8558,13 @@ gfc_conv_intrinsic_transfer (gfc_se * se, gfc_expr * expr)
+ 
+   se->expr = info->descriptor;
+   if (expr->ts.type == BT_CHARACTER)
+-    se->string_length = fold_convert (gfc_charlen_type_node, dest_word_len);
++    {
++      tmp = fold_convert (gfc_charlen_type_node,
++			  TYPE_SIZE_UNIT (gfc_get_char_type (expr->ts.kind)));
++      se->string_length = fold_build2_loc (input_location, TRUNC_DIV_EXPR,
++					   gfc_charlen_type_node,
++					   dest_word_len, tmp);
++    }
+ 
+   return;
+ 
+@@ -8607,7 +8618,11 @@ scalar_transfer:
+       gfc_add_expr_to_block (&se->post, tmp);
+ 
+       se->expr = tmpdecl;
+-      se->string_length = fold_convert (gfc_charlen_type_node, dest_word_len);
++      tmp = fold_convert (gfc_charlen_type_node,
++			  TYPE_SIZE_UNIT (gfc_get_char_type (expr->ts.kind)));
++      se->string_length = fold_build2_loc (input_location, TRUNC_DIV_EXPR,
++					   gfc_charlen_type_node,
++					   dest_word_len, tmp);
+     }
+   else
+     {
+@@ -8822,7 +8837,8 @@ gfc_conv_associated (gfc_se *se, gfc_expr *expr)
    else
      {
        /* An optional target.  */
@@ -17082,7 +17175,7 @@ index 29f8f932aa3..aa396691c9c 100644
  	gfc_add_data_component (arg2->expr);
  
        if (scalar)
-@@ -8843,6 +8848,11 @@ gfc_conv_associated (gfc_se *se, gfc_expr *expr)
+@@ -8843,6 +8859,11 @@ gfc_conv_associated (gfc_se *se, gfc_expr *expr)
  	      && arg2->expr->symtree->n.sym->attr.dummy)
  	    arg2se.expr = build_fold_indirect_ref_loc (input_location,
  						       arg2se.expr);
@@ -18324,10 +18417,27 @@ index 99edad8a950..f33489286a9 100644
  
  #endif
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index 2913065bf31..e67bcddb4a1 100644
+index 2913065bf31..78880e05932 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,1798 @@
+@@ -1,3 +1,1815 @@
++2022-01-29  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2022-01-15  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/83079
++	* gfortran.dg/transfer_char_kind4.f90: New test.
++
++2022-01-29  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2022-01-22  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/104127
++	* gfortran.dg/transfer_simplify_11.f90: Fix logic.
++	* gfortran.dg/transfer_simplify_13.f90: New test.
++
 +2022-01-26  Harald Anlauf  <anlauf@gmx.de>
 +
 +	Backported from master:
@@ -29387,6 +29497,127 @@ index 0d5e3d75e88..83e788a55a6 100644
  c = (/ c0(1)(1:5) /)
  do i=1,5
     if (c(1)(i:i) /= c1(i)) STOP 2
+diff --git a/gcc/testsuite/gfortran.dg/transfer_char_kind4.f90 b/gcc/testsuite/gfortran.dg/transfer_char_kind4.f90
+new file mode 100644
+index 00000000000..5f1fe691318
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/transfer_char_kind4.f90
+@@ -0,0 +1,115 @@
++! { dg-do run }
++! PR fortran/83079 - ICE and wrong code with TRANSFER and character(kind=4)
++! Exercise TRANSFER intrinsic to check character result length and shape
++
++program p
++  implicit none
++  character(len=*,kind=4), parameter :: a = 4_'ABCDEF'
++  character(len=6,kind=4)            :: b = 4_'abcdef'
++  character(len=*,kind=4), parameter :: c = 4_'XY'
++  character(len=2,kind=4)            :: d = 4_'xy'
++  integer :: k, l
++  k = len (a)
++  l = len (c)
++
++! print *, transfer(4_'xy', [4_'a'])
++
++  ! TRANSFER with rank-0 result
++  call chk0 (transfer (4_'ABCD', 4_'XY'), 2, 1)
++  call chk0 (transfer (4_'ABCD', c     ), l, 2)
++  call chk0 (transfer (4_'ABCD', d     ), l, 3)
++  call chk0 (transfer (a       , 4_'XY'), 2, 4)
++  call chk0 (transfer (a       , c     ), l, 5)
++  call chk0 (transfer (a       , d     ), l, 6)
++  call chk0 (transfer (b       , 4_'XY'), 2, 7)
++  call chk0 (transfer (b       , c     ), l, 8)
++  call chk0 (transfer (b       , d     ), l, 9)
++
++  call chk0 (transfer ([4_'ABCD'], 4_'XY'), 2, 11)
++  call chk0 (transfer ([4_'ABCD'], c     ), l, 12)
++  call chk0 (transfer ([4_'ABCD'], d     ), l, 13)
++  call chk0 (transfer ([a       ], 4_'XY'), 2, 14)
++  call chk0 (transfer ([a       ], c     ), l, 15)
++  call chk0 (transfer ([a       ], d     ), l, 16)
++  call chk0 (transfer ([b       ], 4_'XY'), 2, 17)
++  call chk0 (transfer ([b       ], c     ), l, 18)
++  call chk0 (transfer ([b       ], d     ), l, 19)
++
++  ! TRANSFER with rank-1 result
++  call chk1 (transfer (4_'ABCD', [4_'XY']), 2,   2, 21)
++  call chk1 (transfer (4_'ABCD', [c]     ), 2,   2, 22)
++  call chk1 (transfer (4_'ABCD', [d]     ), 2,   2, 23)
++  call chk1 (transfer (a       , [4_'XY']), 2, k/2, 24)
++  call chk1 (transfer (a       , [c]     ), l, k/l, 25)
++  call chk1 (transfer (a       , [d]     ), l, k/l, 26)
++  call chk1 (transfer (b       , [4_'XY']), 2, k/2, 27)
++  call chk1 (transfer (b       , [c]     ), l, k/l, 28)
++  call chk1 (transfer (b       , [d]     ), l, k/l, 29)
++
++  call chk1 (transfer (4_'ABCD', 4_'XY',size=2), 2, 2, 31)
++  call chk1 (transfer (4_'ABCD', c     ,size=2), 2, 2, 32)
++  call chk1 (transfer (4_'ABCD', d     ,size=2), 2, 2, 33)
++  call chk1 (transfer (a       , 4_'XY',size=3), 2, 3, 34)
++  call chk1 (transfer (a       , c     ,size=3), l, 3, 35)
++  call chk1 (transfer (a       , d     ,size=3), l, 3, 36)
++  call chk1 (transfer (b       , 4_'XY',size=3), 2, 3, 37)
++  call chk1 (transfer (b       , c     ,size=3), l, 3, 38)
++  call chk1 (transfer (b       , d     ,size=3), l, 3, 39)
++
++  call chk1 (transfer (4_'ABCD', [4_'XY'],size=2), 2, 2, 41)
++  call chk1 (transfer (4_'ABCD', [c]     ,size=2), 2, 2, 42)
++  call chk1 (transfer (4_'ABCD', [d]     ,size=2), 2, 2, 43)
++  call chk1 (transfer (a       , [4_'XY'],size=3), 2, 3, 44)
++  call chk1 (transfer (a       , [c]     ,size=3), l, 3, 45)
++  call chk1 (transfer (a       , [d]     ,size=3), l, 3, 46)
++  call chk1 (transfer (b       , [4_'XY'],size=3), 2, 3, 47)
++  call chk1 (transfer (b       , [c]     ,size=3), l, 3, 48)
++  call chk1 (transfer (b       , [d]     ,size=3), l, 3, 49)
++
++  call chk1 (transfer ([4_'ABCD'], [4_'XY']), 2,   2, 51)
++  call chk1 (transfer ([4_'ABCD'], [c]     ), 2,   2, 52)
++  call chk1 (transfer ([4_'ABCD'], [d]     ), 2,   2, 53)
++  call chk1 (transfer ([a       ], [4_'XY']), 2, k/2, 54)
++  call chk1 (transfer ([a       ], [c]     ), l, k/l, 55)
++  call chk1 (transfer ([a       ], [d]     ), l, k/l, 56)
++  call chk1 (transfer ([b       ], [4_'XY']), 2, k/2, 57)
++  call chk1 (transfer ([b       ], [c]     ), l, k/l, 58)
++  call chk1 (transfer ([b       ], [d]     ), l, k/l, 59)
++
++  call chk1 (transfer (4_'ABCD', c     ,size=4/l), l, 4/l, 62)
++  call chk1 (transfer (4_'ABCD', d     ,size=4/l), l, 4/l, 63)
++  call chk1 (transfer (a       , 4_'XY',size=k/2), 2, k/2, 64)
++  call chk1 (transfer (a       , c     ,size=k/l), l, k/l, 65)
++  call chk1 (transfer (a       , d     ,size=k/l), l, k/l, 66)
++  call chk1 (transfer (b       , 4_'XY',size=k/2), 2, k/2, 67)
++  call chk1 (transfer (b       , c     ,size=k/l), l, k/l, 68)
++  call chk1 (transfer (b       , d     ,size=k/l), l, k/l, 69)
++
++contains
++  ! Validate rank-0 result
++  subroutine chk0 (str, l, stopcode)
++    character(kind=4,len=*), intent(in) :: str
++    integer,                 intent(in) :: l, stopcode
++    integer :: i, p
++    i = len  (str)
++    p = verify (str, a // b) ! Check for junk characters
++    if (i /= l .or. p > 0) then
++       print *, stopcode, "len=", i, i == l, ">", str, "<"
++       stop stopcode
++    end if
++  end subroutine chk0
++
++  ! Validate rank-1 result
++  subroutine chk1 (str, l, m, stopcode)
++    character(kind=4,len=*), intent(in) :: str(:)
++    integer,                 intent(in) :: l, m, stopcode
++    integer :: i, j, p
++    i = len  (str)
++    j = size (str)
++    p = maxval (verify (str, a // b)) ! Check for junk characters
++    if (i /= l .or. j /= m .or. p > 0) then
++       print *, stopcode, "len=", i, i == l, "size=", j, j == m, ">", str, "<"
++       stop stopcode
++    end if
++  end subroutine chk1
++end
 diff --git a/gcc/testsuite/gfortran.dg/transfer_check_6.f90 b/gcc/testsuite/gfortran.dg/transfer_check_6.f90
 new file mode 100644
 index 00000000000..dffd0913f0d
@@ -29404,6 +29635,57 @@ index 00000000000..dffd0913f0d
 +  print *, transfer(1, x) ! { dg-error "shall not have storage size 0" }
 +  x = transfer(1, x)      ! { dg-error "shall not have storage size 0" }
 +end
+diff --git a/gcc/testsuite/gfortran.dg/transfer_simplify_11.f90 b/gcc/testsuite/gfortran.dg/transfer_simplify_11.f90
+index 0911f9dba3a..409e4768a10 100644
+--- a/gcc/testsuite/gfortran.dg/transfer_simplify_11.f90
++++ b/gcc/testsuite/gfortran.dg/transfer_simplify_11.f90
+@@ -4,5 +4,5 @@
+    integer, parameter :: N = 2
+    character(len=1) :: chr(N)
+    chr = transfer(repeat("x",ncopies=N),[character(len=1) ::], N)
+-   if (chr(1) /= 'x' .and. chr(2) /= 'x') STOP 1
++   if (chr(1) /= 'x' .or. chr(2) /= 'x') STOP 1
+ end
+diff --git a/gcc/testsuite/gfortran.dg/transfer_simplify_13.f90 b/gcc/testsuite/gfortran.dg/transfer_simplify_13.f90
+new file mode 100644
+index 00000000000..bafb046afd4
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/transfer_simplify_13.f90
+@@ -0,0 +1,34 @@
++! { dg-do compile }
++! { dg-options "-fdump-tree-original" }
++! PR fortran/104127 - ICE in get_array_charlen
++! Contributed by G.Steinmetz
++
++program p
++  character(4) :: mold = "XYZ"
++  integer      :: i = 0
++  integer, parameter :: l1 = len  (transfer('ab', 'xyz', size=0))
++  integer, parameter :: s1 = size (transfer('ab', 'xyz', size=0))
++  integer, parameter :: l4 = len  (transfer(4_'abcd', 4_'xy', size=0))
++  integer, parameter :: s4 = size (transfer(4_'abcd', 4_'xy', size=0))
++  integer, parameter :: l2 = len  (transfer('ab', mold,  size=0))
++  integer, parameter :: l3 = len  (transfer('ab', mold,  size=1))
++  integer, parameter :: l5 = len  (transfer('ab',['xyz'], size=0))
++  integer, parameter :: s5 = size (transfer('ab',['xyz'], size=0))
++  call sub0 ( transfer('a', 'y', size=0) )
++  call sub1 ([transfer('a', 'y', size=0)])
++  call sub2 ([transfer('a',['y'],size=0)])
++  call sub3 ( transfer('a', 'y', size=1) )
++  call sub4 ([transfer('a', 'y', size=1)])
++  call sub5 ( transfer('a', 'y', size=i) )
++  call sub6 ( transfer(1_'abcd', 1_'xy' , size=0))
++  call sub7 ( transfer(1_'abcd',[1_'xy'], size=0))
++  call sub8 ( transfer(4_'abcd', 4_'xy' , size=0))
++  call sub9 ( transfer(4_'abcd',[4_'xy'], size=0))
++  print *, transfer('abcd', 'xy', size=0)
++  if (l1 /= 3 .or. s1 /= 0) stop 1
++  if (l4 /= 2 .or. s4 /= 0) stop 2
++  if (l2 /= 4 .or. l3 /= 4) stop 3
++  if (l5 /= 3 .or. s5 /= 0) stop 4
++end
++
++! { dg-final { scan-tree-dump-not "_gfortran_stop_numeric" "original" } }
 diff --git a/gcc/testsuite/gfortran.dg/transfer_simplify_2.f90 b/gcc/testsuite/gfortran.dg/transfer_simplify_2.f90
 index e0f3f94c4ca..b428fa64b56 100644
 --- a/gcc/testsuite/gfortran.dg/transfer_simplify_2.f90
