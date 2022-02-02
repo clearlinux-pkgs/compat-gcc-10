@@ -82,7 +82,10 @@ François Dumont (3):
       libstdc++: Fix unordered containers move constructors noexcept qualification
       libstdc++: [_GLIBCXX_DEBUG] Fix management of __dp_sign_max_size [PR 99402]
 
-GCC Administrator (293):
+GCC Administrator (296):
+      Daily bump.
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -864,8 +867,9 @@ Vladimir N. Makarov (4):
       [PR98777] LRA: Use preliminary created pseudo for in LRA elimination subpass
       [PR102842] Consider all outputs in generation of matching reloads
 
-Xi Ruoyao (1):
+Xi Ruoyao (2):
       mips: Fix up mips_atomic_assign_expand_fenv [PR94780]
+      fold-const: do not fold NaN result from non-NaN operands [PR95115]
 
 Xionghu Luo (1):
       rs6000: Expand fmod and remainder when built with fast-math [PR97142]
@@ -14655,7 +14659,7 @@ index 991b26f3341..c4bffd0f199 100644
  					target, tmode, modifier, as);
        /* FALLTHRU */
 diff --git a/gcc/fold-const.c b/gcc/fold-const.c
-index 6e635382fb4..7b4c9c0eb7f 100644
+index 6e635382fb4..23314498634 100644
 --- a/gcc/fold-const.c
 +++ b/gcc/fold-const.c
 @@ -511,7 +511,7 @@ negate_expr_p (tree t)
@@ -14676,6 +14680,24 @@ index 6e635382fb4..7b4c9c0eb7f 100644
  	    {
  	      tree ntype = TYPE_UNSIGNED (type)
  			   ? signed_type_for (type)
+@@ -1309,6 +1309,17 @@ const_binop (enum tree_code code, tree arg1, tree arg2)
+       inexact = real_arithmetic (&value, code, &d1, &d2);
+       real_convert (&result, mode, &value);
+ 
++      /* Don't constant fold this floating point operation if
++	 both operands are not NaN but the result is NaN, and
++	 flag_trapping_math.  Such operations should raise an
++	 invalid operation exception.  */
++      if (flag_trapping_math
++	  && MODE_HAS_NANS (mode)
++	  && REAL_VALUE_ISNAN (result)
++	  && !REAL_VALUE_ISNAN (d1)
++	  && !REAL_VALUE_ISNAN (d2))
++	return NULL_TREE;
++
+       /* Don't constant fold this floating point operation if
+ 	 the result has overflowed and flag_trapping_math.  */
+       if (flag_trapping_math
 diff --git a/gcc/fortran/ChangeLog b/gcc/fortran/ChangeLog
 index aa5932be872..c45491958df 100644
 --- a/gcc/fortran/ChangeLog
@@ -23135,6 +23157,37 @@ index 4f7a8fbec5e..4c785f61e59 100644
  }
 -/* { dg-warning ".'-fsanitize=kernel-address' with stack protection is not supported without '-fasan-shadow-offset=' for this target" "" { target *-*-* } 0 } */
 +/* { dg-warning ".'-fsanitize=kernel-address' with stack protection is not supported without '-fasan-shadow-offset=' for this target" "" { target riscv*-*-* } 0 } */
+diff --git a/gcc/testsuite/gcc.dg/pr95115.c b/gcc/testsuite/gcc.dg/pr95115.c
+new file mode 100644
+index 00000000000..46a95dfb698
+--- /dev/null
++++ b/gcc/testsuite/gcc.dg/pr95115.c
+@@ -0,0 +1,25 @@
++/* { dg-do run } */
++/* { dg-options "-O2 -ftrapping-math" } */
++/* { dg-add-options ieee } */
++/* { dg-require-effective-target fenv_exceptions } */
++
++#include <fenv.h>
++#include <stdlib.h>
++
++double
++x (void)
++{
++  double d = __builtin_inf ();
++  return d / d;
++}
++
++int
++main (void)
++{
++  double r = x ();
++  if (!__builtin_isnan (r))
++	abort ();
++  if (!fetestexcept (FE_INVALID))
++	abort ();
++  exit (0);
++}
 diff --git a/gcc/testsuite/gcc.dg/pr96260.c b/gcc/testsuite/gcc.dg/pr96260.c
 index 734832f021e..587afb76116 100644
 --- a/gcc/testsuite/gcc.dg/pr96260.c
