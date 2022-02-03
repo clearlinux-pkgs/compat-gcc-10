@@ -82,7 +82,8 @@ François Dumont (3):
       libstdc++: Fix unordered containers move constructors noexcept qualification
       libstdc++: [_GLIBCXX_DEBUG] Fix management of __dp_sign_max_size [PR 99402]
 
-GCC Administrator (296):
+GCC Administrator (297):
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -392,7 +393,7 @@ H.J. Lu (4):
 Hafiz Abid Qadeer (1):
       [OpenACC] Fix an ICE where a loop with GT condition is collapsed.
 
-Harald Anlauf (52):
+Harald Anlauf (53):
       PR fortran/63797 - Bogus ambiguous reference to 'sqrt'
       PR fortran/100154 - ICE in gfc_conv_procedure_call, at fortran/trans-expr.c:6131
       PR fortran/100274 - ICE in gfc_conv_procedure_call, at fortran/trans-expr.c:6131
@@ -445,6 +446,7 @@ Harald Anlauf (52):
       Fortran: MOLD argument to TRANSFER intrinsic having storage size zero
       Fortran: fix simplification of TRANSFER for zero-sized character array result
       Fortran: fix ICE and wrong code with TRANSFER and CHARACTER(kind=4)
+      Fortran: error recovery when simplifying EOSHIFT
 
 Iain Buclaw (19):
       d: Fix ICE in when formating a string with '%' or '`' characters (PR98457)
@@ -817,6 +819,9 @@ Richard Sandiford (11):
 
 Roman Zhuykov (1):
       modulo-sched: skip loops with strange register defs [PR100225]
+
+Sebastian Huber (1):
+      powerpc: Fix asm machine directive for some CPUs
 
 Segher Boessenkool (4):
       rs6000: Fix cpu selection w/ isel (PR100108)
@@ -3960,10 +3965,19 @@ index 0719d810258..a9368325816 100644
 -10.3.0
 +10.3.1
 diff --git a/gcc/ChangeLog b/gcc/ChangeLog
-index 3b1384e707f..5314842d08e 100644
+index 3b1384e707f..94ff2e74079 100644
 --- a/gcc/ChangeLog
 +++ b/gcc/ChangeLog
-@@ -1,3 +1,1483 @@
+@@ -1,3 +1,1492 @@
++2022-02-02  Xi Ruoyao  <xry111@mengyan1223.wang>
++
++	Backported from master:
++	2022-02-01  Xi Ruoyao  <xry111@mengyan1223.wang>
++
++	PR middle-end/95115
++	* fold-const.c (const_binop): Do not fold NaN result from
++	  non-NaN operands.
++
 +2022-01-15  Peter Bergner  <bergner@linux.ibm.com>
 +
 +	Backported from master:
@@ -10448,10 +10462,41 @@ index 3d5dc7d8aae..4a358646830 100644
  		    insn_entry[uid].special_handling = SH_SUBREG;
  		}
 diff --git a/gcc/config/rs6000/rs6000.c b/gcc/config/rs6000/rs6000.c
-index a6dc1156994..4b473e00be3 100644
+index a6dc1156994..5404fb18755 100644
 --- a/gcc/config/rs6000/rs6000.c
 +++ b/gcc/config/rs6000/rs6000.c
-@@ -5550,7 +5550,7 @@ rs6000_machine_from_flags (void)
+@@ -5547,10 +5547,38 @@ const char *rs6000_machine;
+ const char *
+ rs6000_machine_from_flags (void)
+ {
++  /* For some CPUs, the machine cannot be determined by ISA flags.  We have to
++     check them first.  */
++  switch (rs6000_cpu)
++    {
++    case PROCESSOR_PPC8540:
++    case PROCESSOR_PPC8548:
++      return "e500";
++
++    case PROCESSOR_PPCE300C2:
++    case PROCESSOR_PPCE300C3:
++      return "e300";
++
++    case PROCESSOR_PPCE500MC:
++      return "e500mc";
++
++    case PROCESSOR_PPCE500MC64:
++      return "e500mc64";
++
++    case PROCESSOR_PPCE5500:
++      return "e5500";
++
++    case PROCESSOR_PPCE6500:
++      return "e6500";
++
++    default:
++      break;
++    }
++
    HOST_WIDE_INT flags = rs6000_isa_flags;
  
    /* Disable the flags that should never influence the .machine selection.  */
@@ -10460,7 +10505,7 @@ index a6dc1156994..4b473e00be3 100644
  
    if ((flags & (ISA_3_1_MASKS_SERVER & ~ISA_3_0_MASKS_SERVER)) != 0)
      return "power10";
-@@ -16018,20 +16018,28 @@ rs6000_split_multireg_move (rtx dst, rtx src)
+@@ -16018,20 +16046,28 @@ rs6000_split_multireg_move (rtx dst, rtx src)
  
        if (GET_CODE (src) == UNSPEC)
  	{
@@ -10495,7 +10540,7 @@ index a6dc1156994..4b473e00be3 100644
  
  	  return;
  	}
-@@ -21351,6 +21359,14 @@ rs6000_rtx_costs (rtx x, machine_mode mode, int outer_code,
+@@ -21351,6 +21387,14 @@ rs6000_rtx_costs (rtx x, machine_mode mode, int outer_code,
  	}
        break;
  
@@ -14699,10 +14744,19 @@ index 6e635382fb4..23314498634 100644
  	 the result has overflowed and flag_trapping_math.  */
        if (flag_trapping_math
 diff --git a/gcc/fortran/ChangeLog b/gcc/fortran/ChangeLog
-index aa5932be872..c45491958df 100644
+index aa5932be872..4494dcc6323 100644
 --- a/gcc/fortran/ChangeLog
 +++ b/gcc/fortran/ChangeLog
-@@ -1,3 +1,681 @@
+@@ -1,3 +1,690 @@
++2022-02-02  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2022-02-01  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/104331
++	* simplify.c (gfc_simplify_eoshift): Avoid NULL pointer
++	dereference when shape is not set.
++
 +2022-01-29  Harald Anlauf  <anlauf@gmx.de>
 +
 +	Backported from master:
@@ -16672,7 +16726,7 @@ index 7ca5f44f419..9104b17988b 100644
        gfc_error ("ELEMENTAL function %qs at %L must have a scalar "
  		 "result", sym->name, &sym->declared_at);
 diff --git a/gcc/fortran/simplify.c b/gcc/fortran/simplify.c
-index d28aa7a3c16..bce6f066ee6 100644
+index d28aa7a3c16..f0f322c1caf 100644
 --- a/gcc/fortran/simplify.c
 +++ b/gcc/fortran/simplify.c
 @@ -2077,6 +2077,9 @@ gfc_simplify_cshift (gfc_expr *array, gfc_expr *shift, gfc_expr *dim)
@@ -16685,7 +16739,17 @@ index d28aa7a3c16..bce6f066ee6 100644
    gfc_array_size (array, &size);
    arraysize = mpz_get_ui (size);
    mpz_clear (size);
-@@ -4231,6 +4234,12 @@ simplify_bound (gfc_expr *array, gfc_expr *dim, gfc_expr *kind, int upper)
+@@ -2537,6 +2540,9 @@ gfc_simplify_eoshift (gfc_expr *array, gfc_expr *shift, gfc_expr *boundary,
+   if (arraysize == 0)
+     goto final;
+ 
++  if (array->shape == NULL)
++    goto final;
++
+   arrayvec = XCNEWVEC (gfc_expr *, arraysize);
+   array_ctor = gfc_constructor_first (array->value.constructor);
+   for (i = 0; i < arraysize; i++)
+@@ -4231,6 +4237,12 @@ simplify_bound (gfc_expr *array, gfc_expr *dim, gfc_expr *kind, int upper)
  	     || (as->type == AS_ASSUMED_SHAPE && upper)))
      return NULL;
  
@@ -16698,7 +16762,7 @@ index d28aa7a3c16..bce6f066ee6 100644
    gcc_assert (!as
  	      || (as->type != AS_DEFERRED
  		  && array->expr_type == EXPR_VARIABLE
-@@ -6759,7 +6768,13 @@ gfc_simplify_reshape (gfc_expr *source, gfc_expr *shape_exp,
+@@ -6759,7 +6771,13 @@ gfc_simplify_reshape (gfc_expr *source, gfc_expr *shape_exp,
        gfc_extract_int (e, &shape[rank]);
  
        gcc_assert (rank >= 0 && rank < GFC_MAX_DIMENSIONS);
@@ -16713,7 +16777,7 @@ index d28aa7a3c16..bce6f066ee6 100644
  
        rank++;
      }
-@@ -7379,6 +7394,7 @@ simplify_size (gfc_expr *array, gfc_expr *dim, int k)
+@@ -7379,6 +7397,7 @@ simplify_size (gfc_expr *array, gfc_expr *dim, int k)
    mpz_t size;
    gfc_expr *return_value;
    int d;
@@ -16721,7 +16785,7 @@ index d28aa7a3c16..bce6f066ee6 100644
  
    /* For unary operations, the size of the result is given by the size
       of the operand.  For binary ones, it's the size of the first operand
-@@ -7435,6 +7451,10 @@ simplify_size (gfc_expr *array, gfc_expr *dim, int k)
+@@ -7435,6 +7454,10 @@ simplify_size (gfc_expr *array, gfc_expr *dim, int k)
        return simplified;
      }
  
@@ -16732,7 +16796,7 @@ index d28aa7a3c16..bce6f066ee6 100644
    if (dim == NULL)
      {
        if (!gfc_array_size (array, &size))
-@@ -8031,7 +8051,18 @@ gfc_simplify_transfer (gfc_expr *source, gfc_expr *mold, gfc_expr *size)
+@@ -8031,7 +8054,18 @@ gfc_simplify_transfer (gfc_expr *source, gfc_expr *mold, gfc_expr *size)
       set even for array expressions, in order to pass this information into
       gfc_target_interpret_expr.  */
    if (result->ts.type == BT_CHARACTER && gfc_is_constant_expr (mold_element))
@@ -16752,7 +16816,7 @@ index d28aa7a3c16..bce6f066ee6 100644
  
    /* Set the number of elements in the result, and determine its size.  */
  
-@@ -8071,6 +8102,9 @@ gfc_simplify_transpose (gfc_expr *matrix)
+@@ -8071,6 +8105,9 @@ gfc_simplify_transpose (gfc_expr *matrix)
  
    gcc_assert (matrix->rank == 2);
  
@@ -18439,10 +18503,25 @@ index 99edad8a950..f33489286a9 100644
  
  #endif
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index 2913065bf31..78880e05932 100644
+index 2913065bf31..c3b15dcad9e 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,1815 @@
+@@ -1,3 +1,1830 @@
++2022-02-02  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2022-02-01  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/104331
++	* gfortran.dg/eoshift_9.f90: New test.
++
++2022-02-02  Xi Ruoyao  <xry111@mengyan1223.wang>
++
++	Backported from master:
++	2022-02-01  Xi Ruoyao  <xry111@mengyan1223.wang>
++
++	* gcc.dg/pr95115.c: New test.
++
 +2022-01-29  Harald Anlauf  <anlauf@gmx.de>
 +
 +	Backported from master:
@@ -28127,6 +28206,20 @@ index 00000000000..315ff9162b3
 +end program main
 +
 +
+diff --git a/gcc/testsuite/gfortran.dg/eoshift_9.f90 b/gcc/testsuite/gfortran.dg/eoshift_9.f90
+new file mode 100644
+index 00000000000..f711b04a7da
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/eoshift_9.f90
+@@ -0,0 +1,8 @@
++! { dg-do compile }
++! PR fortran/104331 - ICE in gfc_simplify_eoshift
++! Contributed by G.Steinmetz
++
++program p
++  character(3), parameter :: a(:) = ['123'] ! { dg-error "deferred shape" }
++  character(3), parameter :: b(*) = eoshift(a, 1)
++end
 diff --git a/gcc/testsuite/gfortran.dg/fmt_nonchar_3.f90 b/gcc/testsuite/gfortran.dg/fmt_nonchar_3.f90
 new file mode 100644
 index 00000000000..3b3c260ef7f
