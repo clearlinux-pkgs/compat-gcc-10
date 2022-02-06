@@ -82,7 +82,9 @@ François Dumont (3):
       libstdc++: Fix unordered containers move constructors noexcept qualification
       libstdc++: [_GLIBCXX_DEBUG] Fix management of __dp_sign_max_size [PR 99402]
 
-GCC Administrator (298):
+GCC Administrator (300):
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -394,7 +396,7 @@ H.J. Lu (4):
 Hafiz Abid Qadeer (1):
       [OpenACC] Fix an ICE where a loop with GT condition is collapsed.
 
-Harald Anlauf (53):
+Harald Anlauf (54):
       PR fortran/63797 - Bogus ambiguous reference to 'sqrt'
       PR fortran/100154 - ICE in gfc_conv_procedure_call, at fortran/trans-expr.c:6131
       PR fortran/100274 - ICE in gfc_conv_procedure_call, at fortran/trans-expr.c:6131
@@ -448,6 +450,7 @@ Harald Anlauf (53):
       Fortran: fix simplification of TRANSFER for zero-sized character array result
       Fortran: fix ICE and wrong code with TRANSFER and CHARACTER(kind=4)
       Fortran: error recovery when simplifying EOSHIFT
+      Fortran: reject simplifying TRANSFER for MOLD with storage size 0
 
 Iain Buclaw (19):
       d: Fix ICE in when formating a string with '%' or '`' characters (PR98457)
@@ -14751,10 +14754,20 @@ index 6e635382fb4..23314498634 100644
  	 the result has overflowed and flag_trapping_math.  */
        if (flag_trapping_math
 diff --git a/gcc/fortran/ChangeLog b/gcc/fortran/ChangeLog
-index aa5932be872..4494dcc6323 100644
+index aa5932be872..154d2bec480 100644
 --- a/gcc/fortran/ChangeLog
 +++ b/gcc/fortran/ChangeLog
-@@ -1,3 +1,690 @@
+@@ -1,3 +1,700 @@
++2022-02-04  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2022-02-03  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/104311
++	* check.c (gfc_calculate_transfer_sizes): Checks for case when
++	storage size of SOURCE is greater than zero while the storage size
++	of MOLD is zero and MOLD is an array shall not depend on SIZE.
++
 +2022-02-02  Harald Anlauf  <anlauf@gmx.de>
 +
 +	Backported from master:
@@ -15534,7 +15547,7 @@ index 471523fb767..e7a14e9106d 100644
  	      return false;
  	    }
 diff --git a/gcc/fortran/check.c b/gcc/fortran/check.c
-index ca6f582625d..df2fe1ff828 100644
+index ca6f582625d..44e2da65a4c 100644
 --- a/gcc/fortran/check.c
 +++ b/gcc/fortran/check.c
 @@ -289,7 +289,7 @@ bin2real (gfc_expr *x, int kind)
@@ -15853,11 +15866,13 @@ index ca6f582625d..df2fe1ff828 100644
      return false;
  
    return true;
-@@ -6124,7 +6127,7 @@ gfc_calculate_transfer_sizes (gfc_expr *source, gfc_expr *mold, gfc_expr *size,
+@@ -6123,8 +6126,8 @@ gfc_calculate_transfer_sizes (gfc_expr *source, gfc_expr *mold, gfc_expr *size,
+    * representation is not shorter than that of SOURCE.
     * If SIZE is present, the result is an array of rank one and size SIZE.
     */
-   if (result_elt_size == 0 && *source_size > 0 && !size
+-  if (result_elt_size == 0 && *source_size > 0 && !size
 -      && mold->expr_type == EXPR_ARRAY)
++  if (result_elt_size == 0 && *source_size > 0
 +      && (mold->expr_type == EXPR_ARRAY || mold->rank))
      {
        gfc_error ("%<MOLD%> argument of %<TRANSFER%> intrinsic at %L is an "
@@ -18510,10 +18525,18 @@ index 99edad8a950..f33489286a9 100644
  
  #endif
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index 2913065bf31..c3b15dcad9e 100644
+index 2913065bf31..85f4fe48b44 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,1830 @@
+@@ -1,3 +1,1838 @@
++2022-02-04  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2022-02-03  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/104311
++	* gfortran.dg/transfer_simplify_15.f90: New test.
++
 +2022-02-02  Harald Anlauf  <anlauf@gmx.de>
 +
 +	Backported from master:
@@ -29839,6 +29862,23 @@ index 00000000000..bafb046afd4
 +end
 +
 +! { dg-final { scan-tree-dump-not "_gfortran_stop_numeric" "original" } }
+diff --git a/gcc/testsuite/gfortran.dg/transfer_simplify_15.f90 b/gcc/testsuite/gfortran.dg/transfer_simplify_15.f90
+new file mode 100644
+index 00000000000..cdbec97ae71
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/transfer_simplify_15.f90
+@@ -0,0 +1,11 @@
++! { dg-do compile }
++! PR fortran/104311 - ICE out of memory
++! Contributed by G.Steinmetz
++
++program p
++  type t
++  end type
++  type(t) :: x(2)
++  print *, transfer(1,x,2)       ! { dg-error "shall not have storage size 0" }
++  print *, transfer(1,x,huge(1)) ! { dg-error "shall not have storage size 0" }
++end
 diff --git a/gcc/testsuite/gfortran.dg/transfer_simplify_2.f90 b/gcc/testsuite/gfortran.dg/transfer_simplify_2.f90
 index e0f3f94c4ca..b428fa64b56 100644
 --- a/gcc/testsuite/gfortran.dg/transfer_simplify_2.f90
