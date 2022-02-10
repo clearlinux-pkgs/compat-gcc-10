@@ -391,11 +391,12 @@ GCC Administrator (304):
 Geng Qi (1):
       RISC-V: For '-march' and '-mabi' options, add 'Negative' property mentions itself.
 
-H.J. Lu (4):
+H.J. Lu (5):
       x86: Document -fcf-protection requires i686 or newer
       [Ada] Compile s-mmap and 128bit on x86_64-linux-gnux32
       [Ada] Set target_cpu to x32 for x86_64-linux-gnux32
       libsanitizer: Cherry-pick LLVM release/13.x commit d96358a28193
+      pr104458.c: Replace long with long long for -mx32
 
 Hafiz Abid Qadeer (1):
       [OpenACC] Fix an ICE where a loop with GT condition is collapsed.
@@ -867,13 +868,14 @@ Tobias Burnus (3):
       OpenACC: Fix integer-type issue with collapse/tile [PR97880]
       Fortran/OpenMP: Fix var-list expr parsing with array/dt
 
-Uros Bizjak (6):
+Uros Bizjak (7):
       i386: Fix atomic FP peepholes [PR100182]
       i386: Change abs<MMXMODEI:mode>2 to an expander.
       i386: Prevent unwanted combine from LZCNT to BSR [PR101175]
       i386: Remove atomic_storedi_fpu and atomic_loaddi_fpu peepholes [PR100182]
       i386: Fix ICE in ix86_print_opreand_address [PR 102761]
       i386: Force inputs to a register to avoid lowpart_subreg failure [PR104458]
+      i386: Fix vec_unpacks_float_lo_v4si operand constraint [PR104469]
 
 Vladimir N. Makarov (4):
       [PR97969] LRA: Transform pattern `plus (plus (hard reg, const),	pseudo)` after elimination
@@ -9339,9 +9341,18 @@ index d447df2cfe4..670ff1d3682 100644
       [(set (match_dup 0) (xor:SWI48 (match_dup 0) (match_dup 2)))
        (clobber (reg:CC FLAGS_REG))])]
 diff --git a/gcc/config/i386/sse.md b/gcc/config/i386/sse.md
-index bf01e1d7426..f1b3521d482 100644
+index bf01e1d7426..1292126a46d 100644
 --- a/gcc/config/i386/sse.md
 +++ b/gcc/config/i386/sse.md
+@@ -6752,7 +6752,7 @@
+ (define_expand "vec_unpacks_float_hi_v8si"
+   [(set (match_dup 2)
+ 	(vec_select:V4SI
+-	  (match_operand:V8SI 1 "vector_operand")
++	  (match_operand:V8SI 1 "register_operand")
+ 	  (parallel [(const_int 4) (const_int 5)
+ 		     (const_int 6) (const_int 7)])))
+    (set (match_operand:V4DF 0 "register_operand")
 @@ -16927,7 +16927,7 @@
     (set (attr "prefix_rex") (symbol_ref "x86_extended_reg_mentioned_p (insn)"))
     (set_attr "mode" "DI,TI")])
@@ -25836,7 +25847,7 @@ index 00000000000..8b251ccf827
 +}
 diff --git a/gcc/testsuite/gcc.target/i386/pr104458.c b/gcc/testsuite/gcc.target/i386/pr104458.c
 new file mode 100644
-index 00000000000..d1d28c13118
+index 00000000000..db5999df7dd
 --- /dev/null
 +++ b/gcc/testsuite/gcc.target/i386/pr104458.c
 @@ -0,0 +1,13 @@
@@ -25851,7 +25862,25 @@ index 00000000000..d1d28c13118
 +void
 +foo (F f)
 +{
-+  i += i % (long) f;
++  i += i % (long long) f;
++}
+diff --git a/gcc/testsuite/gcc.target/i386/pr104469.c b/gcc/testsuite/gcc.target/i386/pr104469.c
+new file mode 100644
+index 00000000000..39cc31fde1f
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/i386/pr104469.c
+@@ -0,0 +1,12 @@
++/* PR target/104469 */
++/* { dg-do compile } */
++/* { dg-options "-mavx512f" } */
++
++typedef double __attribute__((__vector_size__ (64))) F;
++typedef int __attribute__((__vector_size__ (32))) V;
++
++F
++foo (V v)
++{
++  return __builtin_convertvector (v, F);
 +}
 diff --git a/gcc/testsuite/gcc.target/i386/pr71245-1.c b/gcc/testsuite/gcc.target/i386/pr71245-1.c
 deleted file mode 100644
