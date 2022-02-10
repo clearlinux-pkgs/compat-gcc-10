@@ -82,7 +82,8 @@ François Dumont (3):
       libstdc++: Fix unordered containers move constructors noexcept qualification
       libstdc++: [_GLIBCXX_DEBUG] Fix management of __dp_sign_max_size [PR 99402]
 
-GCC Administrator (303):
+GCC Administrator (304):
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -866,12 +867,13 @@ Tobias Burnus (3):
       OpenACC: Fix integer-type issue with collapse/tile [PR97880]
       Fortran/OpenMP: Fix var-list expr parsing with array/dt
 
-Uros Bizjak (5):
+Uros Bizjak (6):
       i386: Fix atomic FP peepholes [PR100182]
       i386: Change abs<MMXMODEI:mode>2 to an expander.
       i386: Prevent unwanted combine from LZCNT to BSR [PR101175]
       i386: Remove atomic_storedi_fpu and atomic_loaddi_fpu peepholes [PR100182]
       i386: Fix ICE in ix86_print_opreand_address [PR 102761]
+      i386: Force inputs to a register to avoid lowpart_subreg failure [PR104458]
 
 Vladimir N. Makarov (4):
       [PR97969] LRA: Transform pattern `plus (plus (hard reg, const),	pseudo)` after elimination
@@ -3975,10 +3977,22 @@ index 0719d810258..a9368325816 100644
 -10.3.0
 +10.3.1
 diff --git a/gcc/ChangeLog b/gcc/ChangeLog
-index 3b1384e707f..033abfab8a5 100644
+index 3b1384e707f..378e2ac3339 100644
 --- a/gcc/ChangeLog
 +++ b/gcc/ChangeLog
-@@ -1,3 +1,1498 @@
+@@ -1,3 +1,1510 @@
++2022-02-09  Uroš Bizjak  <ubizjak@gmail.com>
++
++	PR target/104458
++	* config/i386/i386-expand.c (ix86_split_idivmod):
++	Force operands[2] and operands[3] into a register..
++
++2022-02-09  liuhongt  <hongtao.liu@intel.com>
++
++	PR target/104451
++	* config/i386/sse.md (<insn><mode>3): lowpart_subreg
++	operands[2] from SImode to QImode.
++
 +2022-02-03  Sebastian Huber  <sebastian.huber@embedded-brains.de>
 +
 +	PR target/104090
@@ -9122,6 +9136,20 @@ index 6f6a8328ef1..c24cbd5de28 100644
      }
    gcc_unreachable ();
  }
+diff --git a/gcc/config/i386/i386-expand.c b/gcc/config/i386/i386-expand.c
+index 47d52550e5e..d690d5b9bc1 100644
+--- a/gcc/config/i386/i386-expand.c
++++ b/gcc/config/i386/i386-expand.c
+@@ -1140,6 +1140,9 @@ ix86_split_idivmod (machine_mode mode, rtx operands[],
+   rtx scratch, tmp0, tmp1, tmp2;
+   rtx (*gen_divmod4_1) (rtx, rtx, rtx, rtx);
+ 
++  operands[2] = force_reg (mode, operands[2]);
++  operands[3] = force_reg (mode, operands[3]);
++
+   switch (mode)
+     {
+     case E_SImode:
 diff --git a/gcc/config/i386/i386.c b/gcc/config/i386/i386.c
 index 2f838840e96..44e4be58c39 100644
 --- a/gcc/config/i386/i386.c
@@ -18542,10 +18570,20 @@ index 99edad8a950..f33489286a9 100644
  
  #endif
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index 2913065bf31..85f4fe48b44 100644
+index 2913065bf31..24bbecfabc8 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,1838 @@
+@@ -1,3 +1,1848 @@
++2022-02-09  Uroš Bizjak  <ubizjak@gmail.com>
++
++	PR target/104458
++	* gcc.target/i386/pr104458.c: New test.
++
++2022-02-09  liuhongt  <hongtao.liu@intel.com>
++
++	PR target/104451
++	* gcc.target/i386/pr104451.c: New test.
++
 +2022-02-04  Harald Anlauf  <anlauf@gmx.de>
 +
 +	Backported from master:
@@ -25795,6 +25833,25 @@ index 00000000000..8b251ccf827
 +foo2 (unsigned long uc)
 +{
 +  return uv >> uc;
++}
+diff --git a/gcc/testsuite/gcc.target/i386/pr104458.c b/gcc/testsuite/gcc.target/i386/pr104458.c
+new file mode 100644
+index 00000000000..d1d28c13118
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/i386/pr104458.c
+@@ -0,0 +1,13 @@
++/* PR target/104458 */
++/* { dg-do compile { target { ! ia32 } } } */
++/* { dg-options "-O1 -m8bit-idiv" } */
++
++typedef float __attribute__((__vector_size__ (8))) F;
++
++int i;
++
++void
++foo (F f)
++{
++  i += i % (long) f;
 +}
 diff --git a/gcc/testsuite/gcc.target/i386/pr71245-1.c b/gcc/testsuite/gcc.target/i386/pr71245-1.c
 deleted file mode 100644
