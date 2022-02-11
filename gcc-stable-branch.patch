@@ -82,7 +82,8 @@ François Dumont (3):
       libstdc++: Fix unordered containers move constructors noexcept qualification
       libstdc++: [_GLIBCXX_DEBUG] Fix management of __dp_sign_max_size [PR 99402]
 
-GCC Administrator (304):
+GCC Administrator (305):
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -3979,10 +3980,19 @@ index 0719d810258..a9368325816 100644
 -10.3.0
 +10.3.1
 diff --git a/gcc/ChangeLog b/gcc/ChangeLog
-index 3b1384e707f..378e2ac3339 100644
+index 3b1384e707f..4ac6c3303af 100644
 --- a/gcc/ChangeLog
 +++ b/gcc/ChangeLog
-@@ -1,3 +1,1510 @@
+@@ -1,3 +1,1519 @@
++2022-02-10  Uros Bizjak  <ubizjak@gmail.com>
++
++	Backported from master:
++	2022-02-10  Uroš Bizjak  <ubizjak@gmail.com>
++
++	PR target/104469
++	* config/i386/sse.md (vec_unpacks_float_lo_v4si):
++	Change operand 1 constraint to register_operand.
++
 +2022-02-09  Uroš Bizjak  <ubizjak@gmail.com>
 +
 +	PR target/104458
@@ -18581,10 +18591,26 @@ index 99edad8a950..f33489286a9 100644
  
  #endif
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index 2913065bf31..24bbecfabc8 100644
+index 2913065bf31..f54e4f78ee3 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,1848 @@
+@@ -1,3 +1,1864 @@
++2022-02-10  H.J. Lu  <hjl.tools@gmail.com>
++
++	Backported from master:
++	2022-02-10  H.J. Lu  <hjl.tools@gmail.com>
++
++	PR target/104458
++	* gcc.target/i386/pr104458.c: Replace long with long long.
++
++2022-02-10  Uros Bizjak  <ubizjak@gmail.com>
++
++	Backported from master:
++	2022-02-10  Uroš Bizjak  <ubizjak@gmail.com>
++
++	PR target/104469
++	* gcc.target/i386/pr104469.c: New test.
++
 +2022-02-09  Uroš Bizjak  <ubizjak@gmail.com>
 +
 +	PR target/104458
