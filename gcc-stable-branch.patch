@@ -1,3 +1,7 @@
+Alan Modra (2):
+      [RS6000] Adjust gcc asm for power10
+      [POWER10] __morestack calls from pcrel code
+
 Alex Coplan (9):
       aarch64: Fix SVE ACLE builtins with LTO [PR99216]
       arm: Fix PCS for SFmode -> SImode libcalls [PR99748]
@@ -82,7 +86,10 @@ François Dumont (3):
       libstdc++: Fix unordered containers move constructors noexcept qualification
       libstdc++: [_GLIBCXX_DEBUG] Fix management of __dp_sign_max_size [PR 99402]
 
-GCC Administrator (305):
+GCC Administrator (308):
+      Daily bump.
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -3980,10 +3987,17 @@ index 0719d810258..a9368325816 100644
 -10.3.0
 +10.3.1
 diff --git a/gcc/ChangeLog b/gcc/ChangeLog
-index 3b1384e707f..4ac6c3303af 100644
+index 3b1384e707f..7ec275cd853 100644
 --- a/gcc/ChangeLog
 +++ b/gcc/ChangeLog
-@@ -1,3 +1,1519 @@
+@@ -1,3 +1,1526 @@
++2022-02-13  Alan Modra  <amodra@gmail.com>
++
++	Backported from master:
++	2020-10-01  Alan Modra  <amodra@gmail.com>
++
++	* config/rs6000/ppc-asm.h: Support __PCREL__ code.
++
 +2022-02-10  Uros Bizjak  <ubizjak@gmail.com>
 +
 +	Backported from master:
@@ -10166,6 +10180,33 @@ index d9757160845..27f64d2cb7c 100644
  
  (define_insn "mma_<vv>"
    [(set (match_operand:PXI 0 "fpr_reg_operand" "=&d")
+diff --git a/gcc/config/rs6000/ppc-asm.h b/gcc/config/rs6000/ppc-asm.h
+index 48edc9945d7..e0bce9c5aec 100644
+--- a/gcc/config/rs6000/ppc-asm.h
++++ b/gcc/config/rs6000/ppc-asm.h
+@@ -262,6 +262,14 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
+ #undef toc
+ 
+ #define FUNC_NAME(name) GLUE(__USER_LABEL_PREFIX__,name)
++#ifdef __PCREL__
++#define JUMP_TARGET(name) GLUE(FUNC_NAME(name),@notoc)
++#define FUNC_START(name) \
++	.type FUNC_NAME(name),@function; \
++	.globl FUNC_NAME(name); \
++FUNC_NAME(name): \
++	.localentry FUNC_NAME(name),1
++#else
+ #define JUMP_TARGET(name) FUNC_NAME(name)
+ #define FUNC_START(name) \
+ 	.type FUNC_NAME(name),@function; \
+@@ -270,6 +278,7 @@ FUNC_NAME(name): \
+ 0:	addis 2,12,(.TOC.-0b)@ha; \
+ 	addi 2,2,(.TOC.-0b)@l; \
+ 	.localentry FUNC_NAME(name),.-FUNC_NAME(name)
++#endif /* !__PCREL__ */
+ 
+ #define HIDDEN_FUNC(name) \
+   FUNC_START(name) \
 diff --git a/gcc/config/rs6000/predicates.md b/gcc/config/rs6000/predicates.md
 index 956f7dd5b46..fad45a6e1ac 100644
 --- a/gcc/config/rs6000/predicates.md
@@ -31851,10 +31892,27 @@ index 8a390d0857b..1dce2292522 100644
  
  /* Given two virtual locations *LOC0 and *LOC1, return the first
 diff --git a/libgcc/ChangeLog b/libgcc/ChangeLog
-index 1f9de3d5091..fb18faf3bc4 100644
+index 1f9de3d5091..27c3013d7e6 100644
 --- a/libgcc/ChangeLog
 +++ b/libgcc/ChangeLog
-@@ -1,3 +1,67 @@
+@@ -1,3 +1,84 @@
++2022-02-13  Alan Modra  <amodra@gmail.com>
++
++	Backported from master:
++	2021-07-15  Alan Modra  <amodra@gmail.com>
++
++	* config/rs6000/morestack.S (R2_SAVE): Define.
++	(__morestack): Save and restore r2.  Set up r2 for called
++	functions.
++
++2022-02-13  Alan Modra  <amodra@gmail.com>
++
++	Backported from master:
++	2020-10-01  Alan Modra  <amodra@gmail.com>
++
++	* config/rs6000/morestack.S,
++	* config/rs6000/tramp.S: Support __PCREL__ code.
++
 +2021-10-27  John David Anglin  <danglin@gcc.gnu.org>
 +
 +	* config.host (hppa*64*-*-linux*): Don't add pa/t-linux to
@@ -32228,6 +32286,188 @@ index 1d0a6ada1a1..026b48b02e5 100644
  
 -HOST_LIBGCC2_CFLAGS += -Dpa64=1 -DELF=1
 +LIB2ADD_ST = $(srcdir)/config/pa/linux-atomic.c
+diff --git a/libgcc/config/rs6000/morestack.S b/libgcc/config/rs6000/morestack.S
+index 1b8ebb5dc3b..0429f42a47c 100644
+--- a/libgcc/config/rs6000/morestack.S
++++ b/libgcc/config/rs6000/morestack.S
+@@ -31,6 +31,7 @@
+ #define PARAMS 48
+ #endif
+ #define MORESTACK_FRAMESIZE	(PARAMS+96)
++#define R2_SAVE			-MORESTACK_FRAMESIZE+PARAMS-8
+ #define PARAMREG_SAVE		-MORESTACK_FRAMESIZE+PARAMS+0
+ #define STATIC_CHAIN_SAVE	-MORESTACK_FRAMESIZE+PARAMS+64
+ #define R29_SAVE		-MORESTACK_FRAMESIZE+PARAMS+72
+@@ -55,11 +56,18 @@
+ 	.type name,@function;				\
+ name##:
+ 
++#ifdef __PCREL__
++#define ENTRY(name)					\
++	ENTRY0(name);					\
++	.localentry name, 1
++#define JUMP_TARGET(name) name##@notoc
++#else
+ #define ENTRY(name)					\
+ 	ENTRY0(name);					\
+ 0:	addis %r2,%r12,.TOC.-0b@ha;			\
+         addi %r2,%r2,.TOC.-0b@l;			\
+ 	.localentry name, .-name
++#endif
+ 
+ #else
+ 
+@@ -81,6 +89,9 @@ BODY_LABEL(name)##:
+ 
+ #define SIZE(name) .size name, .-BODY_LABEL(name)
+ 
++#ifndef JUMP_TARGET
++#define JUMP_TARGET(name) name
++#endif
+ 
+ 	.text
+ # Just like __morestack, but with larger excess allocation
+@@ -133,6 +144,17 @@ ENTRY0(__morestack_non_split)
+ # cr7 must also be preserved.
+ 
+ ENTRY0(__morestack)
++
++#if _CALL_ELF == 2
++# Functions with localentry bits of zero cannot make calls if those
++# calls might change r2.  This is true generally, and also true for
++# __morestack with its special calling convention.  When __morestack's
++# caller is non-pcrel but libgcc is pcrel, the functions called here
++# might modify r2.  r2 must be preserved on exit, and also restored
++# for the call back to our caller.
++	std %r2,R2_SAVE(%r1)
++#endif
++
+ # Save parameter passing registers, our arguments, lr, r29
+ # and use r29 as a frame pointer.
+ 	std %r3,PARAMREG_SAVE+0(%r1)
+@@ -151,12 +173,26 @@ ENTRY0(__morestack)
+ 	std %r12,LINKREG_SAVE(%r1)
+ 	std %r3,NEWSTACKSIZE_SAVE(%r1)	# new stack size
+ 	mr %r29,%r1
++#if _CALL_ELF == 2
++	.cfi_offset %r2,R2_SAVE
++#endif
+ 	.cfi_offset %r29,R29_SAVE
+ 	.cfi_def_cfa_register %r29
+ 	stdu %r1,-MORESTACK_FRAMESIZE(%r1)
+ 
++#if _CALL_ELF == 2 && !defined __PCREL__
++# If this isn't a pcrel libgcc then the functions we call here will
++# require r2 to be valid.  If __morestack is called from pcrel code r2
++# won't be valid.  Set it up.
++	bcl 20,31,1f
++1:
++	mflr %r12
++	addis %r2,%r12,.TOC.-1b@ha
++	addi %r2,%r2,.TOC.-1b@l
++#endif
++
+ 	# void __morestack_block_signals (void)
+-	bl __morestack_block_signals
++	bl JUMP_TARGET(__morestack_block_signals)
+ 
+ 	# void *__generic_morestack (size_t *pframe_size,
+ 	#			     void *old_stack,
+@@ -164,7 +200,7 @@ ENTRY0(__morestack)
+ 	addi %r3,%r29,NEWSTACKSIZE_SAVE
+ 	mr %r4,%r29
+ 	li %r5,0			# no copying from old stack
+-	bl __generic_morestack
++	bl JUMP_TARGET(__generic_morestack)
+ 
+ # Start using new stack
+ 	stdu %r29,-32(%r3)		# back-chain
+@@ -183,12 +219,15 @@ ENTRY0(__morestack)
+ 	std %r3,-0x7000-64(%r13)	# tcbhead_t.__private_ss
+ 
+ 	# void __morestack_unblock_signals (void)
+-	bl __morestack_unblock_signals
++	bl JUMP_TARGET(__morestack_unblock_signals)
+ 
+ # Set up for a call to the target function, located 3
+ # instructions after __morestack's return address.
+ #
+ 	ld %r12,LINKREG_SAVE(%r29)
++#if _CALL_ELF == 2
++	ld %r2,R2_SAVE(%r29)
++#endif
+ 	ld %r3,PARAMREG_SAVE+0(%r29)	# restore arg regs
+ 	ld %r4,PARAMREG_SAVE+8(%r29)
+ 	ld %r5,PARAMREG_SAVE+16(%r29)
+@@ -218,11 +257,20 @@ ENTRY0(__morestack)
+ 	std %r10,PARAMREG_SAVE+56(%r29)
+ #endif
+ 
+-	bl __morestack_block_signals
++#if _CALL_ELF == 2 && !defined __PCREL__
++# r2 was restored for calling back into our caller.  Set it up again.
++	bcl 20,31,1f
++1:
++	mflr %r12
++	addis %r2,%r12,.TOC.-1b@ha
++	addi %r2,%r2,.TOC.-1b@l
++#endif
++
++	bl JUMP_TARGET(__morestack_block_signals)
+ 
+ 	# void *__generic_releasestack (size_t *pavailable)
+ 	addi %r3,%r29,NEWSTACKSIZE_SAVE
+-	bl __generic_releasestack
++	bl JUMP_TARGET(__generic_releasestack)
+ 
+ # Reset __private_ss stack guard to value for old stack
+ 	ld %r12,NEWSTACKSIZE_SAVE(%r29)
+@@ -231,7 +279,7 @@ ENTRY0(__morestack)
+ .LEHE0:
+ 	std %r3,-0x7000-64(%r13)	# tcbhead_t.__private_ss
+ 
+-	bl __morestack_unblock_signals
++	bl JUMP_TARGET(__morestack_unblock_signals)
+ 
+ # Use old stack again.
+ 	mr %r1,%r29
+@@ -239,6 +287,9 @@ ENTRY0(__morestack)
+ # Restore return value regs, and return.
+ 	ld %r0,LINKREG_SAVE(%r29)
+ 	mtlr %r0
++#if _CALL_ELF == 2
++	ld %r2,R2_SAVE(%r29)
++#endif
+ 	ld %r3,PARAMREG_SAVE+0(%r29)
+ 	ld %r4,PARAMREG_SAVE+8(%r29)
+ 	ld %r5,PARAMREG_SAVE+16(%r29)
+@@ -260,13 +311,15 @@ cleanup:
+ 	std %r3,PARAMREG_SAVE(%r29)	# Save exception header
+ 	# size_t __generic_findstack (void *stack)
+ 	mr %r3,%r29
+-	bl __generic_findstack
++	bl JUMP_TARGET(__generic_findstack)
+ 	sub %r3,%r29,%r3
+ 	addi %r3,%r3,BACKOFF
+ 	std %r3,-0x7000-64(%r13)	# tcbhead_t.__private_ss
+ 	ld %r3,PARAMREG_SAVE(%r29)
+-	bl _Unwind_Resume
++	bl JUMP_TARGET(_Unwind_Resume)
++#ifndef __PCREL__
+ 	nop
++#endif
+ 	.cfi_endproc
+ 	SIZE (__morestack)
+ 
+@@ -310,7 +363,7 @@ ENTRY(__stack_split_initialize)
+ 	# void __generic_morestack_set_initial_sp (void *sp, size_t len)
+ 	mr %r3,%r1
+ 	li %r4, 0x4000
+-	b __generic_morestack_set_initial_sp
++	b JUMP_TARGET(__generic_morestack_set_initial_sp)
+ # The lack of .cfi_endproc here is deliberate.  This function and the
+ # following ones can all use the default FDE.
+ 	SIZE (__stack_split_initialize)
 diff --git a/libgcc/config/rs6000/t-linux b/libgcc/config/rs6000/t-linux
 index 72e9c2770a6..500210ddaf2 100644
 --- a/libgcc/config/rs6000/t-linux
@@ -32250,7 +32490,7 @@ index 72e9c2770a6..500210ddaf2 100644
  
  IBM128_CFLAGS		= -Wno-psabi -mabi=ibmlongdouble -mno-gnu-attribute
 diff --git a/libgcc/config/rs6000/tramp.S b/libgcc/config/rs6000/tramp.S
-index 9b8fcfe34a3..47f97e93e6a 100644
+index 9b8fcfe34a3..1fc5f37f88f 100644
 --- a/libgcc/config/rs6000/tramp.S
 +++ b/libgcc/config/rs6000/tramp.S
 @@ -64,8 +64,7 @@ FUNC_START(__trampoline_setup)
@@ -32263,9 +32503,25 @@ index 9b8fcfe34a3..47f97e93e6a 100644
  	srwi	r4,r4,2		/* # words to move */
  	addi	r9,r3,-4	/* adjust pointer for lwzu */
  	mtctr	r4
-@@ -150,8 +149,7 @@ FUNC_START(__trampoline_setup)
+@@ -140,18 +139,23 @@ trampoline_size = .-trampoline_initial
+ /* R5 = function address */
+ /* R6 = static chain */
+ 
++#ifndef __PCREL__
+ 	.pushsection ".toc","aw"
+ .LC0:
+ 	.quad	trampoline_initial-8
+ 	.popsection
++#endif
+ 
+ FUNC_START(__trampoline_setup)
+ 	.cfi_startproc
++#ifdef __PCREL__
++	pla 7,(trampoline_initial-8)@pcrel
++#else
  	addis 7,2,.LC0@toc@ha
  	ld 7,.LC0@toc@l(7)	/* trampoline address -8 */
++#endif
  
 -	li	r8,trampoline_size	/* verify that the trampoline is big enough */
 -	cmpw	cr1,r8,r4
@@ -34545,10 +34801,17 @@ index 00000000000..1d415cdcf76
 +  return 0;
 +}
 diff --git a/libitm/ChangeLog b/libitm/ChangeLog
-index 97ead0843e9..3be0ec8af29 100644
+index 97ead0843e9..63ddf711f9c 100644
 --- a/libitm/ChangeLog
 +++ b/libitm/ChangeLog
-@@ -1,3 +1,11 @@
+@@ -1,3 +1,18 @@
++2022-02-13  Alan Modra  <amodra@gmail.com>
++
++	Backported from master:
++	2020-10-01  Alan Modra  <amodra@gmail.com>
++
++	* config/powerpc/sjlj.S: Support __PCREL__ code.
++
 +2021-06-18  Jonathan Wakely  <jwakely@redhat.com>
 +
 +	Backported from master:
@@ -34560,6 +34823,35 @@ index 97ead0843e9..3be0ec8af29 100644
  2021-04-08  Release Manager
  
  	* GCC 10.3.0 released.
+diff --git a/libitm/config/powerpc/sjlj.S b/libitm/config/powerpc/sjlj.S
+index a963fc350bb..bcb0e73a285 100644
+--- a/libitm/config/powerpc/sjlj.S
++++ b/libitm/config/powerpc/sjlj.S
+@@ -26,7 +26,23 @@
+ 
+ #include "asmcfi.h"
+ 
+-#if defined(__powerpc64__) && _CALL_ELF == 2
++#if defined(__powerpc64__) && _CALL_ELF == 2 && defined(__PCREL__)
++.macro FUNC name
++	.globl	\name
++	.type	\name, @function
++\name:
++	.localentry \name, 1
++.endm
++.macro END name
++	.size	\name, . - \name
++.endm
++.macro HIDDEN name
++	.hidden	\name
++.endm
++.macro CALL name
++	bl	\name @notoc
++.endm
++#elif defined(__powerpc64__) && _CALL_ELF == 2
+ .macro FUNC name
+         .globl  \name
+         .type   \name, @function
 diff --git a/libitm/testsuite/libitm.c++/libstdc++-pr91488.C b/libitm/testsuite/libitm.c++/libstdc++-pr91488.C
 new file mode 100644
 index 00000000000..e9e82bd1ce2
