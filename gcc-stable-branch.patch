@@ -657,6 +657,9 @@ Kewen Lin (4):
       rs6000/doc: Rename future cpu with power10
       rs6000: Remove builtin mask check from builtin_decl [PR102347]
 
+Maciej W. Rozycki (1):
+      RISC-V: Add target machine headers as a dependency for riscv-sr.o
+
 Marek Polacek (13):
       c++: ICE when late parsing noexcept/NSDMI [PR98333]
       c++: ICE with delayed noexcept and attribute used [PR97966]
@@ -10003,6 +10006,19 @@ index 29de246759e..e726a12fd45 100644
 +Target Report RejectNegative Joined Negative(march=)
  -march=	Generate code for given RISC-V ISA (e.g. RV64IM).  ISA strings must be
  lower-case.
+ 
+diff --git a/gcc/config/riscv/t-riscv b/gcc/config/riscv/t-riscv
+index 5ecb3c160a6..6930ca4d9e4 100644
+--- a/gcc/config/riscv/t-riscv
++++ b/gcc/config/riscv/t-riscv
+@@ -6,7 +6,7 @@ riscv-builtins.o: $(srcdir)/config/riscv/riscv-builtins.c $(CONFIG_H) \
+ 		$(srcdir)/config/riscv/riscv-builtins.c
+ 
+ riscv-sr.o: $(srcdir)/config/riscv/riscv-sr.c $(CONFIG_H) \
+-  $(SYSTEM_H)
++  $(SYSTEM_H) $(TM_H)
+ 	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) \
+ 		$(srcdir)/config/riscv/riscv-sr.c
  
 diff --git a/gcc/config/rs6000/aix.h b/gcc/config/rs6000/aix.h
 index edd6fdb0ec2..076b11728e2 100644
