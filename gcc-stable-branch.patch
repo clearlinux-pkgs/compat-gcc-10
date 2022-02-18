@@ -86,7 +86,8 @@ François Dumont (3):
       libstdc++: Fix unordered containers move constructors noexcept qualification
       libstdc++: [_GLIBCXX_DEBUG] Fix management of __dp_sign_max_size [PR 99402]
 
-GCC Administrator (311):
+GCC Administrator (312):
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -522,7 +523,7 @@ Jakub Jelinek (19):
 Jan Hubicka (1):
       Fix looping flag discovery in ipa-pure-const
 
-Jason Merrill (20):
+Jason Merrill (21):
       c++: lambda pack init-capture within generic lambda
       c++: NRV in lambda in template [PR91217]
       c++: PMF template parm and noexcept [PR90664]
@@ -543,6 +544,7 @@ Jason Merrill (20):
       c++: designated init with anonymous union [PR100489]
       c++: 'this' adjustment for devirtualized call
       c++: constexpr and array[0] [PR101029]
+      Revert "c++: using overloaded with local decl [PR92918]"
 
 John David Anglin (5):
       Add support for 32-bit hppa targets in muldi3 expander
@@ -4002,10 +4004,75 @@ index 0719d810258..a9368325816 100644
 -10.3.0
 +10.3.1
 diff --git a/gcc/ChangeLog b/gcc/ChangeLog
-index 3b1384e707f..82817c687c6 100644
+index 3b1384e707f..0e005f2434e 100644
 --- a/gcc/ChangeLog
 +++ b/gcc/ChangeLog
-@@ -1,3 +1,1551 @@
+@@ -1,3 +1,1616 @@
++2022-02-17  Richard Biener  <rguenther@suse.de>
++
++	Backported from master:
++	2021-11-15  Richard Biener  <rguenther@suse.de>
++
++	PR tree-optimization/103237
++	* tree-vect-loop.c (vect_is_simple_reduction): Fail for
++	double reductions with multiple inner loop LC PHI nodes.
++
++2022-02-17  Richard Biener  <rguenther@suse.de>
++
++	Backported from master:
++	2021-11-22  Richard Biener  <rguenther@suse.de>
++
++	PR middle-end/103181
++	PR middle-end/103248
++	* tree-eh.c (operation_could_trap_helper_p): Properly
++	check vector constants for a zero element for integer
++	division.  Separate floating point and integer division code.
++	Properly handle fixed-point RDIV_EXPR.
++
++2022-02-17  Richard Biener  <rguenther@suse.de>
++
++	Backported from master:
++	2021-11-08  Richard Biener  <rguenther@suse.de>
++
++	PR tree-optimization/102798
++	* tree-vect-data-refs.c (vect_create_addr_base_for_vector_ref):
++	Only copy points-to info to newly generated SSA names.
++
++2022-02-17  Richard Biener  <rguenther@suse.de>
++
++	Backported from master:
++	2021-10-15  Richard Biener  <rguenther@suse.de>
++
++	PR ipa/102762
++	* tree-inline.c (copy_bb): Avoid underflowing nargs.
++
++2022-02-17  Richard Biener  <rguenther@suse.de>
++
++	Backported from master:
++	2021-06-08  Richard Biener  <rguenther@suse.de>
++
++	PR tree-optimization/100923
++	* tree-ssa-sccvn.c (valueize_refs_1): Take a pointer to
++	the operand vector to be valueized.
++	(valueize_refs): Likewise.
++	(valueize_shared_reference_ops_from_ref): Adjust.
++	(valueize_shared_reference_ops_from_call): Likewise.
++	(vn_reference_lookup_3): Likewise.
++	(vn_reference_lookup_pieces): Likewise.  Re-valueize
++	with honoring availability when we are about to create
++	the ao_ref and valueized before.
++	(vn_reference_lookup): Likewise.
++	(vn_reference_insert_pieces): Adjust.
++
++2022-02-17  Richard Biener  <rguenther@suse.de>
++
++	Backported from master:
++	2021-06-22  Richard Biener  <rguenther@suse.de>
++
++	PR tree-optimization/101158
++	* tree-vect-slp.c (vect_build_slp_tree_1): Move same operand
++	checking after checking for matching operation.
++
 +2022-02-15  Kewen Lin  <linkw@linux.ibm.com>
 +
 +	Backported from master:
@@ -11535,10 +11602,19 @@ index 38820bc170f..2747f8f1b4c 100644
    gcov_write_unsigned (end_column);
    gcov_write_length (offset);
 diff --git a/gcc/cp/ChangeLog b/gcc/cp/ChangeLog
-index b576f9a3678..7b8bdab9c72 100644
+index b576f9a3678..0f3f58ac684 100644
 --- a/gcc/cp/ChangeLog
 +++ b/gcc/cp/ChangeLog
-@@ -1,3 +1,376 @@
+@@ -1,3 +1,385 @@
++2022-02-17  Jason Merrill  <jason@redhat.com>
++
++	Revert:
++	2021-05-20  Jason Merrill  <jason@redhat.com>
++
++	PR c++/92918
++	* name-lookup.c (push_class_level_binding_1): Do overload a new
++	function with a previous using-declaration.
++
 +2021-10-03  Iain Sandoe  <iain@sandoe.co.uk>
 +
 +	Backported from master:
@@ -12855,7 +12931,7 @@ index 3a3e060843e..bfd1004dcaa 100644
      }
  
 diff --git a/gcc/cp/name-lookup.c b/gcc/cp/name-lookup.c
-index 76f3edb04c8..f8caa16fc76 100644
+index 76f3edb04c8..533d79542c9 100644
 --- a/gcc/cp/name-lookup.c
 +++ b/gcc/cp/name-lookup.c
 @@ -2802,7 +2802,7 @@ check_local_shadow (tree decl)
@@ -12879,15 +12955,6 @@ index 76f3edb04c8..f8caa16fc76 100644
  	  {
  	    auto_diagnostic_group d;
  	    if (warning_at (DECL_SOURCE_LOCATION (decl), OPT_Wshadow,
-@@ -4551,7 +4552,7 @@ push_class_level_binding_1 (tree name, tree x)
- 	old_decl = bval;
-       else if (TREE_CODE (bval) == USING_DECL
- 	       && OVL_P (target_decl))
--	return true;
-+	old_decl = bval;
-       else if (OVL_P (target_decl)
- 	       && OVL_P (target_bval))
- 	old_decl = bval;
 diff --git a/gcc/cp/parser.c b/gcc/cp/parser.c
 index 1f4a28ff7c0..f48c856fa94 100644
 --- a/gcc/cp/parser.c
@@ -18737,10 +18804,68 @@ index 99edad8a950..f33489286a9 100644
  
  #endif
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index 2913065bf31..8e15f7af768 100644
+index 2913065bf31..19a805ccdc0 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,1881 @@
+@@ -1,3 +1,1939 @@
++2022-02-17  Jason Merrill  <jason@redhat.com>
++
++	Revert:
++	2022-02-17  Jason Merrill  <jason@redhat.com>
++
++	PR c++/92918
++	* g++.dg/lookup/using66.C: New test.
++
++2022-02-17  Richard Biener  <rguenther@suse.de>
++
++	Backported from master:
++	2021-11-15  Richard Biener  <rguenther@suse.de>
++
++	PR tree-optimization/103237
++	* gcc.dg/torture/pr103237.c: New testcase.
++
++2022-02-17  Richard Biener  <rguenther@suse.de>
++
++	Backported from master:
++	2021-11-22  Richard Biener  <rguenther@suse.de>
++
++	PR middle-end/103181
++	PR middle-end/103248
++	* gcc.dg/torture/pr103181.c: New testcase.
++	* gcc.dg/pr103248.c: Likewise.
++
++2022-02-17  Richard Biener  <rguenther@suse.de>
++
++	Backported from master:
++	2021-11-08  Richard Biener  <rguenther@suse.de>
++
++	PR tree-optimization/102798
++	* gcc.dg/pr102798.c: New testcase.
++
++2022-02-17  Richard Biener  <rguenther@suse.de>
++
++	Backported from master:
++	2021-10-15  Richard Biener  <rguenther@suse.de>
++
++	PR ipa/102762
++	* gcc.dg/torture/pr102762.c: New testcase.
++
++2022-02-17  Richard Biener  <rguenther@suse.de>
++
++	Backported from master:
++	2021-06-08  Richard Biener  <rguenther@suse.de>
++
++	PR tree-optimization/100923
++	* gcc.dg/torture/pr100923.c: New testcase.
++
++2022-02-17  Richard Biener  <rguenther@suse.de>
++
++	Backported from master:
++	2021-06-22  Richard Biener  <rguenther@suse.de>
++
++	PR tree-optimization/101158
++	* gfortran.dg/pr101158.f90: New testcase.
++
 +2022-02-15  Kewen Lin  <linkw@linux.ibm.com>
 +
 +	Backported from master:
@@ -22016,35 +22141,6 @@ index 00000000000..6139385192d
 +  S4().f1();
 +  if (!ok) __builtin_abort ();
 +}
-diff --git a/gcc/testsuite/g++.dg/lookup/using66.C b/gcc/testsuite/g++.dg/lookup/using66.C
-new file mode 100644
-index 00000000000..02383bbea3e
---- /dev/null
-+++ b/gcc/testsuite/g++.dg/lookup/using66.C
-@@ -0,0 +1,23 @@
-+// PR c++/92918
-+// { dg-do compile { target c++11 } }
-+
-+struct Base03
-+{
-+    static void impl();
-+};
-+
-+struct Problem : Base03
-+{
-+    using Base03::impl;
-+    static int impl(char const *);
-+
-+    template <typename T>
-+    auto f(const T &t) const
-+    -> decltype(impl(t))
-+    {
-+        return impl(t);
-+    }
-+};
-+
-+Problem t;
-+int i = t.f("42");
 diff --git a/gcc/testsuite/g++.dg/lto/pr97565_0.C b/gcc/testsuite/g++.dg/lto/pr97565_0.C
 new file mode 100644
 index 00000000000..f4572e17bf5
@@ -36119,10 +36215,21 @@ index 304b3a01a08..44359b3d1ac 100644
    UnmapOrDie(oldstack.ss_sp, oldstack.ss_size);
  }
 diff --git a/libstdc++-v3/ChangeLog b/libstdc++-v3/ChangeLog
-index fdd63cbff1a..e4d417d4c71 100644
+index fdd63cbff1a..5a516fbaf4e 100644
 --- a/libstdc++-v3/ChangeLog
 +++ b/libstdc++-v3/ChangeLog
-@@ -1,3 +1,1637 @@
+@@ -1,3 +1,1648 @@
++2022-02-17  Patrick Palka  <ppalka@redhat.com>
++
++	Backported from master:
++	2021-10-21  Patrick Palka  <ppalka@redhat.com>
++
++	PR libstdc++/102358
++	* include/bits/stl_iterator.h (__niter_base): Make constexpr
++	for C++20.
++	(__miter_base): Likewise.
++	* testsuite/25_algorithms/move/constexpr.cc: New test.
++
 +2022-01-05  Jonathan Wakely  <jwakely@redhat.com>
 +
 +	Backported from master:
