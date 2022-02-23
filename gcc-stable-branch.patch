@@ -86,7 +86,12 @@ François Dumont (3):
       libstdc++: Fix unordered containers move constructors noexcept qualification
       libstdc++: [_GLIBCXX_DEBUG] Fix management of __dp_sign_max_size [PR 99402]
 
-GCC Administrator (312):
+GCC Administrator (317):
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -413,7 +418,7 @@ H.J. Lu (5):
 Hafiz Abid Qadeer (1):
       [OpenACC] Fix an ICE where a loop with GT condition is collapsed.
 
-Harald Anlauf (54):
+Harald Anlauf (55):
       PR fortran/63797 - Bogus ambiguous reference to 'sqrt'
       PR fortran/100154 - ICE in gfc_conv_procedure_call, at fortran/trans-expr.c:6131
       PR fortran/100274 - ICE in gfc_conv_procedure_call, at fortran/trans-expr.c:6131
@@ -468,6 +473,7 @@ Harald Anlauf (54):
       Fortran: fix ICE and wrong code with TRANSFER and CHARACTER(kind=4)
       Fortran: error recovery when simplifying EOSHIFT
       Fortran: reject simplifying TRANSFER for MOLD with storage size 0
+      Fortran: skip compile-time shape check if constructor shape is not known
 
 Iain Buclaw (19):
       d: Fix ICE in when formating a string with '%' or '`' characters (PR98457)
@@ -16899,10 +16905,10 @@ index 8edc83a42c3..56b05795c27 100644
  
  
 diff --git a/gcc/fortran/resolve.c b/gcc/fortran/resolve.c
-index 7ca5f44f419..9104b17988b 100644
+index 7ca5f44f419..dfc22e25e43 100644
 --- a/gcc/fortran/resolve.c
 +++ b/gcc/fortran/resolve.c
-@@ -1436,6 +1436,41 @@ resolve_structure_cons (gfc_expr *expr, int init)
+@@ -1436,6 +1436,43 @@ resolve_structure_cons (gfc_expr *expr, int init)
  	    }
  	}
  
@@ -16924,6 +16930,8 @@ index 7ca5f44f419..9104b17988b 100644
 +		  t = false;
 +		  break;
 +		};
++	      if (cons->expr->shape == NULL)
++		continue;
 +	      mpz_set_ui (len, 1);
 +	      mpz_add (len, len, comp->as->upper[n]->value.integer);
 +	      mpz_sub (len, len, comp->as->lower[n]->value.integer);
@@ -16944,7 +16952,7 @@ index 7ca5f44f419..9104b17988b 100644
        if (!comp->attr.pointer || comp->attr.proc_pointer
  	  || cons->expr->expr_type == EXPR_NULL)
  	continue;
-@@ -4858,6 +4893,8 @@ gfc_resolve_dim_arg (gfc_expr *dim)
+@@ -4858,6 +4895,8 @@ gfc_resolve_dim_arg (gfc_expr *dim)
     base symbol.  We traverse the list of reference structures, setting
     the stored reference to references.  Component references can
     provide an additional array specification.  */
@@ -16953,7 +16961,7 @@ index 7ca5f44f419..9104b17988b 100644
  
  static void
  find_array_spec (gfc_expr *e)
-@@ -4867,6 +4904,13 @@ find_array_spec (gfc_expr *e)
+@@ -4867,6 +4906,13 @@ find_array_spec (gfc_expr *e)
    gfc_ref *ref;
    bool class_as = false;
  
@@ -16967,7 +16975,7 @@ index 7ca5f44f419..9104b17988b 100644
    if (e->symtree->n.sym->ts.type == BT_CLASS)
      {
        as = CLASS_DATA (e->symtree->n.sym)->as;
-@@ -5633,6 +5677,8 @@ resolve_variable (gfc_expr *e)
+@@ -5633,6 +5679,8 @@ resolve_variable (gfc_expr *e)
       can't be translated that way.  */
    if (sym->assoc && e->rank == 0 && e->ref && sym->ts.type == BT_CLASS
        && sym->assoc->target && sym->assoc->target->ts.type == BT_CLASS
@@ -16976,7 +16984,7 @@ index 7ca5f44f419..9104b17988b 100644
        && CLASS_DATA (sym->assoc->target)->as)
      {
        gfc_ref *ref = e->ref;
-@@ -5697,7 +5743,8 @@ resolve_variable (gfc_expr *e)
+@@ -5697,7 +5745,8 @@ resolve_variable (gfc_expr *e)
    /* Like above, but for class types, where the checking whether an array
       ref is present is more complicated.  Furthermore make sure not to add
       the full array ref to _vptr or _len refs.  */
@@ -16986,7 +16994,7 @@ index 7ca5f44f419..9104b17988b 100644
        && CLASS_DATA (sym)->attr.dimension
        && (e->ts.type != BT_DERIVED || !e->ts.u.derived->attr.vtype))
      {
-@@ -9301,6 +9348,7 @@ resolve_select_type (gfc_code *code, gfc_namespace *old_ns)
+@@ -9301,6 +9350,7 @@ resolve_select_type (gfc_code *code, gfc_namespace *old_ns)
  
        /* Check F03:C815.  */
        if ((c->ts.type == BT_DERIVED || c->ts.type == BT_CLASS)
@@ -16994,7 +17002,7 @@ index 7ca5f44f419..9104b17988b 100644
  	  && !selector_type->attr.unlimited_polymorphic
  	  && !gfc_type_is_extensible (c->ts.u.derived))
  	{
-@@ -9311,7 +9359,8 @@ resolve_select_type (gfc_code *code, gfc_namespace *old_ns)
+@@ -9311,7 +9361,8 @@ resolve_select_type (gfc_code *code, gfc_namespace *old_ns)
  	}
  
        /* Check F03:C816.  */
@@ -17004,7 +17012,7 @@ index 7ca5f44f419..9104b17988b 100644
  	  && ((c->ts.type != BT_DERIVED && c->ts.type != BT_CLASS)
  	      || !gfc_type_is_extension_of (selector_type, c->ts.u.derived)))
  	{
-@@ -11733,8 +11782,9 @@ gfc_resolve_code (gfc_code *code, gfc_namespace *ns)
+@@ -11733,8 +11784,9 @@ gfc_resolve_code (gfc_code *code, gfc_namespace *ns)
  	      gfc_resolve_omp_do_blocks (code, ns);
  	      break;
  	    case EXEC_SELECT_TYPE:
@@ -17016,7 +17024,7 @@ index 7ca5f44f419..9104b17988b 100644
  	      break;
              case EXEC_DO_CONCURRENT:
  	      gfc_do_concurrent_flag = 1;
-@@ -13095,7 +13145,8 @@ resolve_fl_procedure (gfc_symbol *sym, int mp_flag)
+@@ -13095,7 +13147,8 @@ resolve_fl_procedure (gfc_symbol *sym, int mp_flag)
  
    /* An elemental function is required to return a scalar 12.7.1  */
    if (sym->attr.elemental && sym->attr.function
@@ -28815,6 +28823,40 @@ index 892a9c9f4c1..91fc4c902d8 100644
    End Type t5
  
    character (len=3), parameter :: str3(2) = [ "ABC", "ZYX" ]
+diff --git a/gcc/testsuite/gfortran.dg/derived_constructor_comps_7.f90 b/gcc/testsuite/gfortran.dg/derived_constructor_comps_7.f90
+new file mode 100644
+index 00000000000..238ac3d9f26
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/derived_constructor_comps_7.f90
+@@ -0,0 +1,28 @@
++! { dg-do run }
++! PR fortran/104619
++
++module m
++  implicit none
++  type :: item
++     real :: x
++  end type item
++  type :: container
++     type(item) :: items(3)
++  end type container
++end module
++
++program p
++  use m
++  implicit none
++  type(item), allocatable :: items(:)
++  type(container) :: c
++  integer         :: i, n
++  items = [item(3.0), item(4.0), item(5.0)]
++  c = container(items=[(items(i), i = 1, size(items))])
++  if (any (c%items% x /= items% x)) stop 1
++  n = size (items)
++  c = container(items=[(items(i), i = 1, n)])
++  if (any (c%items% x /= items% x)) stop 2
++  c = container(items=[(items(i), i = 1, 3)])
++  if (any (c%items% x /= items% x)) stop 3
++end program
 diff --git a/gcc/testsuite/gfortran.dg/do_check_19.f90 b/gcc/testsuite/gfortran.dg/do_check_19.f90
 new file mode 100644
 index 00000000000..1373a7374ce
