@@ -86,7 +86,8 @@ François Dumont (3):
       libstdc++: Fix unordered containers move constructors noexcept qualification
       libstdc++: [_GLIBCXX_DEBUG] Fix management of __dp_sign_max_size [PR 99402]
 
-GCC Administrator (317):
+GCC Administrator (318):
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -15039,10 +15040,19 @@ index 6e635382fb4..23314498634 100644
  	 the result has overflowed and flag_trapping_math.  */
        if (flag_trapping_math
 diff --git a/gcc/fortran/ChangeLog b/gcc/fortran/ChangeLog
-index aa5932be872..154d2bec480 100644
+index aa5932be872..aa4f950947c 100644
 --- a/gcc/fortran/ChangeLog
 +++ b/gcc/fortran/ChangeLog
-@@ -1,3 +1,700 @@
+@@ -1,3 +1,709 @@
++2022-02-23  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2022-02-22  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/104619
++	* resolve.c (resolve_structure_cons): Skip shape check if shape
++	of constructor cannot be determined at compile time.
++
 +2022-02-04  Harald Anlauf  <anlauf@gmx.de>
 +
 +	Backported from master:
@@ -18812,10 +18822,18 @@ index 99edad8a950..f33489286a9 100644
  
  #endif
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index 2913065bf31..19a805ccdc0 100644
+index 2913065bf31..dbe595dbc1f 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,1939 @@
+@@ -1,3 +1,1947 @@
++2022-02-23  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2022-02-22  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/104619
++	* gfortran.dg/derived_constructor_comps_7.f90: New test.
++
 +2022-02-17  Jason Merrill  <jason@redhat.com>
 +
 +	Revert:
