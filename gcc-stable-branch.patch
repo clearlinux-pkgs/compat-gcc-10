@@ -86,7 +86,12 @@ François Dumont (3):
       libstdc++: Fix unordered containers move constructors noexcept qualification
       libstdc++: [_GLIBCXX_DEBUG] Fix management of __dp_sign_max_size [PR 99402]
 
-GCC Administrator (329):
+GCC Administrator (334):
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -731,10 +736,11 @@ Martin Sebor (2):
 Martin Storsjö (1):
       mh-mingw: Set __USE_MINGW_ACCESS in missed C++ flags variables
 
-Michael Meissner (3):
+Michael Meissner (4):
       Backport fix for PR target/98952
       Define __SIZEOF_FLOAT128__ and __SIZEOF_IBM128__.
       Use correct names for __ibm128 if long double is IEEE 128-bit.
+      Revert __SIZEOF__IBM128__ and __SIZEOF_FLOAT128__ patch.
 
 Patrick Palka (33):
       c++: Fix deduction with reference NTTP [PR83476]
@@ -4024,10 +4030,15 @@ index 0719d810258..a9368325816 100644
 -10.3.0
 +10.3.1
 diff --git a/gcc/ChangeLog b/gcc/ChangeLog
-index 3b1384e707f..741924f4717 100644
+index 3b1384e707f..2a57dc7946f 100644
 --- a/gcc/ChangeLog
 +++ b/gcc/ChangeLog
-@@ -1,3 +1,1631 @@
+@@ -1,3 +1,1636 @@
++2022-03-12  Michael Meissner  <meissner@the-meissners.org>
++
++	PR target/99708
++	* config/rs6000/rs6000-c.c: Revert 2022-03-05 patch.
++
 +2022-03-06  Michael Meissner  <meissner@the-meissners.org>
 +
 +	PR target/104253
@@ -10432,23 +10443,6 @@ index 1766d325bfb..b3ae6fea640 100644
  BU_MMA_5 (ASSEMBLE_ACC,     "assemble_acc",	MISC, mma_assemble_acc)
  BU_MMA_5 (PMXVF32GER,	    "pmxvf32ger",       MISC, mma_pmxvf32ger)
  BU_MMA_5 (PMXVF64GER,	    "pmxvf64ger",       PAIR, mma_pmxvf64ger)
-diff --git a/gcc/config/rs6000/rs6000-c.c b/gcc/config/rs6000/rs6000-c.c
-index e2fa2cdc88f..eec8c89d1b6 100644
---- a/gcc/config/rs6000/rs6000-c.c
-+++ b/gcc/config/rs6000/rs6000-c.c
-@@ -620,7 +620,11 @@ rs6000_cpu_cpp_builtins (cpp_reader *pfile)
-   if (TARGET_FRSQRTES)
-     builtin_define ("__RSQRTEF__");
-   if (TARGET_FLOAT128_TYPE)
--    builtin_define ("__FLOAT128_TYPE__");
-+      builtin_define ("__FLOAT128_TYPE__");
-+  if (ibm128_float_type_node)
-+    builtin_define ("__SIZEOF_IBM128__=16");
-+  if (ieee128_float_type_node)
-+    builtin_define ("__SIZEOF_FLOAT128__=16");
- #ifdef TARGET_LIBC_PROVIDES_HWCAP_IN_TCB
-   builtin_define ("__BUILTIN_CPU_SUPPORTS__");
- #endif
 diff --git a/gcc/config/rs6000/rs6000-call.c b/gcc/config/rs6000/rs6000-call.c
 index a112593878a..6a47389d564 100644
 --- a/gcc/config/rs6000/rs6000-call.c
@@ -18880,10 +18874,15 @@ index 99edad8a950..f33489286a9 100644
  
  #endif
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index 2913065bf31..3d772083c92 100644
+index 2913065bf31..247e6e3502a 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,1959 @@
+@@ -1,3 +1,1964 @@
++2022-03-12  Michael Meissner  <meissner@the-meissners.org>
++
++	PR target/99708
++	* gcc.target/powerpc/pr99708.c: Revert 2022-03-05 patch.
++
 +2022-03-06  Michael Meissner  <meissner@the-meissners.org>
 +
 +	PR target/104253
@@ -27251,33 +27250,6 @@ index 00000000000..c487fbc403e
 +  __trampoline_setup (tramp, SIZE, 0, 0);
 +  return 0;
 +}
-diff --git a/gcc/testsuite/gcc.target/powerpc/pr99708.c b/gcc/testsuite/gcc.target/powerpc/pr99708.c
-new file mode 100644
-index 00000000000..d478f7bc4c0
---- /dev/null
-+++ b/gcc/testsuite/gcc.target/powerpc/pr99708.c
-@@ -0,0 +1,21 @@
-+/* { dg-do run } */
-+/* { require-effective-target ppc_float128_sw } */
-+/* { dg-options "-O2 -mvsx -mfloat128" } */
-+
-+/*
-+ * PR target/99708
-+ *
-+ * Verify that __SIZEOF_FLOAT128__ and __SIZEOF_IBM128__ are properly defined.
-+ */
-+
-+#include <stdlib.h>
-+
-+int main (void)
-+{
-+  if (__SIZEOF_FLOAT128__ != sizeof (__float128)
-+      || __SIZEOF_IBM128__ != sizeof (__ibm128))
-+    abort ();
-+
-+  return 0;
-+}
-+
 diff --git a/gcc/testsuite/gcc.target/riscv/pr98777.c b/gcc/testsuite/gcc.target/riscv/pr98777.c
 new file mode 100644
 index 00000000000..ea2c2f9ca64
