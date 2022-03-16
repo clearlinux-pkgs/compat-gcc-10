@@ -86,7 +86,11 @@ François Dumont (3):
       libstdc++: Fix unordered containers move constructors noexcept qualification
       libstdc++: [_GLIBCXX_DEBUG] Fix management of __dp_sign_max_size [PR 99402]
 
-GCC Administrator (334):
+GCC Administrator (338):
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -808,7 +812,7 @@ Philippe Blain (1):
 Piotr Kubaj (1):
       gcc/configure: Check for powerpc64le*-*-freebsd*
 
-Richard Biener (40):
+Richard Biener (43):
       Increment BASE-VER after release
       testsuite/100176 - fix struct-layout-1_generate.c compile
       middle-end/98726 - fix VECTOR_CST element access
@@ -849,6 +853,9 @@ Richard Biener (40):
       tree-optimization/102798 - avoid copying PTA info to old SSA names
       middle-end/103181 - fix operation_could_trap_p for vector division
       tree-optimization/103237 - avoid vectorizing unhandled double reductions
+      target/100784 - avoid ICE with folding __builtin_ia32_shufpd
+      tree-optimization/104511 - avoid FP to DFP conversion for VEC_PACK_TRUNC
+      target/104453 - guard call folding with NULL LHS
 
 Richard Earnshaw (12):
       arm: fix UB due to missing mode check [PR100311]
@@ -9330,7 +9337,7 @@ index 47d52550e5e..d690d5b9bc1 100644
      {
      case E_SImode:
 diff --git a/gcc/config/i386/i386.c b/gcc/config/i386/i386.c
-index 2f838840e96..44e4be58c39 100644
+index 2f838840e96..19cb5d40c69 100644
 --- a/gcc/config/i386/i386.c
 +++ b/gcc/config/i386/i386.c
 @@ -6356,12 +6356,29 @@ ix86_compute_frame_layout (void)
@@ -9424,7 +9431,25 @@ index 2f838840e96..44e4be58c39 100644
  	  if (NOTE_P (i) && NOTE_KIND (i) == NOTE_INSN_EPILOGUE_BEG
  	      && !flag_non_call_exceptions
  	      && !can_throw_internal (insn))
-@@ -21333,10 +21350,12 @@ ix86_stack_protect_fail (void)
+@@ -17831,6 +17848,8 @@ ix86_gimple_fold_builtin (gimple_stmt_iterator *gsi)
+ 
+     do_shift:
+       gcc_assert (n_args >= 2);
++      if (!gimple_call_lhs (stmt))
++	break;
+       arg0 = gimple_call_arg (stmt, 0);
+       arg1 = gimple_call_arg (stmt, 1);
+       if (n_args > 2)
+@@ -17894,7 +17913,7 @@ ix86_gimple_fold_builtin (gimple_stmt_iterator *gsi)
+ 
+     case IX86_BUILTIN_SHUFPD:
+       arg2 = gimple_call_arg (stmt, 2);
+-      if (TREE_CODE (arg2) == INTEGER_CST)
++      if (TREE_CODE (arg2) == INTEGER_CST && gimple_call_lhs (stmt))
+ 	{
+ 	  location_t loc = gimple_location (stmt);
+ 	  unsigned HOST_WIDE_INT imask = TREE_INT_CST_LOW (arg2);
+@@ -21333,10 +21352,12 @@ ix86_stack_protect_fail (void)
     After all, the relocation needed is the same as for the call insn.
     Whether or not a particular assembler allows us to enter such, I
     guess we'll have to see.  */
@@ -9438,7 +9463,7 @@ index 2f838840e96..44e4be58c39 100644
      {
        int type = DW_EH_PE_sdata8;
        if (!TARGET_64BIT
-@@ -21345,9 +21364,11 @@ asm_preferred_eh_data_format (int code, int global)
+@@ -21345,9 +21366,11 @@ asm_preferred_eh_data_format (int code, int global)
  	type = DW_EH_PE_sdata4;
        return (global ? DW_EH_PE_indirect : 0) | DW_EH_PE_pcrel | type;
      }
@@ -23730,6 +23755,28 @@ index 00000000000..da6232d21ee
 +int c;
 +
 +void div_csa() { c /= sa; }
+diff --git a/gcc/testsuite/gcc.dg/pr104511.c b/gcc/testsuite/gcc.dg/pr104511.c
+new file mode 100644
+index 00000000000..ad5430c67c8
+--- /dev/null
++++ b/gcc/testsuite/gcc.dg/pr104511.c
+@@ -0,0 +1,16 @@
++/* { dg-do compile { target dfp } } */
++/* { dg-options "-O -Wno-psabi" } */
++
++typedef _Float64 __attribute__((__vector_size__ (32))) F;
++typedef _Decimal32 __attribute__((__vector_size__ (16))) D;
++
++extern void bar (void);
++
++D g;
++void
++foo (F f)
++{
++  D d = __builtin_convertvector (f, D);
++  bar ();
++  g = d;
++}
 diff --git a/gcc/testsuite/gcc.dg/pr78213.c b/gcc/testsuite/gcc.dg/pr78213.c
 index ebc2cce78f4..04bf0381f76 100644
 --- a/gcc/testsuite/gcc.dg/pr78213.c
@@ -26393,6 +26440,23 @@ index 00000000000..8b251ccf827
 +foo2 (unsigned long uc)
 +{
 +  return uv >> uc;
++}
+diff --git a/gcc/testsuite/gcc.target/i386/pr104453.c b/gcc/testsuite/gcc.target/i386/pr104453.c
+new file mode 100644
+index 00000000000..325cedf0e2c
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/i386/pr104453.c
+@@ -0,0 +1,11 @@
++/* { dg-do compile } */
++/* { dg-options "-mavx512f" } */
++
++typedef short __attribute__((__vector_size__ (32))) V;
++V g;
++
++void
++foo (void)
++{
++  __builtin_ia32_psrawi256 (g, 0);
 +}
 diff --git a/gcc/testsuite/gcc.target/i386/pr104458.c b/gcc/testsuite/gcc.target/i386/pr104458.c
 new file mode 100644
@@ -31632,6 +31696,26 @@ index 864c984f636..c0d77b5f46c 100644
  
    /* Initialize the value-handle array.  */
    threadedge_initialize_values ();
+diff --git a/gcc/tree-ssa-forwprop.c b/gcc/tree-ssa-forwprop.c
+index 3161d2e39ff..2a671b95f67 100644
+--- a/gcc/tree-ssa-forwprop.c
++++ b/gcc/tree-ssa-forwprop.c
+@@ -2403,6 +2403,15 @@ simplify_vector_constructor (gimple_stmt_iterator *gsi)
+ 			 ? VEC_UNPACK_FLOAT_HI_EXPR
+ 			 : VEC_UNPACK_HI_EXPR);
+ 
++	  /* Conversions between DFP and FP have no special tree code
++	     but we cannot handle those since all relevant vector conversion
++	     optabs only have a single mode.  */
++	  if (CONVERT_EXPR_CODE_P (conv_code)
++	      && FLOAT_TYPE_P (TREE_TYPE (type))
++	      && (DECIMAL_FLOAT_TYPE_P (TREE_TYPE (type))
++		  != DECIMAL_FLOAT_TYPE_P (TREE_TYPE (conv_src_type))))
++	    return false;
++
+ 	  if (CONVERT_EXPR_CODE_P (conv_code)
+ 	      && (2 * TYPE_PRECISION (TREE_TYPE (TREE_TYPE (orig[0])))
+ 		  == TYPE_PRECISION (TREE_TYPE (type)))
 diff --git a/gcc/tree-ssa-phiopt.c b/gcc/tree-ssa-phiopt.c
 index b1e0dce93d8..a6c197defea 100644
 --- a/gcc/tree-ssa-phiopt.c
