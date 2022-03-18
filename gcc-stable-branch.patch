@@ -86,7 +86,8 @@ François Dumont (3):
       libstdc++: Fix unordered containers move constructors noexcept qualification
       libstdc++: [_GLIBCXX_DEBUG] Fix management of __dp_sign_max_size [PR 99402]
 
-GCC Administrator (339):
+GCC Administrator (340):
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -795,7 +796,7 @@ Paul Thomas (11):
       Fortran: Fix for class functions as associated target [PR98565].
       Fortran: Correct missing structure constructor comps. [PR97612].
 
-Peter Bergner (10):
+Peter Bergner (11):
       rs6000: MMA test case ICEs using -O3 [PR99842]
       rs6000: Add new __builtin_vsx_build_pair and __builtin_mma_build_acc built-ins
       rs6000: MMA builtin usage ICEs when used in a #pragma omp parallel and using -fopenmp [PR100777]
@@ -806,6 +807,7 @@ Peter Bergner (10):
       rs6000: Disable optimizing multiple xxsetaccz instructions into one xxsetaccz
       rs6000: Add unspec wrapper to vsx_assemble_pair
       rs6000: MMA test case emits wrong code when building a vector pair [PR102976]
+      rs6000: Allow -mlong-double-64 after -mabi={ibm,ieee}longdouble [PR104208, PR87496]
 
 Philippe Blain (1):
       libstdc++: Install libstdc++*-gdb.py more robustly [PR 99453]
@@ -6914,6 +6916,27 @@ index 78a779c9350..a4b3e86ad52 100644
 +{
 +  return arm_canon_arch_option_1 (argc, argv, true);
 +}
+diff --git a/gcc/common/config/rs6000/rs6000-common.c b/gcc/common/config/rs6000/rs6000-common.c
+index ee37b9dc90b..2a8daaa3a99 100644
+--- a/gcc/common/config/rs6000/rs6000-common.c
++++ b/gcc/common/config/rs6000/rs6000-common.c
+@@ -227,6 +227,16 @@ rs6000_handle_option (struct gcc_options *opts, struct gcc_options *opts_set,
+ 	}
+       break;
+ 
++    case OPT_mabi_ibmlongdouble:
++    case OPT_mabi_ieeelongdouble:
++      if (opts->x_rs6000_long_double_type_size == 64)
++	{
++	  error_at (loc, "option %<%s%> requires %<-mlong-double-128%>",
++		    decoded->orig_option_with_args_text);
++	  return true;
++	}
++      break;
++
+     case OPT_mrecip:
+       opts->x_rs6000_recip_name = (value) ? "default" : "none";
+       break;
 diff --git a/gcc/config/aarch64/aarch64-bti-insert.c b/gcc/config/aarch64/aarch64-bti-insert.c
 index 98026695fdb..d0035c735a3 100644
 --- a/gcc/config/aarch64/aarch64-bti-insert.c
@@ -10798,7 +10821,7 @@ index 3d5dc7d8aae..4a358646830 100644
  		    insn_entry[uid].special_handling = SH_SUBREG;
  		}
 diff --git a/gcc/config/rs6000/rs6000.c b/gcc/config/rs6000/rs6000.c
-index a6dc1156994..399288222a5 100644
+index a6dc1156994..e95d877f866 100644
 --- a/gcc/config/rs6000/rs6000.c
 +++ b/gcc/config/rs6000/rs6000.c
 @@ -3815,6 +3815,15 @@ rs6000_option_override_internal (bool global_init_p)
@@ -10817,7 +10840,37 @@ index a6dc1156994..399288222a5 100644
    if (TARGET_CRYPTO && !TARGET_ALTIVEC)
      {
        if (rs6000_isa_flags_explicit & OPTION_MASK_CRYPTO)
-@@ -4209,18 +4218,6 @@ rs6000_option_override_internal (bool global_init_p)
+@@ -4032,13 +4041,6 @@ rs6000_option_override_internal (bool global_init_p)
+     }
+   else if (rs6000_long_double_type_size == 128)
+     rs6000_long_double_type_size = FLOAT_PRECISION_TFmode;
+-  else if (global_options_set.x_rs6000_ieeequad)
+-    {
+-      if (global_options.x_rs6000_ieeequad)
+-	error ("%qs requires %qs", "-mabi=ieeelongdouble", "-mlong-double-128");
+-      else
+-	error ("%qs requires %qs", "-mabi=ibmlongdouble", "-mlong-double-128");
+-    }
+ 
+   /* Set -mabi=ieeelongdouble on some old targets.  In the future, power server
+      systems will also set long double to be IEEE 128-bit.  AIX and Darwin
+@@ -4048,13 +4050,13 @@ rs6000_option_override_internal (bool global_init_p)
+   if (!global_options_set.x_rs6000_ieeequad)
+     rs6000_ieeequad = TARGET_IEEEQUAD_DEFAULT;
+ 
+-  else
++  else if (TARGET_LONG_DOUBLE_128)
+     {
+       if (global_options.x_rs6000_ieeequad
+ 	  && (!TARGET_POPCNTD || !TARGET_VSX))
+ 	error ("%qs requires full ISA 2.06 support", "-mabi=ieeelongdouble");
+ 
+-      if (rs6000_ieeequad != TARGET_IEEEQUAD_DEFAULT && TARGET_LONG_DOUBLE_128)
++      if (rs6000_ieeequad != TARGET_IEEEQUAD_DEFAULT)
+ 	{
+ 	  static bool warned_change_long_double;
+ 	  if (!warned_change_long_double)
+@@ -4209,18 +4211,6 @@ rs6000_option_override_internal (bool global_init_p)
  	}
      }
  
@@ -10836,7 +10889,7 @@ index a6dc1156994..399288222a5 100644
    /* Enable Altivec ABI for AIX -maltivec.  */
    if (TARGET_XCOFF && (TARGET_ALTIVEC || TARGET_VSX))
      {
-@@ -4311,6 +4308,16 @@ rs6000_option_override_internal (bool global_init_p)
+@@ -4311,6 +4301,16 @@ rs6000_option_override_internal (bool global_init_p)
        rs6000_isa_flags &= ~OPTION_MASK_MMA;
      }
  
@@ -10853,7 +10906,7 @@ index a6dc1156994..399288222a5 100644
    if (TARGET_DEBUG_REG || TARGET_DEBUG_TARGET)
      rs6000_print_isa_options (stderr, 0, "after subtarget", rs6000_isa_flags);
  
-@@ -5547,10 +5554,38 @@ const char *rs6000_machine;
+@@ -5547,10 +5547,38 @@ const char *rs6000_machine;
  const char *
  rs6000_machine_from_flags (void)
  {
@@ -10893,7 +10946,7 @@ index a6dc1156994..399288222a5 100644
  
    if ((flags & (ISA_3_1_MASKS_SERVER & ~ISA_3_0_MASKS_SERVER)) != 0)
      return "power10";
-@@ -10178,6 +10213,12 @@ init_float128_ibm (machine_mode mode)
+@@ -10178,6 +10206,12 @@ init_float128_ibm (machine_mode mode)
        set_conv_libfunc (trunc_optab, DDmode, mode, "__dpd_trunctfdd");
        set_conv_libfunc (sext_optab, TDmode, mode, "__dpd_extendtftd");
  
@@ -10906,7 +10959,7 @@ index a6dc1156994..399288222a5 100644
        if (TARGET_POWERPC64)
  	{
  	  set_conv_libfunc (sfix_optab, TImode, mode, "__fixtfti");
-@@ -16018,20 +16059,28 @@ rs6000_split_multireg_move (rtx dst, rtx src)
+@@ -16018,20 +16052,28 @@ rs6000_split_multireg_move (rtx dst, rtx src)
  
        if (GET_CODE (src) == UNSPEC)
  	{
@@ -10941,7 +10994,7 @@ index a6dc1156994..399288222a5 100644
  
  	  return;
  	}
-@@ -21351,6 +21400,14 @@ rs6000_rtx_costs (rtx x, machine_mode mode, int outer_code,
+@@ -21351,6 +21393,14 @@ rs6000_rtx_costs (rtx x, machine_mode mode, int outer_code,
  	}
        break;
  
@@ -27121,6 +27174,37 @@ index 00000000000..5a4d5ba5701
 +  return 0;
 +}
 +
+diff --git a/gcc/testsuite/gcc.target/powerpc/pr104208-1.c b/gcc/testsuite/gcc.target/powerpc/pr104208-1.c
+new file mode 100644
+index 00000000000..39d46027a19
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/powerpc/pr104208-1.c
+@@ -0,0 +1,9 @@
++/* PR target/104208 */
++/* { dg-do compile } */
++/* { dg-options "-O2 -mlong-double-128 -mabi=ibmlongdouble -mlong-double-64 -Wno-psabi" } */
++
++/* Verify we do not emit an error with the options above.  It is allowed
++   to reset the long double size to 64-bits after a 128-bit long double
++   ABI has been selected.  */
++
++int i;
+diff --git a/gcc/testsuite/gcc.target/powerpc/pr104208-2.c b/gcc/testsuite/gcc.target/powerpc/pr104208-2.c
+new file mode 100644
+index 00000000000..4e8ab5b099f
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/powerpc/pr104208-2.c
+@@ -0,0 +1,10 @@
++/* PR target/104208 */
++/* { dg-do compile } */
++/* { dg-options "-O2 -mlong-double-128 -mabi=ieeelongdouble -mlong-double-64 -mno-vsx -Wno-psabi" } */
++
++/* Verify we do not emit an error with the options above.  IEEE 128-bit
++   long double requires VSX, so using -mno-vsx would normally generate
++   an error.  However, if we have changed to a 64-bit long double, then
++   we should allow it.  */
++
++int i;
 diff --git a/gcc/testsuite/gcc.target/powerpc/pr104253.c b/gcc/testsuite/gcc.target/powerpc/pr104253.c
 new file mode 100644
 index 00000000000..02049cc978f
@@ -27283,6 +27367,32 @@ index 00000000000..02049cc978f
 +
 +  return 0;
 +}
+diff --git a/gcc/testsuite/gcc.target/powerpc/pr87496-2.c b/gcc/testsuite/gcc.target/powerpc/pr87496-2.c
+index 26c07ebb900..f9dc6426418 100644
+--- a/gcc/testsuite/gcc.target/powerpc/pr87496-2.c
++++ b/gcc/testsuite/gcc.target/powerpc/pr87496-2.c
+@@ -1,7 +1,7 @@
+ /* PR target/87496 */
+ /* { dg-do compile { target { powerpc*-*-* } } } */
+ /* { dg-skip-if "" { powerpc*-*-darwin* } } */
+-/* { dg-options "-O2 -mdejagnu-cpu=power7 -mabi=ieeelongdouble -mlong-double-64 -Wno-psabi" } */
++/* { dg-options "-O2 -mdejagnu-cpu=power7 -mlong-double-64 -mabi=ieeelongdouble -Wno-psabi" } */
+ 
+ int i;
+ 
+diff --git a/gcc/testsuite/gcc.target/powerpc/pr87496-3.c b/gcc/testsuite/gcc.target/powerpc/pr87496-3.c
+index 1be39975f64..39fb73cbb32 100644
+--- a/gcc/testsuite/gcc.target/powerpc/pr87496-3.c
++++ b/gcc/testsuite/gcc.target/powerpc/pr87496-3.c
+@@ -1,7 +1,7 @@
+ /* PR target/87496 */
+ /* { dg-do compile { target { powerpc*-*-* } } } */
+ /* { dg-skip-if "" { powerpc*-*-darwin* } } */
+-/* { dg-options "-O2 -mabi=ibmlongdouble -mlong-double-64 -Wno-psabi" } */
++/* { dg-options "-O2 -mlong-double-64 -mabi=ibmlongdouble -Wno-psabi" } */
+ 
+ int i;
+ 
 diff --git a/gcc/testsuite/gcc.target/powerpc/pr97142.c b/gcc/testsuite/gcc.target/powerpc/pr97142.c
 new file mode 100644
 index 00000000000..0e5f1c1f61b
