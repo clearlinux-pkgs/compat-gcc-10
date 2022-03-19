@@ -86,7 +86,8 @@ François Dumont (3):
       libstdc++: Fix unordered containers move constructors noexcept qualification
       libstdc++: [_GLIBCXX_DEBUG] Fix management of __dp_sign_max_size [PR 99402]
 
-GCC Administrator (340):
+GCC Administrator (341):
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -4040,10 +4041,25 @@ index 0719d810258..a9368325816 100644
 -10.3.0
 +10.3.1
 diff --git a/gcc/ChangeLog b/gcc/ChangeLog
-index 3b1384e707f..503b4e7bbb1 100644
+index 3b1384e707f..3acd7295400 100644
 --- a/gcc/ChangeLog
 +++ b/gcc/ChangeLog
-@@ -1,3 +1,1663 @@
+@@ -1,3 +1,1678 @@
++2022-03-18  Peter Bergner  <bergner@linux.ibm.com>
++
++	Backported from master:
++	2022-03-04  Peter Bergner  <bergner@linux.ibm.com>
++
++	PR target/87496
++	PR target/104208
++	* config/rs6000/rs6000.c (rs6000_option_override_internal): Make the
++	ISA 2.06 requirement for -mabi=ieeelongdouble conditional on
++	-mlong-double-128.
++	Move the -mabi=ieeelongdouble and -mabi=ibmlongdouble error checking
++	from here...
++	* common/config/rs6000/rs6000-common.c (rs6000_handle_option):
++	... to here.
++
 +2022-03-16  Richard Biener  <rguenther@suse.de>
 +
 +	Backported from master:
@@ -18980,10 +18996,23 @@ index 99edad8a950..f33489286a9 100644
  
  #endif
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index 2913065bf31..5b619b3fd7b 100644
+index 2913065bf31..ec7fb230368 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,1980 @@
+@@ -1,3 +1,1993 @@
++2022-03-18  Peter Bergner  <bergner@linux.ibm.com>
++
++	Backported from master:
++	2022-03-04  Peter Bergner  <bergner@linux.ibm.com>
++
++	PR target/87496
++	PR target/104208
++	* gcc.target/powerpc/pr104208-1.c: New test.
++	* gcc.target/powerpc/pr104208-2.c: Likewise.
++	* gcc.target/powerpc/pr87496-2.c: Swap long double options to trigger
++	the expected error.
++	* gcc.target/powerpc/pr87496-3.c: Likewise.
++
 +2022-03-16  Richard Biener  <rguenther@suse.de>
 +
 +	Backported from master:
