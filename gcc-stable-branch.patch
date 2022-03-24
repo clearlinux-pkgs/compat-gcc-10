@@ -86,7 +86,12 @@ François Dumont (3):
       libstdc++: Fix unordered containers move constructors noexcept qualification
       libstdc++: [_GLIBCXX_DEBUG] Fix management of __dp_sign_max_size [PR 99402]
 
-GCC Administrator (341):
+GCC Administrator (346):
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -748,6 +753,9 @@ Michael Meissner (4):
       Define __SIZEOF_FLOAT128__ and __SIZEOF_IBM128__.
       Use correct names for __ibm128 if long double is IEEE 128-bit.
       Revert __SIZEOF__IBM128__ and __SIZEOF_FLOAT128__ patch.
+
+Pascal Obry (1):
+      Properly reset the port handle when closing
 
 Patrick Palka (33):
       c++: Fix deduction with reference NTTP [PR83476]
@@ -6225,6 +6233,30 @@ index 63a0ad9461e..db78c6e8eb3 100644
  	      return false;
  
  	    expr = Prefix (expr);
+diff --git a/gcc/ada/libgnat/g-sercom__linux.adb b/gcc/ada/libgnat/g-sercom__linux.adb
+index 87143e23531..aa3c0134222 100644
+--- a/gcc/ada/libgnat/g-sercom__linux.adb
++++ b/gcc/ada/libgnat/g-sercom__linux.adb
+@@ -318,6 +318,7 @@ package body GNAT.Serial_Communications is
+    begin
+       if Port.H /= -1 then
+          Res := close (int (Port.H));
++         Port.H := -1;
+       end if;
+    end Close;
+ 
+diff --git a/gcc/ada/libgnat/g-sercom__mingw.adb b/gcc/ada/libgnat/g-sercom__mingw.adb
+index d5e2344524f..51fc0ac8953 100644
+--- a/gcc/ada/libgnat/g-sercom__mingw.adb
++++ b/gcc/ada/libgnat/g-sercom__mingw.adb
+@@ -70,6 +70,7 @@ package body GNAT.Serial_Communications is
+    begin
+       if Port.H /= -1 then
+          Success := CloseHandle (HANDLE (Port.H));
++         Port.H := -1;
+ 
+          if Success = Win32.FALSE then
+             Raise_Error ("error closing the port");
 diff --git a/gcc/c/ChangeLog b/gcc/c/ChangeLog
 index ecd1741df24..8fd5fa92b1a 100644
 --- a/gcc/c/ChangeLog
