@@ -86,7 +86,8 @@ François Dumont (3):
       libstdc++: Fix unordered containers move constructors noexcept qualification
       libstdc++: [_GLIBCXX_DEBUG] Fix management of __dp_sign_max_size [PR 99402]
 
-GCC Administrator (346):
+GCC Administrator (347):
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -5732,10 +5733,16 @@ index 3b1384e707f..3acd7295400 100644
  
  	* GCC 10.3.0 released.
 diff --git a/gcc/ada/ChangeLog b/gcc/ada/ChangeLog
-index 86fd883487b..ec298582d58 100644
+index 86fd883487b..a14364e577a 100644
 --- a/gcc/ada/ChangeLog
 +++ b/gcc/ada/ChangeLog
-@@ -1,3 +1,86 @@
+@@ -1,3 +1,92 @@
++2022-03-24  Pascal Obry  <obry@adacore.com>
++
++	PR ada/104767
++	* libgnat/g-sercom__mingw.adb (Close): Reset port handle to -1.
++	* libgnat/g-sercom__linux.adb (Close): Likewise.
++
 +2022-01-19  H.J. Lu  <hjl.tools@gmail.com>
 +
 +	Backported from master:
