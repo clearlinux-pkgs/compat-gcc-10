@@ -86,7 +86,9 @@ François Dumont (3):
       libstdc++: Fix unordered containers move constructors noexcept qualification
       libstdc++: [_GLIBCXX_DEBUG] Fix management of __dp_sign_max_size [PR 99402]
 
-GCC Administrator (347):
+GCC Administrator (349):
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -438,12 +440,13 @@ GCC Administrator (347):
 Geng Qi (1):
       RISC-V: For '-march' and '-mabi' options, add 'Negative' property mentions itself.
 
-H.J. Lu (5):
+H.J. Lu (6):
       x86: Document -fcf-protection requires i686 or newer
       [Ada] Compile s-mmap and 128bit on x86_64-linux-gnux32
       [Ada] Set target_cpu to x32 for x86_64-linux-gnux32
       libsanitizer: Cherry-pick LLVM release/13.x commit d96358a28193
       pr104458.c: Replace long with long long for -mx32
+      x86: Use x constraint on SSSE3 patterns with MMX operands
 
 Hafiz Abid Qadeer (1):
       [OpenACC] Fix an ICE where a loop with GT condition is collapsed.
@@ -4050,10 +4053,21 @@ index 0719d810258..a9368325816 100644
 -10.3.0
 +10.3.1
 diff --git a/gcc/ChangeLog b/gcc/ChangeLog
-index 3b1384e707f..3acd7295400 100644
+index 3b1384e707f..d7a83c128c3 100644
 --- a/gcc/ChangeLog
 +++ b/gcc/ChangeLog
-@@ -1,3 +1,1678 @@
+@@ -1,3 +1,1689 @@
++2022-03-26  H.J. Lu  <hjl.tools@gmail.com>
++
++	Backported from master:
++	2022-03-26  H.J. Lu  <hjl.tools@gmail.com>
++
++	PR target/105052
++	* config/i386/sse.md (ssse3_ph<plusminus_mnemonic>wv4hi3):
++	Replace "Yv" with "x".
++	(ssse3_ph<plusminus_mnemonic>dv2si3): Likewise.
++	(ssse3_psign<mode>3): Likewise.
++
 +2022-03-18  Peter Bergner  <bergner@linux.ibm.com>
 +
 +	Backported from master:
@@ -9649,7 +9663,7 @@ index d447df2cfe4..670ff1d3682 100644
       [(set (match_dup 0) (xor:SWI48 (match_dup 0) (match_dup 2)))
        (clobber (reg:CC FLAGS_REG))])]
 diff --git a/gcc/config/i386/sse.md b/gcc/config/i386/sse.md
-index bf01e1d7426..1292126a46d 100644
+index bf01e1d7426..90b6bf605b4 100644
 --- a/gcc/config/i386/sse.md
 +++ b/gcc/config/i386/sse.md
 @@ -6752,7 +6752,7 @@
@@ -9661,6 +9675,64 @@ index bf01e1d7426..1292126a46d 100644
  	  (parallel [(const_int 4) (const_int 5)
  		     (const_int 6) (const_int 7)])))
     (set (match_operand:V4DF 0 "register_operand")
+@@ -16140,12 +16140,12 @@
+    (set_attr "mode" "TI")])
+ 
+ (define_insn_and_split "ssse3_ph<plusminus_mnemonic>wv4hi3"
+-  [(set (match_operand:V4HI 0 "register_operand" "=y,x,Yv")
++  [(set (match_operand:V4HI 0 "register_operand" "=y,x,x")
+ 	(vec_concat:V4HI
+ 	  (vec_concat:V2HI
+ 	    (ssse3_plusminus:HI
+ 	      (vec_select:HI
+-		(match_operand:V4HI 1 "register_operand" "0,0,Yv")
++		(match_operand:V4HI 1 "register_operand" "0,0,x")
+ 		(parallel [(const_int 0)]))
+ 	      (vec_select:HI (match_dup 1) (parallel [(const_int 1)])))
+ 	    (ssse3_plusminus:HI
+@@ -16154,7 +16154,7 @@
+ 	  (vec_concat:V2HI
+ 	    (ssse3_plusminus:HI
+ 	      (vec_select:HI
+-		(match_operand:V4HI 2 "register_mmxmem_operand" "ym,x,Yv")
++		(match_operand:V4HI 2 "register_mmxmem_operand" "ym,x,x")
+ 		(parallel [(const_int 0)]))
+ 	      (vec_select:HI (match_dup 2) (parallel [(const_int 1)])))
+ 	    (ssse3_plusminus:HI
+@@ -16265,16 +16265,16 @@
+    (set_attr "mode" "TI")])
+ 
+ (define_insn_and_split "ssse3_ph<plusminus_mnemonic>dv2si3"
+-  [(set (match_operand:V2SI 0 "register_operand" "=y,x,Yv")
++  [(set (match_operand:V2SI 0 "register_operand" "=y,x,x")
+ 	(vec_concat:V2SI
+ 	  (plusminus:SI
+ 	    (vec_select:SI
+-	      (match_operand:V2SI 1 "register_operand" "0,0,Yv")
++	      (match_operand:V2SI 1 "register_operand" "0,0,x")
+ 	      (parallel [(const_int 0)]))
+ 	    (vec_select:SI (match_dup 1) (parallel [(const_int 1)])))
+ 	  (plusminus:SI
+ 	    (vec_select:SI
+-	      (match_operand:V2SI 2 "register_mmxmem_operand" "ym,x,Yv")
++	      (match_operand:V2SI 2 "register_mmxmem_operand" "ym,x,x")
+ 	      (parallel [(const_int 0)]))
+ 	    (vec_select:SI (match_dup 2) (parallel [(const_int 1)])))))]
+   "(TARGET_MMX || TARGET_MMX_WITH_SSE) && TARGET_SSSE3"
+@@ -16727,10 +16727,10 @@
+    (set_attr "mode" "<sseinsnmode>")])
+ 
+ (define_insn "ssse3_psign<mode>3"
+-  [(set (match_operand:MMXMODEI 0 "register_operand" "=y,x,Yv")
++  [(set (match_operand:MMXMODEI 0 "register_operand" "=y,x,x")
+ 	(unspec:MMXMODEI
+-	  [(match_operand:MMXMODEI 1 "register_operand" "0,0,Yv")
+-	   (match_operand:MMXMODEI 2 "register_mmxmem_operand" "ym,x,Yv")]
++	  [(match_operand:MMXMODEI 1 "register_operand" "0,0,x")
++	   (match_operand:MMXMODEI 2 "register_mmxmem_operand" "ym,x,x")]
+ 	  UNSPEC_PSIGN))]
+   "(TARGET_MMX || TARGET_MMX_WITH_SSE) && TARGET_SSSE3"
+   "@
 @@ -16927,7 +16927,7 @@
     (set (attr "prefix_rex") (symbol_ref "x86_extended_reg_mentioned_p (insn)"))
     (set_attr "mode" "DI,TI")])
