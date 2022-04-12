@@ -13,6 +13,9 @@ Alex Coplan (9):
       arm: Avoid emitting bogus CFA adjusts for CMSE nonsecure calls [PR99725]
       arm: Fix ICE with CMSE nonsecure calls on Armv8.1-M [PR100333]
 
+Alexandre Oliva (1):
+      ppc: testsuite: require target effectively [PR104253]
+
 Andre Vieira (1):
       arm: Fix testisms introduced with fix for pr target/95646
 
@@ -86,7 +89,13 @@ François Dumont (3):
       libstdc++: Fix unordered containers move constructors noexcept qualification
       libstdc++: [_GLIBCXX_DEBUG] Fix management of __dp_sign_max_size [PR 99402]
 
-GCC Administrator (357):
+GCC Administrator (363):
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -19440,10 +19449,20 @@ index 99edad8a950..f33489286a9 100644
  
  #endif
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index 2913065bf31..4ef247fa279 100644
+index 2913065bf31..9f8516870a1 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,2001 @@
+@@ -1,3 +1,2011 @@
++2022-04-11  Alexandre Oliva  <oliva@adacore.com>
++
++	Backported from master:
++	2022-04-11  Alexandre Oliva  <oliva@adacore.com>
++
++	PR target/104253
++	* gcc.target/powerpc/pr104253.c: Add missing dg- before
++	require-effective-target.  Prune warning about -mfloat128
++	possibly not being fully supported.
++
 +2022-04-05  Martin Jambor  <mjambor@suse.cz>
 +
 +	Backported from master:
@@ -27758,10 +27777,10 @@ index 00000000000..4e8ab5b099f
 +int i;
 diff --git a/gcc/testsuite/gcc.target/powerpc/pr104253.c b/gcc/testsuite/gcc.target/powerpc/pr104253.c
 new file mode 100644
-index 00000000000..02049cc978f
+index 00000000000..e5f9499b7c8
 --- /dev/null
 +++ b/gcc/testsuite/gcc.target/powerpc/pr104253.c
-@@ -0,0 +1,156 @@
+@@ -0,0 +1,157 @@
 +/*
 + * Require float128 support because __ibm128 currently is not enabled unless we
 + * also have __float128 support.  We require software IEEE 128-bit support,
@@ -27770,8 +27789,9 @@ index 00000000000..02049cc978f
 + */
 +
 +/* { dg-do run } */
-+/* { require-effective-target ppc_float128_sw } */
++/* { dg-require-effective-target ppc_float128_sw } */
 +/* { dg-options "-O2 -mvsx -mfloat128" } */
++/* { dg-prune-output ".-mfloat128. option may not be fully supported" } */
 +
 +/*
 + * PR target/104253
