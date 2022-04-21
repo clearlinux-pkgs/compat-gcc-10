@@ -89,7 +89,13 @@ François Dumont (3):
       libstdc++: Fix unordered containers move constructors noexcept qualification
       libstdc++: [_GLIBCXX_DEBUG] Fix management of __dp_sign_max_size [PR 99402]
 
-GCC Administrator (366):
+GCC Administrator (372):
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -850,7 +856,7 @@ Philippe Blain (1):
 Piotr Kubaj (1):
       gcc/configure: Check for powerpc64le*-*-freebsd*
 
-Richard Biener (43):
+Richard Biener (51):
       Increment BASE-VER after release
       testsuite/100176 - fix struct-layout-1_generate.c compile
       middle-end/98726 - fix VECTOR_CST element access
@@ -894,6 +900,14 @@ Richard Biener (43):
       target/100784 - avoid ICE with folding __builtin_ia32_shufpd
       tree-optimization/104511 - avoid FP to DFP conversion for VEC_PACK_TRUNC
       target/104453 - guard call folding with NULL LHS
+      tree-optimization/105070 - annotate bit cluster tests with locations
+      tree-optimization/105226 - avoid splitting abnormal edges
+      ada/104861 - use target_noncanonial for Target_Name
+      middle-end/104786 - ICE with asm and VLA
+      debug/104337 - avoid messing with the abstract origin chain in NRV
+      tree-optimization/103596 - fix missed propagation into switches
+      tree-optimization/103361 - fix unroll-and-jam direction vector handling
+      middle-end/100786 - constant folding from incompatible alias
 
 Richard Earnshaw (12):
       arm: fix UB due to missing mode check [PR100311]
@@ -5937,10 +5951,18 @@ index 0312ca704aa..458e1b4d3c2 100644
  
        elsif Is_Array_Type (E) then
 diff --git a/gcc/ada/gcc-interface/Makefile.in b/gcc/ada/gcc-interface/Makefile.in
-index 3342e33b4b1..e0ca7cc4e8a 100644
+index 3342e33b4b1..fd676b269ad 100644
 --- a/gcc/ada/gcc-interface/Makefile.in
 +++ b/gcc/ada/gcc-interface/Makefile.in
-@@ -348,6 +348,13 @@ ifeq ($(strip $(filter-out %x86_64, $(target_cpu))),)
+@@ -138,6 +138,7 @@ objdir = .
+ 
+ target_alias=@target_alias@
+ target=@target@
++target_noncanonical=@target_noncanonical@
+ target_cpu=@target_cpu@
+ target_vendor=@target_vendor@
+ target_os=@target_os@
+@@ -348,6 +349,13 @@ ifeq ($(strip $(filter-out %x86_64, $(target_cpu))),)
    endif
  endif
  
@@ -5954,6 +5976,15 @@ index 3342e33b4b1..e0ca7cc4e8a 100644
  # Configuration of host tools
  
  # Under linux, host tools need to be linked with -ldl
+@@ -583,7 +591,7 @@ OSCONS_CC=$(subst ./xgcc,../../xgcc,$(subst -B./, -B../../,$(GCC_FOR_TARGET)))
+ # has a <types.h> header).
+ 
+ OSCONS_CPP=$(OSCONS_CC) $(GNATLIBCFLAGS_FOR_C) -E -C \
+-  -DTARGET=\"$(target)\" -iquote $(fsrcpfx)ada $(fsrcpfx)ada/s-oscons-tmplt.c > s-oscons-tmplt.i
++  -DTARGET=\"$(target_noncanonical)\" -iquote $(fsrcpfx)ada $(fsrcpfx)ada/s-oscons-tmplt.c > s-oscons-tmplt.i
+ OSCONS_EXTRACT=$(OSCONS_CC) $(GNATLIBCFLAGS_FOR_C) -S s-oscons-tmplt.i
+ 
+ # Note: if you need to build with a non-GNU compiler, you could adapt the
 diff --git a/gcc/ada/gcc-interface/decl.c b/gcc/ada/gcc-interface/decl.c
 index 300f7c04b0c..8b221bc1363 100644
 --- a/gcc/ada/gcc-interface/decl.c
@@ -6881,6 +6912,21 @@ index 061a97fbef5..5168ba6e3f6 100644
  
      if (!n1 && n2)
        return false;
+diff --git a/gcc/cfgexpand.c b/gcc/cfgexpand.c
+index bf4f194ed99..20451d6e824 100644
+--- a/gcc/cfgexpand.c
++++ b/gcc/cfgexpand.c
+@@ -3156,7 +3156,9 @@ expand_asm_stmt (gasm *stmt)
+ 		    && GET_MODE (DECL_RTL (val)) != TYPE_MODE (type)))
+ 	  || ! allows_reg
+ 	  || is_inout
+-	  || TREE_ADDRESSABLE (type))
++	  || TREE_ADDRESSABLE (type)
++	  || (!tree_fits_poly_int64_p (TYPE_SIZE (type))
++	      && !known_size_p (max_int_size_in_bytes (type))))
+ 	{
+ 	  op = expand_expr (val, NULL_RTX, VOIDmode,
+ 			    !allows_reg ? EXPAND_MEMORY : EXPAND_WRITE);
 diff --git a/gcc/cfgloopmanip.c b/gcc/cfgloopmanip.c
 index 73134a20e33..495e7a9e6b8 100644
 --- a/gcc/cfgloopmanip.c
@@ -17990,10 +18036,21 @@ index d3fef08b4b9..24758ddadee 100644
  	  vec_safe_push (typelist, pvoid_type_node);  /* caf_token.  */
  	  vec_safe_push (typelist, gfc_array_index_type);  /* caf_offset.  */
 diff --git a/gcc/gimple-fold.c b/gcc/gimple-fold.c
-index da3536ecd4e..912540dc8a7 100644
+index da3536ecd4e..969c3998421 100644
 --- a/gcc/gimple-fold.c
 +++ b/gcc/gimple-fold.c
-@@ -445,7 +445,8 @@ fold_gimple_assign (gimple_stmt_iterator *si)
+@@ -285,7 +285,9 @@ get_symbol_constant_value (tree sym)
+       if (val)
+ 	{
+ 	  val = canonicalize_constructor_val (unshare_expr (val), sym);
+-	  if (val && is_gimple_min_invariant (val))
++	  if (val
++	      && is_gimple_min_invariant (val)
++	      && useless_type_conversion_p (TREE_TYPE (sym), TREE_TYPE (val)))
+ 	    return val;
+ 	  else
+ 	    return NULL_TREE;
+@@ -445,7 +447,8 @@ fold_gimple_assign (gimple_stmt_iterator *si)
  					   CONSTRUCTOR_ELTS (rhs));
  	  }
  
@@ -18003,7 +18060,7 @@ index da3536ecd4e..912540dc8a7 100644
  	  return get_symbol_constant_value (rhs);
        }
        break;
-@@ -4840,6 +4841,7 @@ static bool
+@@ -4840,6 +4843,7 @@ static bool
  maybe_canonicalize_mem_ref_addr (tree *t, bool is_debug = false)
  {
    bool res = false;
@@ -18011,7 +18068,7 @@ index da3536ecd4e..912540dc8a7 100644
  
    if (TREE_CODE (*t) == ADDR_EXPR)
      t = &TREE_OPERAND (*t, 0);
-@@ -4952,6 +4954,8 @@ maybe_canonicalize_mem_ref_addr (tree *t, bool is_debug = false)
+@@ -4952,6 +4956,8 @@ maybe_canonicalize_mem_ref_addr (tree *t, bool is_debug = false)
        if (tem)
  	{
  	  *t = tem;
@@ -18036,6 +18093,23 @@ index 2379848808f..6f9f612b39f 100644
  	    return false;
  	}
      }
+diff --git a/gcc/gimple-loop-jam.c b/gcc/gimple-loop-jam.c
+index 58d265ea886..bdf818cd333 100644
+--- a/gcc/gimple-loop-jam.c
++++ b/gcc/gimple-loop-jam.c
+@@ -403,10 +403,10 @@ adjust_unroll_factor (class loop *inner, struct data_dependence_relation *ddr,
+ 	     a >= N, or b > 0, or b is zero and a > 0.  Otherwise the unroll
+ 	     factor needs to be limited so that the first condition holds.
+ 	     That may limit the factor down to zero in the worst case.  */
+-	  int dist = dist_v[0];
++	  lambda_int dist = dist_v[0];
+ 	  if (dist < 0)
+ 	    gcc_unreachable ();
+-	  else if ((unsigned)dist >= *unroll)
++	  else if (dist >= (lambda_int)*unroll)
+ 	    ;
+ 	  else if (lambda_vector_zerop (dist_v + 1, DDR_NB_LOOPS (ddr) - 1))
+ 	    {
 diff --git a/gcc/gimple-ssa-evrp-analyze.c b/gcc/gimple-ssa-evrp-analyze.c
 index 9f8ce5575a2..8389a58b00d 100644
 --- a/gcc/gimple-ssa-evrp-analyze.c
@@ -23259,6 +23333,30 @@ index 00000000000..a846751a0d6
 +  if (c.j != 84 || c.k != 84)
 +    __builtin_abort();
 +}
+diff --git a/gcc/testsuite/g++.dg/torture/pr103361.C b/gcc/testsuite/g++.dg/torture/pr103361.C
+new file mode 100644
+index 00000000000..ec1d6e1bae4
+--- /dev/null
++++ b/gcc/testsuite/g++.dg/torture/pr103361.C
+@@ -0,0 +1,18 @@
++/* { dg-do compile } */
++/* { dg-additional-options "-floop-unroll-and-jam" } */
++
++char a, b;
++extern unsigned short c[];
++extern bool d[];
++const unsigned short &e(const unsigned short &f, const unsigned short &g) {
++  if (g < f)
++    return g;
++  return f;
++}
++void k() {
++  for (int h = 0; b; h += 3)
++    for (unsigned long i = 0; i < 11104842004558084287ULL;
++         i += -11104842004558084300ULL)
++      for (bool j(e(6, e(6, c[h + i]))); j < (bool)a; j = 7)
++        d[7] = 0;
++}
 diff --git a/gcc/testsuite/g++.dg/warn/Wconversion5.C b/gcc/testsuite/g++.dg/warn/Wconversion5.C
 new file mode 100644
 index 00000000000..f5ae6312bc5
@@ -23917,6 +24015,27 @@ index 75e902cd1f4..35dff89c377 100644
      }
  }
  
+diff --git a/gcc/testsuite/gcc.dg/debug/pr104337.c b/gcc/testsuite/gcc.dg/debug/pr104337.c
+new file mode 100644
+index 00000000000..d15680fbf1a
+--- /dev/null
++++ b/gcc/testsuite/gcc.dg/debug/pr104337.c
+@@ -0,0 +1,15 @@
++/* { dg-do compile } */
++
++struct a {
++  unsigned b : 7;
++};
++inline __attribute__((optimize(3))) __attribute__((always_inline)) struct a
++c() {
++  struct a d;
++  return d;
++}
++void e() {
++  for (;;)
++    c();
++}
++int main() {}
 diff --git a/gcc/testsuite/gcc.dg/goacc/tile-1.c b/gcc/testsuite/gcc.dg/goacc/tile-1.c
 new file mode 100644
 index 00000000000..6898397ad5e
@@ -24448,6 +24567,49 @@ index 00000000000..ad5430c67c8
 +  bar ();
 +  g = d;
 +}
+diff --git a/gcc/testsuite/gcc.dg/pr104786.c b/gcc/testsuite/gcc.dg/pr104786.c
+new file mode 100644
+index 00000000000..3076d236d21
+--- /dev/null
++++ b/gcc/testsuite/gcc.dg/pr104786.c
+@@ -0,0 +1,8 @@
++/* { dg-do compile } */
++/* { dg-options "-std=gnu90" } */
++
++void h(void *di, int num)
++{
++  char (*t)[num] = di;
++  __asm__ ("" : "=X"( *t));
++}
+diff --git a/gcc/testsuite/gcc.dg/pr105226.c b/gcc/testsuite/gcc.dg/pr105226.c
+new file mode 100644
+index 00000000000..9c4941dc6fc
+--- /dev/null
++++ b/gcc/testsuite/gcc.dg/pr105226.c
+@@ -0,0 +1,23 @@
++/* { dg-do compile } */
++/* { dg-options "-Ofast" } */
++/* { dg-require-effective-target indirect_jumps } */
++
++#include <setjmp.h>
++struct longjmp_buf {
++  jmp_buf buf;
++};
++void g ();
++void f ()
++{
++  int i, n;
++  long *a;
++  long *args;
++  struct longjmp_buf b;
++  setjmp (b.buf);
++  for (;;)
++    {
++      for (i = 0; i < n; i++)
++        a[i] = args[i];
++      g ();
++    }
++}
 diff --git a/gcc/testsuite/gcc.dg/pr78213.c b/gcc/testsuite/gcc.dg/pr78213.c
 index ebc2cce78f4..04bf0381f76 100644
 --- a/gcc/testsuite/gcc.dg/pr78213.c
@@ -24936,6 +25098,21 @@ index 00000000000..cc62e71f9a3
 +    __builtin_abort ();
 +  return 0;
 +}
+diff --git a/gcc/testsuite/gcc.dg/torture/pr100786.c b/gcc/testsuite/gcc.dg/torture/pr100786.c
+new file mode 100644
+index 00000000000..42f4e485593
+--- /dev/null
++++ b/gcc/testsuite/gcc.dg/torture/pr100786.c
+@@ -0,0 +1,9 @@
++/* { dg-do compile } */
++
++const double a = 0;
++extern int b __attribute__((alias("a")));
++void inc() { b++; }
++
++const int a2 = 0;
++extern double b2 __attribute__((alias("a2")));
++void inc2() { b2+=1; }
 diff --git a/gcc/testsuite/gcc.dg/torture/pr100923.c b/gcc/testsuite/gcc.dg/torture/pr100923.c
 new file mode 100644
 index 00000000000..05a6341fea3
@@ -25166,6 +25343,48 @@ index 00000000000..f2399f9586e
 +  if (g1 != -1)
 +    __builtin_abort ();
 +  return 0;
++}
+diff --git a/gcc/testsuite/gcc.dg/torture/pr103596.c b/gcc/testsuite/gcc.dg/torture/pr103596.c
+new file mode 100644
+index 00000000000..4f65c36d121
+--- /dev/null
++++ b/gcc/testsuite/gcc.dg/torture/pr103596.c
+@@ -0,0 +1,36 @@
++/* { dg-do compile } */
++/* { dg-additional-options "--param case-values-threshold=1" } */
++
++int n;
++
++void
++qux (int a)
++{
++}
++
++int
++baz (void)
++{
++  return -1;
++}
++
++__attribute__ ((returns_twice)) int
++bar (int b)
++{
++  if (n != 0)
++    {
++      if (b != 2)
++        if (b != 0)
++          return n + b;
++
++      if (n == 2)
++        return 0;
++    }
++}
++
++void
++foo (void)
++{
++  qux (n);
++  bar (baz ());
 +}
 diff --git a/gcc/testsuite/gcc.dg/torture/pr96513.c b/gcc/testsuite/gcc.dg/torture/pr96513.c
 new file mode 100644
@@ -31909,9 +32128,18 @@ index bd62a0d9e79..2749afe4741 100644
      return 0;
  }
 diff --git a/gcc/tree-data-ref.c b/gcc/tree-data-ref.c
-index 2cb54def860..a0613ed83eb 100644
+index 2cb54def860..ba059ebc0de 100644
 --- a/gcc/tree-data-ref.c
 +++ b/gcc/tree-data-ref.c
+@@ -391,7 +391,7 @@ print_lambda_vector (FILE * outfile, lambda_vector vector, int n)
+   int i;
+ 
+   for (i = 0; i < n; i++)
+-    fprintf (outfile, "%3d ", (int)vector[i]);
++    fprintf (outfile, HOST_WIDE_INT_PRINT_DEC " ", vector[i]);
+   fprintf (outfile, "\n");
+ }
+ 
 @@ -1891,8 +1891,8 @@ create_intersect_range_checks_index (class loop *loop, tree *cond_expr,
  
    bool waw_or_war_p = (alias_pair.flags & ~(DR_ALIAS_WAR | DR_ALIAS_WAW)) == 0;
@@ -32398,6 +32626,30 @@ index 0507d9afaf4..0337fbe3787 100644
    return x;
  }
  
+diff --git a/gcc/tree-nrv.c b/gcc/tree-nrv.c
+index 9d17a104f34..25ef1cfa0c2 100644
+--- a/gcc/tree-nrv.c
++++ b/gcc/tree-nrv.c
+@@ -236,19 +236,6 @@ pass_nrv::execute (function *fun)
+       fprintf (dump_file, "\n");
+     }
+ 
+-  /* At this point we know that all the return statements return the
+-     same local which has suitable attributes for NRV.   Copy debugging
+-     information from FOUND to RESULT if it will be useful.  But don't set
+-     DECL_ABSTRACT_ORIGIN to point at another function.  */
+-  if (!DECL_IGNORED_P (found)
+-      && !(DECL_ABSTRACT_ORIGIN (found)
+-	   && DECL_CONTEXT (DECL_ABSTRACT_ORIGIN (found)) != current_function_decl))
+-    {
+-      DECL_NAME (result) = DECL_NAME (found);
+-      DECL_SOURCE_LOCATION (result) = DECL_SOURCE_LOCATION (found);
+-      DECL_ABSTRACT_ORIGIN (result) = DECL_ABSTRACT_ORIGIN (found);
+-    }
+-
+   TREE_ADDRESSABLE (result) |= TREE_ADDRESSABLE (found);
+ 
+   /* Now walk through the function changing all references to VAR to be
 diff --git a/gcc/tree-sra.c b/gcc/tree-sra.c
 index 85b9cc9ed7f..09d951a261b 100644
 --- a/gcc/tree-sra.c
@@ -32531,8 +32783,128 @@ index 465f843fdc0..fbe0a7decfa 100644
  		      else if (alias_set_subset_of (ref->set, set))
  			{
  			  ref->set = set;
+diff --git a/gcc/tree-ssa-propagate.c b/gcc/tree-ssa-propagate.c
+index 2fad2472775..328c743d232 100644
+--- a/gcc/tree-ssa-propagate.c
++++ b/gcc/tree-ssa-propagate.c
+@@ -1254,10 +1254,12 @@ substitute_and_fold_engine::substitute_and_fold (basic_block block)
+ }
+ 
+ 
+-/* Return true if we may propagate ORIG into DEST, false otherwise.  */
++/* Return true if we may propagate ORIG into DEST, false otherwise.
++   If DEST_NOT_PHI_ARG_P is true then assume the propagation does
++   not happen into a PHI argument which relaxes some constraints.  */
+ 
+ bool
+-may_propagate_copy (tree dest, tree orig)
++may_propagate_copy (tree dest, tree orig, bool dest_not_phi_arg_p)
+ {
+   tree type_d = TREE_TYPE (dest);
+   tree type_o = TREE_TYPE (orig);
+@@ -1277,8 +1279,10 @@ may_propagate_copy (tree dest, tree orig)
+ 	   && SSA_NAME_OCCURS_IN_ABNORMAL_PHI (orig))
+     return false;
+   /* Similarly if DEST flows in from an abnormal edge then the copy cannot be
+-     propagated.  */
+-  else if (TREE_CODE (dest) == SSA_NAME
++     propagated.  If we know we do not propagate into a PHI argument this
++     does not apply.  */
++  else if (!dest_not_phi_arg_p
++	   && TREE_CODE (dest) == SSA_NAME
+ 	   && SSA_NAME_OCCURS_IN_ABNORMAL_PHI (dest))
+     return false;
+ 
+@@ -1312,9 +1316,9 @@ may_propagate_copy_into_stmt (gimple *dest, tree orig)
+      for the expression, so we delegate to may_propagate_copy.  */
+ 
+   if (gimple_assign_single_p (dest))
+-    return may_propagate_copy (gimple_assign_rhs1 (dest), orig);
++    return may_propagate_copy (gimple_assign_rhs1 (dest), orig, true);
+   else if (gswitch *dest_swtch = dyn_cast <gswitch *> (dest))
+-    return may_propagate_copy (gimple_switch_index (dest_swtch), orig);
++    return may_propagate_copy (gimple_switch_index (dest_swtch), orig, true);
+ 
+   /* In other cases, the expression is not materialized, so there
+      is no destination to pass to may_propagate_copy.  On the other
+@@ -1352,25 +1356,19 @@ may_propagate_copy_into_asm (tree dest ATTRIBUTE_UNUSED)
+ }
+ 
+ 
+-/* Common code for propagate_value and replace_exp.
++/* Replace *OP_P with value VAL (assumed to be a constant or another SSA_NAME).
+ 
+-   Replace use operand OP_P with VAL.  FOR_PROPAGATION indicates if the
+-   replacement is done to propagate a value or not.  */
++   Use this version when not const/copy propagating values.  For example,
++   PRE uses this version when building expressions as they would appear
++   in specific blocks taking into account actions of PHI nodes.
+ 
+-static void
+-replace_exp_1 (use_operand_p op_p, tree val,
+-    	       bool for_propagation ATTRIBUTE_UNUSED)
+-{
+-  if (flag_checking)
+-    {
+-      tree op = USE_FROM_PTR (op_p);
+-      gcc_assert (!(for_propagation
+-		  && TREE_CODE (op) == SSA_NAME
+-		  && TREE_CODE (val) == SSA_NAME
+-		  && !may_propagate_copy (op, val)));
+-    }
++   The statement in which an expression has been replaced should be
++   folded using fold_stmt_inplace.  */
+ 
+-  if (TREE_CODE (val) == SSA_NAME)
++void
++replace_exp (use_operand_p op_p, tree val)
++{
++  if (TREE_CODE (val) == SSA_NAME || CONSTANT_CLASS_P (val))
+     SET_USE (op_p, val);
+   else
+     SET_USE (op_p, unshare_expr (val));
+@@ -1386,22 +1384,10 @@ replace_exp_1 (use_operand_p op_p, tree val,
+ void
+ propagate_value (use_operand_p op_p, tree val)
+ {
+-  replace_exp_1 (op_p, val, true);
+-}
+-
+-/* Replace *OP_P with value VAL (assumed to be a constant or another SSA_NAME).
+-
+-   Use this version when not const/copy propagating values.  For example,
+-   PRE uses this version when building expressions as they would appear
+-   in specific blocks taking into account actions of PHI nodes.
+-
+-   The statement in which an expression has been replaced should be
+-   folded using fold_stmt_inplace.  */
+-
+-void
+-replace_exp (use_operand_p op_p, tree val)
+-{
+-  replace_exp_1 (op_p, val, false);
++  if (flag_checking)
++    gcc_assert (may_propagate_copy (USE_FROM_PTR (op_p), val,
++				    !is_a <gphi *> (USE_STMT (op_p))));
++  replace_exp (op_p, val);
+ }
+ 
+ 
+diff --git a/gcc/tree-ssa-propagate.h b/gcc/tree-ssa-propagate.h
+index 0d0f1c2da80..0591a667a90 100644
+--- a/gcc/tree-ssa-propagate.h
++++ b/gcc/tree-ssa-propagate.h
+@@ -66,7 +66,7 @@ extern void move_ssa_defining_stmt_for_defs (gimple *, gimple *);
+ extern bool update_gimple_call (gimple_stmt_iterator *, tree, int, ...);
+ extern bool update_call_from_tree (gimple_stmt_iterator *, tree);
+ extern bool stmt_makes_single_store (gimple *);
+-extern bool may_propagate_copy (tree, tree);
++extern bool may_propagate_copy (tree, tree, bool = false);
+ extern bool may_propagate_copy_into_stmt (gimple *, tree);
+ extern bool may_propagate_copy_into_asm (tree);
+ extern void propagate_value (use_operand_p, tree);
 diff --git a/gcc/tree-ssa-sccvn.c b/gcc/tree-ssa-sccvn.c
-index 926b4a976ae..3da61c0dbbc 100644
+index 926b4a976ae..e0cde2359cd 100644
 --- a/gcc/tree-ssa-sccvn.c
 +++ b/gcc/tree-ssa-sccvn.c
 @@ -492,7 +492,7 @@ vuse_ssa_val (tree x)
@@ -32894,6 +33266,15 @@ index 926b4a976ae..3da61c0dbbc 100644
  	      {
  		succe = NULL;
  		break;
+@@ -6190,7 +6252,7 @@ eliminate_dom_walker::eliminate_stmt (basic_block b, gimple_stmt_iterator *gsi)
+ 	   at the definition are also available at uses.  */
+ 	sprime = eliminate_avail (gimple_bb (SSA_NAME_DEF_STMT (use)), use);
+       if (sprime && sprime != use
+-	  && may_propagate_copy (use, sprime)
++	  && may_propagate_copy (use, sprime, true)
+ 	  /* We substitute into debug stmts to avoid excessive
+ 	     debug temporaries created by removed stmts, but we need
+ 	     to avoid doing so for inserted sprimes as we never want
 @@ -6758,7 +6820,7 @@ rpo_elim::eliminate_avail (basic_block bb, tree op)
  	     may also be able to "pre-compute" (bits of) the next immediate
  	     (non-)dominator during the RPO walk when marking edges as
@@ -33038,6 +33419,105 @@ index 40171d53d0a..5bf4738b526 100644
  	continue;
  
        fn = DECL_STRUCT_FUNCTION (node->decl);
+diff --git a/gcc/tree-switch-conversion.c b/gcc/tree-switch-conversion.c
+index 2bc098d0172..e66b128d99a 100644
+--- a/gcc/tree-switch-conversion.c
++++ b/gcc/tree-switch-conversion.c
+@@ -1493,7 +1493,7 @@ case_bit_test::cmp (const void *p1, const void *p2)
+ 
+ void
+ bit_test_cluster::emit (tree index_expr, tree index_type,
+-			tree, basic_block default_bb, location_t)
++			tree, basic_block default_bb, location_t loc)
+ {
+   case_bit_test test[m_max_case_bit_tests] = { {} };
+   unsigned int i, j, k;
+@@ -1587,9 +1587,9 @@ bit_test_cluster::emit (tree index_expr, tree index_type,
+   gsi = gsi_last_bb (m_case_bb);
+ 
+   /* idx = (unsigned)x - minval.  */
+-  idx = fold_convert (unsigned_index_type, index_expr);
+-  idx = fold_build2 (MINUS_EXPR, unsigned_index_type, idx,
+-		     fold_convert (unsigned_index_type, minval));
++  idx = fold_convert_loc (loc, unsigned_index_type, index_expr);
++  idx = fold_build2_loc (loc, MINUS_EXPR, unsigned_index_type, idx,
++			 fold_convert_loc (loc, unsigned_index_type, minval));
+   idx = force_gimple_operand_gsi (&gsi, idx,
+ 				  /*simple=*/true, NULL_TREE,
+ 				  /*before=*/true, GSI_SAME_STMT);
+@@ -1602,17 +1602,17 @@ bit_test_cluster::emit (tree index_expr, tree index_type,
+ 				    fold_convert (unsigned_index_type, range),
+ 				    /*simple=*/true, NULL_TREE,
+ 				    /*before=*/true, GSI_SAME_STMT);
+-      tmp = fold_build2 (GT_EXPR, boolean_type_node, idx, range);
++      tmp = fold_build2_loc (loc, GT_EXPR, boolean_type_node, idx, range);
+       basic_block new_bb
+ 	= hoist_edge_and_branch_if_true (&gsi, tmp, default_bb,
+-					 profile_probability::unlikely ());
++					 profile_probability::unlikely (), loc);
+       gsi = gsi_last_bb (new_bb);
+     }
+ 
+   /* csui = (1 << (word_mode) idx) */
+   csui = make_ssa_name (word_type_node);
+-  tmp = fold_build2 (LSHIFT_EXPR, word_type_node, word_mode_one,
+-		     fold_convert (word_type_node, idx));
++  tmp = fold_build2_loc (loc, LSHIFT_EXPR, word_type_node, word_mode_one,
++			 fold_convert_loc (loc, word_type_node, idx));
+   tmp = force_gimple_operand_gsi (&gsi, tmp,
+ 				  /*simple=*/false, NULL_TREE,
+ 				  /*before=*/true, GSI_SAME_STMT);
+@@ -1630,13 +1630,15 @@ bit_test_cluster::emit (tree index_expr, tree index_type,
+ 							 bt_range);
+       bt_range -= test[k].bits;
+       tmp = wide_int_to_tree (word_type_node, test[k].mask);
+-      tmp = fold_build2 (BIT_AND_EXPR, word_type_node, csui, tmp);
++      tmp = fold_build2_loc (loc, BIT_AND_EXPR, word_type_node, csui, tmp);
+       tmp = force_gimple_operand_gsi (&gsi, tmp,
+ 				      /*simple=*/true, NULL_TREE,
+ 				      /*before=*/true, GSI_SAME_STMT);
+-      tmp = fold_build2 (NE_EXPR, boolean_type_node, tmp, word_mode_zero);
++      tmp = fold_build2_loc (loc, NE_EXPR, boolean_type_node,
++			     tmp, word_mode_zero);
+       basic_block new_bb
+-	= hoist_edge_and_branch_if_true (&gsi, tmp, test[k].target_bb, prob);
++	= hoist_edge_and_branch_if_true (&gsi, tmp, test[k].target_bb,
++					 prob, loc);
+       gsi = gsi_last_bb (new_bb);
+     }
+ 
+@@ -1666,7 +1668,8 @@ bit_test_cluster::emit (tree index_expr, tree index_type,
+ basic_block
+ bit_test_cluster::hoist_edge_and_branch_if_true (gimple_stmt_iterator *gsip,
+ 						 tree cond, basic_block case_bb,
+-						 profile_probability prob)
++						 profile_probability prob,
++						 location_t loc)
+ {
+   tree tmp;
+   gcond *cond_stmt;
+@@ -1680,6 +1683,7 @@ bit_test_cluster::hoist_edge_and_branch_if_true (gimple_stmt_iterator *gsip,
+   tmp = force_gimple_operand_gsi (gsip, cond, /*simple=*/true, NULL,
+ 				  /*before=*/true, GSI_SAME_STMT);
+   cond_stmt = gimple_build_cond_from_tree (tmp, NULL_TREE, NULL_TREE);
++  gimple_set_location (cond_stmt, loc);
+   gsi_insert_before (gsip, cond_stmt, GSI_SAME_STMT);
+ 
+   e_false = split_block (split_bb, cond_stmt);
+diff --git a/gcc/tree-switch-conversion.h b/gcc/tree-switch-conversion.h
+index 1ff50fafaa3..727d696974d 100644
+--- a/gcc/tree-switch-conversion.h
++++ b/gcc/tree-switch-conversion.h
+@@ -409,7 +409,8 @@ public:
+   static basic_block hoist_edge_and_branch_if_true (gimple_stmt_iterator *gsip,
+ 						    tree cond,
+ 						    basic_block case_bb,
+-						    profile_probability prob);
++						    profile_probability prob,
++						    location_t);
+ 
+   /* True when the jump table handles an entire switch statement.  */
+   bool m_handles_entire_switch;
 diff --git a/gcc/tree-vect-data-refs.c b/gcc/tree-vect-data-refs.c
 index fcc0726bdbe..0e2df1d2038 100644
 --- a/gcc/tree-vect-data-refs.c
@@ -33077,7 +33557,7 @@ index fcc0726bdbe..0e2df1d2038 100644
        vect_duplicate_ssa_name_ptr_info (addr_base, dr_info);
        if (offset || byte_offset)
 diff --git a/gcc/tree-vect-loop-manip.c b/gcc/tree-vect-loop-manip.c
-index df37aead882..639d8ceabf0 100644
+index df37aead882..046e131e837 100644
 --- a/gcc/tree-vect-loop-manip.c
 +++ b/gcc/tree-vect-loop-manip.c
 @@ -1760,7 +1760,8 @@ vect_update_inits_of_drs (loop_vec_info loop_vinfo, tree niters,
@@ -33090,6 +33570,16 @@ index df37aead882..639d8ceabf0 100644
  	vect_update_init_of_dr (dr_info, niters, code);
      }
  }
+@@ -3383,7 +3384,8 @@ vect_loop_versioning (loop_vec_info loop_vinfo,
+ 	outermost = superloop_at_depth (loop, 1);
+       /* And avoid applying versioning on non-perfect nests.  */
+       while (loop_to_version != outermost
+-	     && single_exit (loop_outer (loop_to_version))
++	     && (e = single_exit (loop_outer (loop_to_version)))
++	     && !(e->flags & EDGE_COMPLEX)
+ 	     && (!loop_outer (loop_to_version)->inner->next
+ 		 || vect_loop_vectorized_call (loop_to_version))
+ 	     && (!loop_outer (loop_to_version)->inner->next
 diff --git a/gcc/tree-vect-loop.c b/gcc/tree-vect-loop.c
 index 899b5608745..3e3f0c00457 100644
 --- a/gcc/tree-vect-loop.c
