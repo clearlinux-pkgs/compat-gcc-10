@@ -92,7 +92,9 @@ François Dumont (3):
 Fritz Reese (1):
       fortran: Fix conv of UNION constructors [PR105310]
 
-GCC Administrator (373):
+GCC Administrator (375):
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -789,6 +791,9 @@ Michael Meissner (4):
       Define __SIZEOF_FLOAT128__ and __SIZEOF_IBM128__.
       Use correct names for __ibm128 if long double is IEEE 128-bit.
       Revert __SIZEOF__IBM128__ and __SIZEOF_FLOAT128__ patch.
+
+Mikael Morin (1):
+      fortran: Backport associate character length fixes [PR104228]
 
 Pascal Obry (1):
       Properly reset the port handle when closing
@@ -17298,7 +17303,7 @@ index 3175999dd4a..41ef75a0e0c 100644
  	      || (allow_derived && gfc_peek_ascii_char () == '%'))
  	    {
 diff --git a/gcc/fortran/parse.c b/gcc/fortran/parse.c
-index 3e19d5fdfbe..1501abfffd2 100644
+index 3e19d5fdfbe..6ddc5171e2f 100644
 --- a/gcc/fortran/parse.c
 +++ b/gcc/fortran/parse.c
 @@ -4440,6 +4440,9 @@ gfc_check_do_variable (gfc_symtree *st)
@@ -17311,6 +17316,31 @@ index 3e19d5fdfbe..1501abfffd2 100644
    for (s=gfc_state_stack; s; s = s->previous)
      if (s->do_variable == st)
        {
+@@ -4675,6 +4678,24 @@ parse_associate (void)
+ 	 in case of association to a derived-type.  */
+       sym->ts = a->target->ts;
+ 
++      /* Don’t share the character length information between associate
++	 variable and target if the length is not a compile-time constant,
++	 as we don’t want to touch some other character length variable when
++	 we try to initialize the associate variable’s character length
++	 variable.
++	 We do it here rather than later so that expressions referencing the
++	 associate variable will automatically have the correctly setup length
++	 information.  If we did it at resolution stage the expressions would
++	 use the original length information, and the variable a new different
++	 one, but only the latter one would be correctly initialized at
++	 translation stage, and the former one would need some additional setup
++	 there.  */
++      if (sym->ts.type == BT_CHARACTER
++	  && sym->ts.u.cl
++	  && !(sym->ts.u.cl->length
++	       && sym->ts.u.cl->length->expr_type == EXPR_CONSTANT))
++	sym->ts.u.cl = gfc_new_charlen (gfc_current_ns, NULL);
++
+       /* Check if the target expression is array valued.  This cannot always
+ 	 be done by looking at target.rank, because that might not have been
+ 	 set yet.  Therefore traverse the chain of refs, looking for the last
 diff --git a/gcc/fortran/primary.c b/gcc/fortran/primary.c
 index 8edc83a42c3..56b05795c27 100644
 --- a/gcc/fortran/primary.c
@@ -17402,7 +17432,7 @@ index 8edc83a42c3..56b05795c27 100644
  
  
 diff --git a/gcc/fortran/resolve.c b/gcc/fortran/resolve.c
-index 7ca5f44f419..dfc22e25e43 100644
+index 7ca5f44f419..15c88b23927 100644
 --- a/gcc/fortran/resolve.c
 +++ b/gcc/fortran/resolve.c
 @@ -1436,6 +1436,43 @@ resolve_structure_cons (gfc_expr *expr, int init)
@@ -17491,7 +17521,31 @@ index 7ca5f44f419..dfc22e25e43 100644
        && CLASS_DATA (sym)->attr.dimension
        && (e->ts.type != BT_DERIVED || !e->ts.u.derived->attr.vtype))
      {
-@@ -9301,6 +9350,7 @@ resolve_select_type (gfc_code *code, gfc_namespace *old_ns)
+@@ -9092,8 +9141,7 @@ resolve_assoc_var (gfc_symbol* sym, bool resolve_target)
+       if (!sym->ts.u.cl)
+ 	sym->ts.u.cl = target->ts.u.cl;
+ 
+-      if (sym->ts.deferred && target->expr_type == EXPR_VARIABLE
+-	  && target->symtree->n.sym->attr.dummy
++      if (sym->ts.deferred
+ 	  && sym->ts.u.cl == target->ts.u.cl)
+ 	{
+ 	  sym->ts.u.cl = gfc_new_charlen (sym->ns, NULL);
+@@ -9112,8 +9160,11 @@ resolve_assoc_var (gfc_symbol* sym, bool resolve_target)
+ 		|| sym->ts.u.cl->length->expr_type != EXPR_CONSTANT)
+ 		&& target->expr_type != EXPR_VARIABLE)
+ 	{
+-	  sym->ts.u.cl = gfc_new_charlen (sym->ns, NULL);
+-	  sym->ts.deferred = 1;
++	  if (!sym->ts.deferred)
++	    {
++	      sym->ts.u.cl = gfc_new_charlen (sym->ns, NULL);
++	      sym->ts.deferred = 1;
++	    }
+ 
+ 	  /* This is reset in trans-stmt.c after the assignment
+ 	     of the target expression to the associate name.  */
+@@ -9301,6 +9352,7 @@ resolve_select_type (gfc_code *code, gfc_namespace *old_ns)
  
        /* Check F03:C815.  */
        if ((c->ts.type == BT_DERIVED || c->ts.type == BT_CLASS)
@@ -17499,7 +17553,7 @@ index 7ca5f44f419..dfc22e25e43 100644
  	  && !selector_type->attr.unlimited_polymorphic
  	  && !gfc_type_is_extensible (c->ts.u.derived))
  	{
-@@ -9311,7 +9361,8 @@ resolve_select_type (gfc_code *code, gfc_namespace *old_ns)
+@@ -9311,7 +9363,8 @@ resolve_select_type (gfc_code *code, gfc_namespace *old_ns)
  	}
  
        /* Check F03:C816.  */
@@ -17509,7 +17563,7 @@ index 7ca5f44f419..dfc22e25e43 100644
  	  && ((c->ts.type != BT_DERIVED && c->ts.type != BT_CLASS)
  	      || !gfc_type_is_extension_of (selector_type, c->ts.u.derived)))
  	{
-@@ -11733,8 +11784,9 @@ gfc_resolve_code (gfc_code *code, gfc_namespace *ns)
+@@ -11733,8 +11786,9 @@ gfc_resolve_code (gfc_code *code, gfc_namespace *ns)
  	      gfc_resolve_omp_do_blocks (code, ns);
  	      break;
  	    case EXEC_SELECT_TYPE:
@@ -17521,7 +17575,7 @@ index 7ca5f44f419..dfc22e25e43 100644
  	      break;
              case EXEC_DO_CONCURRENT:
  	      gfc_do_concurrent_flag = 1;
-@@ -13095,7 +13147,8 @@ resolve_fl_procedure (gfc_symbol *sym, int mp_flag)
+@@ -13095,7 +13149,8 @@ resolve_fl_procedure (gfc_symbol *sym, int mp_flag)
  
    /* An elemental function is required to return a scalar 12.7.1  */
    if (sym->attr.elemental && sym->attr.function
@@ -18091,7 +18145,7 @@ index 29f8f932aa3..9a4aa08f889 100644
  	  gfc_add_block_to_block (&se->post, &arg1se.post);
  	  gfc_add_block_to_block (&se->pre, &arg2se.pre);
 diff --git a/gcc/fortran/trans-stmt.c b/gcc/fortran/trans-stmt.c
-index a425c98c076..27d885d1c89 100644
+index a425c98c076..cecb7430bd5 100644
 --- a/gcc/fortran/trans-stmt.c
 +++ b/gcc/fortran/trans-stmt.c
 @@ -1757,7 +1757,7 @@ trans_associate_var (gfc_symbol *sym, gfc_wrapped_block *block)
@@ -18103,6 +18157,15 @@ index a425c98c076..27d885d1c89 100644
  	    {
  	      class_decl = DECL_LANG_SPECIFIC (sym2->backend_decl) ?
  			   GFC_DECL_SAVED_DESCRIPTOR (sym2->backend_decl) :
+@@ -1890,7 +1890,7 @@ trans_associate_var (gfc_symbol *sym, gfc_wrapped_block *block)
+       gfc_conv_expr_descriptor (&se, e);
+ 
+       if (sym->ts.type == BT_CHARACTER
+-	  && !se.direct_byref && sym->ts.deferred
++	  && sym->ts.deferred
+ 	  && !sym->attr.select_type_temporary
+ 	  && VAR_P (sym->ts.u.cl->backend_decl)
+ 	  && se.string_length != sym->ts.u.cl->backend_decl)
 diff --git a/gcc/fortran/trans-types.c b/gcc/fortran/trans-types.c
 index d3fef08b4b9..24758ddadee 100644
 --- a/gcc/fortran/trans-types.c
@@ -29643,6 +29706,56 @@ index 00000000000..44d2f9fdf42
 +  print *, [1,b(1,[2,1,3])]
 +  print *, [a,b]
 +end
+diff --git a/gcc/testsuite/gfortran.dg/asan_associate_58.f90 b/gcc/testsuite/gfortran.dg/asan_associate_58.f90
+new file mode 100644
+index 00000000000..b5ea75498b7
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/asan_associate_58.f90
+@@ -0,0 +1,19 @@
++! { dg-do compile }
++! { dg-additional-options "-O0" }
++!
++! PR fortran/104228
++! The code generated code for the program below wrongly pushed the Y character
++! length variable to both P and S scope, which was leading to an ICE when
++! address sanitizer was in effect
++
++program p
++   character(:), save, allocatable :: x(:)
++   call s
++contains
++   subroutine s
++      associate (y => x)
++         y = [x]
++      end associate
++   end
++end
++
+diff --git a/gcc/testsuite/gfortran.dg/asan_associate_59.f90 b/gcc/testsuite/gfortran.dg/asan_associate_59.f90
+new file mode 100644
+index 00000000000..9bfb2bfbafb
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/asan_associate_59.f90
+@@ -0,0 +1,19 @@
++! { dg-do compile }
++! { dg-additional-options "-O0" }
++!
++! PR fortran/104228
++! The code generated code for the program below wrongly pushed the Y character
++! length variable to both P and S scope, which was leading to an ICE when
++! address sanitizer was in effect
++
++program p
++   character(:), allocatable :: x(:)
++   call s
++contains
++   subroutine s
++      associate (y => x)
++         y = [x]
++      end associate
++   end
++end
++
 diff --git a/gcc/testsuite/gfortran.dg/associate_54.f90 b/gcc/testsuite/gfortran.dg/associate_54.f90
 new file mode 100644
 index 00000000000..003175a47fd
@@ -29765,6 +29878,33 @@ index 00000000000..429f129da6e
 +  end subroutine test_alter_state2
 +
 +end module test
++
+diff --git a/gcc/testsuite/gfortran.dg/associate_58.f90 b/gcc/testsuite/gfortran.dg/associate_58.f90
+new file mode 100644
+index 00000000000..9c24f35c0d8
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/associate_58.f90
+@@ -0,0 +1,21 @@
++! { dg-do compile }
++!
++! PR fortran/104570
++! The following used to cause an ICE because the string length
++! evaluation of the (y) expression was not prepared to handle
++! a non-scalar expression.
++
++program p
++   character(:), allocatable :: x(:)
++   x = ['abc']
++   call s
++contains
++   subroutine s
++      associate (y => x)
++         associate (z => (y))
++            print *, z
++         end associate
++      end associate
++   end
++end
 +
 diff --git a/gcc/testsuite/gfortran.dg/associated_target_7.f90 b/gcc/testsuite/gfortran.dg/associated_target_7.f90
 new file mode 100644
