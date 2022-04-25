@@ -92,7 +92,8 @@ François Dumont (3):
 Fritz Reese (1):
       fortran: Fix conv of UNION constructors [PR105310]
 
-GCC Administrator (375):
+GCC Administrator (376):
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -15524,10 +15525,24 @@ index 6e635382fb4..23314498634 100644
  	 the result has overflowed and flag_trapping_math.  */
        if (flag_trapping_math
 diff --git a/gcc/fortran/ChangeLog b/gcc/fortran/ChangeLog
-index aa5932be872..cf68ff10c2b 100644
+index aa5932be872..9f39919d52f 100644
 --- a/gcc/fortran/ChangeLog
 +++ b/gcc/fortran/ChangeLog
-@@ -1,3 +1,717 @@
+@@ -1,3 +1,731 @@
++2022-04-24  Mikael Morin  <mikael@gcc.gnu.org>
++
++	PR fortran/104228
++	PR fortran/104570
++	* parse.c (parse_associate): Use a new distinct gfc_charlen if
++	the copied type has one whose length is not known to be
++	constant.
++	* resolve.c (resolve_assoc_var): Also create a new character
++	length for non-dummy associate targets.  Reset charlen if it’s
++	shared with the associate target regardless of the expression
++	type.  Don’t reinitialize charlen if it’s deferred.
++	* trans-stmt.c (trans_associate_var): Initialize character
++	length even if no temporary is used for the associate variable.
++
 +2022-04-21  Fritz Reese  <foreese@gcc.gnu.org>
 +
 +	Backported from master:
@@ -19703,10 +19718,18 @@ index 99edad8a950..f33489286a9 100644
  
  #endif
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index 2913065bf31..d053567de8e 100644
+index 2913065bf31..c299a831edd 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,2067 @@
+@@ -1,3 +1,2075 @@
++2022-04-24  Mikael Morin  <mikael@gcc.gnu.org>
++
++	PR fortran/104228
++	PR fortran/104570
++	* gfortran.dg/asan_associate_58.f90: New test.
++	* gfortran.dg/asan_associate_59.f90: New test.
++	* gfortran.dg/associate_58.f90: New test.
++
 +2022-04-21  Fritz Reese  <foreese@gcc.gnu.org>
 +
 +	Backported from master:
