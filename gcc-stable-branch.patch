@@ -542,7 +542,7 @@ Harald Anlauf (55):
       Fortran: reject simplifying TRANSFER for MOLD with storage size 0
       Fortran: skip compile-time shape check if constructor shape is not known
 
-Iain Buclaw (20):
+Iain Buclaw (21):
       d: Fix ICE in when formating a string with '%' or '`' characters (PR98457)
       d: Fix ICE in gimplify_var_or_parm_decl, at gimplify.c:2755 (PR100882)
       d: Respect explicit align(N) type alignment (PR100935)
@@ -563,6 +563,7 @@ Iain Buclaw (20):
       d: Align methods to MINIMUM_METHOD_BOUNDARY.
       libphobos: Fix definition of stat_t for MIPS64 (PR103604)
       libphobos: Don't call free on the TLS array in the emutls destroy function.
+      libphobos: Give _Unwind_Exception an alignment that best resembles __attribute__((aligned))
 
 Iain Sandoe (4):
       coroutines: Fix a typo in rewriting the function.
@@ -38023,6 +38024,39 @@ index 1436cdb35a5..6be72db4c09 100644
      (cast(Mutex) _emutlsMutex.ptr).__dtor();
      destroy(emutlsArrays);
  }
+diff --git a/libphobos/libdruntime/gcc/unwind/generic.d b/libphobos/libdruntime/gcc/unwind/generic.d
+index 9c164b6fbac..cca437df926 100644
+--- a/libphobos/libdruntime/gcc/unwind/generic.d
++++ b/libphobos/libdruntime/gcc/unwind/generic.d
+@@ -123,7 +123,27 @@ enum : _Unwind_Reason_Code
+ // @@@ The IA-64 ABI says that this structure must be double-word aligned.
+ // Taking that literally does not make much sense generically.  Instead we
+ // provide the maximum alignment required by any type for the machine.
+-struct _Unwind_Exception
++     version (ARM)      private enum __aligned__ = 8;
++else version (AArch64)  private enum __aligned__ = 16;
++else version (HPPA)     private enum __aligned__ = 8;
++else version (HPPA64)   private enum __aligned__ = 16;
++else version (MIPS_N32) private enum __aligned__ = 16;
++else version (MIPS_N64) private enum __aligned__ = 16;
++else version (MIPS32)   private enum __aligned__ = 8;
++else version (MIPS64)   private enum __aligned__ = 8;
++else version (PPC)      private enum __aligned__ = 16;
++else version (PPC64)    private enum __aligned__ = 16;
++else version (RISCV32)  private enum __aligned__ = 16;
++else version (RISCV64)  private enum __aligned__ = 16;
++else version (S390)     private enum __aligned__ = 8;
++else version (SPARC)    private enum __aligned__ = 8;
++else version (SPARC64)  private enum __aligned__ = 16;
++else version (SystemZ)  private enum __aligned__ = 8;
++else version (X86)      private enum __aligned__ = 16;
++else version (X86_64)   private enum __aligned__ = 16;
++else static assert( false, "Platform not supported.");
++
++align(__aligned__) struct _Unwind_Exception
+ {
+     _Unwind_Exception_Class exception_class;
+     _Unwind_Exception_Cleanup_Fn exception_cleanup;
 diff --git a/libphobos/src/std/typecons.d b/libphobos/src/std/typecons.d
 index a63227cee8b..e0a9ad6c519 100644
 --- a/libphobos/src/std/typecons.d
