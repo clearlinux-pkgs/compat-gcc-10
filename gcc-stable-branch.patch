@@ -92,7 +92,8 @@ François Dumont (3):
 Fritz Reese (1):
       fortran: Fix conv of UNION constructors [PR105310]
 
-GCC Administrator (376):
+GCC Administrator (377):
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -541,7 +542,7 @@ Harald Anlauf (55):
       Fortran: reject simplifying TRANSFER for MOLD with storage size 0
       Fortran: skip compile-time shape check if constructor shape is not known
 
-Iain Buclaw (19):
+Iain Buclaw (20):
       d: Fix ICE in when formating a string with '%' or '`' characters (PR98457)
       d: Fix ICE in gimplify_var_or_parm_decl, at gimplify.c:2755 (PR100882)
       d: Respect explicit align(N) type alignment (PR100935)
@@ -561,6 +562,7 @@ Iain Buclaw (19):
       libphobos: Push all callee-save registers on the stack before GC scan
       d: Align methods to MINIMUM_METHOD_BOUNDARY.
       libphobos: Fix definition of stat_t for MIPS64 (PR103604)
+      libphobos: Don't call free on the TLS array in the emutls destroy function.
 
 Iain Sandoe (4):
       coroutines: Fix a typo in rewriting the function.
@@ -625,7 +627,7 @@ John David Anglin (5):
       Don't use 'G' constraint in integer move patterns
       Fix warnings building linux-atomic.c and fptr.c on hppa64-linux
 
-Jonathan Wakely (99):
+Jonathan Wakely (120):
       libstdc++: Fix Doxygen warning about ambiguous file name
       maintainer-scripts: Disable multilib when generating libstdc++ docs
       libstdc++: Fix doxygen markup for group close commands
@@ -725,6 +727,27 @@ Jonathan Wakely (99):
       libstdc++: Fix example preprocessor command in FAQ [PR103877]
       libstdc++: Fix std::char_traits<C>::move for constexpr
       libstdc++: Update incorrect statement about mainline in docs
+      libstdc++: Add another non-reserved name to tests
+      libstdc++: Fix non-reserved name in <regex> header
+      libstdc++: Do not use std::isdigit in <charconv> [PR103911]
+      libstdc++: Increase timeout for pthread7-rope.cc test
+      libstdc++: Avoid overflow in ranges::advance(i, n, bound)
+      libstdc++: Fix test failure on AIX
+      libstdc++: Fix incorrect IS number in doc comment
+      libstdc++: Fix macro checked by test
+      libstdc++: Fix mismatched noexcept-specifiers in Filesystem TS
+      libstdc++: Remove un-implementable noexcept from Filesystem TS operations
+      libstdc++: Rename non-reserved macros in config header [PR103650]
+      libstdc++: Fix std::exception_ptr regressions [PR103630]
+      libstdc++: Fix test for libstdc++ not including <unistd.h> [PR100117]
+      libstdc++: Fix out-of-bound array accesses in testsuite
+      libstdc++: Make spurious std::random_device FAIL less likely
+      libstdc++: Reorder constraints on std::span::span(Range&&) constructor.
+      libstdc++: Do not allocate a zero-size vector<bool> [PR 100153]
+      libstdc++: Deprecate __gnu_cxx::rope::erase(size_type) [PR102048]
+      libstdc++: Fix noexcept-specifier for ranges::empty
+      libstdc++: Use __cpp_lib_concepts in std::reverse_iterator [PR104098]
+      libstdc++: Fix ambiguous comparisons for iterators in C++20
 
 José Rui Faustino de Sousa (1):
       Fortran: Fix double function call with -fcheck=pointer [PR]
@@ -799,7 +822,7 @@ Mikael Morin (1):
 Pascal Obry (1):
       Properly reset the port handle when closing
 
-Patrick Palka (33):
+Patrick Palka (34):
       c++: Fix deduction with reference NTTP [PR83476]
       c++: Fix tsubsting CLASS_PLACEHOLDER_TEMPLATE [PR95434]
       c++: ICE in dependent_type_p with constrained auto [PR97052]
@@ -833,6 +856,7 @@ Patrick Palka (33):
       libstdc++: Add missing std::move to ranges::copy/move/reverse_copy [PR101599]
       libstdc++: Fix various bugs in ranges_algo.h [PR100187, ...]
       libstdc++: missing constexpr for __[nm]iter_base [PR102358]
+      libstdc++: Implement LWG 3595 changes to common_iterator
 
 Paul Thomas (11):
       Fortran: Fix for class defined operators [PR99125].
@@ -846,6 +870,9 @@ Paul Thomas (11):
       Fortran: Fix some select rank issues [PR97694 and 97723].
       Fortran: Fix for class functions as associated target [PR98565].
       Fortran: Correct missing structure constructor comps. [PR97612].
+
+Pavel I. Kryukov (1):
+      libstdc++: Add self-merge check to std::forward_list::merge [PR103853]
 
 Peter Bergner (11):
       rs6000: MMA test case ICEs using -O3 [PR99842]
@@ -982,6 +1009,9 @@ Thomas Schwinge (5):
       libstdc++: Avoid illegal argument to verbose in dg-test callback, continued
       Fix up 'gcc.dg/pr78213.c' for '--enable-checking=release' etc.
       Fix 'OMP_CLAUSE_TILE' operands handling in 'gcc/tree.c:walk_tree_1'
+
+Timm Bäder (1):
+      libstdc++: Fix filenames in Doxygen @file comments
 
 Tobias Burnus (3):
       Fortran: Fix fndecl with -fcoarray=lib [PR99817]
@@ -37951,10 +37981,20 @@ index e1a68057ca1..3570e3fdc98 100644
      in
      {
 diff --git a/libphobos/libdruntime/gcc/emutls.d b/libphobos/libdruntime/gcc/emutls.d
-index 1436cdb35a5..7e4a1d6f8de 100644
+index 1436cdb35a5..6be72db4c09 100644
 --- a/libphobos/libdruntime/gcc/emutls.d
 +++ b/libphobos/libdruntime/gcc/emutls.d
-@@ -229,9 +229,6 @@ void** emutlsAlloc(shared __emutls_object* obj) nothrow @nogc
+@@ -222,16 +222,13 @@ void** emutlsAlloc(shared __emutls_object* obj) nothrow @nogc
+ }
+ 
+ /*
+- * When a thread has finished, remove the TLS array from the GC
+- * scan list emutlsArrays, free all allocated TLS variables and
+- * finally free the array.
++ * When a thread has finished, free all allocated TLS variables and empty the
++ * array.  The pointer is not free'd as it is stil referenced by the GC scan
++ * list emutlsArrays, which gets destroyed when druntime is unloaded.
+  */
  extern (C) void emutlsDestroyThread(void* ptr) nothrow @nogc
  {
      auto arr = cast(TlsArray*) ptr;
@@ -37964,6 +38004,15 @@ index 1436cdb35a5..7e4a1d6f8de 100644
  
      foreach (entry; *arr)
      {
+@@ -239,7 +236,7 @@ extern (C) void emutlsDestroyThread(void* ptr) nothrow @nogc
+             free(entry[-1]);
+     }
+ 
+-    free(arr);
++    arr.length = 0;
+ }
+ 
+ /*
 @@ -308,9 +305,6 @@ void _d_emutls_scan(scope void delegate(void* pbeg, void* pend) nothrow cb) noth
  // Call this after druntime has been unloaded
  void _d_emutls_destroy() nothrow @nogc
@@ -40017,6 +40066,19 @@ index cf8684e1cea..ef673ef4954 100644
           a list of predefined macros for any particular installation.
        </para>
        <para>This has been discussed on the mailing lists
+diff --git a/libstdc++-v3/doc/xml/manual/intro.xml b/libstdc++-v3/doc/xml/manual/intro.xml
+index 4a5d25fa0d7..7137ba2e10c 100644
+--- a/libstdc++-v3/doc/xml/manual/intro.xml
++++ b/libstdc++-v3/doc/xml/manual/intro.xml
+@@ -55,7 +55,7 @@
+     <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" parse="xml" href="status_cxxtr24733.xml">
+     </xi:include>
+ 
+-    <!-- Section 01.7 : Status C++ IS 24733 -->
++    <!-- Section 01.7 : Status C++ IS 29124 -->
+     <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" parse="xml" href="status_cxxis29124.xml">
+     </xi:include>
+   </section>
 diff --git a/libstdc++-v3/doc/xml/manual/status_cxx1998.xml b/libstdc++-v3/doc/xml/manual/status_cxx1998.xml
 index 792272bcf26..99cdedc0f45 100644
 --- a/libstdc++-v3/doc/xml/manual/status_cxx1998.xml
@@ -40141,6 +40203,32 @@ index 92d892da8ac..80ec4b637fa 100644
  </para>
  
  <!-- Status is Yes or No, Broken/Partial-->
+diff --git a/libstdc++-v3/include/Makefile.am b/libstdc++-v3/include/Makefile.am
+index e131ce04f8c..fad5c683824 100644
+--- a/libstdc++-v3/include/Makefile.am
++++ b/libstdc++-v3/include/Makefile.am
+@@ -1297,6 +1297,8 @@ ${host_builddir}/c++config.h: ${CONFIG_HEADER} \
+ 	    -e 's/PACKAGE/_GLIBCXX_PACKAGE/g' \
+ 	    -e 's/VERSION/_GLIBCXX_VERSION/g' \
+ 	    -e 's/WORDS_/_GLIBCXX_WORDS_/g' \
++	    -e 's/LT_OBJDIR/_GLIBCXX_LT_OBJDIR/g' \
++	    -e 's/STDC_HEADERS/_GLIBCXX_STDC_HEADERS/g' \
+ 	    -e 's/_DARWIN_USE_64_BIT_INODE/_GLIBCXX_DARWIN_USE_64_BIT_INODE/g' \
+ 	    -e 's/_FILE_OFFSET_BITS/_GLIBCXX_FILE_OFFSET_BITS/g' \
+ 	    -e 's/_LARGE_FILES/_GLIBCXX_LARGE_FILES/g' \
+diff --git a/libstdc++-v3/include/Makefile.in b/libstdc++-v3/include/Makefile.in
+index ae20f6b1d21..1ca4b7be55e 100644
+--- a/libstdc++-v3/include/Makefile.in
++++ b/libstdc++-v3/include/Makefile.in
+@@ -1778,6 +1778,8 @@ ${host_builddir}/c++config.h: ${CONFIG_HEADER} \
+ 	    -e 's/PACKAGE/_GLIBCXX_PACKAGE/g' \
+ 	    -e 's/VERSION/_GLIBCXX_VERSION/g' \
+ 	    -e 's/WORDS_/_GLIBCXX_WORDS_/g' \
++	    -e 's/LT_OBJDIR/_GLIBCXX_LT_OBJDIR/g' \
++	    -e 's/STDC_HEADERS/_GLIBCXX_STDC_HEADERS/g' \
+ 	    -e 's/_DARWIN_USE_64_BIT_INODE/_GLIBCXX_DARWIN_USE_64_BIT_INODE/g' \
+ 	    -e 's/_FILE_OFFSET_BITS/_GLIBCXX_FILE_OFFSET_BITS/g' \
+ 	    -e 's/_LARGE_FILES/_GLIBCXX_LARGE_FILES/g' \
 diff --git a/libstdc++-v3/include/bits/alloc_traits.h b/libstdc++-v3/include/bits/alloc_traits.h
 index 86d8ed221ff..afc88fdafe9 100644
 --- a/libstdc++-v3/include/bits/alloc_traits.h
@@ -40589,6 +40677,22 @@ index 49b2a973718..fd08bb83f51 100644
  
      private:
  #if __cplusplus > 201703L
+diff --git a/libstdc++-v3/include/bits/forward_list.tcc b/libstdc++-v3/include/bits/forward_list.tcc
+index c42bdc0fd13..700f789efab 100644
+--- a/libstdc++-v3/include/bits/forward_list.tcc
++++ b/libstdc++-v3/include/bits/forward_list.tcc
+@@ -372,6 +372,11 @@ _GLIBCXX_BEGIN_NAMESPACE_CONTAINER
+       forward_list<_Tp, _Alloc>::
+       merge(forward_list&& __list, _Comp __comp)
+       {
++	// _GLIBCXX_RESOLVE_LIB_DEFECTS
++	// 3088. forward_list::merge behavior unclear when passed *this
++	if (std::__addressof(__list) == this)
++	  return;
++
+ 	_Node_base* __node = &this->_M_impl._M_head;
+ 	while (__node->_M_next && __list._M_impl._M_head._M_next)
+ 	  {
 diff --git a/libstdc++-v3/include/bits/fs_dir.h b/libstdc++-v3/include/bits/fs_dir.h
 index 686dfce6e5f..36a50c109c1 100644
 --- a/libstdc++-v3/include/bits/fs_dir.h
@@ -40630,9 +40734,18 @@ index d94cc414906..0f8fa92a39a 100644
  } // namespace std
  #endif // C++17
 diff --git a/libstdc++-v3/include/bits/fs_ops.h b/libstdc++-v3/include/bits/fs_ops.h
-index 11efdcbb5ba..26a29b25de5 100644
+index 11efdcbb5ba..db17d11d8b7 100644
 --- a/libstdc++-v3/include/bits/fs_ops.h
 +++ b/libstdc++-v3/include/bits/fs_ops.h
+@@ -22,7 +22,7 @@
+ // see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
+ // <http://www.gnu.org/licenses/>.
+ 
+-/** @file include/bits/fs_fwd.h
++/** @file include/bits/fs_ops.h
+  *  This is an internal header file, included by other library headers.
+  *  Do not attempt to use it directly. @headername{filesystem}
+  */
 @@ -302,7 +302,7 @@ namespace filesystem
    path weakly_canonical(const path& __p);
    path weakly_canonical(const path& __p, error_code& __ec);
@@ -41442,10 +41555,19 @@ index a921b9bf815..74ee6ada13a 100644
  	_M_v.push_back(__detail::__mod<result_type,
  		       __detail::_Shift<result_type, 32>::__value>(*__iter));
 diff --git a/libstdc++-v3/include/bits/range_access.h b/libstdc++-v3/include/bits/range_access.h
-index c93d1e37f34..bf46f366486 100644
+index c93d1e37f34..aee72c3fae4 100644
 --- a/libstdc++-v3/include/bits/range_access.h
 +++ b/libstdc++-v3/include/bits/range_access.h
-@@ -949,203 +949,224 @@ namespace ranges
+@@ -773,7 +773,7 @@ namespace ranges
+ 	_S_noexcept()
+ 	{
+ 	  if constexpr (__member_empty<_Tp>)
+-	    return noexcept(std::declval<_Tp>().empty());
++	    return noexcept(bool(std::declval<_Tp>().empty()));
+ 	  else if constexpr (__size0_empty<_Tp>)
+ 	    return noexcept(_Size{}(std::declval<_Tp>()) == 0);
+ 	  else
+@@ -949,203 +949,226 @@ namespace ranges
  
    // [range.iter.ops] range iterator operations
  
@@ -41550,14 +41672,6 @@ index c93d1e37f34..bf46f366486 100644
 +	      ++__it;
 +	  }
 +      }
-+
-+    template<input_or_output_iterator _It, sentinel_for<_It> _Sent>
-+      constexpr iter_difference_t<_It>
-+      operator()(_It& __it, iter_difference_t<_It> __n, _Sent __bound) const
-+      {
-+	if constexpr (sized_sentinel_for<_Sent, _It>)
-+	  {
-+	    const auto __diff = __bound - __it;
  
 -  template<input_or_output_iterator _It, sentinel_for<_It> _Sent>
 -    constexpr iter_difference_t<_It>
@@ -41566,13 +41680,29 @@ index c93d1e37f34..bf46f366486 100644
 -      if constexpr (sized_sentinel_for<_Sent, _It>)
 -	{
 -	  const auto __diff = __bound - __it;
++    template<input_or_output_iterator _It, sentinel_for<_It> _Sent>
++      constexpr iter_difference_t<_It>
++      operator()(_It& __it, iter_difference_t<_It> __n, _Sent __bound) const
++      {
++	if constexpr (sized_sentinel_for<_Sent, _It>)
++	  {
++	    const auto __diff = __bound - __it;
++
++	    if (__diff == 0)
++	      return __n;
++	    else if (__diff > 0 ? __n >= __diff : __n <= __diff)
++	      {
++		(*this)(__it, __bound);
++		return __n - __diff;
++	      }
++	    else if (__n != 0) [[likely]]
++	      {
  #ifdef __cpp_lib_is_constant_evaluated
 -	  if (std::is_constant_evaluated()
 -	      && !(__n == 0 || __diff == 0 || (__n < 0 == __diff < 0)))
 -	    throw "inconsistent directions for distance and bound";
-+	    if (std::is_constant_evaluated()
-+		&& !(__n == 0 || __diff == 0 || (__n < 0 == __diff < 0)))
-+	      throw "inconsistent directions for distance and bound";
++		if (std::is_constant_evaluated() && !(__n < 0 == __diff < 0))
++		  throw "inconsistent directions for distance and bound";
  #endif
 -	  // n and bound must not lead in opposite directions:
 -	  __glibcxx_assert(__n == 0 || __diff == 0 || (__n < 0 == __diff < 0));
@@ -41586,7 +41716,14 @@ index c93d1e37f34..bf46f366486 100644
 -	  else
 -	    {
 -	      ranges::advance(__it, __n);
--	      return 0;
++		// n and bound must not lead in opposite directions:
++		__glibcxx_assert(__n < 0 == __diff < 0);
++
++		(*this)(__it, __n);
++		return 0;
++	      }
++	    else
+ 	      return 0;
 -	    }
 -	}
 -      else if (__it == __bound || __n == 0)
@@ -41615,20 +41752,6 @@ index c93d1e37f34..bf46f366486 100644
 -	}
 -      else
 -	{
-+	    // n and bound must not lead in opposite directions:
-+	    __glibcxx_assert(__n == 0 || __diff == 0 || (__n < 0 == __diff < 0));
-+	    const auto __absdiff = __diff < 0 ? -__diff : __diff;
-+	    const auto __absn = __n < 0 ? -__n : __n;;
-+	    if (__absn >= __absdiff)
-+	      {
-+		(*this)(__it, __bound);
-+		return __n - __diff;
-+	      }
-+	    else
-+	      {
-+		(*this)(__it, __n);
-+		return 0;
-+	      }
 +	  }
 +	else if (__it == __bound || __n == 0)
 +	  return __n;
@@ -42611,6 +42734,22 @@ index e68c4184c5a..809ae419f5e 100644
  } // namespace __detail
  _GLIBCXX_END_NAMESPACE_VERSION
  } // namespace std
+diff --git a/libstdc++-v3/include/bits/regex_compiler.tcc b/libstdc++-v3/include/bits/regex_compiler.tcc
+index 2ae4af02c89..d29a0537283 100644
+--- a/libstdc++-v3/include/bits/regex_compiler.tcc
++++ b/libstdc++-v3/include/bits/regex_compiler.tcc
+@@ -586,9 +586,9 @@ namespace __detail
+   template<typename _TraitsT>
+     bool
+     _Compiler<_TraitsT>::
+-    _M_match_token(_TokenT token)
++    _M_match_token(_TokenT __token)
+     {
+-      if (token == _M_scanner._M_get_token())
++      if (__token == _M_scanner._M_get_token())
+ 	{
+ 	  _M_value = _M_scanner._M_get_value();
+ 	  _M_scanner._M_advance();
 diff --git a/libstdc++-v3/include/bits/regex_constants.h b/libstdc++-v3/include/bits/regex_constants.h
 index 5f096ac6226..2926bec42ba 100644
 --- a/libstdc++-v3/include/bits/regex_constants.h
@@ -42981,7 +43120,7 @@ index 3959dd7899d..2d7f7e11b3f 100644
  #if __cplusplus >= 201103L
        // Constant-time, nothrow move assignment when source object's memory
 diff --git a/libstdc++-v3/include/bits/stl_iterator.h b/libstdc++-v3/include/bits/stl_iterator.h
-index d950e896928..85e58973ac6 100644
+index d950e896928..91cfeccecf3 100644
 --- a/libstdc++-v3/include/bits/stl_iterator.h
 +++ b/libstdc++-v3/include/bits/stl_iterator.h
 @@ -61,6 +61,7 @@
@@ -42992,13 +43131,22 @@ index d950e896928..85e58973ac6 100644
  #include <ext/type_traits.h>
  #include <bits/move.h>
  #include <bits/ptr_traits.h>
+@@ -91,7 +92,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+    * @{
+    */
+ 
+-#if __cplusplus > 201703L && __cpp_lib_concepts
++#if __cpp_lib_concepts
+   namespace __detail
+   {
+     // Weaken iterator_category _Cat to _Limit if it is derived from that,
 @@ -136,11 +137,11 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
  
      public:
        typedef _Iterator					iterator_type;
 -      typedef typename __traits_type::difference_type	difference_type;
        typedef typename __traits_type::pointer		pointer;
-+#if __cplusplus <= 201703L
++#if ! __cpp_lib_concepts
 +      typedef typename __traits_type::difference_type	difference_type;
        typedef typename __traits_type::reference		reference;
 -
@@ -43026,16 +43174,33 @@ index d950e896928..85e58973ac6 100644
    /**
     *  @param  __x  A %reverse_iterator.
     *  @param  __y  A %reverse_iterator.
-@@ -503,7 +507,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+@@ -502,8 +506,24 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+     operator<=>(const reverse_iterator<_IteratorL>& __x,
  		const reverse_iterator<_IteratorR>& __y)
      { return __y.base() <=> __x.base(); }
++
++  // Additional, non-standard overloads to avoid ambiguities with greedy,
++  // unconstrained overloads in associated namespaces.
++
++  template<typename _Iterator>
++    constexpr bool
++    operator==(const reverse_iterator<_Iterator>& __x,
++	       const reverse_iterator<_Iterator>& __y)
++    requires requires { { __x.base() == __y.base() } -> convertible_to<bool>; }
++    { return __x.base() == __y.base(); }
++
++  template<three_way_comparable _Iterator>
++    constexpr compare_three_way_result_t<_Iterator, _Iterator>
++    operator<=>(const reverse_iterator<_Iterator>& __x,
++		const reverse_iterator<_Iterator>& __y)
++    { return __y.base() <=> __x.base(); }
  #endif // C++20
 -  //@}
 +  ///@}
  
  #if __cplusplus < 201103L
    template<typename _Iterator>
-@@ -932,7 +936,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+@@ -932,7 +952,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
      { return insert_iterator<_Container>(__x, __i); }
  #endif
  
@@ -43044,7 +43209,31 @@ index d950e896928..85e58973ac6 100644
  
  _GLIBCXX_END_NAMESPACE_VERSION
  } // namespace
-@@ -1270,6 +1274,24 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+@@ -1078,6 +1098,23 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+ 		const __normal_iterator<_IteratorR, _Container>& __rhs)
+     noexcept(noexcept(std::__detail::__synth3way(__lhs.base(), __rhs.base())))
+     { return std::__detail::__synth3way(__lhs.base(), __rhs.base()); }
++
++  template<typename _Iterator, typename _Container>
++    constexpr bool
++    operator==(const __normal_iterator<_Iterator, _Container>& __lhs,
++	       const __normal_iterator<_Iterator, _Container>& __rhs)
++    noexcept(noexcept(__lhs.base() == __rhs.base()))
++    requires requires {
++      { __lhs.base() == __rhs.base() } -> std::convertible_to<bool>;
++    }
++    { return __lhs.base() == __rhs.base(); }
++
++  template<typename _Iterator, typename _Container>
++    constexpr std::__detail::__synth3way_t<_Iterator>
++    operator<=>(const __normal_iterator<_Iterator, _Container>& __lhs,
++		const __normal_iterator<_Iterator, _Container>& __rhs)
++    noexcept(noexcept(std::__detail::__synth3way(__lhs.base(), __rhs.base())))
++    { return std::__detail::__synth3way(__lhs.base(), __rhs.base()); }
+ #else
+    // Forward iterator requirements
+   template<typename _IteratorL, typename _IteratorR, typename _Container>
+@@ -1270,6 +1307,24 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
      };
  #endif // C++20
  
@@ -43069,7 +43258,7 @@ index d950e896928..85e58973ac6 100644
    // 24.4.3  Move iterators
    /**
     *  Class template move_iterator is an iterator adapter with the same
-@@ -1281,13 +1303,14 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+@@ -1281,13 +1336,14 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     */
    template<typename _Iterator>
      class move_iterator
@@ -43087,7 +43276,7 @@ index d950e896928..85e58973ac6 100644
        using __base_ref = typename __traits_type::reference;
  #endif
  
-@@ -1296,8 +1319,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+@@ -1296,8 +1352,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
  
  #if __cplusplus > 201703L && __cpp_lib_concepts
        using iterator_concept = input_iterator_tag;
@@ -43097,7 +43286,7 @@ index d950e896928..85e58973ac6 100644
        using value_type = iter_value_t<_Iterator>;
        using difference_type = iter_difference_t<_Iterator>;
        using pointer = _Iterator;
-@@ -1341,11 +1363,8 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+@@ -1341,11 +1396,8 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
        base() const
        { return _M_current; }
  #else
@@ -43111,7 +43300,35 @@ index d950e896928..85e58973ac6 100644
        { return _M_current; }
  
        constexpr iterator_type
-@@ -1612,6 +1631,11 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+@@ -1520,20 +1572,22 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+ #endif
+     { return !(__x < __y); }
+ 
+-#if ! (__cplusplus > 201703L && __cpp_lib_concepts)
+   // Note: See __normal_iterator operators note from Gaby to understand
+   // why we have these extra overloads for some move_iterator operators.
+ 
+-  // These extra overloads are not needed in C++20, because the ones above
+-  // are constrained with a requires-clause and so overload resolution will
+-  // prefer them to greedy unconstrained function templates.
+-
+   template<typename _Iterator>
+     inline _GLIBCXX17_CONSTEXPR bool
+     operator==(const move_iterator<_Iterator>& __x,
+ 	       const move_iterator<_Iterator>& __y)
+     { return __x.base() == __y.base(); }
+ 
++#if __cpp_lib_three_way_comparison
++  template<three_way_comparable _Iterator>
++    constexpr compare_three_way_result_t<_Iterator>
++    operator<=>(const move_iterator<_Iterator>& __x,
++		const move_iterator<_Iterator>& __y)
++    { return __x.base() <=> __y.base(); }
++#else
+   template<typename _Iterator>
+     inline _GLIBCXX17_CONSTEXPR bool
+     operator!=(const move_iterator<_Iterator>& __x,
+@@ -1612,6 +1666,11 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
  	    || is_reference_v<iter_reference_t<_It>>
  	    || constructible_from<iter_value_t<_It>, iter_reference_t<_It>>);
  
@@ -43123,7 +43340,7 @@ index d950e896928..85e58973ac6 100644
    } // namespace __detail
  
    /// An iterator/sentinel adaptor for representing a non-common range.
-@@ -1634,11 +1658,11 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+@@ -1634,21 +1693,38 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
        _S_noexcept()
        { return _S_noexcept1<_It, _It2>() && _S_noexcept1<_Sent, _Sent2>(); }
  
@@ -43133,11 +43350,17 @@ index d950e896928..85e58973ac6 100644
        iter_value_t<_It> _M_keep;
  
 -      _Proxy(iter_reference_t<_It>&& __x)
++      constexpr
 +      __arrow_proxy(iter_reference_t<_It>&& __x)
        : _M_keep(std::move(__x)) { }
  
        friend class common_iterator;
-@@ -1649,6 +1673,21 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+ 
+     public:
+-      const iter_value_t<_It>*
+-      operator->() const
++      constexpr const iter_value_t<_It>*
++      operator->() const noexcept
        { return std::__addressof(_M_keep); }
      };
  
@@ -43145,21 +43368,22 @@ index d950e896928..85e58973ac6 100644
 +    {
 +      iter_value_t<_It> _M_keep;
 +
++      constexpr
 +      __postfix_proxy(iter_reference_t<_It>&& __x)
 +      : _M_keep(std::forward<iter_reference_t<_It>>(__x)) { }
 +
 +      friend class common_iterator;
 +
 +    public:
-+      const iter_value_t<_It>&
-+      operator*() const
++      constexpr const iter_value_t<_It>&
++      operator*() const noexcept
 +      { return _M_keep; }
 +    };
 +
    public:
      constexpr
      common_iterator()
-@@ -1805,7 +1844,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+@@ -1805,7 +1881,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
  	  return std::__addressof(__tmp);
  	}
        else
@@ -43168,7 +43392,7 @@ index d950e896928..85e58973ac6 100644
      }
  
      common_iterator&
-@@ -1826,8 +1865,14 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+@@ -1826,8 +1902,14 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
  	  ++*this;
  	  return __tmp;
  	}
@@ -43184,7 +43408,7 @@ index d950e896928..85e58973ac6 100644
      }
  
      template<typename _It2, sentinel_for<_It> _Sent2>
-@@ -1958,12 +2003,21 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+@@ -1958,12 +2040,21 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
  	  using type = decltype(std::declval<const _CIter&>().operator->());
  	};
  
@@ -43209,7 +43433,7 @@ index d950e896928..85e58973ac6 100644
        using value_type = iter_value_t<_It>;
        using difference_type = iter_difference_t<_It>;
        using pointer = typename __ptr<_It>::type;
-@@ -1972,12 +2026,48 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+@@ -1972,12 +2063,48 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
  
    // [iterators.counted] Counted iterators
  
@@ -43258,7 +43482,7 @@ index d950e896928..85e58973ac6 100644
  
        constexpr counted_iterator() = default;
  
-@@ -2003,10 +2093,8 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+@@ -2003,10 +2130,8 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
  	  return *this;
  	}
  
@@ -43271,7 +43495,7 @@ index d950e896928..85e58973ac6 100644
        { return _M_current; }
  
        constexpr _It
-@@ -2028,6 +2116,11 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+@@ -2028,6 +2153,11 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
        requires __detail::__dereferenceable<const _It>
        { return *_M_current; }
  
@@ -43283,7 +43507,7 @@ index d950e896928..85e58973ac6 100644
        constexpr counted_iterator&
        operator++()
        {
-@@ -2170,22 +2263,20 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+@@ -2170,22 +2300,20 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
        iter_difference_t<_It> _M_length = 0;
      };
  
@@ -43312,7 +43536,7 @@ index d950e896928..85e58973ac6 100644
      auto
      __niter_base(move_iterator<_Iterator> __it)
      -> decltype(make_move_iterator(__niter_base(__it.base())))
-@@ -2199,6 +2290,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+@@ -2199,6 +2327,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
      };
  
    template<typename _Iterator>
@@ -44832,6 +45056,25 @@ index c9c9e9f38b7..c942978557d 100644
  
        // hash policy.
  
+diff --git a/libstdc++-v3/include/bits/vector.tcc b/libstdc++-v3/include/bits/vector.tcc
+index 27e63388feb..c49884ade12 100644
+--- a/libstdc++-v3/include/bits/vector.tcc
++++ b/libstdc++-v3/include/bits/vector.tcc
+@@ -944,7 +944,13 @@ _GLIBCXX_BEGIN_NAMESPACE_CONTAINER
+ 	return false;
+       __try
+ 	{
+-	  _M_reallocate(size());
++	  if (size_type __n = size())
++	    _M_reallocate(__n);
++	  else
++	    {
++	      this->_M_deallocate();
++	      this->_M_impl._M_reset();
++	    }
+ 	  return true;
+ 	}
+       __catch(...)
 diff --git a/libstdc++-v3/include/c_global/cmath b/libstdc++-v3/include/c_global/cmath
 index b99aaf8df40..d27980ae916 100644
 --- a/libstdc++-v3/include/c_global/cmath
@@ -45438,9 +45681,18 @@ index ae67ae95015..dcffd65bb5e 100644
  } // namespace filesystem
  } // namespace experimental
 diff --git a/libstdc++-v3/include/experimental/bits/fs_fwd.h b/libstdc++-v3/include/experimental/bits/fs_fwd.h
-index 535a800584f..4c80401ac14 100644
+index 535a800584f..bc779e930d4 100644
 --- a/libstdc++-v3/include/experimental/bits/fs_fwd.h
 +++ b/libstdc++-v3/include/experimental/bits/fs_fwd.h
+@@ -264,7 +264,7 @@ _GLIBCXX_END_NAMESPACE_CXX11
+ 
+   bool copy_file(const path& __from, const path& __to, copy_options __option);
+   bool copy_file(const path& __from, const path& __to, copy_options __option,
+-		 error_code&) noexcept;
++		 error_code&);
+ 
+   path current_path();
+ 
 @@ -279,7 +279,7 @@ _GLIBCXX_END_NAMESPACE_CXX11
    bool is_regular_file(file_status) noexcept;
    bool is_symlink(file_status) noexcept;
@@ -45451,9 +45703,50 @@ index 535a800584f..4c80401ac14 100644
  } // namespace filesystem
  } // namespace experimental
 diff --git a/libstdc++-v3/include/experimental/bits/fs_ops.h b/libstdc++-v3/include/experimental/bits/fs_ops.h
-index 61611ba53eb..5b0aad4e3ae 100644
+index 61611ba53eb..aa29d19cd42 100644
 --- a/libstdc++-v3/include/experimental/bits/fs_ops.h
 +++ b/libstdc++-v3/include/experimental/bits/fs_ops.h
+@@ -22,7 +22,7 @@
+ // see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
+ // <http://www.gnu.org/licenses/>.
+ 
+-/** @file experimental/bits/fs_fwd.h
++/** @file experimental/bits/fs_ops.h
+  *  This is an internal header file, included by other library headers.
+  *  Do not attempt to use it directly. @headername{experimental/filesystem}
+  */
+@@ -74,19 +74,19 @@ inline namespace v1
+   { return copy_file(__from, __to, copy_options::none); }
+ 
+   inline bool
+-  copy_file(const path& __from, const path& __to, error_code& __ec) noexcept
++  copy_file(const path& __from, const path& __to, error_code& __ec)
+   { return copy_file(__from, __to, copy_options::none, __ec); }
+ 
+   bool copy_file(const path& __from, const path& __to, copy_options __option);
+   bool copy_file(const path& __from, const path& __to, copy_options __option,
+-		 error_code& __ec) noexcept;
++		 error_code& __ec);
+ 
+   void copy_symlink(const path& __existing_symlink, const path& __new_symlink);
+   void copy_symlink(const path& __existing_symlink, const path& __new_symlink,
+ 		    error_code& __ec) noexcept;
+ 
+   bool create_directories(const path& __p);
+-  bool create_directories(const path& __p, error_code& __ec) noexcept;
++  bool create_directories(const path& __p, error_code& __ec);
+ 
+   bool create_directory(const path& __p);
+   bool create_directory(const path& __p, error_code& __ec) noexcept;
+@@ -262,7 +262,7 @@ inline namespace v1
+   bool remove(const path& __p, error_code& __ec) noexcept;
+ 
+   uintmax_t remove_all(const path& __p);
+-  uintmax_t remove_all(const path& __p, error_code& __ec) noexcept;
++  uintmax_t remove_all(const path& __p, error_code& __ec);
+ 
+   void rename(const path& __from, const path& __to);
+   void rename(const path& __from, const path& __to, error_code& __ec) noexcept;
 @@ -288,7 +288,7 @@ inline namespace v1
    path temp_directory_path();
    path temp_directory_path(error_code& __ec);
@@ -45464,7 +45757,7 @@ index 61611ba53eb..5b0aad4e3ae 100644
  } // namespace filesystem
  } // namespace experimental
 diff --git a/libstdc++-v3/include/experimental/bits/fs_path.h b/libstdc++-v3/include/experimental/bits/fs_path.h
-index 69b823a3466..0a8f4eee0a1 100644
+index 69b823a3466..927cf2278d1 100644
 --- a/libstdc++-v3/include/experimental/bits/fs_path.h
 +++ b/libstdc++-v3/include/experimental/bits/fs_path.h
 @@ -124,7 +124,7 @@ namespace __detail
@@ -45476,6 +45769,17 @@ index 69b823a3466..0a8f4eee0a1 100644
      { };
  
    template<typename _Tp1, typename _Tp2 = void,
+@@ -419,8 +419,8 @@ namespace __detail
+     class iterator;
+     typedef iterator const_iterator;
+ 
+-    iterator begin() const;
+-    iterator end() const;
++    iterator begin() const noexcept;
++    iterator end() const noexcept;
+ 
+     /// @cond undocumented
+     // Create a basic_string by reading until a null character.
 @@ -1268,7 +1268,7 @@ namespace __detail
      return _M_at_end == __rhs._M_at_end;
    }
@@ -46224,6 +46528,19 @@ index 25d725015ec..bbd8c61e5d4 100644
  
        /**
         * @brief Resets the distribution state.
+diff --git a/libstdc++-v3/include/ext/rope b/libstdc++-v3/include/ext/rope
+index fb7bdb0d6f4..5597ecb8562 100644
+--- a/libstdc++-v3/include/ext/rope
++++ b/libstdc++-v3/include/ext/rope
+@@ -2388,7 +2388,7 @@ protected:
+       }
+ 
+       // Erase, single character
+-      void
++      _GLIBCXX_DEPRECATED void
+       erase(size_type __p)
+       { erase(__p, __p + 1); }
+ 
 diff --git a/libstdc++-v3/include/ext/type_traits.h b/libstdc++-v3/include/ext/type_traits.h
 index cf773cf2d59..a6f5db23682 100644
 --- a/libstdc++-v3/include/ext/type_traits.h
@@ -46489,10 +46806,18 @@ index 5364e59f466..681f2116d67 100644
  _GLIBCXX_END_NAMESPACE_CONTAINER
  } // namespace std
 diff --git a/libstdc++-v3/include/std/charconv b/libstdc++-v3/include/std/charconv
-index cc7dd0e3758..daad423570a 100644
+index cc7dd0e3758..12fa39cd13e 100644
 --- a/libstdc++-v3/include/std/charconv
 +++ b/libstdc++-v3/include/std/charconv
-@@ -335,12 +335,10 @@ namespace __detail
+@@ -39,7 +39,6 @@
+ 
+ #include <type_traits>
+ #include <bit>			// for __bit_width
+-#include <cctype>		// for isdigit
+ #include <bits/charconv.h>	// for __to_chars_len, __to_chars_10_impl
+ #include <bits/error_constants.h> // for std::errc
+ #include <ext/numeric_traits.h>
+@@ -335,12 +334,10 @@ namespace __detail
  	  *__first = '0';
  	  return { __first + 1, errc{} };
  	}
@@ -46507,6 +46832,39 @@ index cc7dd0e3758..daad423570a 100644
  	    __unsigned_val = _Up(~__value) + _Up(1);
  	  }
  
+@@ -467,7 +464,7 @@ namespace __detail
+       return true;
+     }
+ 
+-  constexpr unsigned char
++  constexpr char
+   __from_chars_alpha_to_num(char __c)
+   {
+     switch (__c)
+@@ -551,10 +548,10 @@ namespace __detail
+     case 'Z':
+       return 35;
+     }
+-    return __gnu_cxx::__int_traits<unsigned char>::__max;
++    return 127;
+   }
+ 
+-  /// std::from_chars implementation for integers in bases 11 to 26.
++  /// std::from_chars implementation for integers in bases 11 to 36.
+   template<typename _Tp>
+     bool
+     __from_chars_alnum(const char*& __first, const char* __last, _Tp& __val,
+@@ -563,8 +560,8 @@ namespace __detail
+       bool __valid = true;
+       while (__first != __last)
+ 	{
+-	  unsigned char __c = *__first;
+-	  if (std::isdigit(__c))
++	  char __c = *__first;
++	  if ('0' <= __c && __c <= '9') // isdigit
+ 	    __c -= '0';
+ 	  else
+ 	    {
 diff --git a/libstdc++-v3/include/std/chrono b/libstdc++-v3/include/std/chrono
 index 1eab4b74cb7..62a200c73b0 100644
 --- a/libstdc++-v3/include/std/chrono
@@ -48395,9 +48753,24 @@ index 414dce3a1b7..edfd4e4e523 100644
  } // namespace
  
 diff --git a/libstdc++-v3/include/std/span b/libstdc++-v3/include/std/span
-index 1cdc0589ddb..4173446d141 100644
+index 1cdc0589ddb..4b389a46af7 100644
 --- a/libstdc++-v3/include/std/span
 +++ b/libstdc++-v3/include/std/span
+@@ -204,11 +204,11 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+ 	{ }
+ 
+       template<typename _Range>
+-	requires ranges::contiguous_range<_Range> && ranges::sized_range<_Range>
+-	  && (ranges::borrowed_range<_Range> || is_const_v<element_type>)
+-	  && (!__detail::__is_std_span<remove_cvref_t<_Range>>::value)
++	requires (!__detail::__is_std_span<remove_cvref_t<_Range>>::value)
+ 	  && (!__detail::__is_std_array<remove_cvref_t<_Range>>::value)
+ 	  && (!is_array_v<remove_cvref_t<_Range>>)
++	  && ranges::contiguous_range<_Range> && ranges::sized_range<_Range>
++	  && (ranges::borrowed_range<_Range> || is_const_v<element_type>)
+ 	  && __is_compatible_ref<ranges::range_reference_t<_Range>>::value
+ 	constexpr explicit(extent != dynamic_extent)
+ 	span(_Range&& __range)
 @@ -412,7 +412,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
      span(_Iter, _End)
        -> span<remove_reference_t<iter_reference_t<_Iter>>>;
@@ -49502,10 +49875,42 @@ index 47c6eeaee23..8ade3ea9cc3 100644
  
  }
 diff --git a/libstdc++-v3/libsupc++/exception_ptr.h b/libstdc++-v3/libsupc++/exception_ptr.h
-index fb38a3d203f..f1592c84afe 100644
+index fb38a3d203f..e73e1a6fcf4 100644
 --- a/libstdc++-v3/libsupc++/exception_ptr.h
 +++ b/libstdc++-v3/libsupc++/exception_ptr.h
-@@ -214,7 +214,7 @@ namespace std
+@@ -39,6 +39,10 @@
+ #include <typeinfo>
+ #include <new>
+ 
++#if __cplusplus >= 201103L
++# include <bits/move.h>
++#endif
++
+ extern "C++" {
+ 
+ namespace std 
+@@ -185,14 +189,16 @@ namespace std
+     exception_ptr 
+     make_exception_ptr(_Ex __ex) _GLIBCXX_USE_NOEXCEPT
+     {
+-#if __cpp_exceptions && __cpp_rtti && !_GLIBCXX_HAVE_CDTOR_CALLABI
++#if __cpp_exceptions && __cpp_rtti && !_GLIBCXX_HAVE_CDTOR_CALLABI \
++      && __cplusplus >= 201103L
++      using _Ex2 = typename remove_reference<_Ex>::type;
+       void* __e = __cxxabiv1::__cxa_allocate_exception(sizeof(_Ex));
+       (void) __cxxabiv1::__cxa_init_primary_exception(
+-	  __e, const_cast<std::type_info*>(&typeid(__ex)),
+-	  __exception_ptr::__dest_thunk<_Ex>);
++	  __e, const_cast<std::type_info*>(&typeid(_Ex)),
++	  __exception_ptr::__dest_thunk<_Ex2>);
+       try
+ 	{
+-          ::new (__e) _Ex(__ex);
++	  ::new (__e) _Ex2(std::forward<_Ex>(__ex));
+           return exception_ptr(__e);
+ 	}
+       catch(...)
+@@ -214,7 +220,7 @@ namespace std
  #endif
      }
  
@@ -49987,9 +50392,27 @@ index 6895780a5f7..68e3a95f9a0 100644
  @ENABLE_DUAL_ABI_TRUE@collate_members_cow.cc: ${glibcxx_srcdir}/$(CCOLLATE_CC)
  @ENABLE_DUAL_ABI_TRUE@	$(LN_S) ${glibcxx_srcdir}/$(CCOLLATE_CC) ./$@ || true
 diff --git a/libstdc++-v3/src/filesystem/ops.cc b/libstdc++-v3/src/filesystem/ops.cc
-index 7cc82a50e01..32a17a6d818 100644
+index 7cc82a50e01..321eb3a5cba 100644
 --- a/libstdc++-v3/src/filesystem/ops.cc
 +++ b/libstdc++-v3/src/filesystem/ops.cc
+@@ -366,7 +366,7 @@ fs::copy_file(const path& from, const path& to, copy_options option)
+ 
+ bool
+ fs::copy_file(const path& from, const path& to, copy_options options,
+-	      error_code& ec) noexcept
++	      error_code& ec)
+ {
+ #ifdef _GLIBCXX_HAVE_SYS_STAT_H
+   return do_copy_file(from.c_str(), to.c_str(), copy_file_options(options),
+@@ -418,7 +418,7 @@ fs::create_directories(const path& p)
+ }
+ 
+ bool
+-fs::create_directories(const path& p, error_code& ec) noexcept
++fs::create_directories(const path& p, error_code& ec)
+ {
+   if (p.empty())
+     {
 @@ -426,7 +426,7 @@ fs::create_directories(const path& p, error_code& ec) noexcept
        return false;
      }
@@ -49999,6 +50422,182 @@ index 7cc82a50e01..32a17a6d818 100644
    if (is_directory(st))
      return false;
    else if (ec && !status_known(st))
+@@ -1092,7 +1092,7 @@ fs::remove_all(const path& p)
+ }
+ 
+ std::uintmax_t
+-fs::remove_all(const path& p, error_code& ec) noexcept
++fs::remove_all(const path& p, error_code& ec)
+ {
+   const auto s = symlink_status(p, ec);
+   if (!status_known(s))
+diff --git a/libstdc++-v3/testsuite/17_intro/headers/c++1998/103650.cc b/libstdc++-v3/testsuite/17_intro/headers/c++1998/103650.cc
+new file mode 100644
+index 00000000000..356ffa310bc
+--- /dev/null
++++ b/libstdc++-v3/testsuite/17_intro/headers/c++1998/103650.cc
+@@ -0,0 +1,13 @@
++// { dg-do preprocess }
++
++// PR libstdc++/103650 libstdc++ headers defined LT_OBJDIR and STDC_HEADERS
++
++#define LT_OBJDIR 99
++#define STDC_HEADERS 99
++#include <utility>
++#if LT_OBJDIR != 99
++# error LT_OBJDIR redefined
++#endif
++#if STDC_HEADERS != 99
++# error STDC_HEADERS redefined
++#endif
+diff --git a/libstdc++-v3/testsuite/17_intro/headers/c++1998/49745.cc b/libstdc++-v3/testsuite/17_intro/headers/c++1998/49745.cc
+index f0d4319d961..8ca89d4c1c4 100644
+--- a/libstdc++-v3/testsuite/17_intro/headers/c++1998/49745.cc
++++ b/libstdc++-v3/testsuite/17_intro/headers/c++1998/49745.cc
+@@ -1,4 +1,5 @@
+ // { dg-do compile { target *-*-linux* *-*-gnu* } }
++// { dg-add-options no_pch }
+ 
+ // Copyright (C) 2011-2020 Free Software Foundation, Inc.
+ //
+@@ -18,5 +19,115 @@
+ // <http://www.gnu.org/licenses/>.
+ 
+ // libstdc++/49745
++// error: 'int truncate' redeclared as different kind of symbol
++
++// This tests that no libstdc++ headers include <unistd.h>.
++// However, as discussed in PR libstdc++/100117 we cannot guarantee that
++// no libc headers include it indirectly, so only include the C++ headers.
++// That means we can't use <bits/stdc++.h> because that includes <cstdio> etc.
++// so we list the C++ headers explicitly here. This list is unfortunately
++// doomed to get out of date as new headers are added to the library.
++
++#include <algorithm>
++#include <bitset>
++#include <complex>
++#include <deque>
++#include <exception>
++#include <fstream>
++#include <functional>
++#include <iomanip>
++#include <ios>
++#include <iosfwd>
+ #include <iostream>
++#include <istream>
++#include <iterator>
++#include <limits>
++#include <list>
++#include <locale>
++#include <map>
++#include <memory>
++#include <new>
++#include <numeric>
++#include <ostream>
++#include <queue>
++#include <set>
++#include <sstream>
++#include <stack>
++#include <stdexcept>
++#include <streambuf>
++#include <string>
++#include <typeinfo>
++#include <utility>
++#include <valarray>
++#include <vector>
++
++#if __cplusplus >= 201103L
++#include <array>
++#include <atomic>
++#include <chrono>
++#include <codecvt>
++#include <condition_variable>
++#include <forward_list>
++#include <future>
++#include <initializer_list>
++#include <mutex>
++#include <random>
++#include <ratio>
++#include <regex>
++#include <scoped_allocator>
++#include <system_error>
++#include <thread>
++#include <tuple>
++#include <typeindex>
++#include <type_traits>
++#include <unordered_map>
++#include <unordered_set>
++#endif
++
++#if __cplusplus >= 201402L
++#include <shared_mutex>
++#endif
++
++#if __cplusplus >= 201703L
++#include <any>
++#include <charconv>
++// #include <execution>
++#include <filesystem>
++#include <optional>
++#include <memory_resource>
++#include <string_view>
++#include <variant>
++#endif
++
++#if __cplusplus >= 202002L
++#include <barrier>
++#include <bit>
++#include <compare>
++#include <concepts>
++#if __cpp_impl_coroutine
++# include <coroutine>
++#endif
++#if __has_include (<format>)
++# include <format>
++#endif
++#include <latch>
++#include <numbers>
++#include <ranges>
++#include <span>
++#include <stop_token>
++#include <semaphore>
++#include <source_location>
++#include <syncstream>
++#include <version>
++#endif
++
++#if __cplusplus > 202002L
++#if __has_include(<spanstream>)
++# include <spanstream>
++#endif
++#if __has_include(<stacktrace>)
++# include <stacktrace>
++#endif
++#endif
++
+ int truncate = 0;
+diff --git a/libstdc++-v3/testsuite/17_intro/names.cc b/libstdc++-v3/testsuite/17_intro/names.cc
+index 2c8bfff26e1..a5642df8666 100644
+--- a/libstdc++-v3/testsuite/17_intro/names.cc
++++ b/libstdc++-v3/testsuite/17_intro/names.cc
+@@ -106,6 +106,8 @@
+ #define z (
+ 
+ #define tmp (
++#define sz (
++#define token (
+ 
+ #if __cplusplus < 201103L
+ #define uses_allocator  (
+@@ -195,6 +197,8 @@
+ #undef y
+ // <sys/var.h> defines vario::v
+ #undef v
++// <sys/timer.h> defines trb::func and cputime_tmr::func
++#undef func
+ #endif
+ 
+ #ifdef __hpux__
 diff --git a/libstdc++-v3/testsuite/18_support/comparisons/algorithms/fallback.cc b/libstdc++-v3/testsuite/18_support/comparisons/algorithms/fallback.cc
 new file mode 100644
 index 00000000000..05e1bf7775e
@@ -50047,6 +50646,51 @@ index 00000000000..05e1bf7775e
 +static_assert( has_partial_order_fallback<S, S> );
 +static_assert( ! has_partial_order_fallback<const S, S> ); // LWG 3465
 +static_assert( ! has_partial_order_fallback<const S, const S> );
+diff --git a/libstdc++-v3/testsuite/18_support/exception_ptr/103630.cc b/libstdc++-v3/testsuite/18_support/exception_ptr/103630.cc
+new file mode 100644
+index 00000000000..58fb2abe4d2
+--- /dev/null
++++ b/libstdc++-v3/testsuite/18_support/exception_ptr/103630.cc
+@@ -0,0 +1,39 @@
++// { dg-do run }
++
++#include <exception>
++#if __cplusplus < 201103L
++// std::make_exception_ptr is defined for C++98 as a GNU extension
++# include <bits/exception_ptr.h>
++#endif
++
++#include <testsuite_hooks.h>
++
++struct B
++{
++  virtual bool derived() const { return false; }
++};
++
++struct D : B
++{
++  virtual bool derived() const { return true; }
++};
++
++int main()
++{
++  D d;
++  std::exception_ptr p = std::make_exception_ptr<B&>(d); // PR libstdc++/103630
++#if __cpp_exceptions
++  try
++  {
++    std::rethrow_exception(p);
++  }
++  catch (const D& d)
++  {
++    VERIFY(d.derived()); // PR libstdc++/103630
++  }
++  catch (const B& b)
++  {
++    VERIFY(!b.derived());
++  }
++#endif
++}
 diff --git a/libstdc++-v3/testsuite/18_support/exception_ptr/96657.cc b/libstdc++-v3/testsuite/18_support/exception_ptr/96657.cc
 new file mode 100644
 index 00000000000..61572668385
@@ -50601,6 +51245,47 @@ index 00000000000..4866aa017ff
 +const std::true_type dat;
 +
 +int i = visit(nullptr, dat);
+diff --git a/libstdc++-v3/testsuite/21_strings/basic_string/modifiers/append/wchar_t/1.cc b/libstdc++-v3/testsuite/21_strings/basic_string/modifiers/append/wchar_t/1.cc
+index 604f94238f5..88e34c4881a 100644
+--- a/libstdc++-v3/testsuite/21_strings/basic_string/modifiers/append/wchar_t/1.cc
++++ b/libstdc++-v3/testsuite/21_strings/basic_string/modifiers/append/wchar_t/1.cc
+@@ -117,7 +117,7 @@ void test01(void)
+   VERIFY( str06 == L"corpus, corpus" );
+ 
+   str06 = str02;
+-  str06.append(L"corpus, ", 12);
++  str06.append(L"corpus, ", 9); // n=9 includes null terminator
+   VERIFY( str06 != L"corpus, corpus, " );
+ 
+ 
+diff --git a/libstdc++-v3/testsuite/21_strings/basic_string/operations/compare/wchar_t/1.cc b/libstdc++-v3/testsuite/21_strings/basic_string/operations/compare/wchar_t/1.cc
+index ad9120ef200..5abfabf2075 100644
+--- a/libstdc++-v3/testsuite/21_strings/basic_string/operations/compare/wchar_t/1.cc
++++ b/libstdc++-v3/testsuite/21_strings/basic_string/operations/compare/wchar_t/1.cc
+@@ -81,8 +81,8 @@ test01()
+   test_value(wcsncmp(str_1.data(), str_0.data(), 6), z);
+   test_value(wcsncmp(str_1.data(), str_0.data(), 14), lt);
+   test_value(wmemcmp(str_1.data(), str_0.data(), 6), z);
+-  test_value(wmemcmp(str_1.data(), str_0.data(), 14), lt);
+-  test_value(wmemcmp(L"costa marbella", L"costa rica", 14), lt);
++  test_value(wmemcmp(str_1.data(), str_0.data(), 10), lt);
++  test_value(wmemcmp(L"costa marbella", L"costa rica", 10), lt);
+ 
+   // int compare(const basic_string& str) const;
+   test_value(str_0.compare(str_1), gt); //because r>m
+diff --git a/libstdc++-v3/testsuite/21_strings/basic_string_view/operations/copy/char/constexpr.cc b/libstdc++-v3/testsuite/21_strings/basic_string_view/operations/copy/char/constexpr.cc
+index 64a0766281d..731c82a029b 100644
+--- a/libstdc++-v3/testsuite/21_strings/basic_string_view/operations/copy/char/constexpr.cc
++++ b/libstdc++-v3/testsuite/21_strings/basic_string_view/operations/copy/char/constexpr.cc
+@@ -22,7 +22,7 @@
+ 
+ #ifndef __cpp_lib_constexpr_string_view
+ # error "Feature test macro for constexpr copy is missing in <string_view>"
+-#elif __cpp_lib_constexpr_iterator < 201811L
++#elif __cpp_lib_constexpr_string_view < 201811L
+ # error "Feature test macro for constexpr copy has wrong value in <string_view>"
+ #endif
+ 
 diff --git a/libstdc++-v3/testsuite/21_strings/basic_string_view/requirements/trivially_copyable.cc b/libstdc++-v3/testsuite/21_strings/basic_string_view/requirements/trivially_copyable.cc
 new file mode 100644
 index 00000000000..bf04587b413
@@ -50727,6 +51412,60 @@ index b2a464b8f68..96d6e94d5ae 100644
  
  #include <array>
  #include <testsuite_hooks.h>
+diff --git a/libstdc++-v3/testsuite/23_containers/forward_list/operations/merge.cc b/libstdc++-v3/testsuite/23_containers/forward_list/operations/merge.cc
+new file mode 100644
+index 00000000000..0f6f520c33b
+--- /dev/null
++++ b/libstdc++-v3/testsuite/23_containers/forward_list/operations/merge.cc
+@@ -0,0 +1,48 @@
++// { dg-do run { target c++11 } }
++// C++11 23.3.4.6 Operations [forwardlist.ops]
++
++#include <forward_list>
++#include <testsuite_hooks.h>
++
++void
++test_stable()
++{
++  std::forward_list<double> a{1.5, 2.0, 3.5, 4.1};
++  std::forward_list<double> b{1.0, 2.5, 3.0, 4.3, 4.2, 5.0};
++
++  a.merge(b, std::less<int>{});
++
++  // result is sorted with respect to std::less<int>, so 1.0 and 1.5 are
++  // equivalent, and stability guarantee means the element from a comes first.
++  const std::forward_list<double> r { 1.5, 1.0,
++				      2.0, 2.5,
++				      3.5, 3.0,
++				      4.1, 4.3, 4.2,
++				      5.0};
++
++  VERIFY(a == r);
++}
++
++void
++test_lwg3088()
++{
++  // LWG 3088: forward_list::merge behavior unclear when passed *this
++  // PR libstdc++/103853
++  std::forward_list<int> c1{ 1, 2, 3 };
++  const std::forward_list<int> c2 = c1;
++  c1.merge(c1);
++  VERIFY( c1 == c2 );
++  c1.merge(c1, std::less<long>{});
++  VERIFY( c1 == c2 );
++  c1.merge(std::move(c1));
++  VERIFY( c1 == c2 );
++  c1.merge(std::move(c1), std::less<long>{});
++  VERIFY( c1 == c2 );
++}
++
++int
++main()
++{
++  test_stable();
++  test_lwg3088();
++}
 diff --git a/libstdc++-v3/testsuite/23_containers/map/cons/noexcept_move_construct.cc b/libstdc++-v3/testsuite/23_containers/map/cons/noexcept_move_construct.cc
 index 119b199ddff..25d1c9b5aca 100644
 --- a/libstdc++-v3/testsuite/23_containers/map/cons/noexcept_move_construct.cc
@@ -52328,6 +53067,49 @@ index 429d48f41de..a6121af8e97 100644
  }
  
  int
+diff --git a/libstdc++-v3/testsuite/24_iterators/range_operations/advance_overflow.cc b/libstdc++-v3/testsuite/24_iterators/range_operations/advance_overflow.cc
+new file mode 100644
+index 00000000000..0fadcd6e99a
+--- /dev/null
++++ b/libstdc++-v3/testsuite/24_iterators/range_operations/advance_overflow.cc
+@@ -0,0 +1,37 @@
++// { dg-options "-std=gnu++20" }
++// { dg-do compile { target c++20 } }
++
++// Public domain testcase from Casey Carter, send to LWG list on 2021-07-24.
++//
++// Here's a compile-only test case for which n is INT_MIN, which will overflow
++// if simply negated to get |n|: https://godbolt.org/z/M7Wz1nW58.
++
++#include <cassert>
++#include <iterator>
++#include <limits>
++
++struct I {
++    using difference_type = int;
++    using value_type = int;
++
++    int x;
++
++    constexpr int operator*() const { return x; }
++    constexpr I& operator++() { ++x; return *this; }
++    constexpr I operator++(int) { ++x; return {x - 1}; }
++    constexpr bool operator==(const I&) const = default;
++
++    constexpr int operator-(const I& that) const { return x - that.x; }
++
++    constexpr I& operator--() { --x; return *this; }
++    constexpr I operator--(int) { --x; return {x - 1}; }
++};
++static_assert(std::bidirectional_iterator<I>);
++static_assert(std::sized_sentinel_for<I, I>);
++
++constexpr bool test() {
++    using L = std::numeric_limits<int>;
++    I i{-2};
++    return std::ranges::advance(i, L::min(), I{-4}) == L::min() + 2;
++}
++static_assert(test());
 diff --git a/libstdc++-v3/testsuite/24_iterators/reverse_iterator/100639.cc b/libstdc++-v3/testsuite/24_iterators/reverse_iterator/100639.cc
 new file mode 100644
 index 00000000000..358d91dfef1
@@ -52818,6 +53600,19 @@ index 9cffc3d06f9..1291967b0d1 100644
  
 -// { dg-error "static assertion failed: template argument must be a floating point type" "" { target *-*-* } 3284 }
 +// { dg-error "static assertion failed: template argument must be a floating point type" "" { target *-*-* } 3288 }
+diff --git a/libstdc++-v3/testsuite/26_numerics/random/random_device/cons/token.cc b/libstdc++-v3/testsuite/26_numerics/random/random_device/cons/token.cc
+index 42887703b75..5797571584b 100644
+--- a/libstdc++-v3/testsuite/26_numerics/random/random_device/cons/token.cc
++++ b/libstdc++-v3/testsuite/26_numerics/random/random_device/cons/token.cc
+@@ -41,7 +41,7 @@ test02()
+ #ifdef _GLIBCXX_USE_DEV_RANDOM
+   std::random_device x1("/dev/urandom");
+   std::random_device x2("/dev/random");
+-  VERIFY( x1() != x2() );
++  VERIFY( x1() != x2() || x1() != x2() );
+ #endif
+ }
+ 
 diff --git a/libstdc++-v3/testsuite/26_numerics/random/seed_seq/cons/default.cc b/libstdc++-v3/testsuite/26_numerics/random/seed_seq/cons/default.cc
 index 73a4390da26..3c4e38a7408 100644
 --- a/libstdc++-v3/testsuite/26_numerics/random/seed_seq/cons/default.cc
@@ -53975,6 +54770,42 @@ index 94b4c416540..f51edef8ce0 100644
  }
  
  void
+diff --git a/libstdc++-v3/testsuite/experimental/string_view/operations/compare/wchar_t/1.cc b/libstdc++-v3/testsuite/experimental/string_view/operations/compare/wchar_t/1.cc
+index 52d10e199df..c15f4da5241 100644
+--- a/libstdc++-v3/testsuite/experimental/string_view/operations/compare/wchar_t/1.cc
++++ b/libstdc++-v3/testsuite/experimental/string_view/operations/compare/wchar_t/1.cc
+@@ -81,8 +81,8 @@ test01()
+   test_value(wcsncmp(str_1.data(), str_0.data(), 6), z);
+   test_value(wcsncmp(str_1.data(), str_0.data(), 14), lt);
+   test_value(wmemcmp(str_1.data(), str_0.data(), 6), z);
+-  test_value(wmemcmp(str_1.data(), str_0.data(), 14), lt);
+-  test_value(wmemcmp(L"costa marbella", L"costa rica", 14), lt);
++  test_value(wmemcmp(str_1.data(), str_0.data(), 10), lt);
++  test_value(wmemcmp(L"costa marbella", L"costa rica", 10), lt);
+ 
+   // int compare(const basic_string_view& str) const;
+   test_value(str_0.compare(str_1), gt); //because r>m
+diff --git a/libstdc++-v3/testsuite/ext/rope/pthread7-rope.cc b/libstdc++-v3/testsuite/ext/rope/pthread7-rope.cc
+index 4896053a013..1d0e9a96cae 100644
+--- a/libstdc++-v3/testsuite/ext/rope/pthread7-rope.cc
++++ b/libstdc++-v3/testsuite/ext/rope/pthread7-rope.cc
+@@ -20,6 +20,7 @@
+ // { dg-do run }
+ // { dg-options "-pthread"  }
+ // { dg-require-effective-target pthread }
++// { dg-timeout-factor 2 }
+ 
+ #include <ext/rope>
+ #include <cstring>
+@@ -33,7 +34,7 @@ typedef __gnu_cxx::rope<char, std::allocator<char> > rope_type;
+ rope_type foo2;
+ rope_type foo4;
+ 
+-void* thread_main(void *) 
++void* thread_main(void *)
+ {
+   // To see a problem with gcc 3.3 and before, set a break point here.
+   // Single step through c_str implementation, call sched_yield after
 diff --git a/libstdc++-v3/testsuite/lib/libstdc++.exp b/libstdc++-v3/testsuite/lib/libstdc++.exp
 index 3b8587cd01d..45dd2c8c02e 100644
 --- a/libstdc++-v3/testsuite/lib/libstdc++.exp
@@ -54072,6 +54903,51 @@ index 00000000000..d992318259d
 +  v.begin();
 +  static_assert(std::ranges::range<decltype(v)>);
 +}
+diff --git a/libstdc++-v3/testsuite/std/ranges/access/empty.cc b/libstdc++-v3/testsuite/std/ranges/access/empty.cc
+index 4b54ed7b367..47dfca6513f 100644
+--- a/libstdc++-v3/testsuite/std/ranges/access/empty.cc
++++ b/libstdc++-v3/testsuite/std/ranges/access/empty.cc
+@@ -68,9 +68,40 @@ test02()
+   VERIFY( !std::ranges::empty(so) );
+ }
+ 
++void
++test04()
++{
++  struct E1
++  {
++    bool empty() const noexcept { return {}; }
++  };
++
++  static_assert( noexcept(std::ranges::empty(E1{})) );
++
++  struct E2
++  {
++    bool empty() const noexcept(false) { return {}; }
++  };
++
++  static_assert( ! noexcept(std::ranges::empty(E2{})) );
++
++  struct E3
++  {
++    struct B
++    {
++      explicit operator bool() const noexcept(false) { return true; }
++    };
++
++    B empty() const noexcept { return {}; }
++  };
++
++  static_assert( ! noexcept(std::ranges::empty(E3{})) );
++}
++
+ int
+ main()
+ {
+   test01();
+   test02();
++  test04();
+ }
 diff --git a/libstdc++-v3/testsuite/std/ranges/adaptors/elements.cc b/libstdc++-v3/testsuite/std/ranges/adaptors/elements.cc
 index 94dd7c94505..1ad05361d00 100644
 --- a/libstdc++-v3/testsuite/std/ranges/adaptors/elements.cc
