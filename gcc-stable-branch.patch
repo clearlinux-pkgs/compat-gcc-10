@@ -92,7 +92,15 @@ François Dumont (3):
 Fritz Reese (1):
       fortran: Fix conv of UNION constructors [PR105310]
 
-GCC Administrator (379):
+GCC Administrator (387):
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -899,7 +907,7 @@ Philippe Blain (1):
 Piotr Kubaj (1):
       gcc/configure: Check for powerpc64le*-*-freebsd*
 
-Richard Biener (51):
+Richard Biener (53):
       Increment BASE-VER after release
       testsuite/100176 - fix struct-layout-1_generate.c compile
       middle-end/98726 - fix VECTOR_CST element access
@@ -951,6 +959,8 @@ Richard Biener (51):
       tree-optimization/103596 - fix missed propagation into switches
       tree-optimization/103361 - fix unroll-and-jam direction vector handling
       middle-end/100786 - constant folding from incompatible alias
+      middle-end/104402 - split out _Complex compares from COND_EXPRs
+      tree-optimization/105198 - wrong code with predictive commoning
 
 Richard Earnshaw (12):
       arm: fix UB due to missing mode check [PR100311]
@@ -18374,6 +18384,52 @@ index d3fef08b4b9..24758ddadee 100644
  	{
  	  vec_safe_push (typelist, pvoid_type_node);  /* caf_token.  */
  	  vec_safe_push (typelist, gfc_array_index_type);  /* caf_offset.  */
+diff --git a/gcc/gimple-expr.c b/gcc/gimple-expr.c
+index 44a0b8790f5..141bc0cd0cf 100644
+--- a/gcc/gimple-expr.c
++++ b/gcc/gimple-expr.c
+@@ -612,12 +612,16 @@ is_gimple_lvalue (tree t)
+ /* Helper for is_gimple_condexpr and is_gimple_condexpr_for_cond.  */
+ 
+ static bool
+-is_gimple_condexpr_1 (tree t, bool allow_traps)
++is_gimple_condexpr_1 (tree t, bool allow_traps, bool allow_cplx)
+ {
+-  return (is_gimple_val (t) || (COMPARISON_CLASS_P (t)
+-				&& (allow_traps || !tree_could_throw_p (t))
+-				&& is_gimple_val (TREE_OPERAND (t, 0))
+-				&& is_gimple_val (TREE_OPERAND (t, 1))));
++  tree op0;
++  return (is_gimple_val (t)
++	  || (COMPARISON_CLASS_P (t)
++	      && (allow_traps || !tree_could_throw_p (t))
++	      && ((op0 = TREE_OPERAND (t, 0)), true)
++	      && (allow_cplx || TREE_CODE (TREE_TYPE (op0)) != COMPLEX_TYPE)
++	      && is_gimple_val (op0)
++	      && is_gimple_val (TREE_OPERAND (t, 1))));
+ }
+ 
+ /* Return true if T is a GIMPLE condition.  */
+@@ -625,7 +629,9 @@ is_gimple_condexpr_1 (tree t, bool allow_traps)
+ bool
+ is_gimple_condexpr (tree t)
+ {
+-  return is_gimple_condexpr_1 (t, true);
++  /* Always split out _Complex type compares since complex lowering
++     doesn't handle this case.  */
++  return is_gimple_condexpr_1 (t, true, false);
+ }
+ 
+ /* Like is_gimple_condexpr, but does not allow T to trap.  */
+@@ -633,7 +639,7 @@ is_gimple_condexpr (tree t)
+ bool
+ is_gimple_condexpr_for_cond (tree t)
+ {
+-  return is_gimple_condexpr_1 (t, false);
++  return is_gimple_condexpr_1 (t, false, true);
+ }
+ 
+ /* Return true if T is a gimple address.  */
 diff --git a/gcc/gimple-fold.c b/gcc/gimple-fold.c
 index da3536ecd4e..969c3998421 100644
 --- a/gcc/gimple-fold.c
@@ -25797,6 +25853,52 @@ index 00000000000..4f65c36d121
 +  qux (n);
 +  bar (baz ());
 +}
+diff --git a/gcc/testsuite/gcc.dg/torture/pr104402.c b/gcc/testsuite/gcc.dg/torture/pr104402.c
+new file mode 100644
+index 00000000000..1cb0370e9b2
+--- /dev/null
++++ b/gcc/testsuite/gcc.dg/torture/pr104402.c
+@@ -0,0 +1,8 @@
++/* { dg-do compile } */
++
++_Complex int a;
++char b;
++void c() {
++  if (b != 2 + (long)(a != 0 ^ 0))
++    __builtin_abort();
++}
+diff --git a/gcc/testsuite/gcc.dg/torture/pr105198.c b/gcc/testsuite/gcc.dg/torture/pr105198.c
+new file mode 100644
+index 00000000000..91f92afc163
+--- /dev/null
++++ b/gcc/testsuite/gcc.dg/torture/pr105198.c
+@@ -0,0 +1,26 @@
++/* { dg-do run } */
++/* { dg-additional-options "-fno-tree-pre -fpredictive-commoning" } */
++
++static  __attribute__ ((noipa)) void
++next_set(int *x, int n, int k)
++{
++  int j = k - 1;
++  int tmp = x[j]++;
++  while (j > 0)
++    {
++      if (x[j] < n - (k - 1 -j))
++        break;
++      j--;
++      x[j]++;
++      tmp = x[j];
++    }
++  if (tmp != 2 || j != 1 || x[0] != 0 || x[1] != 2 || x[2] != 5)
++    __builtin_abort ();
++}
++
++int main()
++{
++  int x[3] = {0, 1, 4};
++  next_set(x, 5, 3);
++  return 0;
++}
 diff --git a/gcc/testsuite/gcc.dg/torture/pr96513.c b/gcc/testsuite/gcc.dg/torture/pr96513.c
 new file mode 100644
 index 00000000000..5ee040e96c8
@@ -32688,6 +32790,26 @@ index bd62a0d9e79..2749afe4741 100644
 +
      return 0;
  }
+diff --git a/gcc/tree-cfg.c b/gcc/tree-cfg.c
+index 1af59fc6fe9..d16ed3e8855 100644
+--- a/gcc/tree-cfg.c
++++ b/gcc/tree-cfg.c
+@@ -4243,10 +4243,11 @@ verify_gimple_assign_ternary (gassign *stmt)
+       /* Fallthrough.  */
+     case COND_EXPR:
+       if (!is_gimple_val (rhs1)
+-	  && verify_gimple_comparison (TREE_TYPE (rhs1),
+-				       TREE_OPERAND (rhs1, 0),
+-				       TREE_OPERAND (rhs1, 1),
+-				       TREE_CODE (rhs1)))
++	  && (!is_gimple_condexpr (rhs1)
++	      || verify_gimple_comparison (TREE_TYPE (rhs1),
++					   TREE_OPERAND (rhs1, 0),
++					   TREE_OPERAND (rhs1, 1),
++					   TREE_CODE (rhs1))))
+ 	return true;
+       if (!useless_type_conversion_p (lhs_type, rhs2_type)
+ 	  || !useless_type_conversion_p (lhs_type, rhs3_type))
 diff --git a/gcc/tree-data-ref.c b/gcc/tree-data-ref.c
 index 2cb54def860..ba059ebc0de 100644
 --- a/gcc/tree-data-ref.c
@@ -33211,6 +33333,73 @@ index 9d17a104f34..25ef1cfa0c2 100644
    TREE_ADDRESSABLE (result) |= TREE_ADDRESSABLE (found);
  
    /* Now walk through the function changing all references to VAR to be
+diff --git a/gcc/tree-predcom.c b/gcc/tree-predcom.c
+index d2dcfe7f42d..931236decb9 100644
+--- a/gcc/tree-predcom.c
++++ b/gcc/tree-predcom.c
+@@ -1254,7 +1254,6 @@ static gphi *
+ find_looparound_phi (class loop *loop, dref ref, dref root)
+ {
+   tree name, init, init_ref;
+-  gphi *phi = NULL;
+   gimple *init_stmt;
+   edge latch = loop_latch_edge (loop);
+   struct data_reference init_dr;
+@@ -1272,14 +1271,19 @@ find_looparound_phi (class loop *loop, dref ref, dref root)
+   if (!name)
+     return NULL;
+ 
++  tree entry_vuse = NULL_TREE;
++  gphi *phi = NULL;
+   for (psi = gsi_start_phis (loop->header); !gsi_end_p (psi); gsi_next (&psi))
+     {
+-      phi = psi.phi ();
+-      if (PHI_ARG_DEF_FROM_EDGE (phi, latch) == name)
++      gphi *p = psi.phi ();
++      if (PHI_ARG_DEF_FROM_EDGE (p, latch) == name)
++	phi = p;
++      else if (virtual_operand_p (gimple_phi_result (p)))
++	entry_vuse = PHI_ARG_DEF_FROM_EDGE (p, loop_preheader_edge (loop));
++      if (phi && entry_vuse)
+ 	break;
+     }
+-
+-  if (gsi_end_p (psi))
++  if (!phi || !entry_vuse)
+     return NULL;
+ 
+   init = PHI_ARG_DEF_FROM_EDGE (phi, loop_preheader_edge (loop));
+@@ -1307,6 +1311,30 @@ find_looparound_phi (class loop *loop, dref ref, dref root)
+   if (!valid_initializer_p (&init_dr, ref->distance + 1, root->ref))
+     return NULL;
+ 
++  /* Make sure nothing clobbers the location we re-use the initial value
++     from.  */
++  if (entry_vuse != gimple_vuse (init_stmt))
++    {
++      ao_ref ref;
++      ao_ref_init (&ref, init_ref);
++      unsigned limit = param_sccvn_max_alias_queries_per_access;
++      tree vdef = entry_vuse;
++      do
++	{
++	  gimple *def = SSA_NAME_DEF_STMT (vdef);
++	  if (limit-- == 0 || gimple_code (def) == GIMPLE_PHI)
++	    return NULL;
++	  if (stmt_may_clobber_ref_p_1 (def, &ref))
++	    /* When the stmt is an assign to init_ref we could in theory
++	       use its RHS for the initial value of the looparound PHI
++	       we replace in prepare_initializers_chain, but we have
++	       no convenient place to store this info at the moment.  */
++	    return NULL;
++	  vdef = gimple_vuse (def);
++	}
++      while (vdef != gimple_vuse (init_stmt));
++    }
++
+   return phi;
+ }
+ 
 diff --git a/gcc/tree-sra.c b/gcc/tree-sra.c
 index 85b9cc9ed7f..09d951a261b 100644
 --- a/gcc/tree-sra.c
