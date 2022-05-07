@@ -92,7 +92,8 @@ François Dumont (3):
 Fritz Reese (1):
       fortran: Fix conv of UNION constructors [PR105310]
 
-GCC Administrator (387):
+GCC Administrator (388):
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -824,11 +825,12 @@ Martin Sebor (2):
 Martin Storsjö (1):
       mh-mingw: Set __USE_MINGW_ACCESS in missed C++ flags variables
 
-Michael Meissner (4):
+Michael Meissner (5):
       Backport fix for PR target/98952
       Define __SIZEOF_FLOAT128__ and __SIZEOF_IBM128__.
       Use correct names for __ibm128 if long double is IEEE 128-bit.
       Revert __SIZEOF__IBM128__ and __SIZEOF_FLOAT128__ patch.
+      rs6000: Ignore fusion option flags for inlining test [PR102059]
 
 Mikael Morin (1):
       fortran: Backport associate character length fixes [PR104228]
@@ -4145,10 +4147,40 @@ index 0719d810258..a9368325816 100644
 -10.3.0
 +10.3.1
 diff --git a/gcc/ChangeLog b/gcc/ChangeLog
-index 3b1384e707f..9d32886f03f 100644
+index 3b1384e707f..b1806857454 100644
 --- a/gcc/ChangeLog
 +++ b/gcc/ChangeLog
-@@ -1,3 +1,1822 @@
+@@ -1,3 +1,1852 @@
++2022-05-06  Michael Meissner  <meissner@linux.ibm.com>
++
++	Backported from master:
++	2022-05-06   Michael Meissner  <meissner@linux.ibm.com>
++
++	PR target/102059
++	* config/rs6000/rs6000.c (rs6000_can_inline_p): Ignore -mpower8-fusion
++	option for inlining purposes.
++
++2022-05-06  Richard Biener  <rguenther@suse.de>
++
++	Backported from master:
++	2022-04-08  Richard Biener  <rguenther@suse.de>
++
++	PR tree-optimization/105198
++	* tree-predcom.c (find_looparound_phi): Check whether
++	the found memory location of the entry value is clobbered
++	inbetween the value we want to use and loop entry.
++
++2022-05-06  Richard Biener  <rguenther@suse.de>
++
++	Backported from master:
++	2022-02-07  Richard Biener  <rguenther@suse.de>
++
++	PR middle-end/104402
++	* gimple-expr.c (is_gimple_condexpr): _Complex typed
++	compares are not valid.
++	* tree-cfg.c (verify_gimple_assign_ternary): For COND_EXPR
++	check is_gimple_condexpr.
++
 +2022-04-27  Hongyu Wang  <hongyu.wang@intel.com>
 +
 +	Backported from master:
@@ -11306,7 +11338,7 @@ index 3d5dc7d8aae..4a358646830 100644
  		    insn_entry[uid].special_handling = SH_SUBREG;
  		}
 diff --git a/gcc/config/rs6000/rs6000.c b/gcc/config/rs6000/rs6000.c
-index a6dc1156994..e95d877f866 100644
+index a6dc1156994..4ea0e73594d 100644
 --- a/gcc/config/rs6000/rs6000.c
 +++ b/gcc/config/rs6000/rs6000.c
 @@ -3815,6 +3815,15 @@ rs6000_option_override_internal (bool global_init_p)
@@ -11494,6 +11526,17 @@ index a6dc1156994..e95d877f866 100644
      default:
        break;
      }
+@@ -24427,6 +24477,10 @@ rs6000_can_inline_p (tree caller, tree callee)
+       else
+ 	caller_isa = rs6000_isa_flags;
+ 
++      /* Ignore the -mpower8-fusion option for inlining purposes.  */
++      callee_isa &= ~OPTION_MASK_P8_FUSION;
++      explicit_isa &= ~OPTION_MASK_P8_FUSION;
++
+       /* The callee's options must be a subset of the caller's options, i.e.
+ 	 a vsx function may inline an altivec function, but a no-vsx function
+ 	 must not inline a vsx function.  However, for those options that the
 diff --git a/gcc/config/rs6000/rs6000.md b/gcc/config/rs6000/rs6000.md
 index c4d7cdb6fa7..61a14fb5b9f 100644
 --- a/gcc/config/rs6000/rs6000.md
@@ -19922,10 +19965,34 @@ index 99edad8a950..f33489286a9 100644
  
  #endif
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index 2913065bf31..43c31d4c6f3 100644
+index 2913065bf31..51c62931246 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,2083 @@
+@@ -1,3 +1,2107 @@
++2022-05-06  Michael Meissner  <meissner@linux.ibm.com>
++
++	Backported from master:
++	2022-05-06   Michael Meissner  <meissner@linux.ibm.com>
++
++	PR target/102059
++	* gcc.target/powerpc/pr102059-4.c: New test.
++
++2022-05-06  Richard Biener  <rguenther@suse.de>
++
++	Backported from master:
++	2022-04-08  Richard Biener  <rguenther@suse.de>
++
++	PR tree-optimization/105198
++	* gcc.dg/torture/pr105198.c: New testcase.
++
++2022-05-06  Richard Biener  <rguenther@suse.de>
++
++	Backported from master:
++	2022-02-07  Richard Biener  <rguenther@suse.de>
++
++	PR middle-end/104402
++	* gcc.dg/torture/pr104402.c: New testcase.
++
 +2022-04-27  Hongyu Wang  <hongyu.wang@intel.com>
 +
 +	Backported from master:
@@ -28391,6 +28458,35 @@ index 00000000000..148ad657366
 +  a = vec_cpsgn (a, b);
 +  if (! vec_all_eq (a, c))
 +    __builtin_abort ();
++  return 0;
++}
+diff --git a/gcc/testsuite/gcc.target/powerpc/pr102059-4.c b/gcc/testsuite/gcc.target/powerpc/pr102059-4.c
+new file mode 100644
+index 00000000000..5fe66f8af4b
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/powerpc/pr102059-4.c
+@@ -0,0 +1,23 @@
++/* { dg-do compile } */
++/* { dg-options "-O2 -mdejagnu-cpu=power10" } */
++/* { dg-require-effective-target power10_ok } */
++
++/* Verify that power10 can explicity include functions compiled for power8.
++   The issue was -mcpu=power8 enables -mpower8-fusion, but -mcpu=power9 or
++   -mcpu=power10 do not set power8-fusion by default.  Thus when doing this
++   compilation, they would get an error that the inline function failed in its
++   inlining due to having incompatible options.  */
++
++static inline int __attribute__ ((always_inline,target("cpu=power8")))
++foo (int *b)
++{
++  *b += 10;
++  return *b;
++}
++
++int
++bar (int *a)
++{
++  *a = foo (a);
 +  return 0;
 +}
 diff --git a/gcc/testsuite/gcc.target/powerpc/pr102347.c b/gcc/testsuite/gcc.target/powerpc/pr102347.c
