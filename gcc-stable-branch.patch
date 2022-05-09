@@ -92,7 +92,9 @@ François Dumont (3):
 Fritz Reese (1):
       fortran: Fix conv of UNION constructors [PR105310]
 
-GCC Administrator (388):
+GCC Administrator (390):
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -642,7 +644,7 @@ John David Anglin (5):
       Don't use 'G' constraint in integer move patterns
       Fix warnings building linux-atomic.c and fptr.c on hppa64-linux
 
-Jonathan Wakely (120):
+Jonathan Wakely (122):
       libstdc++: Fix Doxygen warning about ambiguous file name
       maintainer-scripts: Disable multilib when generating libstdc++ docs
       libstdc++: Fix doxygen markup for group close commands
@@ -763,6 +765,8 @@ Jonathan Wakely (120):
       libstdc++: Fix noexcept-specifier for ranges::empty
       libstdc++: Use __cpp_lib_concepts in std::reverse_iterator [PR104098]
       libstdc++: Fix ambiguous comparisons for iterators in C++20
+      libstdc++: Fix deserialization for std::normal_distribution [PR105502]
+      libstdc++: Use LTLIBICONV when linking libstdc++.so [PR93602]
 
 José Rui Faustino de Sousa (1):
       Fortran: Fix double function call with -fcheck=pointer [PR]
@@ -40659,6 +40663,50 @@ index 18407225d7a..aa85d85db46 100644
           a list of predefined macros for any particular installation.
        </p><p>This has been discussed on the mailing lists
           <a class="link" href="http://gcc.gnu.org/cgi-bin/htsearch?method=and&amp;format=builtin-long&amp;sort=score&amp;words=_XOPEN_SOURCE+Solaris" target="_top">quite a bit</a>.
+diff --git a/libstdc++-v3/doc/html/manual/setup.html b/libstdc++-v3/doc/html/manual/setup.html
+index 636a4401602..069354b8ce0 100644
+--- a/libstdc++-v3/doc/html/manual/setup.html
++++ b/libstdc++-v3/doc/html/manual/setup.html
+@@ -42,6 +42,39 @@
+    </p><p>
+    Finally, a few system-specific requirements:
+    </p><div class="variablelist"><dl class="variablelist"><dt><span class="term">linux</span></dt><dd><p>
++	  The 'gnu' locale model makes use of <code class="function">iconv</code>
++	  for character set conversions. The relevant functions are provided
++	  by Glibc and so are always available, however they can also be
++	  provided by the separate GNU libiconv library. If GNU libiconv is
++	  found when GCC is built (e.g., because its headers are installed
++	  in <code class="filename">/usr/local/include</code>)
++	  then the <code class="filename">libstdc++.so.6</code> library will have a
++	  run-time dependency on <code class="filename">libiconv.so.2</code>.
++	  If you do not want that run-time dependency then you should do
++	  one of the following:
++	</p><div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; "><li class="listitem"><p>
++	      Uninstall the libiconv headers before building GCC.
++	      Glibc already provides <code class="function">iconv</code> so you should
++	      not need libiconv anyway.
++	    </p></li><li class="listitem"><p>
++	    <a class="link" href="../">
++	    Download</a> the libiconv sources and extract them into the
++	    top level of the GCC source tree, e.g.,
++	    </p><pre class="programlisting">
++wget https://ftp.gnu.org/pub/gnu/libiconv/libiconv-1.16.tar.gz
++tar xf libiconv-1.16.tar.gz
++ln -s libiconv-1.16 libiconv
++</pre><p>
++	      This will build libiconv as part of building GCC and link to
++	      it statically, so there is no <code class="filename">libiconv.so.2</code>
++	      dependency.
++	    </p></li><li class="listitem"><p>
++	      Configure GCC with <code class="option">--with-libiconv-type=static</code>.
++	      This requires the static <code class="filename">libiconv.a</code> library,
++	      which is not installed by default. You might need to reinstall
++	      libiconv using the <code class="option">--enable-static</code> configure
++	      option to get the static library.
++	    </p></li></ul></div><p>
+ 	  If GCC 3.1.0 or later on is being used on GNU/Linux, an attempt
+ 	  will be made to use "C" library functionality necessary for
+ 	  C++ named locale support.  For GCC 4.6.0 and later, this
 diff --git a/libstdc++-v3/doc/html/manual/status.html b/libstdc++-v3/doc/html/manual/status.html
 index a956ac2721d..35251ba28b6 100644
 --- a/libstdc++-v3/doc/html/manual/status.html
@@ -40780,6 +40828,67 @@ index 4a5d25fa0d7..7137ba2e10c 100644
      <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" parse="xml" href="status_cxxis29124.xml">
      </xi:include>
    </section>
+diff --git a/libstdc++-v3/doc/xml/manual/prerequisites.xml b/libstdc++-v3/doc/xml/manual/prerequisites.xml
+index aa677647555..020027eb86d 100644
+--- a/libstdc++-v3/doc/xml/manual/prerequisites.xml
++++ b/libstdc++-v3/doc/xml/manual/prerequisites.xml
+@@ -48,6 +48,56 @@
+       <varlistentry>
+ 	<term>linux</term>
+ 
++	<listitem>
++	<para>
++	  The 'gnu' locale model makes use of <function>iconv</function>
++	  for character set conversions. The relevant functions are provided
++	  by Glibc and so are always available, however they can also be
++	  provided by the separate GNU libiconv library. If GNU libiconv is
++	  found when GCC is built (e.g., because its headers are installed
++	  in <filename class="directory">/usr/local/include</filename>)
++	  then the <filename>libstdc++.so.6</filename> library will have a
++	  run-time dependency on <filename>libiconv.so.2</filename>.
++	  If you do not want that run-time dependency then you should do
++	  one of the following:
++	</para>
++	<itemizedlist>
++	  <listitem>
++	    <para>
++	      Uninstall the libiconv headers before building GCC.
++	      Glibc already provides <function>iconv</function> so you should
++	      not need libiconv anyway.
++	    </para>
++	  </listitem>
++	  <listitem>
++	    <para>
++	    <link linkend="https://www.gnu.org/software/libiconv/#downloading">
++	    Download</link> the libiconv sources and extract them into the
++	    top level of the GCC source tree, e.g.,
++	    </para>
++<programlisting>
++wget https://ftp.gnu.org/pub/gnu/libiconv/libiconv-1.16.tar.gz
++tar xf libiconv-1.16.tar.gz
++ln -s libiconv-1.16 libiconv
++</programlisting>
++	    <para>
++	      This will build libiconv as part of building GCC and link to
++	      it statically, so there is no <filename>libiconv.so.2</filename>
++	      dependency.
++	    </para>
++	  </listitem>
++	  <listitem>
++	    <para>
++	      Configure GCC with <option>--with-libiconv-type=static</option>.
++	      This requires the static <filename>libiconv.a</filename> library,
++	      which is not installed by default. You might need to reinstall
++	      libiconv using the <option>--enable-static</option> configure
++	      option to get the static library.
++	    </para>
++	  </listitem>
++	</itemizedlist>
++	</listitem>
++
+ 	<listitem>
+ 	<para>
+ 	  If GCC 3.1.0 or later on is being used on GNU/Linux, an attempt
 diff --git a/libstdc++-v3/doc/xml/manual/status_cxx1998.xml b/libstdc++-v3/doc/xml/manual/status_cxx1998.xml
 index 792272bcf26..99cdedc0f45 100644
 --- a/libstdc++-v3/doc/xml/manual/status_cxx1998.xml
@@ -42230,9 +42339,18 @@ index cba11299360..2bd6bc1e120 100644
  _GLIBCXX_END_NAMESPACE_VERSION
  } // namespace std
 diff --git a/libstdc++-v3/include/bits/random.tcc b/libstdc++-v3/include/bits/random.tcc
-index a921b9bf815..74ee6ada13a 100644
+index a921b9bf815..024879a263d 100644
 --- a/libstdc++-v3/include/bits/random.tcc
 +++ b/libstdc++-v3/include/bits/random.tcc
+@@ -1921,7 +1921,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+       bool __saved_avail;
+       if (__is >> __mean >> __stddev >> __saved_avail)
+ 	{
+-	  if (__saved_avail && (__is >> __x._M_saved))
++	  if (!__saved_avail || (__is >> __x._M_saved))
+ 	    {
+ 	      __x._M_saved_available = __saved_avail;
+ 	      __x.param(param_type(__mean, __stddev));
 @@ -3197,9 +3197,10 @@ namespace __detail
      }
  
@@ -50934,6 +51052,36 @@ index e77f8504cc3..2617c189e40 100644
          elif head_field.is_base_class:
              return tuple_member.cast(head_field.type)
          else:
+diff --git a/libstdc++-v3/src/Makefile.am b/libstdc++-v3/src/Makefile.am
+index a139adc81b3..9a97b88ce1f 100644
+--- a/libstdc++-v3/src/Makefile.am
++++ b/libstdc++-v3/src/Makefile.am
+@@ -222,7 +222,9 @@ CXXLINK = \
+ 	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
+ 	--mode=link $(CXX) \
+ 	$(VTV_CXXLINKFLAGS) \
+-	$(OPT_LDFLAGS) $(SECTION_LDFLAGS) $(AM_CXXFLAGS) $(LTLDFLAGS) -o $@
++	$(OPT_LDFLAGS) $(SECTION_LDFLAGS) $(AM_CXXFLAGS) \
++	$(LTLDFLAGS) $(LTLIBICONV) \
++	-o $@
+ 
+ # Symbol versioning for shared libraries.
+ if ENABLE_SYMVERS
+diff --git a/libstdc++-v3/src/Makefile.in b/libstdc++-v3/src/Makefile.in
+index ea37a962a9a..8b9b8577a53 100644
+--- a/libstdc++-v3/src/Makefile.in
++++ b/libstdc++-v3/src/Makefile.in
+@@ -597,7 +597,9 @@ CXXLINK = \
+ 	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
+ 	--mode=link $(CXX) \
+ 	$(VTV_CXXLINKFLAGS) \
+-	$(OPT_LDFLAGS) $(SECTION_LDFLAGS) $(AM_CXXFLAGS) $(LTLDFLAGS) -o $@
++	$(OPT_LDFLAGS) $(SECTION_LDFLAGS) $(AM_CXXFLAGS) \
++	$(LTLDFLAGS) $(LTLIBICONV) \
++	-o $@
+ 
+ @ENABLE_SYMVERS_TRUE@CLEANFILES = libstdc++-symbols.ver $(version_dep)
+ @ENABLE_SYMVERS_DARWIN_TRUE@@ENABLE_SYMVERS_TRUE@version_arg = -Wl,-exported_symbols_list,libstdc++-symbols.explist
 diff --git a/libstdc++-v3/src/c++11/system_error.cc b/libstdc++-v3/src/c++11/system_error.cc
 index 1f06e67feea..2c8fd4bf161 100644
 --- a/libstdc++-v3/src/c++11/system_error.cc
@@ -54291,6 +54439,63 @@ index 00000000000..3ccb032bc67
 +#elif __cpp_lib_interpolate != 201902L
 +# error "Feature-test macro for midpoint and lerp has wrong value in <version>"
 +#endif
+diff --git a/libstdc++-v3/testsuite/26_numerics/random/normal_distribution/operators/serialize.cc b/libstdc++-v3/testsuite/26_numerics/random/normal_distribution/operators/serialize.cc
+index 8e3ea065701..91e1a6aa814 100644
+--- a/libstdc++-v3/testsuite/26_numerics/random/normal_distribution/operators/serialize.cc
++++ b/libstdc++-v3/testsuite/26_numerics/random/normal_distribution/operators/serialize.cc
+@@ -25,6 +25,7 @@
+ 
+ #include <random>
+ #include <sstream>
++#include <testsuite_hooks.h>
+ 
+ void
+ test01()
+@@ -37,10 +38,43 @@ test01()
+   str << u;
+ 
+   str >> v;
++  VERIFY( u == v );
++}
++
++void
++test_pr105502()
++{
++  // PR libstdc++/105502 std::normal_distribution deserialization issue
++  std::stringstream str;
++  std::normal_distribution<> d{1, 2}, d2;
++  std::minstd_rand0 g;
++  str << d;
++  VERIFY( str );
++  str >> d2;
++  VERIFY( str );
++  VERIFY( d == d2 );
++
++  (void) d(g); // sets d._M_saved_available = true
++  str.str("");
++  str.clear();
++  str << d;
++  VERIFY( str );
++  str >> d2;
++  VERIFY( str );
++  VERIFY( d == d2 );
++
++  (void) d(g); // sets d._M_saved_available = false
++  str.str("");
++  str.clear();
++  str << d;
++  VERIFY( str );
++  str >> d2;
++  VERIFY( str );
++  VERIFY( d == d2 );
+ }
+ 
+ int main()
+ {
+   test01();
+-  return 0;
++  test_pr105502();
+ }
 diff --git a/libstdc++-v3/testsuite/26_numerics/random/pr60037-neg.cc b/libstdc++-v3/testsuite/26_numerics/random/pr60037-neg.cc
 index 9cffc3d06f9..1291967b0d1 100644
 --- a/libstdc++-v3/testsuite/26_numerics/random/pr60037-neg.cc
