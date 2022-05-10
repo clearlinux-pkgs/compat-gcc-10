@@ -742,6 +742,9 @@ Jason Merrill (21):
       c++: constexpr and array[0] [PR101029]
       Revert "c++: using overloaded with local decl [PR92918]"
 
+Jeff Law (1):
+      [committed] Fix more problems with new linker warnings
+
 John David Anglin (5):
       Add support for 32-bit hppa targets in muldi3 expander
       Fix TARGET_SOFT_FLOAT patterns in pa.md
@@ -38932,6 +38935,22 @@ index a26a6a9b762..ce8cc10b93b 100644
  
  with Unchecked_Conversion;
  
+diff --git a/gcc/testsuite/lib/prune.exp b/gcc/testsuite/lib/prune.exp
+index eea4bf383a7..83d394a5886 100644
+--- a/gcc/testsuite/lib/prune.exp
++++ b/gcc/testsuite/lib/prune.exp
+@@ -66,6 +66,11 @@ proc prune_gcc_output { text } {
+     regsub -all "(^|\n)\[^\n\]*file path prefix \[^\n\]* never used" $text "" text
+     regsub -all "(^|\n)\[^\n\]*linker input file unused since linking not done" $text "" text
+ 
++    # Ideally the tests would indicate that executable stacks were needed
++    # to the linker.  But the option for that varies and may not even exist
++    # on some targets.  So we're stuck pruning the warning.
++    regsub -all "(^|\n)(\[^\n\]*: warning:\[^\n\]*requires executable stack\[^\n\]*\n?)+" $text "\\1" text
++
+     # Ignore harmless warnings from Xcode 3.2.x.
+     regsub -all "(^|\n)\[^\n\]*ld: warning: can't add line info to anonymous symbol\[^\n\]*" $text "" text
+     regsub -all "(^|\n)\[^\n\]*warning: DWARFDebugInfoEntry::AppendDependants\[^\n\]*AT_\[^\n\]*FORM_ref4\[^\n\]*" $text "" text
 diff --git a/gcc/testsuite/lib/target-supports.exp b/gcc/testsuite/lib/target-supports.exp
 index bd62a0d9e79..2749afe4741 100644
 --- a/gcc/testsuite/lib/target-supports.exp
