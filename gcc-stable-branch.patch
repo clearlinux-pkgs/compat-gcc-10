@@ -93,7 +93,8 @@ François Dumont (3):
 Fritz Reese (1):
       fortran: Fix conv of UNION constructors [PR105310]
 
-GCC Administrator (391):
+GCC Administrator (392):
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -4266,10 +4267,682 @@ index 0719d810258..a9368325816 100644
 -10.3.0
 +10.3.1
 diff --git a/gcc/ChangeLog b/gcc/ChangeLog
-index 3b1384e707f..b1806857454 100644
+index 3b1384e707f..a24d0a87999 100644
 --- a/gcc/ChangeLog
 +++ b/gcc/ChangeLog
-@@ -1,3 +1,1852 @@
+@@ -1,3 +1,2524 @@
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-04-27  Jakub Jelinek  <jakub@redhat.com>
++
++	PR sanitizer/105396
++	* asan.c (asan_redzone_buffer::emit_redzone_byte): Handle the case
++	where offset is bigger than off but smaller than m_prev_offset + 32
++	bits by pushing one or more 0 bytes.  Sink the
++	m_shadow_bytes.safe_push (value); flush_if_full (); statements from
++	all cases to the end of the function.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-04-22  Jakub Jelinek  <jakub@redhat.com>
++
++	PR rtl-optimization/105333
++	* rtlanal.c (replace_rtx): Use simplify_subreg or
++	simplify_unary_operation if CONST_SCALAR_INT_P rather than just
++	CONST_INT_P.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-04-19  Jakub Jelinek  <jakub@redhat.com>
++
++	PR target/105257
++	* config/sparc/sparc.c (epilogue_renumber): If ORIGINAL_REGNO,
++	use gen_raw_REG instead of gen_rtx_REG and copy over also
++	ORIGINAL_REGNO.  Use return 0; instead of /* fallthrough */.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-04-12  Jakub Jelinek  <jakub@redhat.com>
++
++	PR target/105214
++	* config/i386/i386-expand.c (ix86_emit_i387_log1p): Call
++	do_pending_stack_adjust.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-04-12  Jakub Jelinek  <jakub@redhat.com>
++
++	PR rtl-optimization/105211
++	* builtins.c (expand_builtin_int_roundingfn_2): If mathfn_built_in_1
++	fails for TREE_TYPE (arg), retry it with
++	TREE_VALUE (TYPE_ARG_TYPES (TREE_TYPE (fndecl))) and if even that
++	fails, emit call normally.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-04-08  Jakub Jelinek  <jakub@redhat.com>
++
++	PR tree-optimization/105189
++	* fold-const.c (make_range_step): Fix up handling of
++	(unsigned) x +[low, -] ranges for signed x if low fits into
++	typeof (x).
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-04-06  Jakub Jelinek  <jakub@redhat.com>
++
++	PR rtl-optimization/104985
++	* combine.c (struct undo): Add where.regno member.
++	(do_SUBST_MODE): Rename to ...
++	(subst_mode): ... this.  Change first argument from rtx * into int,
++	operate on regno_reg_rtx[regno] and save regno into where.regno.
++	(SUBST_MODE): Remove.
++	(try_combine): Use subst_mode instead of SUBST_MODE, change first
++	argument from regno_reg_rtx[whatever] to whatever.  For UNDO_MODE, use
++	regno_reg_rtx[undo->where.regno] instead of *undo->where.r.
++	(undo_to_marker): For UNDO_MODE, use regno_reg_rtx[undo->where.regno]
++	instead of *undo->where.r.
++	(simplify_set): Use subst_mode instead of SUBST_MODE, change first
++	argument from regno_reg_rtx[whatever] to whatever.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-04-03  Jakub Jelinek  <jakub@redhat.com>
++
++	PR target/105123
++	* config/i386/i386-expand.c (ix86_expand_vector_init_general): Avoid
++	using word as target for expand_simple_binop when doing ASHIFT and
++	IOR.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-03-30  Jakub Jelinek  <jakub@redhat.com>
++
++	PR sanitizer/105093
++	* ubsan.c (instrument_object_size): If t is equal to inner and
++	is a decl other than global var, punt.  When emitting call to
++	UBSAN_OBJECT_SIZE ifn, make sure base is addressable.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-03-30  Jakub Jelinek  <jakub@redhat.com>
++
++	PR tree-optimization/105094
++	* gimple-ssa-store-merging.c (mem_valid_for_store_merging): Punt if
++	bitsize <= 0 rather than just == 0.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-03-19  Jakub Jelinek  <jakub@redhat.com>
++
++	PR middle-end/104971
++	* config/i386/i386-expand.c
++	(ix86_expand_builtin) <case IX86_BUILTIN_READ_FLAGS>: If ignore,
++	don't push/pop anything and just return const0_rtx.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-03-16  Jakub Jelinek  <jakub@redhat.com>
++
++	PR target/104910
++	* config/aarch64/aarch64.c (aarch64_load_symref_appropriately): Copy
++	imm rtx.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-03-15  Jakub Jelinek  <jakub@redhat.com>
++
++	PR rtl-optimization/104814
++	* ifcvt.c (find_if_case_1, find_if_case_2): Punt if test_bb doesn't
++	end with onlyjump_p.  Assume BB_END (test_bb) is always non-NULL.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-03-09  Jakub Jelinek  <jakub@redhat.com>
++
++	PR c/104711
++	* doc/invoke.texi (-Wextra): Document that -Wshift-negative-value
++	is enabled by it only for C++11 to C++17 rather than for C++03 or
++	later.
++	(-Wshift-negative-value): Similarly (except here we stated
++	that it is enabled for C++11 or later).
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-03-07  Jakub Jelinek  <jakub@redhat.com>
++
++	PR target/104775
++	* config/s390/s390.md (*cmp_and_trap_unsigned_int<mode>): Use
++	S constraint instead of T in the last alternative.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-02-25  Jakub Jelinek  <jakub@redhat.com>
++		    Marc Glisse  <marc.glisse@inria.fr>
++
++	PR tree-optimization/104675
++	* match.pd (t * 2U / 2 -> t & (~0 / 2), t / 2U * 2 -> t & ~1):
++	Restrict simplifications to INTEGRAL_TYPE_P.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-02-25  Jakub Jelinek  <jakub@redhat.com>
++
++	PR target/104681
++	* config/rs6000/vector.md (movmisalign<mode>): Use rs6000_emit_move.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-02-25  Jakub Jelinek  <jakub@redhat.com>
++
++	PR tree-optimization/104675
++	* match.pd (-A - 1 -> ~A, -1 - A -> ~A): Don't simplify for
++	COMPLEX_TYPE.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-02-19  Jakub Jelinek  <jakub@redhat.com>
++
++	PR sanitizer/102656
++	* asan.c (instrument_derefs): If inner is a RESULT_DECL and access is
++	known to be within bounds, treat it like automatic variables.
++	If instrumenting access and inner is {VAR,PARM,RESULT}_DECL from
++	current function and !TREE_STATIC which is not TREE_ADDRESSABLE, mark
++	it addressable.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-02-17  Jakub Jelinek  <jakub@redhat.com>
++
++	PR debug/104557
++	* valtrack.c (debug_lowpart_subreg): Don't call gen_rtx_raw_SUBREG
++	if expr has VOIDmode.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-02-16  Jakub Jelinek  <jakub@redhat.com>
++
++	PR rtl-optimization/104544
++	* combine.c (try_combine): When looking for insn whose links
++	should be updated from i3 to i2, don't stop on debug insns, instead
++	skip over them.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-02-15  Jakub Jelinek  <jakub@redhat.com>
++
++	PR debug/104517
++	* omp-low.c (task_cpyfns): New variable.
++	(delete_omp_context): Don't call finalize_task_copyfn from here.
++	(create_task_copyfn): Push task_stmt into task_cpyfns.
++	(execute_lower_omp): Call finalize_task_copyfn here on entries from
++	task_cpyfns vector and release the vector.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-02-12  Jakub Jelinek  <jakub@redhat.com>
++
++	PR sanitizer/104449
++	* asan.c: Include tree-eh.h.
++	(handle_builtin_alloca): Handle the case when __builtin_alloca or
++	__builtin_alloca_with_align can throw.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-02-12  Jakub Jelinek  <jakub@redhat.com>
++
++	PR target/104502
++	* config/i386/i386.md (cvtsd2ss splitter): If operands[1] is xmm16+
++	and AVX512VL isn't available, move operands[1] to operands[0] first.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-02-11  Jakub Jelinek  <jakub@redhat.com>
++
++	PR middle-end/104446
++	* combine.c (subst): Don't substitute CONST_INTs into RTX_AUTOINC
++	operands.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-02-08  Jakub Jelinek  <jakub@redhat.com>
++
++	PR target/102140
++	* config/rs6000/rs6000.c (vspltis_shifted): Return false also if
++	split1 pass has finished already.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-01-28  Jakub Jelinek  <jakub@redhat.com>
++
++	PR tree-optimization/104263
++	* gimple-ssa-store-merging.c (get_status_for_store_merging): For
++	cfun->can_throw_non_call_exceptions && cfun->eh test whether
++	last non-debug stmt in the bb is store_valid_for_store_merging_p
++	rather than last stmt.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-01-21  Jakub Jelinek  <jakub@redhat.com>
++
++	PR rtl-optimization/102478
++	* optabs.c (prepare_cmp_insn): If !can_create_pseudo_p (), don't
++	force_reg constants and for -fnon-call-exceptions fail if copy_to_reg
++	would be needed.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-01-19  Jakub Jelinek  <jakub@redhat.com>
++
++	PR middle-end/102860
++	* match.pd (x %[fl] y -> x % y): New simplification for
++	unsigned integral types.
++	* optabs-tree.c (optab_for_tree_code): Return unknown_optab
++	for {CEIL,FLOOR,ROUND}_{DIV,MOD}_EXPR with VECTOR_TYPE.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-01-06  Jakub Jelinek  <jakub@redhat.com>
++
++	PR rtl-optimization/103908
++	* ifcvt.c (bb_valid_for_noce_process_p): Punt on bbs ending with
++	asm goto.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-12-30  Jakub Jelinek  <jakub@redhat.com>
++
++	PR rtl-optimization/103860
++	* shrink-wrap.c (try_shrink_wrapping): Make sure can_get_prologue is
++	called on pro even if nothing further is pushed into vec.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-12-28  Jakub Jelinek  <jakub@redhat.com>
++
++	PR rtl-optimization/103837
++	* loop-invariant.c (can_move_invariant_reg): Ignore DEBUG_INSNs in
++	the decisions whether to return false or continue and right before
++	returning true reset those debug insns that previously caused
++	returning false.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-11-27  Jakub Jelinek  <jakub@redhat.com>
++
++	PR tree-optimization/103435
++	* gimple-ssa-store-merging.c (find_bswap_or_nop_finalize): Avoid UB if
++	n->range - rsize == 8, just clear both *cmpnop and *cmpxchg in that
++	case.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-11-24  Jakub Jelinek  <jakub@redhat.com>
++
++	PR middle-end/103384
++	* omp-general.c (omp_context_selector_matches): For ACCEL_COMPILER,
++	return 0 for kind(host) and continue for kind(nohost).
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-11-23  Jakub Jelinek  <jakub@redhat.com>
++
++	PR middle-end/102431
++	* gimplify.c (replace_reduction_placeholders): Remove.
++	(note_no_context_vars): New function.
++	(gimplify_omp_loop): For OMP_PARALLEL's BIND_EXPR create a new
++	BLOCK.  Use copy_tree_body_r with walk_tree instead of unshare_expr
++	and replace_reduction_placeholders for duplication of
++	OMP_CLAUSE_REDUCTION_{INIT,MERGE} expressions.  Ensure all mentioned
++	automatic vars have DECL_CONTEXT set to non-NULL before doing so
++	and reset it afterwards for those vars and their corresponding
++	vars.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-11-17  Jakub Jelinek  <jakub@redhat.com>
++
++	PR tree-optimization/103192
++	* tree-ssa-loop-im.c (move_computations_worker): Use
++	reset_flow_sensitive_info instead of manually clearing
++	SSA_NAME_RANGE_INFO and do it for all SSA_NAMEs, not just ones
++	with integral types.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-11-15  Jakub Jelinek  <jakub@redhat.com>
++
++	PR target/103205
++	* config/i386/sync.md (atomic_bit_test_and_set<mode>,
++	atomic_bit_test_and_complement<mode>,
++	atomic_bit_test_and_reset<mode>): Use OPTAB_WIDEN instead of
++	OPTAB_DIRECT.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-11-11  Jakub Jelinek  <jakub@redhat.com>
++
++	PR debug/101378
++	* dwarf2out.c (field_byte_offset): Do the PCC_BITFIELD_TYPE_MATTERS
++	handling only for DECL_BIT_FIELD_TYPE decls.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-10-10  Jakub Jelinek  <jakub@redhat.com>
++
++	PR debug/102441
++	* var-tracking.c (add_stores): For cselib_sp_derived_value_p values
++	use MO_VAL_SET if loc is not sp.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-09-28  Jakub Jelinek  <jakub@redhat.com>
++
++	PR target/102498
++	* config/i386/i386.c (standard_80387_constant_p): Don't recognize
++	special 80387 instruction XFmode constants if flag_rounding_math.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-09-15  Jakub Jelinek  <jakub@redhat.com>
++
++	PR c++/88578
++	PR c++/102295
++	* varasm.c (output_constructor_regular_field): Instead of assertion
++	that array_size_for_constructor result is equal to size of
++	TREE_TYPE (local->val) in bytes, assert that the type size is greater
++	or equal to array_size_for_constructor result and use type size as
++	fieldsize.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-09-08  Jakub Jelinek  <jakub@redhat.com>
++
++	PR target/102224
++	* config/i386/i386.md (xorsign<mode>3): If operands[1] is equal to
++	operands[2], emit abs<mode>2 instead.
++	(@xorsign<mode>3_1): Add early-clobber for output operand.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-08-23  Jakub Jelinek  <jakub@redhat.com>
++
++	PR debug/101905
++	* dwarf2out.c (gen_variable_die): Add DW_AT_location for global
++	register variables already during early_dwarf if possible.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-07-28  Jakub Jelinek  <jakub@redhat.com>
++
++	PR middle-end/101624
++	* ubsan.c (maybe_instrument_pointer_overflow,
++	instrument_object_size): Only test DECL_REGISTER on VAR_DECLs,
++	PARM_DECLs or RESULT_DECLs.
++	* sanopt.c (maybe_optimize_ubsan_ptr_ifn): Likewise.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-07-23  Jakub Jelinek  <jakub@redhat.com>
++
++	PR rtl-optimization/101562
++	* expmed.c (store_integral_bit_field): Only use movstrict_optab
++	if the operand isn't paradoxical.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-07-21  Jakub Jelinek  <jakub@redhat.com>
++
++	PR middle-end/101535
++	* gimplify.c (omp_check_private): Properly skip ORT_TARGET_DATA
++	contexts in which decl isn't privatized and for ORT_TARGET return
++	false if decl is mapped.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-07-20  Jakub Jelinek  <jakub@redhat.com>
++
++	PR target/101384
++	* config/rs6000/rs6000.c (vspltis_constant): Accept EASY_VECTOR_MSB
++	only if step and copies are equal to 1.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-07-01  Jakub Jelinek  <jakub@redhat.com>
++
++	PR middle-end/94366
++	* omp-low.c (lower_rec_input_clauses): Rename is_fp_and_or to
++	is_truth_op, set it for TRUTH_*IF_EXPR regardless of new_var's type,
++	use boolean_type_node instead of integer_type_node as NE_EXPR type.
++	(lower_reduction_clauses): Likewise.
++
++2022-05-10  Tobias Burnus  <tobias@codesourcery.com>
++
++	Backported from master:
++	2021-05-04  Tobias Burnus  <tobias@codesourcery.com>
++
++	* omp-low.c (lower_rec_input_clauses, lower_reduction_clauses): Handle
++	&& and || with floating-point and complex arguments.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-07-14  Jakub Jelinek  <jakub@redhat.com>
++
++	PR go/101407
++	* godump.c (godump_str_hash): New type.
++	(godump_container::pot_dummy_types): Use string_hash instead of
++	ptr_hash in the hash_set.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-07-01  Jakub Jelinek  <jakub@redhat.com>
++
++	PR debug/101266
++	* dwarf2out.c (loc_list_from_tree_1): Handle COMPOUND_LITERAL_EXPR.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-06-29  Jakub Jelinek  <jakub@redhat.com>
++
++	PR c++/101210
++	* match.pd ((intptr_t)x eq/ne CST to x eq/ne (typeof x) CST): Don't
++	perform the optimization in GENERIC when sanitizing and x has a
++	reference type.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-06-23  Jakub Jelinek  <jakub@redhat.com>
++
++	PR middle-end/101167
++	* omp-low.c (lower_omp_regimplify_p): Regimplify also PARM_DECLs
++	and RESULT_DECLs that have DECL_HAS_VALUE_EXPR_P set.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-06-21  Jakub Jelinek  <jakub@redhat.com>
++
++	PR inline-asm/100785
++	* cfgexpand.c (expand_asm_stmt): If errors are emitted,
++	remove all inputs, outputs and clobbers from the asm and
++	set template to "".
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-06-18  Jakub Jelinek  <jakub@redhat.com>
++
++	PR middle-end/101062
++	* stor-layout.c (finish_bitfield_layout): Don't add bitfield
++	representatives in QUAL_UNION_TYPE.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-06-16  Jakub Jelinek  <jakub@redhat.com>
++
++	PR middle-end/101062
++	* stor-layout.c (finish_bitfield_representative): For fields in unions
++	assume nextf is always NULL.
++	(finish_bitfield_layout): Compute bit field representatives also in
++	unions, but handle it as if each bitfield was the only field in the
++	aggregate.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-06-15  Jakub Jelinek  <jakub@redhat.com>
++
++	PR target/101046
++	* expr.c (expand_expr_real_2) <case VEC_PACK_FIX_TRUNC_EXPR,
++	case VEC_PACK_TRUNC_EXPR>: Clear subtarget when changing mode.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-06-11  Jakub Jelinek  <jakub@redhat.com>
++
++	PR rtl-optimization/101008
++	* simplify-rtx.c (relational_result): New function.
++	(simplify_logical_relational_operation,
++	simplify_relational_operation): Use it.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-06-07  Jakub Jelinek  <jakub@redhat.com>
++
++	PR target/100887
++	* fold-const.c (fold_read_from_vector): Return NULL if trying to
++	read from a CONSTRUCTOR with vector type elements.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-06-07  Jakub Jelinek  <jakub@redhat.com>
++
++	PR middle-end/100898
++	* tree-inline.c (copy_bb): Only use gimple_call_arg_ptr if memcpy
++	should copy any arguments.  Don't call gimple_call_num_args
++	on id->call_stmt or call_stmt more than once.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-06-04  Jakub Jelinek  <jakub@redhat.com>
++
++	PR target/100887
++	* config/i386/i386-expand.c (ix86_expand_vector_init): Handle
++	concatenation from half-sized modes with TImode elements.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-05-18  Jakub Jelinek  <jakub@redhat.com>
++
++	PR c++/100580
++	* function.c (push_dummy_function): Set DECL_ARTIFICIAL and
++	DECL_ASSEMBLER_NAME on the fn_decl.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-05-15  Jakub Jelinek  <jakub@redhat.com>
++
++	PR rtl-optimization/100342
++	* regcprop.c (copy_value): When copying a source reg in a wider
++	mode than it has recorded for the value, adjust recorded destination
++	mode too or punt if !REG_CAN_CHANGE_MODE_P.
++
++2022-05-10  liuhongt  <hongtao.liu@intel.com>
++
++	Backported from master:
++	2021-01-21  liuhongt  <hongtao.liu@intel.com>
++
++	PR rtl-optimization/98694
++	* regcprop.c (copy_value): If SRC had been assigned a mode
++	narrower than the copy, we can't link DEST into the chain even
++	they have same hard_regno_nregs(i.e. HImode/SImode in i386
++	backend).
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-05-12  Jakub Jelinek  <jakub@redhat.com>
++
++	PR middle-end/100508
++	* cfgexpand.c (expand_debug_expr): For DEBUG_EXPR_DECL with vector
++	type, don't reuse DECL_RTL if it has different mode, instead force
++	creation of a new DEBUG_EXPR.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-05-11  Jakub Jelinek  <jakub@redhat.com>
++
++	PR middle-end/100471
++	* omp-low.c (lower_omp_task_reductions): For OMP_TASKLOOP, if data
++	is 0, bypass the reduction loop including
++	GOMP_taskgroup_reduction_unregister call.
++
++2022-05-10  Eric Botcazou  <ebotcazou@adacore.com>
++
++	PR target/105292
++	* config/sparc/sparc.c (sparc_vectorize_vec_perm_const): Return
++	true only for 8-byte vector modes.
++
 +2022-05-06  Michael Meissner  <meissner@linux.ibm.com>
 +
 +	Backported from master:
@@ -6880,10 +7553,71 @@ index 10b6fd3bb4d..d89ce37c496 100644
  
    return expand_call (exp, target, target == const0_rtx);
 diff --git a/gcc/c-family/ChangeLog b/gcc/c-family/ChangeLog
-index b8ef37813f1..dd938cbae2f 100644
+index b8ef37813f1..eac53ee2135 100644
 --- a/gcc/c-family/ChangeLog
 +++ b/gcc/c-family/ChangeLog
-@@ -1,3 +1,12 @@
+@@ -1,3 +1,73 @@
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-04-11  Jakub Jelinek  <jakub@redhat.com>
++
++	PR c++/105186
++	* c-common.c (c_common_nodes_and_builtins): After registering __int%d
++	and __int%d__ builtin types, initialize corresponding ridpointers
++	entry.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-03-09  Jakub Jelinek  <jakub@redhat.com>
++
++	PR c/104711
++	* c-opts.c (c_common_post_options): Don't enable
++	-Wshift-negative-value from -Wextra for C++20 or later.
++	* c-ubsan.c (ubsan_instrument_shift): Adjust comments.
++	* c-warn.c (maybe_warn_shift_overflow): Use TYPE_OVERFLOW_WRAPS
++	instead of TYPE_UNSIGNED.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-02-16  Jakub Jelinek  <jakub@redhat.com>
++
++	PR c/104510
++	* c-common.c (shorten_compare): Convert original arguments to
++	the original *restype_ptr when mixing binary and decimal float.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-01-11  Jakub Jelinek  <jakub@redhat.com>
++
++	PR c/101537
++	PR c/103881
++	* c-warn.c (conversion_warning): Handle BIT_AND_EXPR, BIT_IOR_EXPR
++	and BIT_XOR_EXPR.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-10-21  Jakub Jelinek  <jakub@redhat.com>
++
++	PR middle-end/64888
++	* c-omp.c (c_omp_predefined_variable): Return true also for
++	ubsan_create_data created artificial variables.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-10-01  Jakub Jelinek  <jakub@redhat.com>
++		    Richard Biener  <rguenther@suse.de>
++
++	PR sanitizer/102515
++	* c-ubsan.c (ubsan_instrument_division): Check the right
++	flag_sanitize_recover bit, depending on which sanitization
++	is done.
++
 +2022-05-09  Patrick Palka  <ppalka@redhat.com>
 +
 +	Backported from master:
@@ -7112,10 +7846,64 @@ index 92b3b55bd07..3dfb716e536 100644
  
    unsigned int min_prec = (wi::min_precision (wi::to_wide (op0), SIGNED)
 diff --git a/gcc/c/ChangeLog b/gcc/c/ChangeLog
-index ecd1741df24..8fd5fa92b1a 100644
+index ecd1741df24..2dcabf07464 100644
 --- a/gcc/c/ChangeLog
 +++ b/gcc/c/ChangeLog
-@@ -1,3 +1,12 @@
+@@ -1,3 +1,66 @@
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-03-09  Jakub Jelinek  <jakub@redhat.com>
++
++	PR c/104711
++	* c-fold.c (c_fully_fold_internal): Don't emit
++	-Wshift-negative-value warning if TYPE_OVERFLOW_WRAPS.
++	* c-typeck.c (build_binary_op): Likewise.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-12-14  Jakub Jelinek  <jakub@redhat.com>
++
++	PR c/103587
++	* c-parser.c (c_parser_balanced_token_sequence): For CPP_PRAGMA,
++	consume the pragma and silently skip to the pragma eol.
++
++2022-05-10  Tobias Burnus  <tobias@codesourcery.com>
++
++	Backported from master:
++	2021-05-04  Tobias Burnus  <tobias@codesourcery.com>
++
++	* c-typeck.c (c_finish_omp_clauses): Accept float + complex
++	for || and && reductions.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-06-24  Jakub Jelinek  <jakub@redhat.com>
++
++	PR c/101176
++	* c-parser.c (c_parser_has_attribute_expression): Set source range for
++	the result.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-06-24  Jakub Jelinek  <jakub@redhat.com>
++
++	PR c/101171
++	* c-typeck.c (build_c_cast): Don't call note_integer_operands on
++	error_mark_node.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-06-21  Jakub Jelinek  <jakub@redhat.com>
++
++	PR inline-asm/100785
++	* c-typeck.c (c_mark_addressable): Diagnose trying to make
++	bit-fields addressable.
++
 +2021-04-20  Jakub Jelinek  <jakub@redhat.com>
 +
 +	Backported from master:
@@ -13413,10 +14201,247 @@ index 38820bc170f..2747f8f1b4c 100644
    gcov_write_unsigned (end_column);
    gcov_write_length (offset);
 diff --git a/gcc/cp/ChangeLog b/gcc/cp/ChangeLog
-index b576f9a3678..5b70b1e99cf 100644
+index b576f9a3678..182d944c1b8 100644
 --- a/gcc/cp/ChangeLog
 +++ b/gcc/cp/ChangeLog
-@@ -1,3 +1,413 @@
+@@ -1,3 +1,650 @@
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-04-19  Jakub Jelinek  <jakub@redhat.com>
++
++	PR c++/105256
++	* typeck2.c (process_init_constructor_array,
++	process_init_constructor_record, process_init_constructor_union): Move
++	CONSTRUCTOR_PLACEHOLDER_BOUNDARY flag from CONSTRUCTOR elements to the
++	containing CONSTRUCTOR.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-03-30  Jakub Jelinek  <jakub@redhat.com>
++
++	PR c++/105061
++	* parser.c (cp_parser_template_introduction): If member_p, temporarily
++	clear parser->colon_corrects_to_scope_p around tentative parsing of
++	nested name specifier.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-03-26  Jakub Jelinek  <jakub@redhat.com>
++
++	* parser.c (cp_parser_postfix_expression)
++	<case RID_BILTIN_CONVERTVECTOR>: Don't
++	return cp_build_vec_convert result right away, instead
++	set postfix_expression to it and break.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-03-24  Jakub Jelinek  <jakub@redhat.com>
++
++	PR c++/104994
++	* constexpr.c (potential_constant_expression_1): Don't diagnose extern
++	thread_local declarations.
++	* decl.c (start_decl): Likewise.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-03-18  Jakub Jelinek  <jakub@redhat.com>
++
++	PR c++/104568
++	* init.c (build_new_constexpr_heap_type): Remove FULL_SIZE
++	argument and its handling, instead add ITYPE2 argument.  Only
++	support COOKIE_SIZE != NULL.
++	(build_new_1): If size is 0, change it to 0 * outer_nelts if
++	outer_nelts is non-NULL.  Pass type rather than elt_type to
++	maybe_wrap_new_for_constexpr.
++	* constexpr.c (build_new_constexpr_heap_type): New function.
++	(cxx_eval_constant_expression) <case CONVERT_EXPR>:
++	If elt_size is zero sized type, try to recover outer_nelts from
++	the size argument to operator new/new[] and pass that as
++	arg_size to build_new_constexpr_heap_type.  Pass ctx,
++	non_constant_p and overflow_p to that call too.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-03-09  Jakub Jelinek  <jakub@redhat.com>
++
++	PR c/104711
++	* constexpr.c (cxx_eval_check_shift_p): Use TYPE_OVERFLOW_WRAPS
++	instead of TYPE_UNSIGNED.
++	* typeck.c (cp_build_binary_op): Don't emit
++	-Wshift-negative-value warning if TYPE_OVERFLOW_WRAPS.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-03-08  Jakub Jelinek  <jakub@redhat.com>
++
++	PR c++/104806
++	* search.c (lookup_field_fuzzy_info::fuzzy_lookup_field): Ignore
++	identifiers with space at the end.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-02-14  Jakub Jelinek  <jakub@redhat.com>
++
++	PR c++/104513
++	* constexpr.c (potential_constant_expression_1) <case GOTO_EXPR>:
++	Don't punt if returns (target).
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-02-11  Jakub Jelinek  <jakub@redhat.com>
++
++	PR c++/104472
++	* constexpr.c (cxx_eval_internal_function) <case IFN_VEC_CONVERT>:
++	Only return fold_const_call result if it is non-NULL.  Otherwise
++	fall through into the default: case to return t, set *non_constant_p
++	and emit diagnostics if needed.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-01-18  Jakub Jelinek  <jakub@redhat.com>
++
++	PR c++/104055
++	* constexpr.c (cxx_eval_outermost_constant_expr): If t is a
++	TARGET_EXPR with TARGET_EXPR_CLEANUP, use get_target_expr rather
++	than get_target_expr_sfinae with tf_no_cleanup, and don't set
++	TREE_CONSTANT.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-01-12  Jakub Jelinek  <jakub@redhat.com>
++		    Jason Merrill  <jason@redhat.com>
++
++	PR c++/103480
++	* tree.c (move): If expr is xvalue_p, just return expr without
++	build_static_cast.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-01-10  Jakub Jelinek  <jakub@redhat.com>
++
++	PR c++/103912
++	* semantics.c (expand_or_defer_fn): For immediate functions, set
++	node->body_removed to true and clear analyzed, definition and
++	force_output.
++	* decl2.c (c_parse_final_cleanups): Ignore immediate functions for
++	expand_or_defer_fn.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-11-19  Jakub Jelinek  <jakub@redhat.com>
++
++	PR c++/70796
++	* cp-gimplify.c (cp_gimplify_arg): New function.
++	(cp_gimplify_expr): Use cp_gimplify_arg instead of gimplify_arg,
++	pass true as last argument to it if there are any following
++	arguments in strong evaluation order with side-effects.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-10-19  Jakub Jelinek  <jakub@redhat.com>
++
++	PR c++/102786
++	* constexpr.c (cxx_eval_constant_expression): Don't reject
++	INTEGER_CSTs with type POINTER_TYPE to METHOD_TYPE.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-10-05  Jakub Jelinek  <jakub@redhat.com>
++
++	PR c++/102548
++	* tree.c (apply_identity_attributes): Fix handling of the
++	case where an attribute in the list doesn't affect type
++	identity but some attribute before it does.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-09-15  Jakub Jelinek  <jakub@redhat.com>
++
++	PR c++/88578
++	PR c++/102295
++	* typeck2.c (split_nonconstant_init_1): Don't throw away empty
++	initializers of flexible array members if they have non-zero type
++	size.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-09-14  Jakub Jelinek  <jakub@redhat.com>
++
++	PR c++/102295
++	* decl.c (layout_var_decl): For aggregates ending with a flexible
++	array member, add the size of the initializer for that member to
++	DECL_SIZE and DECL_SIZE_UNIT.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-09-14  Jakub Jelinek  <jakub@redhat.com>
++
++	PR c++/102305
++	* method.c (is_xible_helper): Call complete_type on to.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-07-21  Jakub Jelinek  <jakub@redhat.com>
++
++	PR c++/101516
++	* semantics.c (finish_omp_reduction_clause): Also call
++	complete_type_or_else and return true if it fails.
++
++2022-05-10  Tobias Burnus  <tobias@codesourcery.com>
++
++	Backported from master:
++	2021-05-04  Tobias Burnus  <tobias@codesourcery.com>
++
++	* semantics.c (finish_omp_reduction_clause): Accept float + complex
++	for || and && reductions.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-07-15  Jakub Jelinek  <jakub@redhat.com>
++
++	PR c++/101443
++	* cp-gimplify.c (cp_fold): For comparisons with NULLPTR_TYPE
++	operands, fold them right away to true or false.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-06-21  Jakub Jelinek  <jakub@redhat.com>
++
++	PR inline-asm/100785
++	* typeck.c (cxx_mark_addressable): Diagnose trying to make
++	bit-fields addressable.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-05-25  Jakub Jelinek  <jakub@redhat.com>
++
++	PR c++/100666
++	* call.c (convert_arg_to_ellipsis): For expressions with NULLPTR_TYPE
++	and side-effects, temporarily disable -Wunused-result warning when
++	building COMPOUND_EXPR.
++
 +2022-05-09  Patrick Palka  <ppalka@redhat.com>
 +
 +	Backported from master:
@@ -17776,10 +18801,19 @@ index 6e635382fb4..94f92e63893 100644
  	    return build_zero_cst (TREE_TYPE (TREE_TYPE (arg)));
  	  return CONSTRUCTOR_ELT (arg, i)->value;
 diff --git a/gcc/fortran/ChangeLog b/gcc/fortran/ChangeLog
-index aa5932be872..9f39919d52f 100644
+index aa5932be872..489ae28fdb6 100644
 --- a/gcc/fortran/ChangeLog
 +++ b/gcc/fortran/ChangeLog
-@@ -1,3 +1,731 @@
+@@ -1,3 +1,740 @@
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-11-21  Jakub Jelinek  <jakub@redhat.com>
++
++	PR debug/103315
++	* trans-types.c (gfc_get_array_descr_info): Use DW_OP_deref_size 1
++	instead of DW_OP_deref for DW_AT_rank.
++
 +2022-04-24  Mikael Morin  <mikael@gcc.gnu.org>
 +
 +	PR fortran/104228
@@ -23029,10 +24063,702 @@ index 57c8a2516d9..c94c40e578a 100644
  
    if (repr)
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index 2913065bf31..9c7167a45d4 100644
+index 2913065bf31..34ff6d4c276 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,2141 @@
+@@ -1,3 +1,2833 @@
++2022-05-10  Jeff Law  <jeffreyalaw@gmail.com>
++
++	Backported from master:
++	2022-04-28  Jeff Law  <jeffreyalaw@gmail.com>
++
++	* lib/prune.exp (prune_gcc_output): Prune new linker warning.
++
++2022-05-10  Tobias Burnus  <tobias@codesourcery.com>
++
++	Backported from master:
++	2021-05-05  Tobias Burnus  <tobias@codesourcery.com>
++
++	PR testsuite/100422
++	* g++.dg/gomp/clause-3.C: Use 'reduction(&:..)' instead of '...(&&:..)'.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-04-27  Jakub Jelinek  <jakub@redhat.com>
++
++	PR sanitizer/105396
++	* gcc.dg/asan/pr105396.c: New test.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-04-22  Jakub Jelinek  <jakub@redhat.com>
++
++	PR rtl-optimization/105333
++	* gcc.dg/pr105333.c: New test.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-04-19  Jakub Jelinek  <jakub@redhat.com>
++
++	PR target/105257
++	* gcc.dg/pr105257.c: New test.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-04-19  Jakub Jelinek  <jakub@redhat.com>
++
++	PR c++/105256
++	* g++.dg/cpp0x/pr105256.C: New test.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-04-12  Jakub Jelinek  <jakub@redhat.com>
++
++	PR target/105214
++	* gcc.dg/asan/pr105214.c: New test.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-04-12  Jakub Jelinek  <jakub@redhat.com>
++
++	PR rtl-optimization/105211
++	* gcc.dg/pr105211.c: New test.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-04-11  Jakub Jelinek  <jakub@redhat.com>
++
++	PR c++/105186
++	* c-c++-common/pr105186.c: New test.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-04-08  Jakub Jelinek  <jakub@redhat.com>
++
++	PR tree-optimization/105189
++	* g++.dg/torture/pr105189.C: New test.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-04-03  Jakub Jelinek  <jakub@redhat.com>
++
++	PR target/105123
++	* gcc.target/i386/pr105123.c: New test.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-03-30  Jakub Jelinek  <jakub@redhat.com>
++
++	PR sanitizer/105093
++	* g++.dg/ubsan/pr105093.C: New test.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-03-30  Jakub Jelinek  <jakub@redhat.com>
++
++	PR tree-optimization/105094
++	* gcc.dg/pr105094.c: New test.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-03-30  Jakub Jelinek  <jakub@redhat.com>
++
++	PR c++/105061
++	* g++.dg/concepts/pr105061.C: New test.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-03-26  Jakub Jelinek  <jakub@redhat.com>
++
++	* c-c++-common/builtin-convertvector-3.c: New test.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-03-24  Jakub Jelinek  <jakub@redhat.com>
++
++	PR c++/104994
++	* g++.dg/cpp2a/constexpr-nonlit7.C: New test.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-03-19  Jakub Jelinek  <jakub@redhat.com>
++
++	PR middle-end/104971
++	* gcc.target/i386/pr104971.c: New test.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-03-18  Jakub Jelinek  <jakub@redhat.com>
++
++	PR c++/104568
++	* g++.dg/cpp2a/constexpr-new22.C: New test.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-03-16  Jakub Jelinek  <jakub@redhat.com>
++
++	PR target/104910
++	* gcc.dg/pr104910.c: New test.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-03-15  Jakub Jelinek  <jakub@redhat.com>
++
++	PR rtl-optimization/104814
++	* gcc.c-torture/execute/pr104814.c: New test.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-03-09  Jakub Jelinek  <jakub@redhat.com>
++
++	PR c/104711
++	* c-c++-common/Wshift-negative-value-1.c: Remove
++	dg-additional-options, instead in target selectors of each diagnostic
++	check for exact C++ versions where it should be diagnosed.
++	* c-c++-common/Wshift-negative-value-2.c: Likewise.
++	* c-c++-common/Wshift-negative-value-3.c: Likewise.
++	* c-c++-common/Wshift-negative-value-4.c: Likewise.
++	* c-c++-common/Wshift-negative-value-7.c: New test.
++	* c-c++-common/Wshift-negative-value-8.c: New test.
++	* c-c++-common/Wshift-negative-value-9.c: New test.
++	* c-c++-common/Wshift-negative-value-10.c: New test.
++	* c-c++-common/Wshift-overflow-1.c: Remove
++	dg-additional-options, instead in target selectors of each diagnostic
++	check for exact C++ versions where it should be diagnosed.
++	* c-c++-common/Wshift-overflow-2.c: Likewise.
++	* c-c++-common/Wshift-overflow-5.c: Likewise.
++	* c-c++-common/Wshift-overflow-6.c: Likewise.
++	* c-c++-common/Wshift-overflow-7.c: Likewise.
++	* c-c++-common/Wshift-overflow-8.c: New test.
++	* c-c++-common/Wshift-overflow-9.c: New test.
++	* c-c++-common/Wshift-overflow-10.c: New test.
++	* c-c++-common/Wshift-overflow-11.c: New test.
++	* c-c++-common/Wshift-overflow-12.c: New test.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-03-08  Jakub Jelinek  <jakub@redhat.com>
++
++	PR c++/104806
++	* g++.dg/spellcheck-pr104806.C: New test.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-03-07  Jakub Jelinek  <jakub@redhat.com>
++
++	PR target/104775
++	* gcc.target/s390/pr104775.c: New test.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-02-25  Jakub Jelinek  <jakub@redhat.com>
++		    Marc Glisse  <marc.glisse@inria.fr>
++
++	PR tree-optimization/104675
++	* gcc.dg/pr104675-3.c : New test.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-02-25  Jakub Jelinek  <jakub@redhat.com>
++
++	PR target/104681
++	* g++.dg/opt/pr104681.C: New test.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-02-25  Jakub Jelinek  <jakub@redhat.com>
++
++	PR tree-optimization/104675
++	* gcc.dg/pr104675-1.c: New test.
++	* gcc.dg/pr104675-2.c: New test.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-02-17  Jakub Jelinek  <jakub@redhat.com>
++
++	PR debug/104557
++	* gcc.dg/dfp/pr104557.c: New test.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-02-16  Jakub Jelinek  <jakub@redhat.com>
++
++	PR rtl-optimization/104544
++	* gcc.dg/pr104544.c: New test.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-02-16  Jakub Jelinek  <jakub@redhat.com>
++
++	PR c/104510
++	* gcc.dg/dfp/pr104510.c: New test.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-02-14  Jakub Jelinek  <jakub@redhat.com>
++
++	PR c++/104513
++	* g++.dg/cpp1y/constexpr-104513.C: New test.
++	* g++.dg/cpp2a/constexpr-dtor12.C: New test.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-02-12  Jakub Jelinek  <jakub@redhat.com>
++
++	PR sanitizer/104449
++	* gcc.dg/asan/pr104449.c: New test.
++	* g++.dg/asan/pr104449.C: New test.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-02-12  Jakub Jelinek  <jakub@redhat.com>
++
++	PR target/104502
++	* gcc.target/i386/pr104502.c: New test.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-02-11  Jakub Jelinek  <jakub@redhat.com>
++
++	PR c++/104472
++	* g++.dg/cpp0x/constexpr-104472.C: New test.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-02-11  Jakub Jelinek  <jakub@redhat.com>
++
++	PR middle-end/104446
++	* gcc.target/i386/pr104446.c: New test.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-02-08  Jakub Jelinek  <jakub@redhat.com>
++
++	PR target/102140
++	* gcc.dg/pr102140.c: New test.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-02-01  Jakub Jelinek  <jakub@redhat.com>
++
++	PR preprocessor/104147
++	* c-c++-common/cpp/pr104147.c: New test.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-01-28  Jakub Jelinek  <jakub@redhat.com>
++
++	PR tree-optimization/104263
++	* gcc.dg/pr104263.c: New test.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-01-21  Jakub Jelinek  <jakub@redhat.com>
++
++	PR rtl-optimization/102478
++	* gcc.dg/pr102478.c: New test.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-01-19  Jakub Jelinek  <jakub@redhat.com>
++
++	PR middle-end/102860
++	* gfortran.dg/pr102860.f90: New test.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-01-18  Jakub Jelinek  <jakub@redhat.com>
++
++	PR c++/104055
++	* g++.dg/cpp2a/consteval27.C: New test.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-01-12  Jakub Jelinek  <jakub@redhat.com>
++		    Jason Merrill  <jason@redhat.com>
++
++	PR c++/103480
++	* g++.dg/warn/Wuseless-cast2.C: New test.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-01-11  Jakub Jelinek  <jakub@redhat.com>
++
++	PR c/101537
++	PR c/103881
++	* c-c++-common/pr101537.c: New test.
++	* c-c++-common/pr103881.c: New test.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-01-10  Jakub Jelinek  <jakub@redhat.com>
++
++	PR c++/103912
++	* g++.dg/cpp2a/consteval26.C: New test.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-01-06  Jakub Jelinek  <jakub@redhat.com>
++
++	PR rtl-optimization/103908
++	* gcc.target/i386/pr103908.c: New test.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-12-30  Jakub Jelinek  <jakub@redhat.com>
++
++	PR preprocessor/89971
++	* c-c++-common/cpp/va-opt-9.c: New test.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-12-30  Jakub Jelinek  <jakub@redhat.com>
++
++	PR rtl-optimization/103860
++	* gcc.dg/pr103860.c: New test.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-12-28  Jakub Jelinek  <jakub@redhat.com>
++
++	PR rtl-optimization/103837
++	* gcc.dg/pr103837.c: New test.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-12-14  Jakub Jelinek  <jakub@redhat.com>
++
++	PR c/103587
++	* gcc.dg/pr103587.c: New test.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-11-23  Jakub Jelinek  <jakub@redhat.com>
++
++	PR middle-end/102431
++	* c-c++-common/gomp/pr102431.c: New test.
++	* g++.dg/gomp/pr102431.C: New test.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-11-19  Jakub Jelinek  <jakub@redhat.com>
++
++	PR c++/70796
++	* g++.dg/cpp1z/eval-order11.C: New test.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-11-15  Jakub Jelinek  <jakub@redhat.com>
++
++	PR target/103205
++	* gcc.target/i386/pr103205.c: New test.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-11-11  Jakub Jelinek  <jakub@redhat.com>
++
++	PR debug/101378
++	* g++.dg/debug/dwarf2/pr101378.C: New test.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-10-21  Jakub Jelinek  <jakub@redhat.com>
++
++	PR middle-end/64888
++	* c-c++-common/ubsan/pr64888.c: New test.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-10-19  Jakub Jelinek  <jakub@redhat.com>
++
++	PR c++/102786
++	* g++.dg/cpp2a/constexpr-virtual19.C: New test.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-10-05  Jakub Jelinek  <jakub@redhat.com>
++
++	PR c++/102548
++	* g++.target/i386/pr102548.C: New test.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-10-01  Jakub Jelinek  <jakub@redhat.com>
++		    Richard Biener  <rguenther@suse.de>
++
++	PR sanitizer/102515
++	* c-c++-common/ubsan/float-div-by-zero-2.c: New test.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-09-28  Jakub Jelinek  <jakub@redhat.com>
++
++	PR target/102498
++	* gcc.target/i386/pr102498.c: New test.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-09-15  Jakub Jelinek  <jakub@redhat.com>
++
++	PR c++/88578
++	PR c++/102295
++	* g++.dg/ext/flexary39.C: New test.
++	* g++.dg/ext/flexary40.C: New test.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-09-14  Jakub Jelinek  <jakub@redhat.com>
++
++	PR c++/102295
++	* g++.target/i386/pr102295.C: New test.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-09-14  Jakub Jelinek  <jakub@redhat.com>
++
++	PR c++/102305
++	* g++.dg/cpp0x/pr102305.C: New test.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-09-08  Jakub Jelinek  <jakub@redhat.com>
++
++	PR target/102224
++	* gcc.dg/pr102224.c: New test.
++	* gcc.target/i386/avx-pr102224.c: New test.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-08-23  Jakub Jelinek  <jakub@redhat.com>
++
++	PR debug/101905
++	* gcc.dg/guality/pr101905.c: New test.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-07-28  Jakub Jelinek  <jakub@redhat.com>
++
++	PR middle-end/101624
++	* gfortran.dg/ubsan/ubsan.exp: New file.
++	* gfortran.dg/ubsan/pr101624.f90: New test.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-07-23  Jakub Jelinek  <jakub@redhat.com>
++
++	PR rtl-optimization/101562
++	* gcc.c-torture/compile/pr101562.c: New test.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-07-21  Jakub Jelinek  <jakub@redhat.com>
++
++	PR middle-end/101535
++	* c-c++-common/gomp/pr101535-1.c: New test.
++	* c-c++-common/gomp/pr101535-2.c: New test.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-07-21  Jakub Jelinek  <jakub@redhat.com>
++
++	PR c++/101516
++	* g++.dg/gomp/pr101516.C: New test.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-07-20  Jakub Jelinek  <jakub@redhat.com>
++
++	PR target/101384
++	* gcc.dg/pr101384.c: New test.
++
++2022-05-10  Tobias Burnus  <tobias@codesourcery.com>
++
++	Backported from master:
++	2021-05-04  Tobias Burnus  <tobias@codesourcery.com>
++
++	* gcc.dg/gomp/clause-1.c: Use 'reduction(&:..)' instead of '...(&&:..)'.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-07-15  Jakub Jelinek  <jakub@redhat.com>
++
++	PR c++/101443
++	* g++.dg/cpp0x/nullptr46.C: New test.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-07-01  Jakub Jelinek  <jakub@redhat.com>
++
++	PR debug/101266
++	* gcc.dg/pr101266.c: New test.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-06-29  Jakub Jelinek  <jakub@redhat.com>
++
++	PR c++/101210
++	* g++.dg/ubsan/pr101210.C: New test.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-06-24  Jakub Jelinek  <jakub@redhat.com>
++
++	PR c/101171
++	* gcc.dg/pr101171.c: New test.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-06-21  Jakub Jelinek  <jakub@redhat.com>
++
++	PR inline-asm/100785
++	* c-c++-common/pr100785.c: New test.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-06-16  Jakub Jelinek  <jakub@redhat.com>
++
++	PR middle-end/101062
++	* gcc.dg/pr101062.c: New test.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-06-16  Jakub Jelinek  <jakub@redhat.com>
++
++	* gcc.dg/guality/pr49888.c (f): Use noipa attribute instead of
++	noinline, noclone.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-06-07  Jakub Jelinek  <jakub@redhat.com>
++
++	PR middle-end/100898
++	* g++.dg/ext/va-arg-pack-3.C: New test.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-05-25  Jakub Jelinek  <jakub@redhat.com>
++
++	PR c++/100666
++	* g++.dg/cpp1z/nodiscard8.C: New test.
++	* g++.dg/cpp1z/nodiscard9.C: New test.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-05-18  Jakub Jelinek  <jakub@redhat.com>
++
++	PR c++/100580
++	* g++.dg/other/pr100580.C: New test.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-05-15  Jakub Jelinek  <jakub@redhat.com>
++
++	PR rtl-optimization/100342
++	* gcc.target/i386/pr100342.c: New test.
++
++2022-05-10  liuhongt  <hongtao.liu@intel.com>
++
++	Backported from master:
++	2021-01-21  liuhongt  <hongtao.liu@intel.com>
++
++	PR rtl-optimization/98694
++	* gcc.target/i386/pr98694.c: New test.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-05-14  Jakub Jelinek  <jakub@redhat.com>
++
++	* g++.dg/cpp1y/pr88872.C: New test.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-05-12  Jakub Jelinek  <jakub@redhat.com>
++
++	PR middle-end/100508
++	* gcc.dg/gomp/pr100508.c: New test.
++
++2022-05-10  Eric Botcazou  <ebotcazou@adacore.com>
++
++	* gcc.target/sparc/20220510-1.c: New test.
++
 +2022-05-09  Patrick Palka  <ppalka@redhat.com>
 +
 +	Backported from master:
@@ -41348,10 +43074,39 @@ index 6363e55e68a..72b145958cf 100644
  AC_CONFIG_FILES(Makefile config.intl)
  AC_OUTPUT
 diff --git a/libcpp/ChangeLog b/libcpp/ChangeLog
-index 0d1120a6dd9..043a6c8f444 100644
+index 0d1120a6dd9..7b372b75988 100644
 --- a/libcpp/ChangeLog
 +++ b/libcpp/ChangeLog
-@@ -1,3 +1,17 @@
+@@ -1,3 +1,46 @@
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-02-01  Jakub Jelinek  <jakub@redhat.com>
++
++	PR preprocessor/104147
++	* macro.c (funlike_invocation_p): For padding prefer a token
++	with val.source non-NULL especially if it has PREV_WHITE set
++	on val.source->flags.  Add gcc_assert that CPP_PADDING tokens
++	don't have PREV_WHITE set in flags.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-02-01  Jakub Jelinek  <jakub@redhat.com>
++
++	* directives.c (destringize_and_run): Push &pfile->avoid_paste
++	instead of a copy of pfile->directive_result for the CPP_PADDING
++	case.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-12-30  Jakub Jelinek  <jakub@redhat.com>
++
++	PR preprocessor/89971
++	* macro.c (replace_args): For ##__VA_OPT__, if __VA_OPT__ expands
++	to no tokens at all, drop PASTE_LEFT flag from the previous token.
++
 +2021-05-07  Jakub Jelinek  <jakub@redhat.com>
 +
 +	Backported from master:
@@ -41471,6 +43226,25 @@ index 2573f316bf5..590de196a6b 100644
  	      if (src->flags & PASTE_LEFT)
  		{
  		  /* With a non-empty __VA_OPT__ on the LHS of ##, the last
+diff --git a/libffi/ChangeLog b/libffi/ChangeLog
+index 6832b115b34..7e4dfe5d8fc 100644
+--- a/libffi/ChangeLog
++++ b/libffi/ChangeLog
+@@ -1,3 +1,14 @@
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-06-16  Jakub Jelinek  <jakub@redhat.com>
++
++	* src/x86/ffi64.c (classify_argument): For FFI_TYPE_STRUCT set words
++	to number of words needed for type->size + byte_offset bytes rather
++	than just type->size bytes.  Compute pos before the loop and check
++	total size of the structure.
++	* testsuite/libffi.call/nested_struct12.c: New test.
++
+ 2021-04-08  Release Manager
+ 
+ 	* GCC 10.3.0 released.
 diff --git a/libffi/src/x86/ffi64.c b/libffi/src/x86/ffi64.c
 index 131b5e3d148..243cbc7689a 100644
 --- a/libffi/src/x86/ffi64.c
@@ -42313,10 +44087,86 @@ index 9d265f34068..2feaa7730c6 100644
      {
        /* Count the elements, either for allocating memory or
 diff --git a/libgomp/ChangeLog b/libgomp/ChangeLog
-index f76d32e398c..d483bb4de8a 100644
+index f76d32e398c..1efdec0d29e 100644
 --- a/libgomp/ChangeLog
 +++ b/libgomp/ChangeLog
-@@ -1,3 +1,30 @@
+@@ -1,3 +1,106 @@
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-02-08  Jakub Jelinek  <jakub@redhat.com>
++
++	PR libgomp/104385
++	* task.c (gomp_task_run_post_handle_dependers): If parent is NULL,
++	clear task->parent.
++	* testsuite/libgomp.c/pr104385.c: New test.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-11-24  Jakub Jelinek  <jakub@redhat.com>
++
++	PR middle-end/103384
++	* testsuite/libgomp.c/declare-variant-2.c: New test.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-10-15  Jakub Jelinek  <jakub@redhat.com>
++
++	* config/linux/affinity.c (gomp_affinity_init_level_1): For level 1
++	after creating count places clean up and return immediately.
++	* testsuite/libgomp.c/places-6.c: New test.
++	* testsuite/libgomp.c/places-7.c: New test.
++	* testsuite/libgomp.c/places-8.c: New test.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-07-01  Jakub Jelinek  <jakub@redhat.com>
++
++	PR middle-end/94366
++	* testsuite/libgomp.c-c++-common/pr94366.c: New test.
++
++2022-05-10  Tobias Burnus  <tobias@codesourcery.com>
++
++	Backported from master:
++	2021-05-04  Tobias Burnus  <tobias@codesourcery.com>
++
++	* testsuite/libgomp.c-c++-common/reduction-1.c: New test.
++	* testsuite/libgomp.c-c++-common/reduction-2.c: New test.
++	* testsuite/libgomp.c-c++-common/reduction-3.c: New test.
++	* testsuite/libgomp.c-c++-common/reduction-4.c: New file.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-07-13  Jakub Jelinek  <jakub@redhat.com>
++		    Florian Weimer  <fweimer@redhat.com>
++
++	* config/linux/sem.h: Don't include limits.h.
++	(SEM_WAIT): Define to -__INT_MAX__ - 1 instead of INT_MIN.
++	* config/linux/affinity.c: Include limits.h.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-06-23  Jakub Jelinek  <jakub@redhat.com>
++
++	PR middle-end/101167
++	* testsuite/libgomp.c-c++-common/task-reduction-15.c: New test.
++
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-05-11  Jakub Jelinek  <jakub@redhat.com>
++
++	PR middle-end/100471
++	* taskloop.c (GOMP_taskloop): If GOMP_TASK_FLAG_REDUCTION and not
++	GOMP_TASK_FLAG_NOGROUP, when doing early return clear the task
++	reduction pointer.
++	* testsuite/libgomp.c/task-reduction-4.c: New test.
++
 +2021-05-06  Roman Zhuykov  <zhroma@ispras.ru>
 +
 +	Backported from master:
@@ -45676,6 +47526,26 @@ index 00000000000..1d415cdcf76
 +
 +  return 0;
 +}
+diff --git a/libiberty/ChangeLog b/libiberty/ChangeLog
+index fda0f354b91..c9c59503e1d 100644
+--- a/libiberty/ChangeLog
++++ b/libiberty/ChangeLog
+@@ -1,3 +1,15 @@
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-02-22  Jakub Jelinek  <jakub@redhat.com>
++
++	PR lto/104617
++	* simple-object-elf.c (simple_object_elf_match): Fix up URL
++	in comment.
++	(simple_object_elf_copy_lto_debug_sections): Remap sh_info and
++	sh_link even if they are in the SHN_LORESERVE .. SHN_HIRESERVE
++	range (inclusive).
++
+ 2021-04-08  Release Manager
+ 
+ 	* GCC 10.3.0 released.
 diff --git a/libiberty/simple-object-elf.c b/libiberty/simple-object-elf.c
 index 37e73348cb7..18b9abe2d63 100644
 --- a/libiberty/simple-object-elf.c
@@ -46193,10 +48063,18 @@ index a63227cee8b..e0a9ad6c519 100644
  
      import std.traits : isArray;
 diff --git a/libsanitizer/ChangeLog b/libsanitizer/ChangeLog
-index ceea82c4f70..ef7cb9aa071 100644
+index ceea82c4f70..a3fde813c49 100644
 --- a/libsanitizer/ChangeLog
 +++ b/libsanitizer/ChangeLog
-@@ -1,3 +1,40 @@
+@@ -1,3 +1,48 @@
++2022-05-10  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-02-15  Jakub Jelinek  <jakub@redhat.com>
++
++	* sanitizer_common/sanitizer_linux_libcdep.cpp: Cherry-pick
++	llvm-project revision ef14b78d9a144ba81ba02083fe21eb286a88732b.
++
 +2022-01-19  H.J. Lu  <hjl.tools@gmail.com>
 +
 +	Backported from master:
