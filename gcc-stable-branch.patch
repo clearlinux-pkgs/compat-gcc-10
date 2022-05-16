@@ -506,7 +506,7 @@ H.J. Lu (6):
 Hafiz Abid Qadeer (1):
       [OpenACC] Fix an ICE where a loop with GT condition is collapsed.
 
-Harald Anlauf (55):
+Harald Anlauf (58):
       PR fortran/63797 - Bogus ambiguous reference to 'sqrt'
       PR fortran/100154 - ICE in gfc_conv_procedure_call, at fortran/trans-expr.c:6131
       PR fortran/100274 - ICE in gfc_conv_procedure_call, at fortran/trans-expr.c:6131
@@ -562,6 +562,9 @@ Harald Anlauf (55):
       Fortran: error recovery when simplifying EOSHIFT
       Fortran: reject simplifying TRANSFER for MOLD with storage size 0
       Fortran: skip compile-time shape check if constructor shape is not known
+      Fortran: a RECURSIVE procedure cannot be an INTRINSIC
+      Fortran: improve error recovery on invalid array section
+      Fortran: fix error recovery on invalid array section
 
 Hongyu Wang (1):
       AVX512F: Add missing macro for mask(z?)_scalf_s[sd] [PR 105339]
@@ -20663,7 +20666,7 @@ index 9273976aa9a..2ad9fb63399 100644
  		gfc_constructor_append_expr (&array->value.constructor,
  					     n == 0
 diff --git a/gcc/fortran/expr.c b/gcc/fortran/expr.c
-index f946145eb1b..d19c6c9980b 100644
+index f946145eb1b..6d95120be50 100644
 --- a/gcc/fortran/expr.c
 +++ b/gcc/fortran/expr.c
 @@ -990,6 +990,34 @@ done:
@@ -20733,7 +20736,18 @@ index f946145eb1b..d19c6c9980b 100644
        /* Check the bounds.  */
        if ((ar->as->upper[i]
  	   && mpz_cmp (e->value.integer,
-@@ -1725,8 +1756,8 @@ find_substring_ref (gfc_expr *p, gfc_expr **newp)
+@@ -1560,7 +1591,9 @@ find_array_section (gfc_expr *expr, gfc_ref *ref)
+ 	{
+ 	  if ((begin && begin->expr_type != EXPR_CONSTANT)
+ 	      || (finish && finish->expr_type != EXPR_CONSTANT)
+-	      || (step && step->expr_type != EXPR_CONSTANT))
++	      || (step && step->expr_type != EXPR_CONSTANT)
++	      || !lower
++	      || !upper)
+ 	    {
+ 	      t = false;
+ 	      goto cleanup;
+@@ -1725,8 +1758,8 @@ find_substring_ref (gfc_expr *p, gfc_expr **newp)
    *newp = gfc_copy_expr (p);
    free ((*newp)->value.character.string);
  
@@ -20744,7 +20758,7 @@ index f946145eb1b..d19c6c9980b 100644
    if (end >= start)
      length = end - start + 1;
    else
-@@ -2095,6 +2126,8 @@ simplify_parameter_variable (gfc_expr *p, int type)
+@@ -2095,6 +2128,8 @@ simplify_parameter_variable (gfc_expr *p, int type)
        if (e == NULL)
  	return false;
  
@@ -20753,7 +20767,7 @@ index f946145eb1b..d19c6c9980b 100644
        e->rank = p->rank;
  
        if (e->ts.type == BT_CHARACTER && p->ts.u.cl)
-@@ -2183,10 +2216,9 @@ gfc_simplify_expr (gfc_expr *p, int type)
+@@ -2183,10 +2218,9 @@ gfc_simplify_expr (gfc_expr *p, int type)
  	  && gfc_intrinsic_func_interface (p, 1) == MATCH_ERROR)
  	return false;
  
@@ -20766,7 +20780,7 @@ index f946145eb1b..d19c6c9980b 100644
  	  if (isym && isym->elemental)
  	    scalarize_intrinsic_call (p, false);
  	}
-@@ -2295,6 +2327,31 @@ gfc_simplify_expr (gfc_expr *p, int type)
+@@ -2295,6 +2329,31 @@ gfc_simplify_expr (gfc_expr *p, int type)
  }
  
  
@@ -20798,7 +20812,7 @@ index f946145eb1b..d19c6c9980b 100644
  /* Returns the type of an expression with the exception that iterator
     variables are automatically integers no matter what else they may
     be declared as.  */
-@@ -3809,6 +3866,9 @@ gfc_check_pointer_assign (gfc_expr *lvalue, gfc_expr *rvalue,
+@@ -3809,6 +3868,9 @@ gfc_check_pointer_assign (gfc_expr *lvalue, gfc_expr *rvalue,
    int proc_pointer;
    bool same_rank;
  
@@ -20808,7 +20822,7 @@ index f946145eb1b..d19c6c9980b 100644
    lhs_attr = gfc_expr_attr (lvalue);
    if (lvalue->ts.type == BT_UNKNOWN && !lhs_attr.proc_pointer)
      {
-@@ -4273,6 +4333,7 @@ gfc_check_pointer_assign (gfc_expr *lvalue, gfc_expr *rvalue,
+@@ -4273,6 +4335,7 @@ gfc_check_pointer_assign (gfc_expr *lvalue, gfc_expr *rvalue,
      {
        gfc_symbol *sym;
        bool target;
@@ -20816,7 +20830,7 @@ index f946145eb1b..d19c6c9980b 100644
  
        if (gfc_is_size_zero_array (rvalue))
  	{
-@@ -4302,6 +4363,39 @@ gfc_check_pointer_assign (gfc_expr *lvalue, gfc_expr *rvalue,
+@@ -4302,6 +4365,39 @@ gfc_check_pointer_assign (gfc_expr *lvalue, gfc_expr *rvalue,
  		     &rvalue->where);
  	  return false;
  	}
@@ -20856,7 +20870,7 @@ index f946145eb1b..d19c6c9980b 100644
      }
    else
      {
-@@ -5088,7 +5182,8 @@ gfc_get_variable_expr (gfc_symtree *var)
+@@ -5088,7 +5184,8 @@ gfc_get_variable_expr (gfc_symtree *var)
  
    if (var->n.sym->attr.flavor != FL_PROCEDURE
        && ((var->n.sym->as != NULL && var->n.sym->ts.type != BT_CLASS)
@@ -20866,7 +20880,7 @@ index f946145eb1b..d19c6c9980b 100644
  	       && CLASS_DATA (var->n.sym)->as)))
      {
        e->rank = var->n.sym->ts.type == BT_CLASS
-@@ -6168,10 +6263,13 @@ gfc_check_vardef_context (gfc_expr* e, bool pointer, bool alloc_obj,
+@@ -6168,10 +6265,13 @@ gfc_check_vardef_context (gfc_expr* e, bool pointer, bool alloc_obj,
      {
        if (ptr_component && ref->type == REF_COMPONENT)
  	check_intentin = false;
@@ -21043,10 +21057,18 @@ index 70219a537b9..a09a09c925e 100644
  	    {
  	      /* Emit a warning for -std=legacy and an error otherwise. */
 diff --git a/gcc/fortran/intrinsic.c b/gcc/fortran/intrinsic.c
-index 6188ef86e53..efe79a9bec6 100644
+index 6188ef86e53..958a319e2aa 100644
 --- a/gcc/fortran/intrinsic.c
 +++ b/gcc/fortran/intrinsic.c
-@@ -3423,7 +3423,7 @@ add_subroutines (void)
+@@ -1138,6 +1138,7 @@ gfc_is_intrinsic (gfc_symbol* sym, int subroutine_flag, locus loc)
+ 
+   /* Check for attributes which prevent the symbol from being INTRINSIC.  */
+   if (sym->attr.external || sym->attr.contained
++      || sym->attr.recursive
+       || sym->attr.if_source == IFSRC_IFBODY)
+     return false;
+ 
+@@ -3423,7 +3424,7 @@ add_subroutines (void)
    /* Argument names.  These are used as argument keywords and so need to
       match the documentation.  Please keep this list in sorted order.  */
    static const char
@@ -21055,7 +21077,7 @@ index 6188ef86e53..efe79a9bec6 100644
      *cr = "count_rate", *dt = "date", *errmsg = "errmsg", *f = "from",
      *fp = "frompos", *gt = "get", *h = "harvest", *han = "handler",
      *length = "length", *ln = "len", *md = "mode", *msk = "mask",
-@@ -3803,12 +3803,12 @@ add_subroutines (void)
+@@ -3803,12 +3804,12 @@ add_subroutines (void)
    add_sym_3s ("fgetc", GFC_ISYM_FGETC, CLASS_IMPURE, BT_UNKNOWN, 0, GFC_STD_GNU,
  	      gfc_check_fgetputc_sub, NULL, gfc_resolve_fgetc_sub,
  	      ut, BT_INTEGER, di, REQUIRED, INTENT_IN,
@@ -21070,7 +21092,7 @@ index 6188ef86e53..efe79a9bec6 100644
  	      st, BT_INTEGER, di, OPTIONAL, INTENT_OUT);
  
    add_sym_1s ("flush", GFC_ISYM_FLUSH, CLASS_IMPURE, BT_UNKNOWN, 0, GFC_STD_GNU,
-@@ -3818,12 +3818,12 @@ add_subroutines (void)
+@@ -3818,12 +3819,12 @@ add_subroutines (void)
    add_sym_3s ("fputc", GFC_ISYM_FPUTC, CLASS_IMPURE, BT_UNKNOWN, 0, GFC_STD_GNU,
  	      gfc_check_fgetputc_sub, NULL, gfc_resolve_fputc_sub,
  	      ut, BT_INTEGER, di, REQUIRED, INTENT_IN,
@@ -41025,6 +41047,35 @@ index 00000000000..9687a3cec9d
 +end
 +
 +! { dg-final { scan-tree-dump-not "_gfortran_stop_numeric" "original" } }
+diff --git a/gcc/testsuite/gfortran.dg/pr104849.f90 b/gcc/testsuite/gfortran.dg/pr104849.f90
+new file mode 100644
+index 00000000000..ae221b5ba10
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/pr104849.f90
+@@ -0,0 +1,9 @@
++! { dg-do compile }
++! PR fortran/104849 - ICE in find_array_section
++! Contributed by G.Steinmetz
++
++program p
++  integer, parameter :: a(:) = [1, 2] ! { dg-error "deferred shape" }
++  integer :: x(2)
++  data x /a(:)/                       ! { dg-error "Invalid" }
++end
+diff --git a/gcc/testsuite/gfortran.dg/pr105230.f90 b/gcc/testsuite/gfortran.dg/pr105230.f90
+new file mode 100644
+index 00000000000..6c6b42ef9bf
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/pr105230.f90
+@@ -0,0 +1,8 @@
++! { dg-do compile }
++! PR fortran/105230 - ICE in find_array_section
++! Contributed by G.Steinmetz
++
++program p
++  integer, parameter :: a(:) = [1, 2] ! { dg-error "deferred shape" }
++  print *, reshape([3, 4], a(1:2))
++end
 diff --git a/gcc/testsuite/gfortran.dg/pr63797.f90 b/gcc/testsuite/gfortran.dg/pr63797.f90
 new file mode 100644
 index 00000000000..1131e8167b1
@@ -41302,6 +41353,26 @@ index 00000000000..cb7cf7040a9
 +if (x .ne. y) stop 2
 +
 +end program classStar_map
+diff --git a/gcc/testsuite/gfortran.dg/recursive_reference_3.f90 b/gcc/testsuite/gfortran.dg/recursive_reference_3.f90
+new file mode 100644
+index 00000000000..f4e2963aec2
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/recursive_reference_3.f90
+@@ -0,0 +1,14 @@
++! { dg-do compile }
++! { dg-options "-std=f2018" }
++! PR fortran/105138 - recursive procedures and shadowing of intrinsics
++
++RECURSIVE FUNCTION LOG_GAMMA(Z) RESULT(RES)
++  COMPLEX, INTENT(IN) :: Z
++  COMPLEX             :: RES
++  RES = LOG_GAMMA(Z)
++END FUNCTION LOG_GAMMA
++
++recursive subroutine date_and_time (z)
++  real :: z
++  if (z > 0) call date_and_time (z-1)
++end subroutine date_and_time
 diff --git a/gcc/testsuite/gfortran.dg/reshape_7.f90 b/gcc/testsuite/gfortran.dg/reshape_7.f90
 index d752650aa4e..4216cb60cbb 100644
 --- a/gcc/testsuite/gfortran.dg/reshape_7.f90
