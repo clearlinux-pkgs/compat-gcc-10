@@ -93,7 +93,10 @@ François Dumont (3):
 Fritz Reese (1):
       fortran: Fix conv of UNION constructors [PR105310]
 
-GCC Administrator (394):
+GCC Administrator (397):
+      Daily bump.
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -722,7 +725,7 @@ Jakub Jelinek (122):
 Jan Hubicka (1):
       Fix looping flag discovery in ipa-pure-const
 
-Jason Merrill (35):
+Jason Merrill (42):
       c++: lambda pack init-capture within generic lambda
       c++: NRV in lambda in template [PR91217]
       c++: PMF template parm and noexcept [PR90664]
@@ -758,6 +761,13 @@ Jason Merrill (35):
       c++: rodata and defaulted ctor [PR104142]
       Revert "c++: friend with redundant qualification [PR41723]"
       Revert "c++: designator and anon struct [PR101767]"
+      c++: argument pack with expansion [PR86355]
+      c++: mangling of lambdas in default args [PR91241]
+      c++: extern template and static data member [PR99066]
+      c++: NRV and ref-extended temps [PR101442]
+      c++: template conversion op [PR101698]
+      c++: alignment of local typedef in template [PR65211]
+      c++: static memfn from non-dependent base [PR101078]
 
 Jeff Law (1):
       [committed] Fix more problems with new linker warnings
@@ -14218,10 +14228,49 @@ index 38820bc170f..2747f8f1b4c 100644
    gcov_write_unsigned (end_column);
    gcov_write_length (offset);
 diff --git a/gcc/cp/ChangeLog b/gcc/cp/ChangeLog
-index b576f9a3678..fb966a7e0c4 100644
+index b576f9a3678..a5393fab0fe 100644
 --- a/gcc/cp/ChangeLog
 +++ b/gcc/cp/ChangeLog
-@@ -1,3 +1,751 @@
+@@ -1,3 +1,790 @@
++2022-05-13  Jason Merrill  <jason@redhat.com>
++
++	PR c++/101078
++	* pt.c (tsubst_baselink): Update binfos in non-dependent case.
++
++2022-05-13  Jason Merrill  <jason@redhat.com>
++
++	PR c++/65211
++	* pt.c (tsubst_decl) [TYPE_DECL]: Copy TYPE_ALIGN.
++
++2022-05-13  Jason Merrill  <jason@redhat.com>
++
++	PR c++/101698
++	* pt.c (tsubst_baselink): Also check dependent optype.
++
++2022-05-13  Jason Merrill  <jason@redhat.com>
++
++	PR c++/101442
++	* decl.c (cp_finish_decl): Don't pass decl to push_cleanup.
++	* init.c (perform_member_init): Likewise.
++	* semantics.c (push_cleanup): Adjust comment.
++
++2022-05-13  Jason Merrill  <jason@redhat.com>
++
++	PR c++/99066
++	* pt.c (mark_decl_instantiated): Set DECL_EXTERNAL.
++
++2022-05-13  Jason Merrill  <jason@redhat.com>
++
++	PR c++/91241
++	* mangle.c (write_compact_number): Add sanity check.
++	(write_local_name): Use list_length for parm number.
++
++2022-05-13  Jason Merrill  <jason@redhat.com>
++
++	PR c++/86355
++	* pt.c (use_pack_expansion_extra_args_p): Don't compare
++	args from the same argument pack.
++
 +2022-05-12  Jason Merrill  <jason@redhat.com>
 +
 +	Revert:
@@ -16124,7 +16173,7 @@ index 9f9f6b658ad..0e11f060c53 100644
      return comp_ptr_ttypes (TREE_TYPE (type), TREE_TYPE (expr_type));
    else if (TYPE_PTRMEM_P (type) && TYPE_PTRMEM_P (expr_type))
 diff --git a/gcc/cp/decl.c b/gcc/cp/decl.c
-index 4293ee6238f..99a4eb59ba8 100644
+index 4293ee6238f..6089cd7e52d 100644
 --- a/gcc/cp/decl.c
 +++ b/gcc/cp/decl.c
 @@ -5447,7 +5447,7 @@ start_decl (const cp_declarator *declarator,
@@ -16218,6 +16267,15 @@ index 4293ee6238f..99a4eb59ba8 100644
  	}
  
        if (var_definition_p
+@@ -7947,7 +7993,7 @@ cp_finish_decl (tree decl, tree init, bool init_const_expr_p,
+     {
+       unsigned i; tree t;
+       FOR_EACH_VEC_ELT (*cleanups, i, t)
+-	push_cleanup (decl, t, false);
++	push_cleanup (NULL_TREE, t, false);
+       release_tree_vector (cleanups);
+     }
+ 
 diff --git a/gcc/cp/decl2.c b/gcc/cp/decl2.c
 index bf377963d8f..7a4e05807e6 100644
 --- a/gcc/cp/decl2.c
@@ -16291,7 +16349,7 @@ index 9b535708c57..6a7569418b1 100644
  	  break;
  	}
 diff --git a/gcc/cp/init.c b/gcc/cp/init.c
-index 878099ecaad..35c142be60f 100644
+index 878099ecaad..fb62bfe7294 100644
 --- a/gcc/cp/init.c
 +++ b/gcc/cp/init.c
 @@ -585,16 +585,21 @@ get_nsdmi (tree member, bool in_ctor, tsubst_flags_t complain)
@@ -16333,6 +16391,15 @@ index 878099ecaad..35c142be60f 100644
  	    }
  
  	  input_location = sloc;
+@@ -881,7 +888,7 @@ perform_member_init (tree member, tree init)
+       init = build2 (INIT_EXPR, type, decl, init);
+       finish_expr_stmt (init);
+       FOR_EACH_VEC_ELT (*cleanups, i, t)
+-	push_cleanup (decl, t, false);
++	push_cleanup (NULL_TREE, t, false);
+     }
+   else if (type_build_ctor_call (type)
+ 	   || (init && CLASS_TYPE_P (strip_array_types (type))))
 @@ -2868,33 +2875,17 @@ std_placement_new_fn_p (tree alloc_fn)
  }
  
@@ -16522,7 +16589,7 @@ index dea6e114303..ec87f3b163c 100644
  		   we can find the fake 'this' in scope_chain.  */
  		init = scope_chain->x_current_class_ptr;
 diff --git a/gcc/cp/mangle.c b/gcc/cp/mangle.c
-index 090fb529a98..cd2fdd91537 100644
+index 090fb529a98..d0682e5b93a 100644
 --- a/gcc/cp/mangle.c
 +++ b/gcc/cp/mangle.c
 @@ -847,6 +847,18 @@ write_encoding (const tree decl)
@@ -16559,6 +16626,31 @@ index 090fb529a98..cd2fdd91537 100644
  	  write_string (mangled_name);
  	}
        else if (UDLIT_OPER_P (DECL_NAME (decl)))
+@@ -1589,6 +1604,7 @@ write_literal_operator_name (tree identifier)
+ static void
+ write_compact_number (int num)
+ {
++  gcc_checking_assert (num >= 0);
+   if (num > 0)
+     write_unsigned_number (num - 1);
+   write_char ('_');
+@@ -1988,15 +2004,7 @@ write_local_name (tree function, const tree local_entity,
+   /* For this purpose, parameters are numbered from right-to-left.  */
+   if (parm)
+     {
+-      tree t;
+-      int i = 0;
+-      for (t = DECL_ARGUMENTS (function); t; t = DECL_CHAIN (t))
+-	{
+-	  if (t == parm)
+-	    i = 1;
+-	  else if (i)
+-	    ++i;
+-	}
++      int i = list_length (parm);
+       write_char ('d');
+       write_compact_number (i - 1);
+     }
 diff --git a/gcc/cp/method.c b/gcc/cp/method.c
 index 3a3e060843e..746a75bef3d 100644
 --- a/gcc/cp/method.c
@@ -16759,7 +16851,7 @@ index 1f4a28ff7c0..4c36cbeeb48 100644
    if (concept_name == error_mark_node
        || (seen_error () && !concept_definition_p (tmpl_decl)))
 diff --git a/gcc/cp/pt.c b/gcc/cp/pt.c
-index d329c0128ba..fb214e8f8c9 100644
+index d329c0128ba..ab41af4aaca 100644
 --- a/gcc/cp/pt.c
 +++ b/gcc/cp/pt.c
 @@ -63,7 +63,6 @@ static GTY(()) struct pending_template *last_pending_template;
@@ -16834,7 +16926,30 @@ index d329c0128ba..fb214e8f8c9 100644
    return type;
  }
  
-@@ -12418,7 +12435,13 @@ gen_elem_of_pack_expansion_instantiation (tree pattern,
+@@ -12301,9 +12318,9 @@ use_pack_expansion_extra_args_p (tree parm_packs,
+       return false;
+     }
+ 
+-  bool has_expansion_arg = false;
+   for (int i = 0 ; i < arg_pack_len; ++i)
+     {
++      bool has_expansion_arg = false;
+       bool has_non_expansion_arg = false;
+       for (tree parm_pack = parm_packs;
+ 	   parm_pack;
+@@ -12323,7 +12340,10 @@ use_pack_expansion_extra_args_p (tree parm_packs,
+ 	}
+ 
+       if (has_expansion_arg && has_non_expansion_arg)
+-	return true;
++	{
++	  gcc_checking_assert (false);
++	  return true;
++	}
+     }
+   return false;
+ }
+@@ -12418,7 +12438,13 @@ gen_elem_of_pack_expansion_instantiation (tree pattern,
      t = tsubst_expr (pattern, args, complain, in_decl,
  		     /*integral_constant_expression_p=*/false);
    else
@@ -16849,7 +16964,7 @@ index d329c0128ba..fb214e8f8c9 100644
  
    /*  If the Ith argument pack element is a pack expansion, then
        the Ith element resulting from the substituting is going to
-@@ -12663,7 +12686,11 @@ tsubst_binary_right_fold (tree t, tree args, tsubst_flags_t complain,
+@@ -12663,7 +12689,11 @@ tsubst_binary_right_fold (tree t, tree args, tsubst_flags_t complain,
  class el_data
  {
  public:
@@ -16861,7 +16976,7 @@ index d329c0128ba..fb214e8f8c9 100644
    tree extra;
    tsubst_flags_t complain;
  
-@@ -12682,7 +12709,36 @@ extract_locals_r (tree *tp, int */*walk_subtrees*/, void *data_)
+@@ -12682,7 +12712,36 @@ extract_locals_r (tree *tp, int */*walk_subtrees*/, void *data_)
      tp = &TYPE_NAME (*tp);
  
    if (TREE_CODE (*tp) == DECL_EXPR)
@@ -16899,7 +17014,7 @@ index d329c0128ba..fb214e8f8c9 100644
    else if (tree spec = retrieve_local_specialization (*tp))
      {
        if (data.internal.contains (*tp))
-@@ -12739,7 +12795,7 @@ static tree
+@@ -12739,7 +12798,7 @@ static tree
  extract_local_specs (tree pattern, tsubst_flags_t complain)
  {
    el_data data (complain);
@@ -16908,7 +17023,7 @@ index d329c0128ba..fb214e8f8c9 100644
    return data.extra;
  }
  
-@@ -13020,12 +13076,23 @@ tsubst_pack_expansion (tree t, tree args, tsubst_flags_t complain,
+@@ -13020,12 +13079,23 @@ tsubst_pack_expansion (tree t, tree args, tsubst_flags_t complain,
  	 pattern and return a PACK_EXPANSION_*. The caller will need to
  	 deal with that.  */
        if (TREE_CODE (t) == EXPR_PACK_EXPANSION)
@@ -16936,7 +17051,7 @@ index d329c0128ba..fb214e8f8c9 100644
      }
  
    gcc_assert (len >= 0);
-@@ -13750,45 +13817,6 @@ tsubst_function_decl (tree t, tree args, tsubst_flags_t complain,
+@@ -13750,45 +13820,6 @@ tsubst_function_decl (tree t, tree args, tsubst_flags_t complain,
  	  if (tree spec = retrieve_specialization (gen_tmpl, argvec, hash))
  	    return spec;
  	}
@@ -16982,7 +17097,7 @@ index d329c0128ba..fb214e8f8c9 100644
      }
    else
      {
-@@ -14216,6 +14244,19 @@ enclosing_instantiation_of (tree otctx)
+@@ -14216,6 +14247,19 @@ enclosing_instantiation_of (tree otctx)
  		  || instantiated_lambda_fn_p (tctx));
         tctx = decl_function_context (tctx))
      ++lambda_count;
@@ -17002,7 +17117,21 @@ index d329c0128ba..fb214e8f8c9 100644
    for (; fn; fn = decl_function_context (fn))
      {
        tree ofn = fn;
-@@ -15486,6 +15527,8 @@ tsubst (tree t, tree args, tsubst_flags_t complain, tree in_decl)
+@@ -14776,6 +14820,13 @@ tsubst_decl (tree t, tree args, tsubst_flags_t complain)
+ 	  {
+ 	    DECL_ORIGINAL_TYPE (r) = NULL_TREE;
+ 	    set_underlying_type (r);
++
++	    /* common_handle_aligned_attribute doesn't apply the alignment
++	       to DECL_ORIGINAL_TYPE.  */
++	    if (TYPE_USER_ALIGN (TREE_TYPE (t)))
++	      TREE_TYPE (r) = build_aligned_type (TREE_TYPE (r),
++						  TYPE_ALIGN (TREE_TYPE (t)));
++
+ 	    if (TYPE_DECL_ALIAS_P (r))
+ 	      /* An alias template specialization can be dependent
+ 		 even if its underlying type is not.  */
+@@ -15486,6 +15537,8 @@ tsubst (tree t, tree args, tsubst_flags_t complain, tree in_decl)
  		    else if (tree pl = CLASS_PLACEHOLDER_TEMPLATE (t))
  		      {
  			pl = tsubst_copy (pl, args, complain, in_decl);
@@ -17011,7 +17140,39 @@ index d329c0128ba..fb214e8f8c9 100644
  			CLASS_PLACEHOLDER_TEMPLATE (r) = pl;
  		      }
  		  }
-@@ -19223,8 +19266,13 @@ tsubst_lambda_expr (tree t, tree args, tsubst_flags_t complain, tree in_decl)
+@@ -16093,7 +16146,8 @@ tsubst_baselink (tree baselink, tree object_type,
+ 
+   tree binfo_type = BINFO_TYPE (BASELINK_BINFO (baselink));
+   binfo_type = tsubst (binfo_type, args, complain, in_decl);
+-  bool dependent_p = binfo_type != BINFO_TYPE (BASELINK_BINFO (baselink));
++  bool dependent_p = (binfo_type != BINFO_TYPE (BASELINK_BINFO (baselink))
++		      || optype != BASELINK_OPTYPE (baselink));
+ 
+   if (dependent_p)
+     {
+@@ -16119,8 +16173,19 @@ tsubst_baselink (tree baselink, tree object_type,
+ 	fns = BASELINK_FUNCTIONS (baselink);
+     }
+   else
+-    /* We're going to overwrite pieces below, make a duplicate.  */
+-    baselink = copy_node (baselink);
++    {
++      /* We're going to overwrite pieces below, make a duplicate.  */
++      baselink = copy_node (baselink);
++
++      if (qualifying_scope != BINFO_TYPE (BASELINK_ACCESS_BINFO (baselink)))
++	{
++	  /* The decl we found was from non-dependent scope, but we still need
++	     to update the binfos for the instantiated qualifying_scope.  */
++	  BASELINK_ACCESS_BINFO (baselink) = TYPE_BINFO (qualifying_scope);
++	  BASELINK_BINFO (baselink) = lookup_base (qualifying_scope, binfo_type,
++						   ba_unique, NULL, complain);
++	}
++    }
+ 
+   /* If lookup found a single function, mark it as used at this point.
+      (If lookup found multiple functions the one selected later by
+@@ -19223,8 +19288,13 @@ tsubst_lambda_expr (tree t, tree args, tsubst_flags_t complain, tree in_decl)
  	 the purposes of template argument deduction. */
        complain = tf_warning_or_error;
  
@@ -17027,7 +17188,7 @@ index d329c0128ba..fb214e8f8c9 100644
  
        finish_lambda_function (body);
  
-@@ -21670,8 +21718,10 @@ static bool uses_deducible_template_parms (tree type);
+@@ -21670,8 +21740,10 @@ static bool uses_deducible_template_parms (tree type);
  static bool
  deducible_expression (tree expr)
  {
@@ -17040,7 +17201,19 @@ index d329c0128ba..fb214e8f8c9 100644
      expr = TREE_OPERAND (expr, 0);
    return (TREE_CODE (expr) == TEMPLATE_PARM_INDEX);
  }
-@@ -27964,7 +28014,9 @@ make_constrained_placeholder_type (tree type, tree con, tree args)
+@@ -23988,7 +24060,10 @@ mark_decl_instantiated (tree result, int extern_p)
+   DECL_COMDAT (result) = 0;
+ 
+   if (extern_p)
+-    DECL_NOT_REALLY_EXTERN (result) = 0;
++    {
++      DECL_EXTERNAL (result) = 1;
++      DECL_NOT_REALLY_EXTERN (result) = 0;
++    }
+   else
+     {
+       mark_definable (result);
+@@ -27964,7 +28039,9 @@ make_constrained_placeholder_type (tree type, tree con, tree args)
    tree expr = tmpl;
    if (TREE_CODE (con) == FUNCTION_DECL)
      expr = ovl_make (tmpl);
@@ -17050,7 +17223,7 @@ index d329c0128ba..fb214e8f8c9 100644
  
    PLACEHOLDER_TYPE_CONSTRAINTS (type) = expr;
  
-@@ -28727,7 +28779,8 @@ alias_ctad_tweaks (tree tmpl, tree uguides)
+@@ -28727,7 +28804,8 @@ alias_ctad_tweaks (tree tmpl, tree uguides)
  	  unsigned len = TREE_VEC_LENGTH (ftparms);
  	  tree targs = make_tree_vec (len);
  	  int err = unify (ftparms, targs, ret, utype, UNIFY_ALLOW_NONE, false);
@@ -17060,7 +17233,7 @@ index d329c0128ba..fb214e8f8c9 100644
  
  	  /* The number of parms for f' is the number of parms for A plus
  	     non-deduced parms of f.  */
-@@ -28760,7 +28813,7 @@ alias_ctad_tweaks (tree tmpl, tree uguides)
+@@ -28760,7 +28838,7 @@ alias_ctad_tweaks (tree tmpl, tree uguides)
  	     guideness, and explicit-specifier.  */
  	  tree g = tsubst_decl (DECL_TEMPLATE_RESULT (f), targs, complain);
  	  if (g == error_mark_node)
@@ -17069,7 +17242,7 @@ index d329c0128ba..fb214e8f8c9 100644
  	  DECL_USE_TEMPLATE (g) = 0;
  	  fprime = build_template_decl (g, gtparms, false);
  	  DECL_TEMPLATE_RESULT (fprime) = g;
-@@ -28774,7 +28827,7 @@ alias_ctad_tweaks (tree tmpl, tree uguides)
+@@ -28774,7 +28852,7 @@ alias_ctad_tweaks (tree tmpl, tree uguides)
  	  if (ci)
  	    ci = tsubst_constraint_info (ci, targs, complain, in_decl);
  	  if (ci == error_mark_node)
@@ -17078,7 +17251,7 @@ index d329c0128ba..fb214e8f8c9 100644
  
  	  /* Add a constraint that the return type matches the instantiation of
  	     A with the same template arguments.  */
-@@ -28788,7 +28841,10 @@ alias_ctad_tweaks (tree tmpl, tree uguides)
+@@ -28788,7 +28866,10 @@ alias_ctad_tweaks (tree tmpl, tree uguides)
  	    }
  
  	  if (ci)
@@ -17109,10 +17282,20 @@ index 6eada2d3788..dd013f9d668 100644
      }
  }
 diff --git a/gcc/cp/semantics.c b/gcc/cp/semantics.c
-index 639b00264d8..315f8911500 100644
+index 639b00264d8..d846a1bd8f0 100644
 --- a/gcc/cp/semantics.c
 +++ b/gcc/cp/semantics.c
-@@ -2945,13 +2945,9 @@ finish_compound_literal (tree type, tree compound_literal,
+@@ -476,7 +476,8 @@ do_pushlevel (scope_kind sk)
+ 
+ /* Queue a cleanup.  CLEANUP is an expression/statement to be executed
+    when the current scope is exited.  EH_ONLY is true when this is not
+-   meant to apply to normal control flow transfer.  */
++   meant to apply to normal control flow transfer.  DECL is the VAR_DECL
++   being cleaned up, if any, or null for temporaries or subobjects.  */
+ 
+ void
+ push_cleanup (tree decl, tree cleanup, bool eh_only)
+@@ -2945,13 +2946,9 @@ finish_compound_literal (tree type, tree compound_literal,
      return error_mark_node;
    compound_literal = reshape_init (type, compound_literal, complain);
    if (SCALAR_TYPE_P (type)
@@ -17129,7 +17312,7 @@ index 639b00264d8..315f8911500 100644
    if (TREE_CODE (type) == ARRAY_TYPE
        && TYPE_DOMAIN (type) == NULL_TREE)
      {
-@@ -4497,6 +4493,17 @@ expand_or_defer_fn (tree fn)
+@@ -4497,6 +4494,17 @@ expand_or_defer_fn (tree fn)
        emit_associated_thunks (fn);
  
        function_depth--;
@@ -17147,7 +17330,7 @@ index 639b00264d8..315f8911500 100644
      }
  }
  
-@@ -5810,7 +5817,8 @@ finish_omp_reduction_clause (tree c, bool *need_default_ctor, bool *need_dtor)
+@@ -5810,7 +5818,8 @@ finish_omp_reduction_clause (tree c, bool *need_default_ctor, bool *need_dtor)
        if (!processing_template_decl)
  	{
  	  t = require_complete_type (t);
@@ -17157,7 +17340,7 @@ index 639b00264d8..315f8911500 100644
  	    return true;
  	  tree size = size_binop (EXACT_DIV_EXPR, TYPE_SIZE_UNIT (oatype),
  				  TYPE_SIZE_UNIT (type));
-@@ -5840,6 +5848,8 @@ finish_omp_reduction_clause (tree c, bool *need_default_ctor, bool *need_dtor)
+@@ -5840,6 +5849,8 @@ finish_omp_reduction_clause (tree c, bool *need_default_ctor, bool *need_dtor)
        case PLUS_EXPR:
        case MULT_EXPR:
        case MINUS_EXPR:
@@ -17166,7 +17349,7 @@ index 639b00264d8..315f8911500 100644
  	predefined = true;
  	break;
        case MIN_EXPR:
-@@ -5855,12 +5865,6 @@ finish_omp_reduction_clause (tree c, bool *need_default_ctor, bool *need_dtor)
+@@ -5855,12 +5866,6 @@ finish_omp_reduction_clause (tree c, bool *need_default_ctor, bool *need_dtor)
  	  break;
  	predefined = true;
  	break;
@@ -24376,10 +24559,45 @@ index 57c8a2516d9..c94c40e578a 100644
  
    if (repr)
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index 2913065bf31..06072f98436 100644
+index 2913065bf31..d3fada4dfe3 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,2920 @@
+@@ -1,3 +1,2955 @@
++2022-05-13  Jason Merrill  <jason@redhat.com>
++
++	PR c++/101078
++	* g++.dg/template/access39.C: New test.
++
++2022-05-13  Jason Merrill  <jason@redhat.com>
++
++	PR c++/65211
++	* g++.target/i386/vec-tmpl1.C: New test.
++
++2022-05-13  Jason Merrill  <jason@redhat.com>
++
++	PR c++/101698
++	* g++.dg/template/conv19.C: New test.
++
++2022-05-13  Jason Merrill  <jason@redhat.com>
++
++	PR c++/101442
++	* g++.dg/cpp0x/initlist-nrv1.C: New test.
++
++2022-05-13  Jason Merrill  <jason@redhat.com>
++
++	PR c++/99066
++	* g++.dg/cpp0x/extern_template-6.C: New test.
++
++2022-05-13  Jason Merrill  <jason@redhat.com>
++
++	PR c++/91241
++	* g++.dg/abi/lambda-defarg1.C: New test.
++
++2022-05-13  Jason Merrill  <jason@redhat.com>
++
++	PR c++/86355
++	* g++.dg/cpp0x/alias-decl-variadic2.C: New test.
++
 +2022-05-12  Jason Merrill  <jason@redhat.com>
 +
 +	Revert:
@@ -28106,6 +28324,23 @@ index 088ba994019..8200f4bb270 100644
  // { dg-final { scan-assembler-not "comdat" } }
  
  // Everything involving the anonymous namespace bits should be private, not
+diff --git a/gcc/testsuite/g++.dg/abi/lambda-defarg1.C b/gcc/testsuite/g++.dg/abi/lambda-defarg1.C
+new file mode 100644
+index 00000000000..8c538581240
+--- /dev/null
++++ b/gcc/testsuite/g++.dg/abi/lambda-defarg1.C
+@@ -0,0 +1,11 @@
++// PR c++/91241
++// { dg-do compile { target c++11 } }
++
++struct A {
++  int *b(const int & = []() -> int { return 0; }(),
++	 const int & = []() -> int { return 0; }());
++};
++int *A::b(const int &, const int &) { b(); return 0; }
++// { dg-final { scan-assembler "_ZN1A1bERKiS1_" } }
++// { dg-final { scan-assembler "_ZZN1A1bERKiS1_Ed_NKUlvE_clEv" } }
++// { dg-final { scan-assembler "_ZZN1A1bERKiS1_Ed0_NKUlvE_clEv" } }
 diff --git a/gcc/testsuite/g++.dg/asan/pr104449.C b/gcc/testsuite/g++.dg/asan/pr104449.C
 new file mode 100644
 index 00000000000..166ed8ddb91
@@ -28307,6 +28542,25 @@ index 00000000000..ae27c43bc0a
 +
 +using T = X<Y>;
 +using T = X<Z>;			// { dg-error "conflicting declaration" }
+diff --git a/gcc/testsuite/g++.dg/cpp0x/alias-decl-variadic2.C b/gcc/testsuite/g++.dg/cpp0x/alias-decl-variadic2.C
+new file mode 100644
+index 00000000000..4299c7e88dc
+--- /dev/null
++++ b/gcc/testsuite/g++.dg/cpp0x/alias-decl-variadic2.C
+@@ -0,0 +1,13 @@
++// PR c++/86355
++// { dg-do compile { target c++11 } }
++
++template <int...> struct integral_constant {
++  static const int value = 1;
++};
++template <class... T> using mp_all = integral_constant<T::value...>;
++template <class... T> using check2 = mp_all<mp_all<T..., integral_constant<0>>>;
++check2<> x;
++
++template <class T, class U> struct assert_same;
++template <class T> struct assert_same<T,T> { };
++assert_same<decltype(x),integral_constant<1>> a;
 diff --git a/gcc/testsuite/g++.dg/cpp0x/constexpr-100111.C b/gcc/testsuite/g++.dg/cpp0x/constexpr-100111.C
 new file mode 100644
 index 00000000000..446d21d03c5
@@ -28552,6 +28806,29 @@ index 00000000000..5c1e865e0ac
 +  A a;
 +  a.f();
 +}
+diff --git a/gcc/testsuite/g++.dg/cpp0x/extern_template-6.C b/gcc/testsuite/g++.dg/cpp0x/extern_template-6.C
+new file mode 100644
+index 00000000000..8aff3ae6b02
+--- /dev/null
++++ b/gcc/testsuite/g++.dg/cpp0x/extern_template-6.C
+@@ -0,0 +1,17 @@
++// PR c++/99066
++// { dg-do compile { target c++11 } }
++
++template <typename a> struct basic_string {
++  static const int npos = 1;
++};
++template <typename a> const int basic_string<a>::npos;
++
++struct e { template <bool> int f() const; };
++
++template <bool> int e::f() const {
++  return basic_string<char>::npos;
++}
++
++extern template class basic_string<char>;
++
++// { dg-final { scan-assembler-not "_ZN12basic_stringIcE4nposE" } }
 diff --git a/gcc/testsuite/g++.dg/cpp0x/initlist-new5.C b/gcc/testsuite/g++.dg/cpp0x/initlist-new5.C
 new file mode 100644
 index 00000000000..da54d8981d4
@@ -28611,6 +28888,46 @@ index 00000000000..0ef27806acf
 +  if (c != 0)
 +    __builtin_abort ();
 +  return 0;
++}
+diff --git a/gcc/testsuite/g++.dg/cpp0x/initlist-nrv1.C b/gcc/testsuite/g++.dg/cpp0x/initlist-nrv1.C
+new file mode 100644
+index 00000000000..e44dbecfece
+--- /dev/null
++++ b/gcc/testsuite/g++.dg/cpp0x/initlist-nrv1.C
+@@ -0,0 +1,34 @@
++// PR c++/101442
++// { dg-do run { target c++11 } }
++
++bool destroyed = false;
++
++struct A
++{
++  A() {}
++  A(const A &) = delete;
++  A &operator=(const A &) = delete;
++  ~A() {destroyed = true;}
++};
++
++struct B
++{
++  const A &a;
++  struct string {
++    string(const char*) { }
++    ~string() { }
++  } s;
++};
++
++B foo()
++{
++  B ret{ A{}, "" };
++  return ret;
++}
++
++int main()
++{
++  B b = foo();
++  if (!destroyed)
++    __builtin_abort();
 +}
 diff --git a/gcc/testsuite/g++.dg/cpp0x/lambda/lambda-current-inst1.C b/gcc/testsuite/g++.dg/cpp0x/lambda/lambda-current-inst1.C
 new file mode 100644
@@ -30932,6 +31249,69 @@ index 00000000000..559e6019163
 +struct S {};
 +int main() { S s; s.__d; }	// { dg-bogus "'struct S' has no member named '__d'; did you mean '__\[a-z]* '" }
 +				// { dg-error "'struct S' has no member named '__d'" "" { target *-*-* } .-1 }
+diff --git a/gcc/testsuite/g++.dg/template/access39.C b/gcc/testsuite/g++.dg/template/access39.C
+new file mode 100644
+index 00000000000..d941555577e
+--- /dev/null
++++ b/gcc/testsuite/g++.dg/template/access39.C
+@@ -0,0 +1,17 @@
++// PR c++/101078
++
++struct A {
++  static void f();
++};
++
++template<class>
++struct B : private A {
++  struct C {
++    void g() { f(); }
++    void g2() { B::f(); }
++  };
++};
++
++int main() {
++  B<int>::C().g();
++}
+diff --git a/gcc/testsuite/g++.dg/template/conv19.C b/gcc/testsuite/g++.dg/template/conv19.C
+new file mode 100644
+index 00000000000..7a3da939c1f
+--- /dev/null
++++ b/gcc/testsuite/g++.dg/template/conv19.C
+@@ -0,0 +1,34 @@
++// PR c++/101698
++// { dg-do compile { target c++11 } }
++
++class Base {
++ public:
++  template <class T>
++  operator const T&() const = delete;
++
++  virtual operator const int&() const {
++    static int res;
++    return res;
++  }
++};
++
++template <class T>
++class Derive : public Base {
++ public:
++  operator const T&() const override {
++    using Y = int;
++    //static_assert(__is_same_as(T,Y), "");
++
++    static int res;
++
++    res = Base::operator const Y&(); // OK
++    res = Base::operator const T&(); // { dg-bogus "deleted" }
++    return res;
++  }
++};
++
++int main() {
++  Derive<int> a;
++  const int& b = a;
++  (void)b;
++}
 diff --git a/gcc/testsuite/g++.dg/template/friend70.C b/gcc/testsuite/g++.dg/template/friend70.C
 new file mode 100644
 index 00000000000..54965486f79
@@ -31275,6 +31655,29 @@ index 00000000000..e1238c3f904
 +foo (void)
 +{
 +  return strftime;
++}
+diff --git a/gcc/testsuite/g++.target/i386/vec-tmpl1.C b/gcc/testsuite/g++.target/i386/vec-tmpl1.C
+new file mode 100644
+index 00000000000..e0865e3515b
+--- /dev/null
++++ b/gcc/testsuite/g++.target/i386/vec-tmpl1.C
+@@ -0,0 +1,17 @@
++// PR c++/65211
++// { dg-additional-options "-Wno-psabi" }
++// { dg-final { scan-assembler-not "movdqa" } }
++
++typedef unsigned v4ui __attribute__ ((vector_size(16), aligned (16)));
++
++template<int I>
++static v4ui t1(unsigned *dest_data)
++{
++  typedef unsigned v4ui_1 __attribute__ ((vector_size (16), aligned (4)));
++  return ((const v4ui_1*)dest_data)[0];
++}
++
++v4ui f(unsigned int *array)
++{
++    return t1<1>(array+7);
 +}
 diff --git a/gcc/testsuite/g++.target/powerpc/pr99842.C b/gcc/testsuite/g++.target/powerpc/pr99842.C
 new file mode 100644
