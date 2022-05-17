@@ -93,7 +93,8 @@ François Dumont (3):
 Fritz Reese (1):
       fortran: Fix conv of UNION constructors [PR105310]
 
-GCC Administrator (397):
+GCC Administrator (398):
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -4302,10 +4303,19 @@ index 0719d810258..a9368325816 100644
 -10.3.0
 +10.3.1
 diff --git a/gcc/ChangeLog b/gcc/ChangeLog
-index 3b1384e707f..a24d0a87999 100644
+index 3b1384e707f..5d24384d6cb 100644
 --- a/gcc/ChangeLog
 +++ b/gcc/ChangeLog
-@@ -1,3 +1,2524 @@
+@@ -1,3 +1,2533 @@
++2022-05-16  Sebastian Pop  <spop@amazon.com>
++
++	PR target/105162
++	* config/aarch64/aarch64-protos.h (atomic_ool_names): Increase dimension
++	of str array.
++	* config/aarch64/aarch64.c (aarch64_atomic_ool_func): Call
++	memmodel_from_int and handle MEMMODEL_SYNC_*.
++	(DEF0): Add __aarch64_*_sync functions.
++
 +2022-05-10  Jakub Jelinek  <jakub@redhat.com>
 +
 +	Backported from master:
@@ -19357,10 +19367,39 @@ index 6e635382fb4..94f92e63893 100644
  	    return build_zero_cst (TREE_TYPE (TREE_TYPE (arg)));
  	  return CONSTRUCTOR_ELT (arg, i)->value;
 diff --git a/gcc/fortran/ChangeLog b/gcc/fortran/ChangeLog
-index aa5932be872..489ae28fdb6 100644
+index aa5932be872..460f3281b63 100644
 --- a/gcc/fortran/ChangeLog
 +++ b/gcc/fortran/ChangeLog
-@@ -1,3 +1,740 @@
+@@ -1,3 +1,769 @@
++2022-05-16  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2022-05-11  Harald Anlauf  <anlauf@gmx.de>
++		    Steven G. Kargl  <kargl@gcc.gnu.org>
++
++	PR fortran/105230
++	* expr.c (find_array_section): Correct logic to avoid NULL
++	pointer dereference on invalid array section.
++
++2022-05-16  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2022-03-09  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/104849
++	* expr.c (find_array_section): Avoid NULL pointer dereference on
++	invalid array section.
++
++2022-05-16  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2022-04-05  Harald Anlauf  <anlauf@gmx.de>
++		    Steven G. Kargl  <kargl@gcc.gnu.org>
++
++	PR fortran/105138
++	* intrinsic.c (gfc_is_intrinsic): When a symbol refers to a
++	RECURSIVE procedure, it cannot be an INTRINSIC.
++
 +2022-05-10  Jakub Jelinek  <jakub@redhat.com>
 +
 +	Backported from master:
@@ -24638,10 +24677,45 @@ index 57c8a2516d9..c94c40e578a 100644
  
    if (repr)
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index 2913065bf31..d3fada4dfe3 100644
+index 2913065bf31..8500f641cee 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,2955 @@
+@@ -1,3 +1,2990 @@
++2022-05-16  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2022-05-11  Harald Anlauf  <anlauf@gmx.de>
++		    Steven G. Kargl  <kargl@gcc.gnu.org>
++
++	PR fortran/105230
++	* gfortran.dg/pr105230.f90: New test.
++
++2022-05-16  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2022-03-09  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/104849
++	* gfortran.dg/pr104849.f90: New test.
++
++2022-05-16  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2022-04-05  Harald Anlauf  <anlauf@gmx.de>
++		    Steven G. Kargl  <kargl@gcc.gnu.org>
++
++	PR fortran/105138
++	* gfortran.dg/recursive_reference_3.f90: New test.
++
++2022-05-16  Sebastian Pop  <spop@amazon.com>
++
++	PR target/105162
++	* gcc.target/aarch64/sync-comp-swap-ool.c: New.
++	* gcc.target/aarch64/sync-op-acquire-ool.c: New.
++	* gcc.target/aarch64/sync-op-full-ool.c: New.
++	* gcc.target/aarch64/target_attr_20.c: Update check.
++	* gcc.target/aarch64/target_attr_21.c: Same.
++
 +2022-05-13  Jason Merrill  <jason@redhat.com>
 +
 +	PR c++/101078
@@ -44772,10 +44846,16 @@ index 00000000000..6f3d7369f27
 +  exit(0);
 +}
 diff --git a/libgcc/ChangeLog b/libgcc/ChangeLog
-index 1f9de3d5091..27c3013d7e6 100644
+index 1f9de3d5091..dcaf7ec62fc 100644
 --- a/libgcc/ChangeLog
 +++ b/libgcc/ChangeLog
-@@ -1,3 +1,84 @@
+@@ -1,3 +1,90 @@
++2022-05-16  Sebastian Pop  <spop@amazon.com>
++
++	PR target/105162
++	* config/aarch64/lse.S: Define BARRIER and handle memory MODEL 5.
++	* config/aarch64/t-lse: Add a 5th memory model for _sync functions.
++
 +2022-02-13  Alan Modra  <amodra@gmail.com>
 +
 +	Backported from master:
@@ -49802,10 +49882,28 @@ index 304b3a01a08..44359b3d1ac 100644
    UnmapOrDie(oldstack.ss_sp, oldstack.ss_size);
  }
 diff --git a/libstdc++-v3/ChangeLog b/libstdc++-v3/ChangeLog
-index fdd63cbff1a..21efdfd615b 100644
+index fdd63cbff1a..8164addae87 100644
 --- a/libstdc++-v3/ChangeLog
 +++ b/libstdc++-v3/ChangeLog
-@@ -1,3 +1,1901 @@
+@@ -1,3 +1,1919 @@
++2022-05-16  Jonathan Wakely  <jwakely@redhat.com>
++
++	Backported from master:
++	2022-05-16  Jonathan Wakely  <jwakely@redhat.com>
++
++	* doc/xml/manual/prerequisites.xml: Fix attributes for external
++	hyperlink.
++	* doc/html/manual/setup.html: Regenerate.
++
++2022-05-16  Jonathan Wakely  <jwakely@redhat.com>
++
++	Backported from master:
++	2022-05-16  Jonathan Wakely  <jwakely@redhat.com>
++
++	* doc/html/manual/status.html: Regenerate.
++	* doc/xml/manual/status_cxx2020.xml: Fix supported version for
++	C++20 bit operations.
++
 +2022-05-09  Jonathan Wakely  <jwakely@redhat.com>
 +
 +	Backported from master:
