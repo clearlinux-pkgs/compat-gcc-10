@@ -93,7 +93,8 @@ François Dumont (3):
 Fritz Reese (1):
       fortran: Fix conv of UNION constructors [PR105310]
 
-GCC Administrator (404):
+GCC Administrator (405):
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -4312,10 +4313,21 @@ index 0719d810258..a9368325816 100644
 -10.3.0
 +10.3.1
 diff --git a/gcc/ChangeLog b/gcc/ChangeLog
-index 3b1384e707f..5d24384d6cb 100644
+index 3b1384e707f..3cfad808c06 100644
 --- a/gcc/ChangeLog
 +++ b/gcc/ChangeLog
-@@ -1,3 +1,2533 @@
+@@ -1,3 +1,2544 @@
++2022-05-23  Paul A. Clarke  <pc@us.ibm.com>
++
++	PR target/104257
++	* config/rs6000/bmi2intrin.h: Uglify local variables.
++	* config/rs6000/emmintrin.h: Likewise.
++	* config/rs6000/mm_malloc.h: Likewise.
++	* config/rs6000/mmintrin.h: Likewise.
++	* config/rs6000/pmmintrin.h: Likewise.
++	* config/rs6000/tmmintrin.h: Likewise.
++	* config/rs6000/xmmintrin.h: Likewise.
++
 +2022-05-16  Sebastian Pop  <spop@amazon.com>
 +
 +	PR target/105162
