@@ -93,7 +93,8 @@ François Dumont (3):
 Fritz Reese (1):
       fortran: Fix conv of UNION constructors [PR105310]
 
-GCC Administrator (405):
+GCC Administrator (406):
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -736,7 +737,7 @@ Jakub Jelinek (122):
 Jan Hubicka (1):
       Fix looping flag discovery in ipa-pure-const
 
-Jason Merrill (42):
+Jason Merrill (44):
       c++: lambda pack init-capture within generic lambda
       c++: NRV in lambda in template [PR91217]
       c++: PMF template parm and noexcept [PR90664]
@@ -779,6 +780,8 @@ Jason Merrill (42):
       c++: template conversion op [PR101698]
       c++: alignment of local typedef in template [PR65211]
       c++: static memfn from non-dependent base [PR101078]
+      Revert "c++: pack init-capture of unresolved overload [PR102629]"
+      c++: constexpr ref to array of array [PR102307]
 
 Jeff Law (1):
       [committed] Fix more problems with new linker warnings
@@ -20763,7 +20766,7 @@ index 9f9f6b658ad..0e11f060c53 100644
      return comp_ptr_ttypes (TREE_TYPE (type), TREE_TYPE (expr_type));
    else if (TYPE_PTRMEM_P (type) && TYPE_PTRMEM_P (expr_type))
 diff --git a/gcc/cp/decl.c b/gcc/cp/decl.c
-index 4293ee6238f..6089cd7e52d 100644
+index 4293ee6238f..38003a5a70f 100644
 --- a/gcc/cp/decl.c
 +++ b/gcc/cp/decl.c
 @@ -5447,7 +5447,7 @@ start_decl (const cp_declarator *declarator,
@@ -20814,7 +20817,32 @@ index 4293ee6238f..6089cd7e52d 100644
  	}
      }
  }
-@@ -6904,6 +6936,10 @@ check_initializer (tree decl, tree init, int flags, vec<tree, va_gc> **cleanups)
+@@ -6844,12 +6876,19 @@ check_initializer (tree decl, tree init, int flags, vec<tree, va_gc> **cleanups)
+ 	      /* Declared constexpr or constinit, but no suitable initializer;
+ 		 massage init appropriately so we can pass it into
+ 		 store_init_value for the error.  */
+-	      if (CLASS_TYPE_P (type)
+-		  && (!init || TREE_CODE (init) == TREE_LIST))
++	      tree new_init = NULL_TREE;
++	      if (!processing_template_decl
++		  && TREE_CODE (init_code) == CALL_EXPR)
++		new_init = build_cplus_new (type, init_code, tf_none);
++	      else if (CLASS_TYPE_P (type)
++		       && (!init || TREE_CODE (init) == TREE_LIST))
++		new_init = build_functional_cast (input_location, type,
++						  init, tf_none);
++	      if (new_init)
+ 		{
+-		  init = build_functional_cast (input_location, type,
+-						init, tf_none);
+-		  if (TREE_CODE (init) == TARGET_EXPR)
++		  init = new_init;
++		  if (TREE_CODE (init) == TARGET_EXPR
++		      && !(flags & LOOKUP_ONLYCONVERTING))
+ 		    TARGET_EXPR_DIRECT_INIT_P (init) = true;
+ 		}
+ 	      init_code = NULL_TREE;
+@@ -6904,6 +6943,10 @@ check_initializer (tree decl, tree init, int flags, vec<tree, va_gc> **cleanups)
    if (init && init != error_mark_node)
      init_code = build2 (INIT_EXPR, type, decl, init);
  
@@ -20825,7 +20853,7 @@ index 4293ee6238f..6089cd7e52d 100644
    if (init_code)
      {
        /* We might have set these in cp_finish_decl.  */
-@@ -7489,10 +7525,13 @@ cp_finish_decl (tree decl, tree init, bool init_const_expr_p,
+@@ -7489,10 +7532,13 @@ cp_finish_decl (tree decl, tree init, bool init_const_expr_p,
    if (asmspec_tree && asmspec_tree != error_mark_node)
      asmspec = TREE_STRING_POINTER (asmspec_tree);
  
@@ -20843,7 +20871,7 @@ index 4293ee6238f..6089cd7e52d 100644
        && (DECL_INITIAL (decl) || init))
      DECL_INITIALIZED_IN_CLASS_P (decl) = 1;
  
-@@ -7863,6 +7902,13 @@ cp_finish_decl (tree decl, tree init, bool init_const_expr_p,
+@@ -7863,6 +7909,13 @@ cp_finish_decl (tree decl, tree init, bool init_const_expr_p,
  	  if (!flag_weak)
  	    /* Check again now that we have an initializer.  */
  	    maybe_commonize_var (decl);
@@ -20857,7 +20885,7 @@ index 4293ee6238f..6089cd7e52d 100644
  	}
  
        if (var_definition_p
-@@ -7947,7 +7993,7 @@ cp_finish_decl (tree decl, tree init, bool init_const_expr_p,
+@@ -7947,7 +8000,7 @@ cp_finish_decl (tree decl, tree init, bool init_const_expr_p,
      {
        unsigned i; tree t;
        FOR_EACH_VEC_ELT (*cleanups, i, t)
@@ -21441,7 +21469,7 @@ index 1f4a28ff7c0..4c36cbeeb48 100644
    if (concept_name == error_mark_node
        || (seen_error () && !concept_definition_p (tmpl_decl)))
 diff --git a/gcc/cp/pt.c b/gcc/cp/pt.c
-index d329c0128ba..ab41af4aaca 100644
+index d329c0128ba..0a52f0993ab 100644
 --- a/gcc/cp/pt.c
 +++ b/gcc/cp/pt.c
 @@ -63,7 +63,6 @@ static GTY(()) struct pending_template *last_pending_template;
@@ -21539,22 +21567,7 @@ index d329c0128ba..ab41af4aaca 100644
      }
    return false;
  }
-@@ -12418,7 +12438,13 @@ gen_elem_of_pack_expansion_instantiation (tree pattern,
-     t = tsubst_expr (pattern, args, complain, in_decl,
- 		     /*integral_constant_expression_p=*/false);
-   else
--    t = tsubst (pattern, args, complain, in_decl);
-+    {
-+      t = tsubst (pattern, args, complain, in_decl);
-+      if (is_auto (t) && !ith_elem_is_expansion)
-+	/* When expanding the fake auto... pack expansion from add_capture, we
-+	   need to mark that the expansion is no longer a pack.  */
-+	TEMPLATE_TYPE_PARAMETER_PACK (t) = false;
-+    }
- 
-   /*  If the Ith argument pack element is a pack expansion, then
-       the Ith element resulting from the substituting is going to
-@@ -12663,7 +12689,11 @@ tsubst_binary_right_fold (tree t, tree args, tsubst_flags_t complain,
+@@ -12663,7 +12683,11 @@ tsubst_binary_right_fold (tree t, tree args, tsubst_flags_t complain,
  class el_data
  {
  public:
@@ -21566,7 +21579,7 @@ index d329c0128ba..ab41af4aaca 100644
    tree extra;
    tsubst_flags_t complain;
  
-@@ -12682,7 +12712,36 @@ extract_locals_r (tree *tp, int */*walk_subtrees*/, void *data_)
+@@ -12682,7 +12706,36 @@ extract_locals_r (tree *tp, int */*walk_subtrees*/, void *data_)
      tp = &TYPE_NAME (*tp);
  
    if (TREE_CODE (*tp) == DECL_EXPR)
@@ -21604,7 +21617,7 @@ index d329c0128ba..ab41af4aaca 100644
    else if (tree spec = retrieve_local_specialization (*tp))
      {
        if (data.internal.contains (*tp))
-@@ -12739,7 +12798,7 @@ static tree
+@@ -12739,7 +12792,7 @@ static tree
  extract_local_specs (tree pattern, tsubst_flags_t complain)
  {
    el_data data (complain);
@@ -21613,7 +21626,7 @@ index d329c0128ba..ab41af4aaca 100644
    return data.extra;
  }
  
-@@ -13020,12 +13079,23 @@ tsubst_pack_expansion (tree t, tree args, tsubst_flags_t complain,
+@@ -13020,12 +13073,23 @@ tsubst_pack_expansion (tree t, tree args, tsubst_flags_t complain,
  	 pattern and return a PACK_EXPANSION_*. The caller will need to
  	 deal with that.  */
        if (TREE_CODE (t) == EXPR_PACK_EXPANSION)
@@ -21641,7 +21654,7 @@ index d329c0128ba..ab41af4aaca 100644
      }
  
    gcc_assert (len >= 0);
-@@ -13750,45 +13820,6 @@ tsubst_function_decl (tree t, tree args, tsubst_flags_t complain,
+@@ -13750,45 +13814,6 @@ tsubst_function_decl (tree t, tree args, tsubst_flags_t complain,
  	  if (tree spec = retrieve_specialization (gen_tmpl, argvec, hash))
  	    return spec;
  	}
@@ -21687,7 +21700,7 @@ index d329c0128ba..ab41af4aaca 100644
      }
    else
      {
-@@ -14216,6 +14247,19 @@ enclosing_instantiation_of (tree otctx)
+@@ -14216,6 +14241,19 @@ enclosing_instantiation_of (tree otctx)
  		  || instantiated_lambda_fn_p (tctx));
         tctx = decl_function_context (tctx))
      ++lambda_count;
@@ -21707,7 +21720,7 @@ index d329c0128ba..ab41af4aaca 100644
    for (; fn; fn = decl_function_context (fn))
      {
        tree ofn = fn;
-@@ -14776,6 +14820,13 @@ tsubst_decl (tree t, tree args, tsubst_flags_t complain)
+@@ -14776,6 +14814,13 @@ tsubst_decl (tree t, tree args, tsubst_flags_t complain)
  	  {
  	    DECL_ORIGINAL_TYPE (r) = NULL_TREE;
  	    set_underlying_type (r);
@@ -21721,7 +21734,7 @@ index d329c0128ba..ab41af4aaca 100644
  	    if (TYPE_DECL_ALIAS_P (r))
  	      /* An alias template specialization can be dependent
  		 even if its underlying type is not.  */
-@@ -15486,6 +15537,8 @@ tsubst (tree t, tree args, tsubst_flags_t complain, tree in_decl)
+@@ -15486,6 +15531,8 @@ tsubst (tree t, tree args, tsubst_flags_t complain, tree in_decl)
  		    else if (tree pl = CLASS_PLACEHOLDER_TEMPLATE (t))
  		      {
  			pl = tsubst_copy (pl, args, complain, in_decl);
@@ -21730,7 +21743,7 @@ index d329c0128ba..ab41af4aaca 100644
  			CLASS_PLACEHOLDER_TEMPLATE (r) = pl;
  		      }
  		  }
-@@ -16093,7 +16146,8 @@ tsubst_baselink (tree baselink, tree object_type,
+@@ -16093,7 +16140,8 @@ tsubst_baselink (tree baselink, tree object_type,
  
    tree binfo_type = BINFO_TYPE (BASELINK_BINFO (baselink));
    binfo_type = tsubst (binfo_type, args, complain, in_decl);
@@ -21740,7 +21753,7 @@ index d329c0128ba..ab41af4aaca 100644
  
    if (dependent_p)
      {
-@@ -16119,8 +16173,19 @@ tsubst_baselink (tree baselink, tree object_type,
+@@ -16119,8 +16167,19 @@ tsubst_baselink (tree baselink, tree object_type,
  	fns = BASELINK_FUNCTIONS (baselink);
      }
    else
@@ -21762,7 +21775,7 @@ index d329c0128ba..ab41af4aaca 100644
  
    /* If lookup found a single function, mark it as used at this point.
       (If lookup found multiple functions the one selected later by
-@@ -19223,8 +19288,13 @@ tsubst_lambda_expr (tree t, tree args, tsubst_flags_t complain, tree in_decl)
+@@ -19223,8 +19282,13 @@ tsubst_lambda_expr (tree t, tree args, tsubst_flags_t complain, tree in_decl)
  	 the purposes of template argument deduction. */
        complain = tf_warning_or_error;
  
@@ -21778,7 +21791,7 @@ index d329c0128ba..ab41af4aaca 100644
  
        finish_lambda_function (body);
  
-@@ -21670,8 +21740,10 @@ static bool uses_deducible_template_parms (tree type);
+@@ -21670,8 +21734,10 @@ static bool uses_deducible_template_parms (tree type);
  static bool
  deducible_expression (tree expr)
  {
@@ -21791,7 +21804,7 @@ index d329c0128ba..ab41af4aaca 100644
      expr = TREE_OPERAND (expr, 0);
    return (TREE_CODE (expr) == TEMPLATE_PARM_INDEX);
  }
-@@ -23988,7 +24060,10 @@ mark_decl_instantiated (tree result, int extern_p)
+@@ -23988,7 +24054,10 @@ mark_decl_instantiated (tree result, int extern_p)
    DECL_COMDAT (result) = 0;
  
    if (extern_p)
@@ -21803,7 +21816,7 @@ index d329c0128ba..ab41af4aaca 100644
    else
      {
        mark_definable (result);
-@@ -27964,7 +28039,9 @@ make_constrained_placeholder_type (tree type, tree con, tree args)
+@@ -27964,7 +28033,9 @@ make_constrained_placeholder_type (tree type, tree con, tree args)
    tree expr = tmpl;
    if (TREE_CODE (con) == FUNCTION_DECL)
      expr = ovl_make (tmpl);
@@ -21813,7 +21826,7 @@ index d329c0128ba..ab41af4aaca 100644
  
    PLACEHOLDER_TYPE_CONSTRAINTS (type) = expr;
  
-@@ -28727,7 +28804,8 @@ alias_ctad_tweaks (tree tmpl, tree uguides)
+@@ -28727,7 +28798,8 @@ alias_ctad_tweaks (tree tmpl, tree uguides)
  	  unsigned len = TREE_VEC_LENGTH (ftparms);
  	  tree targs = make_tree_vec (len);
  	  int err = unify (ftparms, targs, ret, utype, UNIFY_ALLOW_NONE, false);
@@ -21823,7 +21836,7 @@ index d329c0128ba..ab41af4aaca 100644
  
  	  /* The number of parms for f' is the number of parms for A plus
  	     non-deduced parms of f.  */
-@@ -28760,7 +28838,7 @@ alias_ctad_tweaks (tree tmpl, tree uguides)
+@@ -28760,7 +28832,7 @@ alias_ctad_tweaks (tree tmpl, tree uguides)
  	     guideness, and explicit-specifier.  */
  	  tree g = tsubst_decl (DECL_TEMPLATE_RESULT (f), targs, complain);
  	  if (g == error_mark_node)
@@ -21832,7 +21845,7 @@ index d329c0128ba..ab41af4aaca 100644
  	  DECL_USE_TEMPLATE (g) = 0;
  	  fprime = build_template_decl (g, gtparms, false);
  	  DECL_TEMPLATE_RESULT (fprime) = g;
-@@ -28774,7 +28852,7 @@ alias_ctad_tweaks (tree tmpl, tree uguides)
+@@ -28774,7 +28846,7 @@ alias_ctad_tweaks (tree tmpl, tree uguides)
  	  if (ci)
  	    ci = tsubst_constraint_info (ci, targs, complain, in_decl);
  	  if (ci == error_mark_node)
@@ -21841,7 +21854,7 @@ index d329c0128ba..ab41af4aaca 100644
  
  	  /* Add a constraint that the return type matches the instantiation of
  	     A with the same template arguments.  */
-@@ -28788,7 +28866,10 @@ alias_ctad_tweaks (tree tmpl, tree uguides)
+@@ -28788,7 +28860,10 @@ alias_ctad_tweaks (tree tmpl, tree uguides)
  	    }
  
  	  if (ci)
@@ -34110,6 +34123,24 @@ index 00000000000..0b22f8eb982
 +constexpr int a = 1;
 +constexpr Bar<a> bar;
 +Foo foo = bar.foo(); // <-- CTAD failure
+diff --git a/gcc/testsuite/g++.dg/cpp1z/constexpr-array2.C b/gcc/testsuite/g++.dg/cpp1z/constexpr-array2.C
+new file mode 100644
+index 00000000000..c30e3f2361d
+--- /dev/null
++++ b/gcc/testsuite/g++.dg/cpp1z/constexpr-array2.C
+@@ -0,0 +1,12 @@
++// PR c++/102307
++// { dg-do compile { target c++11 } }
++
++#include <array>
++template <unsigned N, unsigned M> struct Matrix {
++  constexpr Matrix(double const (&arr)[N][M]); // { dg-warning "never defined" }
++  constexpr Matrix(std::array<std::array<double, M>, N> const &arr);
++};
++int main() {
++  constexpr Matrix<2, 3>
++    mat {{ {1.0, 2.0, 3.0}, {4.0, 5.0, 6.0} }}; // { dg-error "before its definition" }
++}
 diff --git a/gcc/testsuite/g++.dg/cpp1z/constexpr-if-lambda4.C b/gcc/testsuite/g++.dg/cpp1z/constexpr-if-lambda4.C
 new file mode 100644
 index 00000000000..99408025629
@@ -34901,30 +34932,6 @@ index 00000000000..3ee500ed999
 +
 +int main() {
 +  return fwd1() + fwd2(1);
-+}
-diff --git a/gcc/testsuite/g++.dg/cpp2a/lambda-pack-init7.C b/gcc/testsuite/g++.dg/cpp2a/lambda-pack-init7.C
-new file mode 100644
-index 00000000000..f3c3899e97a
---- /dev/null
-+++ b/gcc/testsuite/g++.dg/cpp2a/lambda-pack-init7.C
-@@ -0,0 +1,18 @@
-+// PR c++/102629
-+// { dg-do compile { target c++20 } }
-+
-+template <class T> T&& forward(T&);
-+template <class T> T&& forward(T&&);
-+
-+struct S {};
-+
-+template <typename... Args>
-+void foo(Args&&... args) {
-+  [...args = forward<Args> /*(args)*/] { // { dg-error "" }
-+    [](auto...) { } (forward<Args>(args)...);
-+  };
-+}
-+
-+void bar( ) {
-+  foo(S{});
 +}
 diff --git a/gcc/testsuite/g++.dg/cpp2a/pr99833.C b/gcc/testsuite/g++.dg/cpp2a/pr99833.C
 new file mode 100644
