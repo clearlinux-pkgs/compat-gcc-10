@@ -93,7 +93,8 @@ François Dumont (3):
 Fritz Reese (1):
       fortran: Fix conv of UNION constructors [PR105310]
 
-GCC Administrator (406):
+GCC Administrator (407):
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -18821,10 +18822,25 @@ index 38820bc170f..2747f8f1b4c 100644
    gcov_write_unsigned (end_column);
    gcov_write_length (offset);
 diff --git a/gcc/cp/ChangeLog b/gcc/cp/ChangeLog
-index b576f9a3678..a5393fab0fe 100644
+index b576f9a3678..44161614968 100644
 --- a/gcc/cp/ChangeLog
 +++ b/gcc/cp/ChangeLog
-@@ -1,3 +1,790 @@
+@@ -1,3 +1,805 @@
++2022-05-25  Jason Merrill  <jason@redhat.com>
++
++	PR c++/102307
++	* decl.c (check_initializer): Use build_cplus_new in case of
++	constexpr failure.
++
++2022-05-25  Jason Merrill  <jason@redhat.com>
++
++	Revert:
++	2022-05-12  Jason Merrill  <jason@redhat.com>
++
++	PR c++/102629
++	* pt.c (gen_elem_of_pack_expansion_instantiation): Clear
++	TEMPLATE_TYPE_PARAMETER_PACK on auto.
++
 +2022-05-13  Jason Merrill  <jason@redhat.com>
 +
 +	PR c++/101078
@@ -29210,10 +29226,23 @@ index 57c8a2516d9..c94c40e578a 100644
  
    if (repr)
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index 2913065bf31..8500f641cee 100644
+index 2913065bf31..0cd405bc382 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,2990 @@
+@@ -1,3 +1,3003 @@
++2022-05-25  Jason Merrill  <jason@redhat.com>
++
++	PR c++/102307
++	* g++.dg/cpp1z/constexpr-array2.C: New test.
++
++2022-05-25  Jason Merrill  <jason@redhat.com>
++
++	Revert:
++	2022-05-25  Jason Merrill  <jason@redhat.com>
++
++	PR c++/102629
++	* g++.dg/cpp2a/lambda-pack-init7.C: New test.
++
 +2022-05-16  Harald Anlauf  <anlauf@gmx.de>
 +
 +	Backported from master:
