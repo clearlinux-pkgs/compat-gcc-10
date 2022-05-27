@@ -19,6 +19,9 @@ Alexandre Oliva (1):
 Andre Vieira (1):
       arm: Fix testisms introduced with fix for pr target/95646
 
+Andreas Krebbel (1):
+      IBM zSystems/testsuite: PR105147: Skip pr105140.c
+
 Andreas Larsson (1):
       sparc: Print out bit names for LEON and LEON3 with -mdebug
 
@@ -93,7 +96,8 @@ François Dumont (3):
 Fritz Reese (1):
       fortran: Fix conv of UNION constructors [PR105310]
 
-GCC Administrator (407):
+GCC Administrator (408):
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -923,13 +927,14 @@ Jonathan Wakely (124):
 José Rui Faustino de Sousa (1):
       Fortran: Fix double function call with -fcheck=pointer [PR]
 
-Kewen Lin (6):
+Kewen Lin (7):
       ipa-fnsummary: Remove inconsistent bp_pack_value
       vect: Don't update inits for simd_lane_access DRs [PR102789]
       rs6000/doc: Rename future cpu with power10
       rs6000: Remove builtin mask check from builtin_decl [PR102347]
       rs6000: Disable MMA if no VSX support [PR103627]
       rs6000: Move the hunk affecting VSX/ALTIVEC ahead [PR103627]
+      testsuite: Skip pr105250.c for powerpc and s390 [PR105266]
 
 Maciej W. Rozycki (1):
       RISC-V: Add target machine headers as a dependency for riscv-sr.o
@@ -1073,7 +1078,7 @@ Philippe Blain (1):
 Piotr Kubaj (1):
       gcc/configure: Check for powerpc64le*-*-freebsd*
 
-Richard Biener (53):
+Richard Biener (60):
       Increment BASE-VER after release
       testsuite/100176 - fix struct-layout-1_generate.c compile
       middle-end/98726 - fix VECTOR_CST element access
@@ -1127,6 +1132,13 @@ Richard Biener (53):
       middle-end/100786 - constant folding from incompatible alias
       middle-end/104402 - split out _Complex compares from COND_EXPRs
       tree-optimization/105198 - wrong code with predictive commoning
+      rtl-optimization/105559 - avoid quadratic behavior in delete_insn_and_edges
+      tree-optimization/105368 - avoid overflow in powi_cost
+      tree-optimization/105431 - another overflow in powi handling
+      tree-optimization/105173 - fix insertion logic in reassoc
+      tree-optimization/105163 - abnormal SSA coalescing and reassoc
+      middle-end/105140 - fix bogus recursion in fold_convertible_p
+      tree-optimization/105250 - adjust fold_convertible_p PR105140 fix
 
 Richard Earnshaw (12):
       arm: fix UB due to missing mode check [PR100311]
@@ -1164,11 +1176,12 @@ Sebastian Huber (1):
 Sebastian Pop (1):
       add barriers to ool __sync builtins
 
-Segher Boessenkool (4):
+Segher Boessenkool (5):
       rs6000: Fix cpu selection w/ isel (PR100108)
       combine: Don't create REG_UNUSED notes if the reg already died (PR99927)
       rs6000: Don't use r12 for CR save on ELFv2 (PR102107)
       rs6000: Fix ELFv2 r12 use in epilogue
+      rs6000/testsuite: Skip pr105140.c
 
 Srinath Parvathaneni (5):
       arm: Do not clobber callee saved registers with CMSE.
@@ -8778,6 +8791,19 @@ index 73134a20e33..495e7a9e6b8 100644
  
    /* loopify redirected latch_edge. Update its PENDING_STMTS.  */
    lv_flush_pending_stmts (latch_edge);
+diff --git a/gcc/cfgrtl.c b/gcc/cfgrtl.c
+index 33012ed06b6..9409c5b073f 100644
+--- a/gcc/cfgrtl.c
++++ b/gcc/cfgrtl.c
+@@ -230,7 +230,7 @@ delete_insn_and_edges (rtx_insn *insn)
+ {
+   bool purge = false;
+ 
+-  if (INSN_P (insn) && BLOCK_FOR_INSN (insn))
++  if (NONDEBUG_INSN_P (insn) && BLOCK_FOR_INSN (insn))
+     {
+       basic_block bb = BLOCK_FOR_INSN (insn);
+       if (BB_END (bb) == insn)
 diff --git a/gcc/combine.c b/gcc/combine.c
 index 35505cc5311..3cbf0d06fc9 100644
 --- a/gcc/combine.c
@@ -23824,7 +23850,7 @@ index 991b26f3341..10f0b816dd1 100644
  
      case VEC_PACK_FLOAT_EXPR:
 diff --git a/gcc/fold-const.c b/gcc/fold-const.c
-index 6e635382fb4..94f92e63893 100644
+index 6e635382fb4..2dccd10748a 100644
 --- a/gcc/fold-const.c
 +++ b/gcc/fold-const.c
 @@ -511,7 +511,7 @@ negate_expr_p (tree t)
@@ -23863,6 +23889,24 @@ index 6e635382fb4..94f92e63893 100644
        /* Don't constant fold this floating point operation if
  	 the result has overflowed and flag_trapping_math.  */
        if (flag_trapping_math
+@@ -2350,7 +2361,7 @@ build_zero_vector (tree type)
+ bool
+ fold_convertible_p (const_tree type, const_tree arg)
+ {
+-  tree orig = TREE_TYPE (arg);
++  const_tree orig = TREE_TYPE (arg);
+ 
+   if (type == orig)
+     return true;
+@@ -2382,7 +2393,7 @@ fold_convertible_p (const_tree type, const_tree arg)
+       return (VECTOR_TYPE_P (orig)
+ 	      && known_eq (TYPE_VECTOR_SUBPARTS (type),
+ 			   TYPE_VECTOR_SUBPARTS (orig))
+-	      && fold_convertible_p (TREE_TYPE (type), TREE_TYPE (orig)));
++	      && tree_int_cst_equal (TYPE_SIZE (type), TYPE_SIZE (orig)));
+ 
+     default:
+       return false;
 @@ -5108,7 +5119,7 @@ make_range_step (location_t loc, enum tree_code code, tree arg0, tree arg1,
  	n_high = fold_convert_loc (loc, arg0_type, n_high);
  
@@ -38260,6 +38304,48 @@ index 00000000000..da6dc172a64
 +  struct S s = { 5 };
 +  bar (&s);
 +}
+diff --git a/gcc/testsuite/gcc.dg/pr105140.c b/gcc/testsuite/gcc.dg/pr105140.c
+new file mode 100644
+index 00000000000..7d30985e850
+--- /dev/null
++++ b/gcc/testsuite/gcc.dg/pr105140.c
+@@ -0,0 +1,18 @@
++/* { dg-do compile } */
++/* { dg-options "-Os -w -Wno-psabi" } */
++/* { dg-skip-if "PR105147" { powerpc*-*-* s390*-*-* } } */
++
++typedef char __attribute__((__vector_size__ (16 * sizeof (char)))) U;
++typedef int __attribute__((__vector_size__ (16 * sizeof (int)))) V;
++
++void bar ();
++
++bar (int i, int j, int k, V v)
++{
++}
++
++void
++foo (void)
++{
++  bar ((V){}, (V){}, (V){}, (U){});
++}
+diff --git a/gcc/testsuite/gcc.dg/pr105173.c b/gcc/testsuite/gcc.dg/pr105173.c
+new file mode 100644
+index 00000000000..3effb2996b0
+--- /dev/null
++++ b/gcc/testsuite/gcc.dg/pr105173.c
+@@ -0,0 +1,12 @@
++/* { dg-do compile { target dfp } } */
++/* { dg-options "-Ofast" } */
++
++int i;
++
++int
++foo(char c, _Decimal32 d)
++{
++  d *= i;
++  d *= -(_Decimal64)c;
++  return d;
++}
 diff --git a/gcc/testsuite/gcc.dg/pr105211.c b/gcc/testsuite/gcc.dg/pr105211.c
 new file mode 100644
 index 00000000000..9bafe6feb19
@@ -38305,6 +38391,42 @@ index 00000000000..9c4941dc6fc
 +        a[i] = args[i];
 +      g ();
 +    }
++}
+diff --git a/gcc/testsuite/gcc.dg/pr105250.c b/gcc/testsuite/gcc.dg/pr105250.c
+new file mode 100644
+index 00000000000..aea33efbd12
+--- /dev/null
++++ b/gcc/testsuite/gcc.dg/pr105250.c
+@@ -0,0 +1,30 @@
++/* { dg-do compile } */
++/* { dg-options "-w -Wno-psabi -O2" } */
++/* { dg-skip-if "PR105266" { powerpc*-*-* s390*-*-* } } */
++
++typedef int __attribute__((__vector_size__(4))) T;
++typedef int __attribute__((__vector_size__(8))) U;
++typedef int __attribute__((__vector_size__(16))) V;
++typedef int __attribute__((__vector_size__(32))) W;
++typedef _Float32 __attribute__((__vector_size__(16))) F;
++typedef _Float64 __attribute__((__vector_size__(32))) G;
++void foo();
++
++foo(int p1, int p2, int p3, int p4, U p5, U p6, V p7, V p8, W p9, W p10, int p11,
++     T p12, int p13, U p14, U p15, V p16, V p17, W p18, W p19, T p20,
++     T p21, int p22, U p23, U p24, V p25, V p26, W p27, W p28, T p29,
++     T p30, int p31, W p32, W p33, T p34, T p35, int p36, int p37, int p38,
++     int p39, int p40, int p41, W p42, int p43, int p44, int p45, int p46, int p47, int p48,
++     V p49, W p50, T p51, int p52, int p53, U p54, F p55, int p56, int p57, int p58,
++     int p59, int p60, int p61, G p62)
++{
++  foo(0, 0, 0, 0, (U){}, (U){}, (V){}, (V){}, (W){},
++       (W){}, 2, (T){}, 0, 0, 0, 0, (U){}, (U){},
++       (V){}, (V){}, (W){}, (W){}, (T){},
++       (T){}, 0, 0, 0, 0, (U){}, (U){}, (V){},
++       (V){}, (W){}, (W){}, (T){}, (T){}, 0, 0, 0,
++       0, 0, 0, (T){},
++       (T){}, (W){},
++       (W){}, (T){}, (T){}, 0, 0, 0, 0, 0, 0, (W){},
++       (V){}, (W){}, (T){}, 0, 0, (U){}, (F){});
 +}
 diff --git a/gcc/testsuite/gcc.dg/pr105257.c b/gcc/testsuite/gcc.dg/pr105257.c
 new file mode 100644
@@ -39144,6 +39266,29 @@ index 00000000000..1cb0370e9b2
 +void c() {
 +  if (b != 2 + (long)(a != 0 ^ 0))
 +    __builtin_abort();
++}
+diff --git a/gcc/testsuite/gcc.dg/torture/pr105163.c b/gcc/testsuite/gcc.dg/torture/pr105163.c
+new file mode 100644
+index 00000000000..23e04107f68
+--- /dev/null
++++ b/gcc/testsuite/gcc.dg/torture/pr105163.c
+@@ -0,0 +1,17 @@
++/* { dg-do compile } */
++/* { dg-require-effective-target nonlocal_goto } */
++
++#include <setjmp.h>
++
++extern int bar (unsigned int *);
++extern jmp_buf *baz (void);
++struct C { int c1; };
++void foo (struct C *x, int *z, int e)
++{
++  unsigned int d = 0;
++  long f;
++  setjmp (*baz());
++  f = 1 + ~d;
++  d = 8;
++  if ((!0) && !e && bar(z)) *z = 1 + f;
 +}
 diff --git a/gcc/testsuite/gcc.dg/torture/pr105198.c b/gcc/testsuite/gcc.dg/torture/pr105198.c
 new file mode 100644
@@ -47459,6 +47604,52 @@ index abd5f702b91..b2cce4fc6ed 100644
        /* In case this is a stmt that is not unconditionally executed
           when the target loop header is executed and the stmt may
  	 invoke undefined integer or pointer overflow rewrite it to
+diff --git a/gcc/tree-ssa-math-opts.c b/gcc/tree-ssa-math-opts.c
+index 4c89fddcfc5..dd0b8c6f057 100644
+--- a/gcc/tree-ssa-math-opts.c
++++ b/gcc/tree-ssa-math-opts.c
+@@ -1328,7 +1328,7 @@ powi_cost (HOST_WIDE_INT n)
+     return 0;
+ 
+   /* Ignore the reciprocal when calculating the cost.  */
+-  val = (n < 0) ? -n : n;
++  val = absu_hwi (n);
+ 
+   /* Initialize the exponent cache.  */
+   memset (cache, 0, POWI_TABLE_SIZE * sizeof (bool));
+@@ -1361,7 +1361,7 @@ powi_cost (HOST_WIDE_INT n)
+ 
+ static tree
+ powi_as_mults_1 (gimple_stmt_iterator *gsi, location_t loc, tree type,
+-		 HOST_WIDE_INT n, tree *cache)
++		 unsigned HOST_WIDE_INT n, tree *cache)
+ {
+   tree op0, op1, ssa_target;
+   unsigned HOST_WIDE_INT digit;
+@@ -1414,7 +1414,7 @@ powi_as_mults (gimple_stmt_iterator *gsi, location_t loc,
+   memset (cache, 0,  sizeof (cache));
+   cache[1] = arg0;
+ 
+-  result = powi_as_mults_1 (gsi, loc, type, (n < 0) ? -n : n, cache);
++  result = powi_as_mults_1 (gsi, loc, type, absu_hwi (n), cache);
+   if (n >= 0)
+     return result;
+ 
+@@ -1438,11 +1438,9 @@ static tree
+ gimple_expand_builtin_powi (gimple_stmt_iterator *gsi, location_t loc, 
+ 			    tree arg0, HOST_WIDE_INT n)
+ {
+-  /* Avoid largest negative number.  */
+-  if (n != -n
+-      && ((n >= -1 && n <= 2)
+-	  || (optimize_function_for_speed_p (cfun)
+-	      && powi_cost (n) <= POWI_MAX_MULTS)))
++  if ((n >= -1 && n <= 2)
++      || (optimize_function_for_speed_p (cfun)
++	  && powi_cost (n) <= POWI_MAX_MULTS))
+     return powi_as_mults (gsi, loc, arg0, n);
+ 
+   return NULL_TREE;
 diff --git a/gcc/tree-ssa-phiopt.c b/gcc/tree-ssa-phiopt.c
 index b1e0dce93d8..a6c197defea 100644
 --- a/gcc/tree-ssa-phiopt.c
@@ -47665,6 +47856,188 @@ index 0d0f1c2da80..0591a667a90 100644
  extern bool may_propagate_copy_into_stmt (gimple *, tree);
  extern bool may_propagate_copy_into_asm (tree);
  extern void propagate_value (use_operand_p, tree);
+diff --git a/gcc/tree-ssa-reassoc.c b/gcc/tree-ssa-reassoc.c
+index af8df8563bc..3a4d7e046c5 100644
+--- a/gcc/tree-ssa-reassoc.c
++++ b/gcc/tree-ssa-reassoc.c
+@@ -4798,17 +4798,26 @@ swap_ops_for_binary_stmt (vec<operand_entry *> ops,
+ }
+ 
+ /* If definition of RHS1 or RHS2 dominates STMT, return the later of those
+-   two definitions, otherwise return STMT.  */
++   two definitions, otherwise return STMT.  Sets INSERT_BEFORE to indicate
++   whether RHS1 op RHS2 can be inserted before or needs to be inserted
++   after the returned stmt.  */
+ 
+ static inline gimple *
+-find_insert_point (gimple *stmt, tree rhs1, tree rhs2)
++find_insert_point (gimple *stmt, tree rhs1, tree rhs2, bool &insert_before)
+ {
++  insert_before = true;
+   if (TREE_CODE (rhs1) == SSA_NAME
+       && reassoc_stmt_dominates_stmt_p (stmt, SSA_NAME_DEF_STMT (rhs1)))
+-    stmt = SSA_NAME_DEF_STMT (rhs1);
++    {
++      stmt = SSA_NAME_DEF_STMT (rhs1);
++      insert_before = false;
++    }
+   if (TREE_CODE (rhs2) == SSA_NAME
+       && reassoc_stmt_dominates_stmt_p (stmt, SSA_NAME_DEF_STMT (rhs2)))
+-    stmt = SSA_NAME_DEF_STMT (rhs2);
++    {
++      stmt = SSA_NAME_DEF_STMT (rhs2);
++      insert_before = false;
++    }
+   return stmt;
+ }
+ 
+@@ -4820,7 +4829,8 @@ insert_stmt_before_use (gimple *stmt, gimple *stmt_to_insert)
+   gcc_assert (is_gimple_assign (stmt_to_insert));
+   tree rhs1 = gimple_assign_rhs1 (stmt_to_insert);
+   tree rhs2 = gimple_assign_rhs2 (stmt_to_insert);
+-  gimple *insert_point = find_insert_point (stmt, rhs1, rhs2);
++  bool insert_before;
++  gimple *insert_point = find_insert_point (stmt, rhs1, rhs2, insert_before);
+   gimple_stmt_iterator gsi = gsi_for_stmt (insert_point);
+   gimple_set_uid (stmt_to_insert, gimple_uid (insert_point));
+ 
+@@ -4828,7 +4838,7 @@ insert_stmt_before_use (gimple *stmt, gimple *stmt_to_insert)
+      the point where operand rhs1 or rhs2 is defined. In this case,
+      stmt_to_insert has to be inserted afterwards. This would
+      only happen when the stmt insertion point is flexible. */
+-  if (stmt == insert_point)
++  if (insert_before)
+     gsi_insert_before (&gsi, stmt_to_insert, GSI_NEW_STMT);
+   else
+     insert_stmt_after (stmt_to_insert, insert_point);
+@@ -4887,22 +4897,25 @@ rewrite_expr_tree (gimple *stmt, enum tree_code rhs_code, unsigned int opindex,
+ 	     return lhs), force creation of a new SSA_NAME.  */
+ 	  if (changed || ((rhs1 != oe2->op || rhs2 != oe1->op) && opindex))
+ 	    {
++	      bool insert_before;
+ 	      gimple *insert_point
+-		= find_insert_point (stmt, oe1->op, oe2->op);
++		= find_insert_point (stmt, oe1->op, oe2->op, insert_before);
+ 	      lhs = make_ssa_name (TREE_TYPE (lhs));
+ 	      stmt
+ 		= gimple_build_assign (lhs, rhs_code,
+ 				       oe1->op, oe2->op);
+ 	      gimple_set_uid (stmt, uid);
+ 	      gimple_set_visited (stmt, true);
+-	      if (insert_point == gsi_stmt (gsi))
++	      if (insert_before)
+ 		gsi_insert_before (&gsi, stmt, GSI_SAME_STMT);
+ 	      else
+ 		insert_stmt_after (stmt, insert_point);
+ 	    }
+ 	  else
+ 	    {
+-	      gcc_checking_assert (find_insert_point (stmt, oe1->op, oe2->op)
++	      bool insert_before;
++	      gcc_checking_assert (find_insert_point (stmt, oe1->op, oe2->op,
++						      insert_before)
+ 				   == stmt);
+ 	      gimple_assign_set_rhs1 (stmt, oe1->op);
+ 	      gimple_assign_set_rhs2 (stmt, oe2->op);
+@@ -4958,21 +4971,25 @@ rewrite_expr_tree (gimple *stmt, enum tree_code rhs_code, unsigned int opindex,
+ 	{
+ 	  gimple_stmt_iterator gsi = gsi_for_stmt (stmt);
+ 	  unsigned int uid = gimple_uid (stmt);
+-	  gimple *insert_point = find_insert_point (stmt, new_rhs1, oe->op);
++	  bool insert_before;
++	  gimple *insert_point = find_insert_point (stmt, new_rhs1, oe->op,
++						    insert_before);
+ 
+ 	  lhs = make_ssa_name (TREE_TYPE (lhs));
+ 	  stmt = gimple_build_assign (lhs, rhs_code,
+ 				      new_rhs1, oe->op);
+ 	  gimple_set_uid (stmt, uid);
+ 	  gimple_set_visited (stmt, true);
+-	  if (insert_point == gsi_stmt (gsi))
++	  if (insert_before)
+ 	    gsi_insert_before (&gsi, stmt, GSI_SAME_STMT);
+ 	  else
+ 	    insert_stmt_after (stmt, insert_point);
+ 	}
+       else
+ 	{
+-	  gcc_checking_assert (find_insert_point (stmt, new_rhs1, oe->op)
++	  bool insert_before;
++	  gcc_checking_assert (find_insert_point (stmt, new_rhs1, oe->op,
++						  insert_before)
+ 			       == stmt);
+ 	  gimple_assign_set_rhs1 (stmt, new_rhs1);
+ 	  gimple_assign_set_rhs2 (stmt, oe->op);
+@@ -5582,10 +5599,14 @@ repropagate_negates (void)
+   FOR_EACH_VEC_ELT (plus_negates, i, negate)
+     {
+       gimple *user = get_single_immediate_use (negate);
+-
+       if (!user || !is_gimple_assign (user))
+ 	continue;
+ 
++      tree negateop = gimple_assign_rhs1 (SSA_NAME_DEF_STMT (negate));
++      if (TREE_CODE (negateop) == SSA_NAME
++	  && SSA_NAME_OCCURS_IN_ABNORMAL_PHI (negateop))
++	continue;
++
+       /* The negate operand can be either operand of a PLUS_EXPR
+ 	 (it can be the LHS if the RHS is a constant for example).
+ 
+@@ -5608,9 +5629,9 @@ repropagate_negates (void)
+ 	  if (gimple_assign_rhs2 (user) == negate)
+ 	    {
+ 	      tree rhs1 = gimple_assign_rhs1 (user);
+-	      tree rhs2 = gimple_assign_rhs1 (SSA_NAME_DEF_STMT (negate));
+ 	      gimple_stmt_iterator gsi = gsi_for_stmt (user);
+-	      gimple_assign_set_rhs_with_ops (&gsi, MINUS_EXPR, rhs1, rhs2);
++	      gimple_assign_set_rhs_with_ops (&gsi, MINUS_EXPR, rhs1,
++					      negateop);
+ 	      update_stmt (user);
+ 	    }
+ 	}
+@@ -5619,21 +5640,20 @@ repropagate_negates (void)
+ 	  if (gimple_assign_rhs1 (user) == negate)
+ 	    {
+ 	      /* We have
+-	           x = -a
++		   x = -negateop
+ 		   y = x - b
+ 		 which we transform into
+-		   x = a + b
++		   x = negateop + b
+ 		   y = -x .
+ 		 This pushes down the negate which we possibly can merge
+ 		 into some other operation, hence insert it into the
+ 		 plus_negates vector.  */
+ 	      gimple *feed = SSA_NAME_DEF_STMT (negate);
+-	      tree a = gimple_assign_rhs1 (feed);
+ 	      tree b = gimple_assign_rhs2 (user);
+ 	      gimple_stmt_iterator gsi = gsi_for_stmt (feed);
+ 	      gimple_stmt_iterator gsi2 = gsi_for_stmt (user);
+ 	      tree x = make_ssa_name (TREE_TYPE (gimple_assign_lhs (feed)));
+-	      gimple *g = gimple_build_assign (x, PLUS_EXPR, a, b);
++	      gimple *g = gimple_build_assign (x, PLUS_EXPR, negateop, b);
+ 	      gsi_insert_before (&gsi2, g, GSI_SAME_STMT);
+ 	      gimple_assign_set_rhs_with_ops (&gsi2, NEGATE_EXPR, x);
+ 	      user = gsi_stmt (gsi2);
+@@ -5644,13 +5664,11 @@ repropagate_negates (void)
+ 	    }
+ 	  else
+ 	    {
+-	      /* Transform "x = -a; y = b - x" into "y = b + a", getting
+-	         rid of one operation.  */
+-	      gimple *feed = SSA_NAME_DEF_STMT (negate);
+-	      tree a = gimple_assign_rhs1 (feed);
++	      /* Transform "x = -negateop; y = b - x" into "y = b + negateop",
++		 getting rid of one operation.  */
+ 	      tree rhs1 = gimple_assign_rhs1 (user);
+ 	      gimple_stmt_iterator gsi = gsi_for_stmt (user);
+-	      gimple_assign_set_rhs_with_ops (&gsi, PLUS_EXPR, rhs1, a);
++	      gimple_assign_set_rhs_with_ops (&gsi, PLUS_EXPR, rhs1, negateop);
+ 	      update_stmt (gsi_stmt (gsi));
+ 	    }
+ 	}
 diff --git a/gcc/tree-ssa-sccvn.c b/gcc/tree-ssa-sccvn.c
 index 926b4a976ae..e0cde2359cd 100644
 --- a/gcc/tree-ssa-sccvn.c
