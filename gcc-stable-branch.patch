@@ -99,7 +99,8 @@ François-Xavier Coudert (1):
 Fritz Reese (1):
       fortran: Fix conv of UNION constructors [PR105310]
 
-GCC Administrator (412):
+GCC Administrator (413):
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -5266,10 +5267,20 @@ index 0719d810258..a9368325816 100644
 -10.3.0
 +10.3.1
 diff --git a/gcc/ChangeLog b/gcc/ChangeLog
-index 3b1384e707f..6380814c3f0 100644
+index 3b1384e707f..ab469924160 100644
 --- a/gcc/ChangeLog
 +++ b/gcc/ChangeLog
-@@ -1,3 +1,2815 @@
+@@ -1,3 +1,2825 @@
++2022-05-31  Iain Sandoe  <iain@sandoe.co.uk>
++
++	* config/darwin-sections.def (objc2_class_names_section,
++	objc2_method_names_section, objc2_method_types_section): New
++	* config/darwin.c (output_objc_section_asm_op): Output new
++	sections.  (darwin_objc2_section): Select new sections where
++	used.
++	(darwin_label_is_anonymous_local_objc_name): Make
++	protocol class methods linker-visible.
++
 +2022-05-29  Iain Sandoe  <iain@sandoe.co.uk>
 +
 +	Backported from master:
@@ -8843,10 +8854,23 @@ index 10b6fd3bb4d..d89ce37c496 100644
  
    return expand_call (exp, target, target == const0_rtx);
 diff --git a/gcc/c-family/ChangeLog b/gcc/c-family/ChangeLog
-index b8ef37813f1..eac53ee2135 100644
+index b8ef37813f1..a2a9236fd68 100644
 --- a/gcc/c-family/ChangeLog
 +++ b/gcc/c-family/ChangeLog
-@@ -1,3 +1,73 @@
+@@ -1,3 +1,86 @@
++2022-05-31  Iain Sandoe  <iain@sandoe.co.uk>
++
++	* c-opts.c (c_common_post_options): Default to
++	flag_objc_sjlj_exceptions = 1 only when flag_objc_abi < 2.
++
++2022-05-31  Iain Sandoe  <iain@sandoe.co.uk>
++
++	Backported from master:
++	2020-11-16  Iain Sandoe  <iain@sandoe.co.uk>
++
++	PR objc/97854
++	* stub-objc.c: Include c-common.h to declare enum rid.
++
 +2022-05-10  Jakub Jelinek  <jakub@redhat.com>
 +
 +	Backported from master:
@@ -32247,10 +32271,46 @@ index 4593871ea92..1b8785ce33f 100644
  	    }
  
 diff --git a/gcc/objc/ChangeLog b/gcc/objc/ChangeLog
-index d73eab437b4..c6cd735c002 100644
+index d73eab437b4..20515df6148 100644
 --- a/gcc/objc/ChangeLog
 +++ b/gcc/objc/ChangeLog
-@@ -1,3 +1,16 @@
+@@ -1,3 +1,52 @@
++2022-05-31  Iain Sandoe  <iain@sandoe.co.uk>
++
++	Backported from master:
++	2021-09-01  Iain Sandoe  <iain@sandoe.co.uk>
++
++	PR objc/101718
++	* objc-next-runtime-abi-02.c (build_v2_build_objc_method_call):
++	Revise for cases where scalar objects use an sret parameter.
++	(next_runtime_abi_02_build_objc_method_call): Likwise.
++
++2022-05-31  Iain Sandoe  <iain@sandoe.co.uk>
++
++	* objc-next-metadata-tags.h (objc_rt_trees): Declare here.
++	* objc-next-runtime-abi-01.c: Remove from here.
++	(generate_static_references): Likewise.
++	* objc-next-runtime-abi-02.c: Likewise.
++	(objc_next_runtime_abi_02_init): Warn about and reset
++	flag_objc_sjlj_exceptions regardless of flag_objc_exceptions.
++	(next_runtime_02_initialize): Use a checking assert that
++	flag_objc_sjlj_exceptions is off.
++	(next_runtime_abi_02_category_decl): Adjust category
++	superclass name ordering.
++	(next_runtime_abi_02_init_metadata_attributes): Attach metadata
++	for the special string sections to class, method and method type
++	string sections.
++	(next_runtime_abi_02_protocol_decl): Do not dead-strip the runtime
++	meta-data symbols.
++	(build_v2_classrefs_table): Likewise.
++	(build_v2_protocol_list_address_table): Likewise.
++	(objc_next_runtime_abi_02_init): Default receiver nilchecks on.
++	* objc-runtime-shared-support.c: Reorder headers, provide
++	a GTY declaration the definition of objc_rt_trees.
++	* objc-gnu-runtime-abi-01.c
++	(build_shared_structure_initializer): Remove references to
++	the NeXT runtime.
++
 +2022-05-29  Iain Sandoe  <iain@sandoe.co.uk>
 +
 +	Backported from master:
@@ -60513,10 +60573,63 @@ index 304b3a01a08..44359b3d1ac 100644
    UnmapOrDie(oldstack.ss_sp, oldstack.ss_size);
  }
 diff --git a/libstdc++-v3/ChangeLog b/libstdc++-v3/ChangeLog
-index fdd63cbff1a..809fddcbdf6 100644
+index fdd63cbff1a..41d893026ef 100644
 --- a/libstdc++-v3/ChangeLog
 +++ b/libstdc++-v3/ChangeLog
-@@ -1,3 +1,1934 @@
+@@ -1,3 +1,1987 @@
++2022-05-31  Patrick Palka  <ppalka@redhat.com>
++
++	Backported from master:
++	2021-07-16  Patrick Palka  <ppalka@redhat.com>
++
++	PR libstdc++/103904
++	PR libstdc++/101231
++	* include/std/ranges (_CachedPosition::_M_get): For non-forward
++	ranges, just call __builtin_unreachable.
++	* testsuite/std/ranges/istream_view.cc (test05): New test.
++
++2022-05-31  Patrick Palka  <ppalka@redhat.com>
++
++	Backported from master:
++	2021-06-18  Patrick Palka  <ppalka@redhat.com>
++
++	PR libstdc++/103904
++	* include/bits/iterator_concepts.h (weakly_incrementable): Remove
++	default_initializable requirement.
++	* include/bits/stl_iterator.h (common_iterator): Constrain the
++	default ctor.
++	(counted_iterator): Likewise.
++	* include/std/ranges (ranges::view): Remove default_initializable
++	requirement.
++	(subrange): Constrain the default ctor.
++	(__detail::__box::operator=): Handle self-assignment.
++	(single_view): Constraint the default ctor.
++	(iota_view): Relax semiregular constraint to copyable.
++	Constrain the default ctor.
++	(iota_view::_Iterator): Constraint the default ctor.
++	(filter_view): Likewise.
++	(filter_view::_Iterator): Likewise.
++	(transform_view): Likewise.
++	(transform_view::_Iterator): Likewise.
++	(take_view): Likewise.
++	(take_view::_Iterator): Likewise.
++	(take_while_view): Likewise.
++	(take_while_view::_Iterator): Likewise.
++	(drop_while_view): Likewise.
++	(drop_while_view::_Iterator): Likewise.
++	(join_view): Likewise.
++	(split_view): Constrain the default ctor.
++	(common_view): Likewise.
++	(reverse_view): Likewise.
++	(elements_view): Likewise.
++	(elements_view::_Iterator): Likewise.
++	* include/std/span (enable_view<span<_ElementType, _Extent>>):
++	Define this partial specialization to true unconditionally.
++	* testsuite/std/ranges/p2325.cc: New test.
++	* testsuite/std/ranges/single_view.cc (test06): New test.
++	* testsuite/std/ranges/view.cc: Adjust now that view doesn't
++	require default_initializable.
++
 +2022-05-29  Iain Sandoe  <iain@sandoe.co.uk>
 +
 +	Backported from master:
