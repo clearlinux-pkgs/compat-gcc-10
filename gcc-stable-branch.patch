@@ -1,6 +1,7 @@
-Alan Modra (2):
+Alan Modra (3):
       [RS6000] Adjust gcc asm for power10
       [POWER10] __morestack calls from pcrel code
+      [RS6000] altivec style lvx/stvx addresses vs power10
 
 Alex Coplan (9):
       aarch64: Fix SVE ACLE builtins with LTO [PR99216]
@@ -99,7 +100,11 @@ François-Xavier Coudert (1):
 Fritz Reese (1):
       fortran: Fix conv of UNION constructors [PR105310]
 
-GCC Administrator (413):
+GCC Administrator (417):
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -19161,7 +19166,7 @@ index 3d5dc7d8aae..4a358646830 100644
  		    insn_entry[uid].special_handling = SH_SUBREG;
  		}
 diff --git a/gcc/config/rs6000/rs6000.c b/gcc/config/rs6000/rs6000.c
-index a6dc1156994..45a406a5803 100644
+index a6dc1156994..9e6f8bee6bf 100644
 --- a/gcc/config/rs6000/rs6000.c
 +++ b/gcc/config/rs6000/rs6000.c
 @@ -3815,6 +3815,15 @@ rs6000_option_override_internal (bool global_init_p)
@@ -19363,11 +19368,11 @@ index a6dc1156994..45a406a5803 100644
 +      /* Macho-O PIC code from here.  */
 +      if (GET_CODE (x) == CONST)
 +	x = XEXP (x, 0);
-+
+ 
 +      /* SYMBOL_REFs need to be wrapped in an UNSPEC_MACHOPIC_OFFSET.  */
 +      if (SYMBOL_REF_P (x))
 +	return false;
- 
++
 +      /* So this is OK if the wrapped object is const.  */
 +      if (GET_CODE (x) == UNSPEC
 +	  && XINT (x, 1) == UNSPEC_MACHOPIC_OFFSET)
@@ -19386,7 +19391,33 @@ index a6dc1156994..45a406a5803 100644
      {
        enum tls_model model = SYMBOL_REF_TLS_MODEL (x);
        if (model != 0)
-@@ -10178,6 +10243,12 @@ init_float128_ibm (machine_mode mode)
+@@ -8926,15 +8991,21 @@ rs6000_legitimate_address_p (machine_mode mode, rtx x, bool reg_ok_strict)
+   bool reg_offset_p = reg_offset_addressing_ok_p (mode);
+   bool quad_offset_p = mode_supports_dq_form (mode);
+ 
+-  /* If this is an unaligned stvx/ldvx type address, discard the outer AND.  */
++  if (TARGET_ELF && RS6000_SYMBOL_REF_TLS_P (x))
++    return 0;
++
++  /* Handle unaligned altivec lvx/stvx type addresses.  */
+   if (VECTOR_MEM_ALTIVEC_OR_VSX_P (mode)
+       && GET_CODE (x) == AND
+       && CONST_INT_P (XEXP (x, 1))
+       && INTVAL (XEXP (x, 1)) == -16)
+-    x = XEXP (x, 0);
++    {
++      x = XEXP (x, 0);
++      return (legitimate_indirect_address_p (x, reg_ok_strict)
++	      || legitimate_indexed_address_p (x, reg_ok_strict)
++	      || virtual_stack_registers_memory_p (x));
++    }
+ 
+-  if (TARGET_ELF && RS6000_SYMBOL_REF_TLS_P (x))
+-    return 0;
+   if (legitimate_indirect_address_p (x, reg_ok_strict))
+     return 1;
+   if (TARGET_UPDATE
+@@ -10178,6 +10249,12 @@ init_float128_ibm (machine_mode mode)
        set_conv_libfunc (trunc_optab, DDmode, mode, "__dpd_trunctfdd");
        set_conv_libfunc (sext_optab, TDmode, mode, "__dpd_extendtftd");
  
@@ -19399,7 +19430,7 @@ index a6dc1156994..45a406a5803 100644
        if (TARGET_POWERPC64)
  	{
  	  set_conv_libfunc (sfix_optab, TImode, mode, "__fixtfti");
-@@ -16018,20 +16089,28 @@ rs6000_split_multireg_move (rtx dst, rtx src)
+@@ -16018,20 +16095,28 @@ rs6000_split_multireg_move (rtx dst, rtx src)
  
        if (GET_CODE (src) == UNSPEC)
  	{
@@ -19434,7 +19465,7 @@ index a6dc1156994..45a406a5803 100644
  
  	  return;
  	}
-@@ -21351,6 +21430,14 @@ rs6000_rtx_costs (rtx x, machine_mode mode, int outer_code,
+@@ -21351,6 +21436,14 @@ rs6000_rtx_costs (rtx x, machine_mode mode, int outer_code,
  	}
        break;
  
@@ -19449,7 +19480,7 @@ index a6dc1156994..45a406a5803 100644
      default:
        break;
      }
-@@ -24427,6 +24514,10 @@ rs6000_can_inline_p (tree caller, tree callee)
+@@ -24427,6 +24520,10 @@ rs6000_can_inline_p (tree caller, tree callee)
        else
  	caller_isa = rs6000_isa_flags;
  
