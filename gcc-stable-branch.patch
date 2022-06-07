@@ -100,7 +100,8 @@ François-Xavier Coudert (1):
 Fritz Reese (1):
       fortran: Fix conv of UNION constructors [PR105310]
 
-GCC Administrator (417):
+GCC Administrator (418):
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -5272,10 +5273,18 @@ index 0719d810258..a9368325816 100644
 -10.3.0
 +10.3.1
 diff --git a/gcc/ChangeLog b/gcc/ChangeLog
-index 3b1384e707f..ab469924160 100644
+index 3b1384e707f..5d4d6b34612 100644
 --- a/gcc/ChangeLog
 +++ b/gcc/ChangeLog
-@@ -1,3 +1,2825 @@
+@@ -1,3 +1,2833 @@
++2022-06-06  Alan Modra  <amodra@gmail.com>
++
++	Backported from master:
++	2020-10-24  Alan Modra  <amodra@gmail.com>
++
++	* config/rs6000/rs6000.c (rs6000_legitimate_address_p): Limit
++	AND addressing to just lvx/stvx style addresses.
++
 +2022-05-31  Iain Sandoe  <iain@sandoe.co.uk>
 +
 +	* config/darwin-sections.def (objc2_class_names_section,
