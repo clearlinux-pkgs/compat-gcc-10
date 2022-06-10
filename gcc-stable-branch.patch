@@ -100,7 +100,10 @@ François-Xavier Coudert (1):
 Fritz Reese (1):
       fortran: Fix conv of UNION constructors [PR105310]
 
-GCC Administrator (418):
+GCC Administrator (421):
+      Daily bump.
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -620,7 +623,7 @@ Iain Buclaw (21):
       libphobos: Don't call free on the TLS array in the emutls destroy function.
       libphobos: Give _Unwind_Exception an alignment that best resembles __attribute__((aligned))
 
-Iain Sandoe (32):
+Iain Sandoe (36):
       coroutines: Fix a typo in rewriting the function.
       coroutines: Factor code. Match original source location in helpers [NFC].
       coroutines: Adjust outlined function names [PR95520].
@@ -653,6 +656,10 @@ Iain Sandoe (32):
       C-family : Fix a C++ ODR violation [PR97854].
       Objective-C: NeXT runtime fixes.
       Objective-C, NeXT: Fix messenging non-aggregate return-in-memory.
+      configure: Avoid unnecessary constraints on executables for $build.
+      Darwin, jit: Fix build [PR100613].
+      JIT, testsuite, Darwin: Initial testsuite fixes.
+      Jit, testsuite: Amend expect processing to tolerate more platforms.
 
 Ian Lance Taylor (1):
       compiler: correct condition for calling memclrHasPointers
@@ -840,7 +847,7 @@ John David Anglin (5):
       Don't use 'G' constraint in integer move patterns
       Fix warnings building linux-atomic.c and fptr.c on hppa64-linux
 
-Jonathan Wakely (124):
+Jonathan Wakely (125):
       libstdc++: Fix Doxygen warning about ambiguous file name
       maintainer-scripts: Disable multilib when generating libstdc++ docs
       libstdc++: Fix doxygen markup for group close commands
@@ -965,6 +972,7 @@ Jonathan Wakely (124):
       libstdc++: Use LTLIBICONV when linking libstdc++.so [PR93602]
       libstdc++: Fix status docs for <bit> support
       libstdc++: Fix hyperlink in docs
+      libstdc++: Partially revert r11-9772-g6f8133689f4397 [PR105915]
 
 José Rui Faustino de Sousa (1):
       Fortran: Fix double function call with -fcheck=pointer [PR]
@@ -5273,10 +5281,21 @@ index 0719d810258..a9368325816 100644
 -10.3.0
 +10.3.1
 diff --git a/gcc/ChangeLog b/gcc/ChangeLog
-index 3b1384e707f..5d4d6b34612 100644
+index 3b1384e707f..d869ed53ff2 100644
 --- a/gcc/ChangeLog
 +++ b/gcc/ChangeLog
-@@ -1,3 +1,2833 @@
+@@ -1,3 +1,2844 @@
++2022-06-09  Iain Sandoe  <iain@sandoe.co.uk>
++
++	Backported from master:
++	2021-09-14  Iain Sandoe  <iain@sandoe.co.uk>
++
++	* Makefile.in: Remove variables related to applying no-PIE
++	to the exes on $build.
++	* configure: Regenerate.
++	* configure.ac: Remove configuration related to applying
++	no-PIE to the exes on $build.
++
 +2022-06-06  Alan Modra  <amodra@gmail.com>
 +
 +	Backported from master:
@@ -8110,6 +8129,33 @@ index 3b1384e707f..5d4d6b34612 100644
  2021-04-08  Release Manager
  
  	* GCC 10.3.0 released.
+diff --git a/gcc/Makefile.in b/gcc/Makefile.in
+index 646db219460..5ac87c98230 100644
+--- a/gcc/Makefile.in
++++ b/gcc/Makefile.in
+@@ -783,13 +783,8 @@ DIR = ../gcc
+ # Native compiler for the build machine and its switches.
+ CC_FOR_BUILD = @CC_FOR_BUILD@
+ CXX_FOR_BUILD = @CXX_FOR_BUILD@
+-NO_PIE_CFLAGS_FOR_BUILD = @NO_PIE_CFLAGS_FOR_BUILD@
+-NO_PIE_FLAG_FOR_BUILD = @NO_PIE_FLAG_FOR_BUILD@
+ BUILD_CFLAGS= @BUILD_CFLAGS@ $(GENERATOR_CFLAGS) -DGENERATOR_FILE
+ BUILD_CXXFLAGS = @BUILD_CXXFLAGS@ $(GENERATOR_CFLAGS) -DGENERATOR_FILE
+-BUILD_NO_PIE_CFLAGS = @BUILD_NO_PIE_CFLAGS@
+-BUILD_CFLAGS += $(BUILD_NO_PIE_CFLAGS)
+-BUILD_CXXFLAGS += $(BUILD_NO_PIE_CFLAGS)
+ 
+ # Native compiler that we use.  This may be C++ some day.
+ COMPILER_FOR_BUILD = $(CXX_FOR_BUILD)
+@@ -801,8 +796,6 @@ BUILD_LINKERFLAGS = $(BUILD_CXXFLAGS)
+ 
+ # Native linker and preprocessor flags.  For x-fragment overrides.
+ BUILD_LDFLAGS=@BUILD_LDFLAGS@
+-BUILD_NO_PIE_FLAG = @BUILD_NO_PIE_FLAG@
+-BUILD_LDFLAGS += $(BUILD_NO_PIE_FLAG)
+ BUILD_CPPFLAGS= -I. -I$(@D) -I$(srcdir) -I$(srcdir)/$(@D) \
+ 		-I$(srcdir)/../include @INCINTL@ $(CPPINC) $(CPPFLAGS)
+ 
 diff --git a/gcc/ada/ChangeLog b/gcc/ada/ChangeLog
 index 86fd883487b..2f1d6b5ddc2 100644
 --- a/gcc/ada/ChangeLog
@@ -21756,7 +21802,7 @@ index b3d688b392f..3eb1f3e9a48 100644
  Enum(sparc_processor) String(sparclite) Value(PROCESSOR_SPARCLITE)
  
 diff --git a/gcc/configure b/gcc/configure
-index 8fe9c91fd7c..fb2b31817d6 100755
+index 8fe9c91fd7c..53c27dba58e 100755
 --- a/gcc/configure
 +++ b/gcc/configure
 @@ -719,6 +719,8 @@ thin_archive_support
@@ -21768,7 +21814,18 @@ index 8fe9c91fd7c..fb2b31817d6 100755
  gcc_cv_otool
  gcc_cv_readelf
  gcc_cv_objdump
-@@ -938,6 +940,7 @@ enable_generated_files_in_srcdir
+@@ -747,10 +749,6 @@ FGREP
+ SED
+ LIBTOOL
+ collect2
+-NO_PIE_FLAG_FOR_BUILD
+-NO_PIE_CFLAGS_FOR_BUILD
+-BUILD_NO_PIE_FLAG
+-BUILD_NO_PIE_CFLAGS
+ STMP_FIXINC
+ BUILD_LDFLAGS
+ BUILD_CXXFLAGS
+@@ -938,6 +936,7 @@ enable_generated_files_in_srcdir
  with_gnu_ld
  with_ld
  with_demangler_in_ld
@@ -21776,7 +21833,7 @@ index 8fe9c91fd7c..fb2b31817d6 100755
  with_gnu_as
  with_as
  enable_largefile
-@@ -1791,6 +1794,8 @@ Optional Packages:
+@@ -1791,6 +1790,8 @@ Optional Packages:
    --with-gnu-ld           arrange to work with GNU ld
    --with-ld               arrange to use the specified ld (full pathname)
    --with-demangler-in-ld  try to use demangler in GNU ld
@@ -21785,7 +21842,7 @@ index 8fe9c91fd7c..fb2b31817d6 100755
    --with-gnu-as           arrange to work with GNU as
    --with-as               arrange to use the specified as (full pathname)
    --with-stabs            arrange to use stabs instead of host debug format
-@@ -3765,8 +3770,14 @@ fi
+@@ -3765,8 +3766,14 @@ fi
  
  
  case $target in
@@ -21802,7 +21859,7 @@ index 8fe9c91fd7c..fb2b31817d6 100755
  esac
  
  # With pre-defined ld
-@@ -3816,6 +3827,40 @@ else
+@@ -3816,6 +3823,40 @@ else
  fi
  
  
@@ -21843,25 +21900,50 @@ index 8fe9c91fd7c..fb2b31817d6 100755
  # ----------------------
  # Find default assembler
  # ----------------------
-@@ -19022,7 +19067,7 @@ else
+@@ -12868,24 +12909,14 @@ BUILD_CXXFLAGS='$(ALL_CXXFLAGS)'
+ BUILD_LDFLAGS='$(LDFLAGS)'
+ STMP_FIXINC=stmp-fixinc
+ 
+-BUILD_NO_PIE_CFLAGS='$(NO_PIE_CFLAGS)'
+-BUILD_NO_PIE_FLAG='$(NO_PIE_FLAG)'
+-
+ # And these apply if build != host, or we are generating coverage data
+ if test x$build != x$host || test "x$coverage_flags" != x
+ then
+     BUILD_CFLAGS='$(INTERNAL_CFLAGS) $(T_CFLAGS) $(CFLAGS_FOR_BUILD)'
+     BUILD_CXXFLAGS='$(INTERNAL_CFLAGS) $(T_CFLAGS) $(CXXFLAGS_FOR_BUILD)'
+     BUILD_LDFLAGS='$(LDFLAGS_FOR_BUILD)'
+-
+-    NO_PIE_CFLAGS_FOR_BUILD=${NO_PIE_CFLAGS_FOR_BUILD-${NO_PIE_CFLAGS}}
+-    NO_PIE_FLAG_FOR_BUILD=${NO_PIE_FLAG_FOR_BUILD-${NO_PIE_FLAG}}
+-    BUILD_NO_PIE_CFLAGS='$(NO_PIE_CFLAGS_FOR_BUILD)'
+-    BUILD_NO_PIE_FLAG='$(NO_PIE_FLAG_FOR_BUILD)'
+ fi
+ 
+-
+-
+ # Expand extra_headers to include complete path.
+ # This substitutes for lots of t-* files.
+ extra_headers_list=
+@@ -19022,7 +19053,7 @@ else
    lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
    lt_status=$lt_dlunknown
    cat > conftest.$ac_ext <<_LT_EOF
 -#line 19025 "configure"
-+#line 19070 "configure"
++#line 19056 "configure"
  #include "confdefs.h"
  
  #if HAVE_DLFCN_H
-@@ -19128,7 +19173,7 @@ else
+@@ -19128,7 +19159,7 @@ else
    lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
    lt_status=$lt_dlunknown
    cat > conftest.$ac_ext <<_LT_EOF
 -#line 19131 "configure"
-+#line 19176 "configure"
++#line 19162 "configure"
  #include "confdefs.h"
  
  #if HAVE_DLFCN_H
-@@ -23036,6 +23081,71 @@ else
+@@ -23036,6 +23067,71 @@ else
  $as_echo "$gcc_cv_otool" >&6; }
  fi
  
@@ -21933,7 +22015,7 @@ index 8fe9c91fd7c..fb2b31817d6 100755
  # Figure out what assembler alignment features are present.
  { $as_echo "$as_me:${as_lineno-$LINENO}: checking assembler flags" >&5
  $as_echo_n "checking assembler flags... " >&6; }
-@@ -26421,6 +26531,41 @@ $as_echo "$as_me: WARNING: LTO for $target requires binutils >= 2.20.1, but vers
+@@ -26421,6 +26517,41 @@ $as_echo "$as_me: WARNING: LTO for $target requires binutils >= 2.20.1, but vers
  	fi
  	;;
      esac
@@ -21975,7 +22057,7 @@ index 8fe9c91fd7c..fb2b31817d6 100755
  
      { $as_echo "$as_me:${as_lineno-$LINENO}: checking assembler for -xbrace_comment" >&5
  $as_echo_n "checking assembler for -xbrace_comment... " >&6; }
-@@ -29241,6 +29386,100 @@ _ACEOF
+@@ -29241,6 +29372,100 @@ _ACEOF
  
  fi
  
@@ -22076,7 +22158,7 @@ index 8fe9c91fd7c..fb2b31817d6 100755
  # --------
  # UNSORTED
  # --------
-@@ -29405,7 +29644,7 @@ $as_echo "#define HAVE_LD_PPC_GNU_ATTR_LONG_DOUBLE 1" >>confdefs.h
+@@ -29405,7 +29630,7 @@ $as_echo "#define HAVE_LD_PPC_GNU_ATTR_LONG_DOUBLE 1" >>confdefs.h
  esac
  
  case "$target:$tm_file" in
@@ -22085,7 +22167,7 @@ index 8fe9c91fd7c..fb2b31817d6 100755
    case "$target" in
       *le-*-linux*)
       emul_name="-melf64lppc"
-@@ -31541,6 +31780,7 @@ do
+@@ -31541,6 +31766,7 @@ do
      "as") CONFIG_FILES="$CONFIG_FILES as:exec-tool.in" ;;
      "collect-ld") CONFIG_FILES="$CONFIG_FILES collect-ld:exec-tool.in" ;;
      "nm") CONFIG_FILES="$CONFIG_FILES nm:exec-tool.in" ;;
@@ -22093,7 +22175,7 @@ index 8fe9c91fd7c..fb2b31817d6 100755
      "clearcap.map") CONFIG_LINKS="$CONFIG_LINKS clearcap.map:${srcdir}/config/$clearcap_map" ;;
      "$all_outputs") CONFIG_FILES="$CONFIG_FILES $all_outputs" ;;
      "default") CONFIG_COMMANDS="$CONFIG_COMMANDS default" ;;
-@@ -32175,6 +32415,7 @@ $as_echo "$as_me: executing $ac_file commands" >&6;}
+@@ -32175,6 +32401,7 @@ $as_echo "$as_me: executing $ac_file commands" >&6;}
      "as":F) chmod +x as ;;
      "collect-ld":F) chmod +x collect-ld ;;
      "nm":F) chmod +x nm ;;
@@ -22102,7 +22184,7 @@ index 8fe9c91fd7c..fb2b31817d6 100755
  case ${CONFIG_HEADERS} in
    *auto-host.h:config.in*)
 diff --git a/gcc/configure.ac b/gcc/configure.ac
-index 84dceb8074a..8cc7a1c32d3 100644
+index 84dceb8074a..c3efabc2e5e 100644
 --- a/gcc/configure.ac
 +++ b/gcc/configure.ac
 @@ -274,8 +274,14 @@ gnu_ld_flag="$with_gnu_ld",
@@ -22154,7 +22236,31 @@ index 84dceb8074a..8cc7a1c32d3 100644
  # ----------------------
  # Find default assembler
  # ----------------------
-@@ -2714,6 +2745,27 @@ else
+@@ -2304,23 +2335,13 @@ BUILD_CXXFLAGS='$(ALL_CXXFLAGS)' AC_SUBST(BUILD_CXXFLAGS)
+ BUILD_LDFLAGS='$(LDFLAGS)'	AC_SUBST(BUILD_LDFLAGS)
+ STMP_FIXINC=stmp-fixinc		AC_SUBST(STMP_FIXINC)
+ 
+-BUILD_NO_PIE_CFLAGS='$(NO_PIE_CFLAGS)' AC_SUBST(BUILD_NO_PIE_CFLAGS)
+-BUILD_NO_PIE_FLAG='$(NO_PIE_FLAG)' AC_SUBST(BUILD_NO_PIE_FLAG)
+-
+ # And these apply if build != host, or we are generating coverage data
+ if test x$build != x$host || test "x$coverage_flags" != x
+ then
+     BUILD_CFLAGS='$(INTERNAL_CFLAGS) $(T_CFLAGS) $(CFLAGS_FOR_BUILD)'
+     BUILD_CXXFLAGS='$(INTERNAL_CFLAGS) $(T_CFLAGS) $(CXXFLAGS_FOR_BUILD)'
+     BUILD_LDFLAGS='$(LDFLAGS_FOR_BUILD)'
+-
+-    NO_PIE_CFLAGS_FOR_BUILD=${NO_PIE_CFLAGS_FOR_BUILD-${NO_PIE_CFLAGS}}
+-    NO_PIE_FLAG_FOR_BUILD=${NO_PIE_FLAG_FOR_BUILD-${NO_PIE_FLAG}}
+-    BUILD_NO_PIE_CFLAGS='$(NO_PIE_CFLAGS_FOR_BUILD)'
+-    BUILD_NO_PIE_FLAG='$(NO_PIE_FLAG_FOR_BUILD)'
+ fi
+-AC_SUBST(NO_PIE_CFLAGS_FOR_BUILD)
+-AC_SUBST(NO_PIE_FLAG_FOR_BUILD)
+ 
+ # Expand extra_headers to include complete path.
+ # This substitutes for lots of t-* files.
+@@ -2714,6 +2735,27 @@ else
  	AC_MSG_RESULT($gcc_cv_otool)
  fi
  
@@ -22182,7 +22288,7 @@ index 84dceb8074a..8cc7a1c32d3 100644
  # Figure out what assembler alignment features are present.
  gcc_GAS_CHECK_FEATURE([.balign and .p2align], gcc_cv_as_balign_and_p2align,
   [2,6,0],,
-@@ -4534,6 +4586,15 @@ foo:	nop
+@@ -4534,6 +4576,15 @@ foo:	nop
  	fi
  	;;
      esac
@@ -22198,7 +22304,7 @@ index 84dceb8074a..8cc7a1c32d3 100644
  
      gcc_GAS_CHECK_FEATURE([-xbrace_comment], gcc_cv_as_ix86_xbrace_comment,,
        [-xbrace_comment=no], [.text],,
-@@ -5740,6 +5801,88 @@ if test x"$ld64_flag" = x"yes"; then
+@@ -5740,6 +5791,88 @@ if test x"$ld64_flag" = x"yes"; then
    [Define to 1 if ld64 supports '-export_dynamic'.])
  fi
  
@@ -22287,7 +22393,7 @@ index 84dceb8074a..8cc7a1c32d3 100644
  # --------
  # UNSORTED
  # --------
-@@ -5871,7 +6014,7 @@ EOF
+@@ -5871,7 +6004,7 @@ EOF
  esac
  
  case "$target:$tm_file" in
@@ -31801,10 +31907,28 @@ index 55481931668..dd4e3531281 100644
  
  } // anon namespace
 diff --git a/gcc/jit/ChangeLog b/gcc/jit/ChangeLog
-index a8bc5cea3e6..3f2abe51c29 100644
+index a8bc5cea3e6..c3009c0400e 100644
 --- a/gcc/jit/ChangeLog
 +++ b/gcc/jit/ChangeLog
-@@ -1,3 +1,10 @@
+@@ -1,3 +1,28 @@
++2022-06-09  Iain Sandoe  <iain@sandoe.co.uk>
++
++	Backported from master:
++	2021-08-19  Iain Sandoe  <iain@sandoe.co.uk>
++
++	* docs/examples/tut04-toyvm/toyvm.c: Include jit-dejagnu.h.
++	* docs/examples/tut04-toyvm/toyvm.cc: Likewise.
++	* jit-dejagnu.h: New file, imported from dejagnu-1.6.2 and
++	patched for this application.
++
++2022-06-09  Iain Sandoe  <iain@sandoe.co.uk>
++
++	Backported from master:
++	2021-08-18  Iain Sandoe  <iain@sandoe.co.uk>
++
++	PR jit/100613
++	* Make-lang.in: Provide clauses for Darwin hosts.
++
 +2021-11-24  Martin Liska  <mliska@suse.cz>
 +
 +	Backported from master:
@@ -31815,6 +31939,516 @@ index a8bc5cea3e6..3f2abe51c29 100644
  2021-04-08  Release Manager
  
  	* GCC 10.3.0 released.
+diff --git a/gcc/jit/Make-lang.in b/gcc/jit/Make-lang.in
+index 38ddfad2889..4850918d802 100644
+--- a/gcc/jit/Make-lang.in
++++ b/gcc/jit/Make-lang.in
+@@ -40,10 +40,44 @@
+ # into the jit rule, but that needs a little bit of work
+ # to do the right thing within all.cross.
+ 
+-LIBGCCJIT_LINKER_NAME = libgccjit.so
+ LIBGCCJIT_VERSION_NUM = 0
+ LIBGCCJIT_MINOR_NUM = 0
+ LIBGCCJIT_RELEASE_NUM = 1
++
++ifneq (,$(findstring darwin,$(host)))
++
++LIBGCCJIT_AGE = 1
++LIBGCCJIT_BASENAME = libgccjit
++
++LIBGCCJIT_SONAME = \
++  ${libdir}/$(LIBGCCJIT_BASENAME).$(LIBGCCJIT_VERSION_NUM).dylib
++LIBGCCJIT_FILENAME = $(LIBGCCJIT_BASENAME).$(LIBGCCJIT_VERSION_NUM).dylib
++LIBGCCJIT_LINKER_NAME = $(LIBGCCJIT_BASENAME).dylib
++
++# Conditionalize the use of the LD_VERSION_SCRIPT_OPTION and
++# LD_SONAME_OPTION depending if configure found them, using $(if)
++# We have to define a COMMA here, otherwise the commas in the "true"
++# result are treated as separators by the $(if).
++COMMA := ,
++LIBGCCJIT_VERSION_SCRIPT_OPTION = \
++	$(if $(LD_VERSION_SCRIPT_OPTION),\
++	  -Wl$(COMMA)$(LD_VERSION_SCRIPT_OPTION)$(COMMA)$(srcdir)/jit/libgccjit.map)
++
++LIBGCCJIT_SONAME_OPTION = \
++	$(if $(LD_SONAME_OPTION), \
++	     -Wl$(COMMA)$(LD_SONAME_OPTION)$(COMMA)$(LIBGCCJIT_SONAME))
++
++LIBGCCJIT_SONAME_SYMLINK = $(LIBGCCJIT_FILENAME)
++LIBGCCJIT_LINKER_NAME_SYMLINK = $(LIBGCCJIT_LINKER_NAME)
++
++jit: $(LIBGCCJIT_FILENAME) \
++	$(LIBGCCJIT_SYMLINK) \
++	$(LIBGCCJIT_LINKER_NAME_SYMLINK) \
++	$(FULL_DRIVER_NAME)
++
++else
++
++LIBGCCJIT_LINKER_NAME = libgccjit.so
+ LIBGCCJIT_SONAME = $(LIBGCCJIT_LINKER_NAME).$(LIBGCCJIT_VERSION_NUM)
+ LIBGCCJIT_FILENAME = \
+   $(LIBGCCJIT_SONAME).$(LIBGCCJIT_MINOR_NUM).$(LIBGCCJIT_RELEASE_NUM)
+@@ -69,6 +103,10 @@ jit: $(LIBGCCJIT_FILENAME) \
+ 	$(LIBGCCJIT_LINKER_NAME_SYMLINK) \
+ 	$(FULL_DRIVER_NAME)
+ 
++endif
++
++jit.serial = $(LIBGCCJIT_FILENAME)
++
+ # Tell GNU make to ignore these if they exist.
+ .PHONY: jit
+ 
+@@ -87,6 +125,18 @@ jit_OBJS = attribs.o \
+ # Use strict warnings for this front end.
+ jit-warn = $(STRICT_WARN)
+ 
++ifneq (,$(findstring darwin,$(host)))
++# TODO : Construct a Darwin-style symbol export file.
++LIBGCCJIT_EXTRA_OPTS = -Wl,-compatibility_version,$(LIBGCCJIT_VERSION_NUM) \
++	-Wl,-current_version,$(LIBGCCJIT_VERSION_NUM).$(LIBGCCJIT_MINOR_NUM).$(LIBGCCJIT_AGE) \
++	$(LIBGCCJIT_VERSION_SCRIPT_OPTION) \
++	$(LIBGCCJIT_SONAME_OPTION)
++else
++
++LIBGCCJIT_EXTRA_OPTS = $(LIBGCCJIT_VERSION_SCRIPT_OPTION) \
++	$(LIBGCCJIT_SONAME_OPTION)
++endif
++
+ # We avoid using $(BACKEND) from Makefile.in in order to avoid pulling
+ # in main.o
+ $(LIBGCCJIT_FILENAME): $(jit_OBJS) \
+@@ -98,11 +148,15 @@ $(LIBGCCJIT_FILENAME): $(jit_OBJS) \
+ 	     $(jit_OBJS) libbackend.a libcommon-target.a libcommon.a \
+ 	     $(CPPLIB) $(LIBDECNUMBER) $(EXTRA_GCC_LIBS) $(LIBS) $(BACKENDLIBS) \
+ 	     $(EXTRA_GCC_OBJS) \
+-	     $(LIBGCCJIT_VERSION_SCRIPT_OPTION) \
+-	     $(LIBGCCJIT_SONAME_OPTION)
++	     $(LIBGCCJIT_EXTRA_OPTS)
+ 
++# Create symlinks
++
++ifeq (,$(findstring darwin,$(host)))
++# but only one level for Darwin, version info is embedded.
+ $(LIBGCCJIT_SONAME_SYMLINK): $(LIBGCCJIT_FILENAME)
+ 	ln -sf $(LIBGCCJIT_FILENAME) $(LIBGCCJIT_SONAME_SYMLINK)
++endif
+ 
+ $(LIBGCCJIT_LINKER_NAME_SYMLINK): $(LIBGCCJIT_SONAME_SYMLINK)
+ 	ln -sf $(LIBGCCJIT_SONAME_SYMLINK) $(LIBGCCJIT_LINKER_NAME_SYMLINK)
+@@ -275,7 +329,26 @@ selftest-jit:
+ 
+ #
+ # Install hooks:
+-jit.install-common: installdirs
++
++jit.install-headers: installdirs
++	$(INSTALL_DATA) $(srcdir)/jit/libgccjit.h \
++	  $(DESTDIR)$(includedir)/libgccjit.h
++	$(INSTALL_DATA) $(srcdir)/jit/libgccjit++.h \
++	  $(DESTDIR)$(includedir)/libgccjit++.h
++
++
++ifneq (,$(findstring darwin,$(host)))
++# but only one level for Darwin
++
++jit.install-common: installdirs jit.install-headers
++	$(INSTALL_PROGRAM) $(LIBGCCJIT_FILENAME) \
++	  $(DESTDIR)$(libdir)/$(LIBGCCJIT_FILENAME)
++	ln -sf \
++	  $(LIBGCCJIT_SONAME_SYMLINK)\
++	  $(DESTDIR)$(libdir)/$(LIBGCCJIT_LINKER_NAME_SYMLINK)
++
++else
++jit.install-common: installdirs jit.install-headers
+ 	$(INSTALL_PROGRAM) $(LIBGCCJIT_FILENAME) \
+ 	  $(DESTDIR)/$(libdir)/$(LIBGCCJIT_FILENAME)
+ 	ln -sf \
+@@ -283,11 +356,8 @@ jit.install-common: installdirs
+ 	  $(DESTDIR)/$(libdir)/$(LIBGCCJIT_SONAME_SYMLINK)
+ 	ln -sf \
+ 	  $(LIBGCCJIT_SONAME_SYMLINK)\
+-	  $(DESTDIR)/$(libdir)/$(LIBGCCJIT_LINKER_NAME_SYMLINK)
+-	$(INSTALL_DATA) $(srcdir)/jit/libgccjit.h \
+-	  $(DESTDIR)/$(includedir)/libgccjit.h
+-	$(INSTALL_DATA) $(srcdir)/jit/libgccjit++.h \
+-	  $(DESTDIR)/$(includedir)/libgccjit++.h
++	  $(DESTDIR)$(libdir)/$(LIBGCCJIT_LINKER_NAME_SYMLINK)
++endif
+ 
+ jit.install-man:
+ 
+diff --git a/gcc/jit/docs/examples/tut04-toyvm/toyvm.c b/gcc/jit/docs/examples/tut04-toyvm/toyvm.c
+index 430dc6241d6..f618df6f9ba 100644
+--- a/gcc/jit/docs/examples/tut04-toyvm/toyvm.c
++++ b/gcc/jit/docs/examples/tut04-toyvm/toyvm.c
+@@ -24,7 +24,7 @@ along with GCC; see the file COPYING3.  If not see
+ #include <stdlib.h>
+ #include <string.h>
+ 
+-#include <dejagnu.h>
++#include "jit-dejagnu.h"
+ 
+ #include <libgccjit.h>
+ 
+diff --git a/gcc/jit/docs/examples/tut04-toyvm/toyvm.cc b/gcc/jit/docs/examples/tut04-toyvm/toyvm.cc
+index 4a8c17ffed4..137293c9da6 100644
+--- a/gcc/jit/docs/examples/tut04-toyvm/toyvm.cc
++++ b/gcc/jit/docs/examples/tut04-toyvm/toyvm.cc
+@@ -24,7 +24,7 @@ along with GCC; see the file COPYING3.  If not see
+ #include <stdlib.h>
+ #include <string.h>
+ 
+-#include <dejagnu.h>
++#include "jit-dejagnu.h"
+ 
+ #include <libgccjit++.h>
+ 
+diff --git a/gcc/jit/jit-dejagnu.h b/gcc/jit/jit-dejagnu.h
+new file mode 100644
+index 00000000000..eb53cc92416
+--- /dev/null
++++ b/gcc/jit/jit-dejagnu.h
+@@ -0,0 +1,338 @@
++/* DejaGnu unit testing header.
++   Copyright (C) 2000-2016 Free Software Foundation, Inc.
++
++This file is part of DejaGnu.
++
++DejaGnu is free software; you can redistribute it and/or modify it
++under the terms of the GNU General Public License as published by
++the Free Software Foundation; either version 3 of the License, or
++(at your option) any later version.
++
++DejaGnu is distributed in the hope that it will be useful, but
++WITHOUT ANY WARRANTY; without even the implied warranty of
++MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++General Public License for more details.
++
++You should have received a copy of the GNU General Public License
++along with DejaGnu; if not, write to the Free Software Foundation,
++Inc., 51 Franklin Street - Fifth Floor, Boston, MA 02110-1301, USA.  */
++
++/* Imported from 1.6.2 with modifications
++   * to avoid and unused symbol in C compilations
++   * avoid wait () clashing with system-provided routines
++   * provide a deterministic last line of output after the totals.  */
++
++#ifndef __DEJAGNU_H__
++#define __DEJAGNU_H__
++
++#include <stdio.h>
++#include <stdarg.h>
++#include <string.h>
++
++/* If you have problems with DejaGnu dropping failed, untested, or
++ * unresolved messages generated by a unit testcase, then:  */
++
++/* #define _DEJAGNU_WAIT_  */
++
++#ifdef _DEJAGNU_WAIT_
++#include <sys/time.h>
++#include <sys/types.h>
++#include <unistd.h>
++#endif
++
++static int passed;
++static int failed;
++static int untest;
++static int unresolve;
++static int xfailed;
++#ifdef __cplusplus
++static int xpassed;
++#endif
++
++static char buffer[512];
++
++#ifdef _DEJAGNU_WAIT_
++void
++dg_wait (void)
++{
++  fd_set rfds;
++  struct timeval tv;
++
++  FD_ZERO (&rfds);
++  tv.tv_sec = 0;
++  tv.tv_usec = 1;
++
++  select (0, &rfds, NULL, NULL, &tv);
++}
++#endif
++
++static inline void
++pass (const char* fmt, ...)
++{
++  va_list ap;
++
++  passed++;
++  va_start (ap, fmt);
++  vsnprintf (buffer, sizeof (buffer), fmt, ap);
++  va_end (ap);
++  printf ("\tPASSED: %s\n", buffer);
++#ifdef _DEJAGNU_WAIT_
++  dg_wait ();
++#endif
++}
++
++static inline void
++xpass (const char* fmt, ...)
++{
++  va_list ap;
++
++  passed++;
++  va_start (ap, fmt);
++  vsnprintf (buffer, sizeof (buffer), fmt, ap);
++  va_end (ap);
++  printf ("\tXPASSED: %s\n", buffer);
++#ifdef _DEJAGNU_WAIT_
++  dg_wait ();
++#endif
++}
++
++static inline void
++fail (const char* fmt, ...)
++{
++  va_list ap;
++
++  failed++;
++  va_start (ap, fmt);
++  vsnprintf (buffer, sizeof (buffer), fmt, ap);
++  va_end (ap);
++  printf ("\tFAILED: %s\n", buffer);
++#ifdef _DEJAGNU_WAIT_
++  dg_wait ();
++#endif
++}
++
++static inline void
++xfail (const char* fmt, ...)
++{
++  va_list ap;
++
++  failed++;
++  va_start (ap, fmt);
++  vsnprintf (buffer, sizeof (buffer), fmt, ap);
++  va_end (ap);
++  printf ("\tXFAILED: %s\n", buffer);
++#ifdef _DEJAGNU_WAIT_
++  dg_wait ();
++#endif
++}
++
++static inline void
++untested (const char* fmt, ...)
++{
++  va_list ap;
++
++  untest++;
++  va_start (ap, fmt);
++  vsnprintf (buffer, sizeof (buffer), fmt, ap);
++  va_end (ap);
++  printf ("\tUNTESTED: %s\n", buffer);
++#ifdef _DEJAGNU_WAIT_
++  dg_wait ();
++#endif
++}
++
++static inline void
++unresolved (const char* fmt, ...)
++{
++  va_list ap;
++
++  unresolve++;
++  va_start (ap, fmt);
++  vsnprintf (buffer, sizeof (buffer), fmt, ap);
++  va_end (ap);
++  printf ("\tUNRESOLVED: %s\n", buffer);
++#ifdef _DEJAGNU_WAIT_
++  dg_wait ();
++#endif
++}
++
++static inline void
++note (const char* fmt, ...)
++{
++  va_list ap;
++
++  va_start (ap, fmt);
++  vsnprintf (buffer, sizeof (buffer), fmt, ap);
++  va_end (ap);
++  printf ("\tNOTE: %s\n", buffer);
++#ifdef _DEJAGNU_WAIT_
++  dg_wait ();
++#endif
++}
++
++static inline void
++totals (void)
++{
++  printf ("\nTotals:\n");
++  printf ("\t#passed:\t\t%d\n", passed);
++  printf ("\t#real failed:\t\t%d\n", failed);
++  if (xfailed)
++    printf ("\t#expected failures:\t\t%d\n", xfailed);
++  if (untest)
++    printf ("\t#untested:\t\t%d\n", untest);
++  if (unresolve)
++    printf ("\t#unresolved:\t\t%d\n", unresolve);
++  printf ("\njit-dg-harness-complete\n");
++}
++
++#ifdef __cplusplus
++
++#include <iostream>
++#include <iomanip>
++#include <fstream>
++#include <string>
++
++const char *outstate_list[] = {
++  "FAILED: ", "PASSED: ", "UNTESTED: ", "UNRESOLVED: ", "XFAILED: ", "XPASSED: "
++};
++
++const char ** outstate = outstate_list;
++
++enum teststate { FAILED, PASSED, UNTESTED, UNRESOLVED, XFAILED, XPASSED} laststate;
++
++class TestState {
++ private:
++  teststate laststate;
++  std::string lastmsg;
++ public:
++  TestState (void)
++    {
++      passed = 0;
++      failed = 0;
++      untest = 0;
++      xpassed = 0;
++      xfailed = 0;
++      unresolve = 0;
++    }
++
++  ~TestState (void) { totals(); }
++
++  void testrun (bool b, std::string s)
++    {
++      if (b)
++	pass (s);
++      else
++	fail (s);
++    }
++
++    void pass (std::string s)
++      {
++	passed++;
++	laststate = PASSED;
++	lastmsg = s;
++	std::cout << "\t" << outstate[PASSED] << s << std::endl;
++      }
++
++    void pass (const char *c)
++      {
++	std::string s = c;
++	pass (s);
++      }
++
++    void xpass (std::string s)
++      {
++	xpassed++;
++	laststate = PASSED;
++	lastmsg = s;
++	std::cout << "\t" << outstate[XPASSED] << s << std::endl;
++      }
++
++    void xpass (const char *c)
++      {
++	std::string s = c;
++	xpass (s);
++      }
++
++    void fail (std::string s)
++      {
++	failed++;
++	laststate = FAILED;
++	lastmsg = s;
++	std::cout << "\t" << outstate[FAILED] << s << std::endl;
++      }
++
++    void fail (const char *c)
++      {
++	std::string s = c;
++	fail (s);
++      }
++
++    void xfail (std::string s)
++      {
++	xfailed++;
++	laststate = XFAILED;
++	lastmsg = s;
++	std::cout << "\t" << outstate[XFAILED] << s << std::endl;
++      }
++
++    void xfail (const char *c)
++      {
++	std::string s = c;
++	xfail (s);
++      }
++
++    void untested (std::string s)
++      {
++	untest++;
++	laststate = UNTESTED;
++	lastmsg = s;
++	std::cout << "\t" << outstate[UNTESTED] << s << std::endl;
++      }
++
++    void untested (const char *c)
++      {
++	std::string s = c;
++	untested (s);
++      }
++
++    void unresolved (std::string s)
++      {
++	unresolve++;
++	laststate = UNRESOLVED;
++	lastmsg = s;
++	std::cout << "\t" << outstate[UNRESOLVED] << s << std::endl;
++      }
++
++    void unresolved (const char *c)
++      {
++	std::string s = c;
++	unresolved (s);
++      }
++
++    void totals (void)
++      {
++	std::cout << "\t#passed:\t\t" << passed << std::endl;
++	std::cout << "\t#real failed:\t\t" << failed << std::endl;
++	if (xfailed)
++	  std::cout << "\t#expected failures:\t\t" << xfailed << std::endl;
++	if (xpassed)
++	  std::cout << "\t#unexpected passes:\t\t" << xpassed << std::endl;
++	if (untest)
++	  std::cout << "\t#untested:\t\t" << untest << std::endl;
++	if (unresolve)
++	  std::cout << "\t#unresolved:\t\t" << unresolve << std::endl;
++        std::cout << "\njit-dg-harness-complete" << std::endl;
++      }
++
++    // This is so this class can be printed in an ostream.
++    friend std::ostream & operator << (std::ostream &os, TestState& t)
++      {
++	return os << "\t" << outstate[t.laststate] << t.lastmsg ;
++      }
++
++    int GetState (void) { return laststate; }
++    std::string GetMsg (void) { return lastmsg; }
++};
++
++#endif /* __cplusplus */
++#endif /* _DEJAGNU_H_ */
 diff --git a/gcc/jit/jit-playback.c b/gcc/jit/jit-playback.c
 index d2c8bb4c154..0d21251c9ab 100644
 --- a/gcc/jit/jit-playback.c
@@ -33581,10 +34215,29 @@ index f5a6d507e91..6b2c3e17346 100644
  DEFHOOKPOD
  (have_tls,
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index 2913065bf31..b1e55de2af6 100644
+index 2913065bf31..1e2bf96860b 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,3102 @@
+@@ -1,3 +1,3121 @@
++2022-06-09  Iain Sandoe  <iain@sandoe.co.uk>
++
++	Backported from master:
++	2021-09-19  Iain Sandoe  <iain@sandoe.co.uk>
++
++	* jit.dg/jit.exp (fixed_local_execute): Amend the match and
++	exit conditions to cater for more platforms.
++	* lib/target-supports.exp: Add support for checking that the
++	jit lib is usable on the target.
++
++2022-06-09  Iain Sandoe  <iain@sandoe.co.uk>
++
++	Backported from master:
++	2021-08-19  Iain Sandoe  <iain@sandoe.co.uk>
++
++	* jit.dg/harness.h: Include jit-dejagnu.h.
++	* jit.dg/jit.exp: Use -rdynamic conditionally on target
++	support, instead of unconditional -Wl,--export-dynamic.
++
 +2022-05-29  Richard Biener  <rguenther@suse.de>
 +
 +	Backported from master:
@@ -51264,6 +51917,232 @@ index a26a6a9b762..ce8cc10b93b 100644
  
  with Unchecked_Conversion;
  
+diff --git a/gcc/testsuite/jit.dg/harness.h b/gcc/testsuite/jit.dg/harness.h
+index 6b59fb57aae..0dc5ed1dad0 100644
+--- a/gcc/testsuite/jit.dg/harness.h
++++ b/gcc/testsuite/jit.dg/harness.h
+@@ -27,7 +27,7 @@
+ #define note dejagnu_note
+ #endif
+ 
+-#include <dejagnu.h>
++#include "jit-dejagnu.h"
+ 
+ #ifdef MAKE_DEJAGNU_H_THREADSAFE
+ #undef pass
+diff --git a/gcc/testsuite/jit.dg/jit.exp b/gcc/testsuite/jit.dg/jit.exp
+index 13e8ab4dbfe..b6e743aa8b8 100644
+--- a/gcc/testsuite/jit.dg/jit.exp
++++ b/gcc/testsuite/jit.dg/jit.exp
+@@ -37,6 +37,15 @@ load_lib target-libpath.exp
+ load_lib gcc.exp
+ load_lib g++.exp
+ load_lib dejagnu.exp
++load_lib target-supports-dg.exp
++
++# Skip these tests for targets that don't support -lgccjit
++if { ![check_effective_target_lgccjit] } {
++    return
++}
++
++# The default do-what keyword.
++set dg-do-what-default compile
+ 
+ # Look for lines of the form:
+ #   definitely lost: 11,316 bytes in 235 blocks
+@@ -158,6 +167,9 @@ proc fixed_host_execute {args} {
+     if {![file exists ${executable}]} {
+ 	perror "The executable, \"$executable\" is missing" 0
+ 	return "No source file found"
++    } elseif {![file executable ${executable}]} {
++	perror "The executable, \"$executable\" is not usable" 0
++	return "Bad executable found"
+     }
+ 
+     verbose "params: $params" 2
+@@ -185,84 +197,125 @@ proc fixed_host_execute {args} {
+     set args [concat $args ${params}]
+     verbose "args: $args" 2
+ 
+-    eval spawn -noecho $args
+-
+-    expect_after full_buffer {	error "got full_buffer" }
++    # We checked that the executable exists above, and can be executed, but
++    # that does not cover other reasons that the launch could fail (e.g.
++    # missing or malformed params); catch such cases here and report them.
++    set err [catch "spawn -noecho $args" pid]
++    set sub_proc_id $spawn_id
++    if { $pid <= 0 || $err != 0 || $sub_proc_id < 0 } {
++        warning "failed to spawn : $args : err = $err"
++    }
++
++    # Increase the buffer size, if needed to avoid spurious buffer-full
++    # events; GCC uses 10000; chose a power of two here.
++    set current_max_match [match_max -i $sub_proc_id]
++    if { $current_max_match < 8192 } {
++        match_max -i $sub_proc_id 8192
++        set used [match_max -i $sub_proc_id]
++    }
++
++    # If we get a buffer-full error, that seems to be unrecoverable so try to
++    # exit in a reasonable manner to avoid wedged processes.
++    expect_after full_buffer {
++        verbose -log "fixed_host_execute: $args FULL BUFFER"
++        # FIXME: this all assumes that closing the connection will cause the
++        # sub-process to terminate (but that is not going to be the case if,
++        # for example, there is something started with -nohup somewhere).
++        # We should explicitly kill it here.
++        # Set the process to be a nowait exit.
++        wait -nowait -i $sub_proc_id
++        catch close
++        perror "${executable} got full_buffer"
++        return "${executable} got full_buffer"
++    }
+ 
+     set prefix "\[^\r\n\]*"
++    # Work around a Darwin tcl or termios bug that sometimes inserts extra
++    # CR characters into the cooked tty stream
++    set endline "\r\n"
++    if { [istarget *-*-darwin*] } {
++        set endline "\r(\r)*\n"
++    }
++    
++    # Note that the logic here assumes that we cannot (validly) get single
++    # carriage return or line feed characters in the stream.  If those occur,
++    # it will stop any further matching.  We arange for the matching to be
++    # at the start of the buffer - so that if there is any spurious output
++    # to be discarded, it must be done explicitly - not by matching part-way
++    # through the buffer.
+     expect {
+-	-re "^$prefix\[0-9\]\[0-9\]:..:..:${text}*\r\n" {
++	-re "^$prefix\[0-9\]\[0-9\]:..:..:${text}*$endline" {
+ 	    regsub "\[\n\r\t\]*NOTE: $text\r\n" $expect_out(0,string) "" output
+ 	    verbose "$output" 3
+ 	    set timetol 0
+ 	    exp_continue
+ 	}
+-	-re "^$prefix\tNOTE:${text}*" {
+-	    regsub "\[\n\r\t\]*NOTE: $text\r\n" $expect_out(0,string) "" output
+-	    set output [string range $output 6 end]
+-	    verbose "$output" 2
++	-re "^\tNOTE: (\[^\r\n\]+)$endline" {
++	    # discard notes.
++	    verbose "Ignored note: $expect_out(1,string)" 2
+ 	    set timetol 0
+ 	    exp_continue
+ 	}
+-	-re "^$prefix\tPASSED:${text}*" {
+-	    regsub "\[\n\r\t\]*PASSED: $text\r\n" $expect_out(0,string) "" output
+-	    set output [string range $output 8 end]
+-	    pass "$output"
++	-re "^\tPASSED: (\[^\r\n\]+)$endline" {
++	    pass "$expect_out(1,string)"
+ 	    set timetol 0
+ 	    exp_continue
+ 	}
+-	-re "^$prefix\tFAILED:${text}*" {
+-	    regsub "\[\n\r\t\]*FAILED: $text\r\n" $expect_out(0,string) "" output
+-	    set output [string range $output 8 end]
+-	    fail "$output"
++	-re "^\tFAILED: (\[^\r\n\]+)$endline" {
++	    fail "$expect_out(1,string)"
+ 	    set timetol 0
+ 	    exp_continue
+ 	}
+-	-re "^$prefix\tUNTESTED:${text}*" {
+-	    regsub "\[\n\r\t\]*TESTED: $text\r\n" $expect_out(0,string) "" output
+-	    set output [string range $output 8 end]
+-	    untested "$output"
++	-re "^\tUNTESTED: (\[^\r\n\]+)$endline" {
++	    untested "$expect_out(1,string)"
+ 	    set timetol 0
+ 	    exp_continue
+ 	}
+-	-re "^$prefix\tUNRESOLVED:${text}*" {
+-	    regsub "\[\n\r\t\]*UNRESOLVED: $text\r\n" $expect_out(0,string) "" output
+-	    set output [string range $output 8 end]
+-	    unresolved "$output"
++	-re "^\tUNRESOLVED: (\[^\r\n\]+)$endline" {
++	    unresolved "$expect_out(1,string)"
+ 	    set timetol 0
+ 	    exp_continue
+ 	}
+-	-re "^Totals" {
+-	    verbose "All done" 2
++	-re "^$prefix$endline" {
++            # This matches and discards any other lines (including blank ones).
++            if { [string length $expect_out(buffer)] <= 2 } {
++                set output "blank line"
++            } else {
++	        set output [string range $expect_out(buffer) 0 end-2]
++	    }
++	    verbose -log "DISCARDED $expect_out(spawn_id) : $output"
++	    exp_continue
+ 	}
+ 	eof {
+-	    #	    unresolved "${executable} died prematurely"
+-	    #	    catch close
+-	    #	    return "${executable} died prematurely"
++	    # This seems to be the only way that we can reliably know that the
++	    # output is finished since there are cases where further output
++	    # follows the dejagnu test harness totals.
++	    verbose "saw eof" 2
+ 	}
+ 	timeout {
+-	    warning "Timed out executing test case"
+ 	    if { $timetol <= 2 } {
++	        verbose -log "Timed out with retry (timeout = $timeout)"
+ 		incr timetol
+ 		exp_continue
+ 	    } else {
++	        warning "Timed out executing testcase (timeout = $timeout)"
+ 		catch close
+ 		return "Timed out executing test case"
+ 	    }
+ 	}
+-	-re "^$prefix\r\n" {
+-	    exp_continue
+-	}
+     }
+ 
+-    # Use "wait" before "close": valgrind might not have finished
+-    # writing the log out before we parse it, so we need to wait for
+-    # the spawnee to finish.
+-
+-    catch wait wres
+-    verbose "wres: $wres" 2
+-    verify_exit_status $executable $wres
+-
++    # Use "wait" to pick up the sub-process exit state.  If the sub-process is
++    # writing to a file (perhaps under valgrind) then that also needs to be
++    # complete; only attempt this on a valid spawn.
++    if { $sub_proc_id > 0 } {
++        verbose "waiting for $sub_proc_id" 1
++        # Be explicit about what we are waiting for.
++        catch "wait -i $sub_proc_id" wres
++        verbose "wres: $wres" 2
++        verify_exit_status $executable $wres
++    }
++ 
+     if $run_under_valgrind {
+ 	upvar 2 name name
+ 	parse_valgrind_logfile $name $valgrind_logfile
+@@ -878,9 +931,14 @@ proc jit-verify-executable { args } {
+     jit-run-executable $output_filename ${dg-output-text}
+ }
+ 
++set DEFAULT_CFLAGS "-I$srcdir/../jit -lgccjit -g -Wall -Werror"
++
+ # We need to link with --export-dynamic for test-calling-external-function.c
+ # so that the JIT-built code can call into functions from the main program.
+-set DEFAULT_CFLAGS "-I$srcdir/../jit -lgccjit -g -Wall -Werror -Wl,--export-dynamic"
++
++if { [check_effective_target_rdynamic] } {
++  set DEFAULT_CFLAGS "$DEFAULT_CFLAGS -rdynamic"
++}
+ 
+ # Main loop.  This will invoke jig-dg-test on each test-*.c file.
+ dg-runtest $tests "" $DEFAULT_CFLAGS
 diff --git a/gcc/testsuite/lib/prune.exp b/gcc/testsuite/lib/prune.exp
 index eea4bf383a7..a5d09c78106 100644
 --- a/gcc/testsuite/lib/prune.exp
@@ -51291,7 +52170,7 @@ index eea4bf383a7..a5d09c78106 100644
      # line numbers by converting them to "NN" form.
      set text [maybe-handle-nn-line-numbers $text]
 diff --git a/gcc/testsuite/lib/target-supports.exp b/gcc/testsuite/lib/target-supports.exp
-index bd62a0d9e79..2749afe4741 100644
+index bd62a0d9e79..1aa64a5a6bd 100644
 --- a/gcc/testsuite/lib/target-supports.exp
 +++ b/gcc/testsuite/lib/target-supports.exp
 @@ -4671,6 +4671,23 @@ proc check_effective_target_arm_cmse_ok {} {
@@ -51318,7 +52197,29 @@ index bd62a0d9e79..2749afe4741 100644
  # Return 1 if the target supports executing MVE instructions, 0
  # otherwise.
  
-@@ -10352,13 +10369,14 @@ proc check_effective_target_tune_cortex_a76 { } {
+@@ -10330,6 +10347,21 @@ proc check_effective_target_indirect_calls { } {
+   return 1
+ }
+ 
++# Return 1 if we can use the -lgccjit option, 0 otherwise.
++
++proc check_effective_target_lgccjit { } {
++  if { [info procs jit_target_compile] == "" } then {
++    global GCC_UNDER_TEST
++    if ![info exists GCC_UNDER_TEST] {
++      set GCC_UNDER_TEST "[find_gcc]"
++    }
++    proc jit_target_compile { source dest type options } [info body gcc_target_compile]
++  }
++  return [check_no_compiler_messages lgccjit executable {
++     int main() { return 0; }
++  } "-lgccjit"]
++}
++
+ # Return 1 if we're able to assemble movdiri and movdir64b
+ 
+ proc check_effective_target_movdir { } {
+@@ -10352,13 +10384,14 @@ proc check_effective_target_tune_cortex_a76 { } {
      return [check_configured_with "with-tune=cortex-a76"]
  }
  
@@ -68609,7 +69510,7 @@ index 61611ba53eb..aa29d19cd42 100644
  } // namespace filesystem
  } // namespace experimental
 diff --git a/libstdc++-v3/include/experimental/bits/fs_path.h b/libstdc++-v3/include/experimental/bits/fs_path.h
-index 69b823a3466..927cf2278d1 100644
+index 69b823a3466..0a8f4eee0a1 100644
 --- a/libstdc++-v3/include/experimental/bits/fs_path.h
 +++ b/libstdc++-v3/include/experimental/bits/fs_path.h
 @@ -124,7 +124,7 @@ namespace __detail
@@ -68621,17 +69522,6 @@ index 69b823a3466..927cf2278d1 100644
      { };
  
    template<typename _Tp1, typename _Tp2 = void,
-@@ -419,8 +419,8 @@ namespace __detail
-     class iterator;
-     typedef iterator const_iterator;
- 
--    iterator begin() const;
--    iterator end() const;
-+    iterator begin() const noexcept;
-+    iterator end() const noexcept;
- 
-     /// @cond undocumented
-     // Create a basic_string by reading until a null character.
 @@ -1268,7 +1268,7 @@ namespace __detail
      return _M_at_end == __rhs._M_at_end;
    }
