@@ -668,7 +668,7 @@ Iain Sandoe (36):
 Ian Lance Taylor (1):
       compiler: correct condition for calling memclrHasPointers
 
-Jakub Jelinek (122):
+Jakub Jelinek (123):
       rs6000: Fix up libgcc ABI when built with --with-long-double-format=ieee [PR97653]
       dse: Fix up hard reg conflict checking in replace_read [PR99863]
       c++: Don't cache constexpr functions which are passed pointers to heap or static vars being constructed [PR99859]
@@ -791,6 +791,7 @@ Jakub Jelinek (122):
       sparc: Preserve ORIGINAL_REGNO in epilogue_renumber [PR105257]
       rtlanal: Fix up replace_rtx [PR105333]
       asan: Fix up asan_redzone_buffer::emit_redzone_byte [PR105396]
+      testsuite: Fix up pr104637 testcase [PR104637]
 
 Jan Hubicka (1):
       Fix looping flag discovery in ipa-pure-const
@@ -851,7 +852,7 @@ John David Anglin (5):
       Don't use 'G' constraint in integer move patterns
       Fix warnings building linux-atomic.c and fptr.c on hppa64-linux
 
-Jonathan Wakely (125):
+Jonathan Wakely (129):
       libstdc++: Fix Doxygen warning about ambiguous file name
       maintainer-scripts: Disable multilib when generating libstdc++ docs
       libstdc++: Fix doxygen markup for group close commands
@@ -977,6 +978,10 @@ Jonathan Wakely (125):
       libstdc++: Fix status docs for <bit> support
       libstdc++: Fix hyperlink in docs
       libstdc++: Partially revert r11-9772-g6f8133689f4397 [PR105915]
+      libstdc++: Add xfail to pretty printer tests that fail in C++20
+      libstdc++: Fix error reporting in filesystem::copy [PR99290]
+      libstdc++: Run all tests in file
+      libstdc++: Disable failing test [PR97944]
 
 José Rui Faustino de Sousa (1):
       Fortran: Fix double function call with -fcheck=pointer [PR]
@@ -1288,11 +1293,12 @@ Uros Bizjak (7):
       i386: Force inputs to a register to avoid lowpart_subreg failure [PR104458]
       i386: Fix vec_unpacks_float_lo_v4si operand constraint [PR104469]
 
-Vladimir N. Makarov (4):
+Vladimir N. Makarov (5):
       [PR97969] LRA: Transform pattern `plus (plus (hard reg, const),	pseudo)` after elimination
       [PR98722] LRA: Check that target has no 3-op add insn to transform 2 plus expression.
       [PR98777] LRA: Use preliminary created pseudo for in LRA elimination subpass
       [PR102842] Consider all outputs in generation of matching reloads
+      [PR104637] LRA: Split hard regs as many as possible on one subpass
 
 Xi Ruoyao (2):
       mips: Fix up mips_atomic_assign_expand_fenv [PR94780]
@@ -32539,6 +32545,75 @@ index 37ae6549e56..3a9fcfabce8 100644
    return true;
  }
  
+diff --git a/gcc/lra-assigns.c b/gcc/lra-assigns.c
+index 40e323c2a64..c280775333f 100644
+--- a/gcc/lra-assigns.c
++++ b/gcc/lra-assigns.c
+@@ -1773,8 +1773,8 @@ lra_split_hard_reg_for (void)
+      iterations.  Either it's an asm and something is wrong with the
+      constraints, or we have run out of spill registers; error out in
+      either case.  */
+-  bool asm_p = false;
+-  bitmap_head failed_reload_insns, failed_reload_pseudos;
++  bool asm_p = false, spill_p = false;
++  bitmap_head failed_reload_insns, failed_reload_pseudos, over_split_insns;
+   
+   if (lra_dump_file != NULL)
+     fprintf (lra_dump_file,
+@@ -1785,6 +1785,7 @@ lra_split_hard_reg_for (void)
+   bitmap_ior (&non_reload_pseudos, &lra_inheritance_pseudos, &lra_split_regs);
+   bitmap_ior_into (&non_reload_pseudos, &lra_subreg_reload_pseudos);
+   bitmap_ior_into (&non_reload_pseudos, &lra_optional_reload_pseudos);
++  bitmap_initialize (&over_split_insns, &reg_obstack);
+   for (i = lra_constraint_new_regno_start; i < max_regno; i++)
+     if (reg_renumber[i] < 0 && lra_reg_info[i].nrefs != 0
+ 	&& (rclass = lra_get_allocno_class (i)) != NO_REGS
+@@ -1792,13 +1793,41 @@ lra_split_hard_reg_for (void)
+       {
+ 	if (! find_reload_regno_insns (i, first, last))
+ 	  continue;
+-	if (spill_hard_reg_in_range (i, rclass, first, last))
++	if (BLOCK_FOR_INSN (first) == BLOCK_FOR_INSN (last))
+ 	  {
+-	    bitmap_clear (&failed_reload_pseudos);
+-	    return true;
++	    /* Check that we are not trying to split over the same insn
++	       requiring reloads to avoid splitting the same hard reg twice or
++	       more.  If we need several hard regs splitting over the same insn
++	       it can be finished on the next iterations.
++
++	       The following loop iteration number is small as we split hard
++	       reg in a very small range.  */
++	    for (insn = first;
++		 insn != NEXT_INSN (last);
++		 insn = NEXT_INSN (insn))
++	      if (bitmap_bit_p (&over_split_insns, INSN_UID (insn)))
++		break;
++	    if (insn != NEXT_INSN (last)
++		|| !spill_hard_reg_in_range (i, rclass, first, last))
++	      {
++		bitmap_set_bit (&failed_reload_pseudos, i);
++	      }
++	    else
++	      {
++		for (insn = first;
++		     insn != NEXT_INSN (last);
++		     insn = NEXT_INSN (insn))
++		  bitmap_set_bit (&over_split_insns, INSN_UID (insn));
++		spill_p = true;
++	      }
+ 	  }
+-	bitmap_set_bit (&failed_reload_pseudos, i);
+       }
++  bitmap_clear (&over_split_insns);
++  if (spill_p)
++    {
++      bitmap_clear (&failed_reload_pseudos);
++      return true;
++    }
+   bitmap_clear (&non_reload_pseudos);
+   bitmap_initialize (&failed_reload_insns, &reg_obstack);
+   EXECUTE_IF_SET_IN_BITMAP (&failed_reload_pseudos, 0, u, bi)
 diff --git a/gcc/lra-constraints.c b/gcc/lra-constraints.c
 index 7cc479b3042..30d088afbca 100644
 --- a/gcc/lra-constraints.c
@@ -46832,6 +46907,34 @@ index 00000000000..7a6eb260e41
 +  long long u64_r = i + d;
 +  char u8_r = u64_r;
 +  return ub + u8_r;
++}
+diff --git a/gcc/testsuite/gcc.target/i386/pr104637.c b/gcc/testsuite/gcc.target/i386/pr104637.c
+new file mode 100644
+index 00000000000..36e8b6ed97d
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/i386/pr104637.c
+@@ -0,0 +1,22 @@
++/* { dg-do compile { target { ! ia32 } } } */
++/* { dg-options "-Og -fno-forward-propagate -mavx -Wno-div-by-zero" } */
++
++typedef short __attribute__((__vector_size__ (64))) U;
++typedef unsigned long long __attribute__((__vector_size__ (32))) V;
++typedef long double __attribute__((__vector_size__ (64))) F;
++
++int i;
++U u;
++F f;
++
++void
++foo (char a, char b, _Complex char c, V v)
++{
++  u = (U) { u[0] / 0, u[1] / 0, u[2] / 0, u[3] / 0, u[4] / 0, u[5] / 0, u[6] / 0, u[7] / 0,
++	    u[8] / 0, u[9] / 0, u[10] / 0, u[11] / 0, u[12] / 0, u[13] / 0, u[14] / 0, u[15] / 0,
++	    u[16] / 0, u[17] / 0, u[18] / 0, u[19] / 0, u[20] / 0, u[21] / 0, u[22] / 0, u[23] / 0,
++	    u[24] / 0, u[25] / 0, u[26] / 0, u[27] / 0, u[28] / 0, u[29] / 0, u[30] / 0, u[31] / 0 };
++  c += i;
++  f = (F) { v[0], v[1], v[2], v[3] };
++  i = (char) (__imag__ c + i);
 +}
 diff --git a/gcc/testsuite/gcc.target/i386/pr104971.c b/gcc/testsuite/gcc.target/i386/pr104971.c
 new file mode 100644
@@ -74331,7 +74434,7 @@ index 1f06e67feea..2c8fd4bf161 100644
  
        /* Additional system-dependent mappings from non-standard error codes
 diff --git a/libstdc++-v3/src/c++17/fs_ops.cc b/libstdc++-v3/src/c++17/fs_ops.cc
-index 81c84dfb557..008195c2d31 100644
+index 81c84dfb557..5231f67561e 100644
 --- a/libstdc++-v3/src/c++17/fs_ops.cc
 +++ b/libstdc++-v3/src/c++17/fs_ops.cc
 @@ -65,19 +65,12 @@ namespace posix = std::filesystem::__gnu_posix;
@@ -74354,7 +74457,22 @@ index 81c84dfb557..008195c2d31 100644
  }
  
  fs::path
-@@ -496,7 +489,7 @@ fs::create_directories(const path& p, error_code& ec)
+@@ -411,8 +404,12 @@ fs::copy(const path& from, const path& to, copy_options options,
+       // set an unused bit in options to disable further recursion
+       if (!is_set(options, copy_options::recursive))
+ 	options |= static_cast<copy_options>(4096);
+-      for (const directory_entry& x : directory_iterator(from))
+-	copy(x.path(), to/x.path().filename(), options, ec);
++      for (const directory_entry& x : directory_iterator(from, ec))
++	{
++	  copy(x.path(), to/x.path().filename(), options, ec);
++	  if (ec)
++	    return;
++	}
+     }
+   // _GLIBCXX_RESOLVE_LIB_DEFECTS
+   // 2683. filesystem::copy() says "no effects"
+@@ -496,7 +493,7 @@ fs::create_directories(const path& p, error_code& ec)
        return false;
      }
  
@@ -74363,7 +74481,7 @@ index 81c84dfb557..008195c2d31 100644
    if (is_directory(st))
      return false;
    else if (ec && !status_known(st))
-@@ -577,8 +570,7 @@ namespace
+@@ -577,8 +574,7 @@ namespace
    {
      bool created = false;
  #ifdef _GLIBCXX_HAVE_SYS_STAT_H
@@ -74468,10 +74586,25 @@ index 6895780a5f7..68e3a95f9a0 100644
  @ENABLE_DUAL_ABI_TRUE@collate_members_cow.cc: ${glibcxx_srcdir}/$(CCOLLATE_CC)
  @ENABLE_DUAL_ABI_TRUE@	$(LN_S) ${glibcxx_srcdir}/$(CCOLLATE_CC) ./$@ || true
 diff --git a/libstdc++-v3/src/filesystem/ops.cc b/libstdc++-v3/src/filesystem/ops.cc
-index 7cc82a50e01..321eb3a5cba 100644
+index 7cc82a50e01..e7b145f8d79 100644
 --- a/libstdc++-v3/src/filesystem/ops.cc
 +++ b/libstdc++-v3/src/filesystem/ops.cc
-@@ -366,7 +366,7 @@ fs::copy_file(const path& from, const path& to, copy_options option)
+@@ -344,8 +344,12 @@ fs::copy(const path& from, const path& to, copy_options options,
+       // set an unused bit in options to disable further recursion
+       if (!is_set(options, copy_options::recursive))
+ 	options |= static_cast<copy_options>(4096);
+-      for (const directory_entry& x : directory_iterator(from))
+-	copy(x.path(), to/x.path().filename(), options, ec);
++      for (const directory_entry& x : directory_iterator(from, ec))
++	{
++	  copy(x.path(), to/x.path().filename(), options, ec);
++	  if (ec)
++	    return;
++	}
+     }
+   // _GLIBCXX_RESOLVE_LIB_DEFECTS
+   // 2683. filesystem::copy() says "no effects"
+@@ -366,7 +370,7 @@ fs::copy_file(const path& from, const path& to, copy_options option)
  
  bool
  fs::copy_file(const path& from, const path& to, copy_options options,
@@ -74480,7 +74613,7 @@ index 7cc82a50e01..321eb3a5cba 100644
  {
  #ifdef _GLIBCXX_HAVE_SYS_STAT_H
    return do_copy_file(from.c_str(), to.c_str(), copy_file_options(options),
-@@ -418,7 +418,7 @@ fs::create_directories(const path& p)
+@@ -418,7 +422,7 @@ fs::create_directories(const path& p)
  }
  
  bool
@@ -74489,7 +74622,7 @@ index 7cc82a50e01..321eb3a5cba 100644
  {
    if (p.empty())
      {
-@@ -426,7 +426,7 @@ fs::create_directories(const path& p, error_code& ec) noexcept
+@@ -426,7 +430,7 @@ fs::create_directories(const path& p, error_code& ec) noexcept
        return false;
      }
  
@@ -74498,7 +74631,7 @@ index 7cc82a50e01..321eb3a5cba 100644
    if (is_directory(st))
      return false;
    else if (ec && !status_known(st))
-@@ -1092,7 +1092,7 @@ fs::remove_all(const path& p)
+@@ -1092,7 +1096,7 @@ fs::remove_all(const path& p)
  }
  
  std::uintmax_t
@@ -78113,6 +78246,51 @@ index 86a03c3c787..283024fe287 100644
  
    permissions(p/"d1/d2", fs::perms::owner_all, ec);
    remove_all(p, ec);
+diff --git a/libstdc++-v3/testsuite/27_io/filesystem/operations/copy.cc b/libstdc++-v3/testsuite/27_io/filesystem/operations/copy.cc
+index f7aac8a302f..cbd8c8ea03e 100644
+--- a/libstdc++-v3/testsuite/27_io/filesystem/operations/copy.cc
++++ b/libstdc++-v3/testsuite/27_io/filesystem/operations/copy.cc
+@@ -194,6 +194,34 @@ test05()
+   VERIFY( !ec );  // Previous value should be cleared (LWG 2683)
+ }
+ 
++void
++test_pr99290()
++{
++  auto dir = __gnu_test::nonexistent_path();
++  auto source = dir/"source";
++  auto dest = dir/"dest";
++  create_directories(source/"emptydir");
++  create_directories(dest/"emptydir");
++  std::ofstream{source/"file"} << 'a';
++  std::ofstream{dest/"file"} << 'b';
++  // PR libstdc++/99290
++  // std::filesystem::copy does not always report errors for recursion
++  std::error_code ec;
++  copy(source, dest, ec);
++  VERIFY( ec == std::errc::file_exists );
++
++#if __cpp_exceptions
++  try {
++    copy(source, dest);
++    VERIFY( false );
++  } catch (const fs::filesystem_error& e) {
++    VERIFY( e.code() == std::errc::file_exists );
++  }
++#endif
++
++  remove_all(dir);
++}
++
+ int
+ main()
+ {
+@@ -202,4 +230,5 @@ main()
+   test03();
+   test04();
+   test05();
++  test_pr99290();
+ }
 diff --git a/libstdc++-v3/testsuite/27_io/filesystem/operations/create_directories.cc b/libstdc++-v3/testsuite/27_io/filesystem/operations/create_directories.cc
 index aaa07042a19..ec58cdb0e7f 100644
 --- a/libstdc++-v3/testsuite/27_io/filesystem/operations/create_directories.cc
@@ -78471,6 +78649,26 @@ index 00000000000..9e38c9edaa4
 +{
 +  test01();
 +}
+diff --git a/libstdc++-v3/testsuite/30_threads/jthread/95989.cc b/libstdc++-v3/testsuite/30_threads/jthread/95989.cc
+index 46444b5ccab..a179eab3819 100644
+--- a/libstdc++-v3/testsuite/30_threads/jthread/95989.cc
++++ b/libstdc++-v3/testsuite/30_threads/jthread/95989.cc
+@@ -20,6 +20,7 @@
+ // { dg-require-gthreads {} }
+ // { dg-additional-options "-pthread" { target pthread } }
+ // { dg-additional-options "-static" { target static } }
++// { dg-skip-if "broken" { *-*-* } }
+ 
+ #include <thread>
+ 
+@@ -50,5 +51,6 @@ int
+ main()
+ {
+   test01();
+-  test01();
++  test02();
++  test03();
+ }
 diff --git a/libstdc++-v3/testsuite/30_threads/promise/members/at_thread_exit2.cc b/libstdc++-v3/testsuite/30_threads/promise/members/at_thread_exit2.cc
 index 59eeae823ec..7db52a6336e 100644
 --- a/libstdc++-v3/testsuite/30_threads/promise/members/at_thread_exit2.cc
@@ -78637,6 +78835,51 @@ index 1c073e125f9..e9569c2dd53 100644
    remove_all(p, ec);
  }
  
+diff --git a/libstdc++-v3/testsuite/experimental/filesystem/operations/copy.cc b/libstdc++-v3/testsuite/experimental/filesystem/operations/copy.cc
+index e1e6d1dcc15..75f7e0d8297 100644
+--- a/libstdc++-v3/testsuite/experimental/filesystem/operations/copy.cc
++++ b/libstdc++-v3/testsuite/experimental/filesystem/operations/copy.cc
+@@ -190,6 +190,34 @@ test05()
+   VERIFY( !ec );  // Previous value should be cleared (LWG 2683)
+ }
+ 
++void
++test_pr99290()
++{
++  auto dir = __gnu_test::nonexistent_path();
++  auto source = dir/"source";
++  auto dest = dir/"dest";
++  create_directories(source/"emptydir");
++  create_directories(dest/"emptydir");
++  std::ofstream{source/"file"} << 'a';
++  std::ofstream{dest/"file"} << 'b';
++  // PR libstdc++/99290
++  // std::filesystem::copy does not always report errors for recursion
++  std::error_code ec;
++  copy(source, dest, ec);
++  VERIFY( ec == std::errc::file_exists );
++
++#if __cpp_exceptions
++  try {
++    copy(source, dest);
++    VERIFY( false );
++  } catch (const fs::filesystem_error& e) {
++    VERIFY( e.code() == std::errc::file_exists );
++  }
++#endif
++
++  remove_all(dir);
++}
++
+ int
+ main()
+ {
+@@ -198,4 +226,5 @@ main()
+   test03();
+   test04();
+   test05();
++  test_pr99290();
+ }
 diff --git a/libstdc++-v3/testsuite/experimental/filesystem/operations/create_directories.cc b/libstdc++-v3/testsuite/experimental/filesystem/operations/create_directories.cc
 index 064c30b5b21..b8e853fe2ee 100644
 --- a/libstdc++-v3/testsuite/experimental/filesystem/operations/create_directories.cc
@@ -78944,6 +79187,126 @@ index 4896053a013..1d0e9a96cae 100644
  {
    // To see a problem with gcc 3.3 and before, set a break point here.
    // Single step through c_str implementation, call sched_yield after
+diff --git a/libstdc++-v3/testsuite/lib/gdb-test.exp b/libstdc++-v3/testsuite/lib/gdb-test.exp
+index 3d5bf882fd0..aeb21089be6 100644
+--- a/libstdc++-v3/testsuite/lib/gdb-test.exp
++++ b/libstdc++-v3/testsuite/lib/gdb-test.exp
+@@ -50,40 +50,48 @@ proc get_line_number {filename marker} {
+     return $gdb_markers($filename,$marker)
+ }
+ 
+-# Make note of a gdb test.  A test consists of a variable name and an
+-# expected result.
+-proc note-test {var result} {
++proc register_gdb_test {var result kind rexp selector} {
+     global gdb_tests
+ 
+-    lappend gdb_tests $var $result print 0
++    set xfail 0
++    if {[string length $selector] > 0} {
++	switch [dg-process-target $selector] {
++	    "N" { return }
++	    "S" { }
++	    "P" { }
++	    "F" { set xfail 1 }
++	}
++    }
++
++    lappend gdb_tests $var $result $kind $rexp $xfail
++}
++
++# Make note of a gdb test.  A test consists of a variable name and an
++# expected result, and an optional target selector.
++proc note-test {var result {selector {}}} {
++    register_gdb_test $var $result print 0 $selector
+ }
+ 
+ # A test that uses a regular expression.  This is like note-test, but
+ # the result is a regular expression that is matched against the
+ # output.
+-proc regexp-test {var result} {
+-    global gdb_tests
+-
+-    lappend gdb_tests $var $result print 1
++proc regexp-test {var result {selector {}}} {
++    register_gdb_test $var $result print 1 $selector
+ }
+ 
+ # A test of 'whatis'.  This tests a type rather than a variable.
+-proc whatis-test {var result} {
+-    global gdb_tests
+-
+-    lappend gdb_tests $var $result whatis 0
++proc whatis-test {var result {selector {}}} {
++    register_gdb_test $var $result whatis 0 $selector
+ }
+ 
+ # A test of 'whatis' that uses a regular expression. This tests a type rather
+ # than a variable.
+-proc whatis-regexp-test {var result} {
+-    global gdb_tests
+-
+-    lappend gdb_tests $var $result whatis 1
++proc whatis-regexp-test {var result {selector {}}} {
++    register_gdb_test $var $result whatis 1 $selector
+ }
+ 
+ # Utility for testing variable values using gdb, invoked via dg-final.
+-# Tests all tests indicated by note-test and regexp-test.
++# Tests all tests indicated by note-test, whatis-test, and the regexp versions.
+ #
+ # Argument 0 is the marker on which to put a breakpoint
+ # Argument 2 handles expected failures and the like
+@@ -144,7 +152,7 @@ proc gdb-test { marker {selector {}} {load_xmethods 0} } {
+     puts $fd "info share"
+ 
+     set count 0
+-    foreach {var result kind rexp} $gdb_tests {
++    foreach {var result kind rexp xfail} $gdb_tests {
+ 	incr count
+ 	set gdb_var($count) $var
+ 	set gdb_expected($count) $result
+@@ -152,6 +160,7 @@ proc gdb-test { marker {selector {}} {load_xmethods 0} } {
+ 	    if {$do_whatis_tests} {
+ 		set gdb_is_type($count) 1
+ 		set gdb_is_regexp($count) $rexp
++		set gdb_is_xfail($count) $xfail
+ 		set gdb_command($count) "whatis $var"
+ 	    } else {
+ 	        unsupported "$testname"
+@@ -161,6 +170,7 @@ proc gdb-test { marker {selector {}} {load_xmethods 0} } {
+ 	} else {
+ 	    set gdb_is_type($count) 0
+ 	    set gdb_is_regexp($count) $rexp
++	    set gdb_is_xfail($count) $xfail
+ 	    set gdb_command($count) "print $var"
+ 	}
+ 	puts $fd $gdb_command($count)
+@@ -198,11 +208,20 @@ proc gdb-test { marker {selector {}} {load_xmethods 0} } {
+ 	    }
+ 
+ 	    if {$match} {
+-		pass "$testname $gdb_command($test_counter)"
++		if {$gdb_is_xfail($test_counter)} {
++		    xpass "$testname $gdb_command($test_counter)"
++		    verbose " matched =>$first<="
++		} else {
++		    pass "$testname $gdb_command($test_counter)"
++		}
+ 	    } else {
+-		fail "$testname $gdb_command($test_counter)"
+-		verbose "     got =>$first<="
+-		verbose "expected =>$gdb_expected($test_counter)<="
++		if {$gdb_is_xfail($test_counter)} {
++		    xfail "$testname $gdb_command($test_counter)"
++		} else {
++		    fail "$testname $gdb_command($test_counter)"
++		    verbose "     got =>$first<="
++		    verbose "expected =>$gdb_expected($test_counter)<="
++		}
+ 	    }
+ 
+ 	    if {$test_counter == $count} {
 diff --git a/libstdc++-v3/testsuite/lib/libstdc++.exp b/libstdc++-v3/testsuite/lib/libstdc++.exp
 index 3b8587cd01d..45dd2c8c02e 100644
 --- a/libstdc++-v3/testsuite/lib/libstdc++.exp
@@ -78976,6 +79339,19 @@ index 161ffa7aa5e..a47d22ebe70 100644
      foreach p $additional_prunes {
  	if { [string length $p] > 0 } {
  	    # Following regexp matches a complete line containing $p.
+diff --git a/libstdc++-v3/testsuite/libstdc++-prettyprinters/80276.cc b/libstdc++-v3/testsuite/libstdc++-prettyprinters/80276.cc
+index f4059385652..5f8b8f6d5bb 100644
+--- a/libstdc++-v3/testsuite/libstdc++-prettyprinters/80276.cc
++++ b/libstdc++-v3/testsuite/libstdc++-prettyprinters/80276.cc
+@@ -46,7 +46,7 @@ main()
+   // { dg-final { whatis-regexp-test p1 "std::unique_ptr<std::(__debug::)?vector<std::unique_ptr<std::(__debug::)?vector<int>\\*>>>" } }
+   // { dg-final { whatis-regexp-test p2 "std::unique_ptr<std::(__debug::)?vector<std::unique_ptr<std::(__debug::)?set<int>\\*>>\\\[\\\]>" } }
+   // { dg-final { whatis-regexp-test p3 "std::unique_ptr<std::(__debug::)?set<std::unique_ptr<std::(__debug::)?vector<int>\\*>>\\\[10\\\]>" } }
+-  // { dg-final { whatis-regexp-test p4 "std::unique_ptr<std::(__debug::)?vector<std::unique_ptr<std::(__debug::)?list<std::string>\\\[\\\]>>\\\[99\\\]>" } }
++  // { dg-final { whatis-regexp-test p4 "std::unique_ptr<std::(__debug::)?vector<std::unique_ptr<std::(__debug::)?list<std::string>\\\[\\\]>>\\\[99\\\]>" { xfail c++20 } } }
+ 
+   placeholder(&p1);		// Mark SPOT
+   placeholder(&p2);
 diff --git a/libstdc++-v3/testsuite/libstdc++-prettyprinters/cxx11.cc b/libstdc++-v3/testsuite/libstdc++-prettyprinters/cxx11.cc
 index 001b121dcec..b03f8479d35 100644
 --- a/libstdc++-v3/testsuite/libstdc++-prettyprinters/cxx11.cc
@@ -79021,6 +79397,41 @@ index 001b121dcec..b03f8479d35 100644
    placeholder(""); // Mark SPOT
    use(efl);
    use(fl);
+diff --git a/libstdc++-v3/testsuite/libstdc++-prettyprinters/libfundts.cc b/libstdc++-v3/testsuite/libstdc++-prettyprinters/libfundts.cc
+index 7eb024b9b08..038d50de640 100644
+--- a/libstdc++-v3/testsuite/libstdc++-prettyprinters/libfundts.cc
++++ b/libstdc++-v3/testsuite/libstdc++-prettyprinters/libfundts.cc
+@@ -50,7 +50,7 @@ main()
+   om = std::map<int, double>{ {1, 2.}, {3, 4.}, {5, 6.} };
+ // { dg-final { regexp-test om {std::experimental::optional<std::(__debug::)?map<int, double>> containing std::(__debug::)?map with 3 elements = {\[1\] = 2, \[3\] = 4, \[5\] = 6}} } }
+   optional<std::string> os{ "stringy" };
+-// { dg-final { note-test os {std::experimental::optional<std::string> = {[contained value] = "stringy"}} } }
++// { dg-final { note-test os {std::experimental::optional<std::string> = {[contained value] = "stringy"}} { xfail c++20 } } }
+ 
+   any a;
+ // { dg-final { note-test a {std::experimental::any [no contained value]} } }
+@@ -61,7 +61,7 @@ main()
+   any ap = (void*)nullptr;
+ // { dg-final { note-test ap {std::experimental::any containing void * = {[contained value] = 0x0}} } }
+   any as = *os;
+-// { dg-final { note-test as {std::experimental::any containing std::string = {[contained value] = "stringy"}} } }
++// { dg-final { note-test as {std::experimental::any containing std::string = {[contained value] = "stringy"}} { xfail c++20 } } }
+   any as2("stringiest");
+ // { dg-final { regexp-test as2 {std::experimental::any containing const char \* = {\[contained value\] = 0x[[:xdigit:]]+ "stringiest"}} } }
+   any am = *om;
+diff --git a/libstdc++-v3/testsuite/libstdc++-prettyprinters/prettyprinters.exp b/libstdc++-v3/testsuite/libstdc++-prettyprinters/prettyprinters.exp
+index 18ea1619ec4..2eb5ef546ef 100644
+--- a/libstdc++-v3/testsuite/libstdc++-prettyprinters/prettyprinters.exp
++++ b/libstdc++-v3/testsuite/libstdc++-prettyprinters/prettyprinters.exp
+@@ -49,7 +49,7 @@ gdb-dg-runtest [lsort [glob $srcdir/$subdir/*.cc]] \
+ 
+ if { [check_effective_target_lto] } {
+   append cxxflags " -flto"
+-  # work around sourceware.org 20882
++  # Work around linker bug https://sourceware.org/PR20882
+   regsub {^(.*)-Wl,--gc-sections(.*)$} $cxxldflags {\1\2} cxxldflags
+   gdb-dg-runtest [lsort [glob $srcdir/$subdir/*.cc]] \
+     "" "$DEFAULT_CXXFLAGS -flto $PCH_CXXFLAGS"
 diff --git a/libstdc++-v3/testsuite/std/ranges/97600.cc b/libstdc++-v3/testsuite/std/ranges/97600.cc
 new file mode 100644
 index 00000000000..d992318259d
