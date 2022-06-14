@@ -100,7 +100,8 @@ François-Xavier Coudert (1):
 Fritz Reese (1):
       fortran: Fix conv of UNION constructors [PR105310]
 
-GCC Administrator (424):
+GCC Administrator (425):
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -992,7 +993,7 @@ Kewen Lin (7):
 Maciej W. Rozycki (1):
       RISC-V: Add target machine headers as a dependency for riscv-sr.o
 
-Marek Polacek (13):
+Marek Polacek (14):
       c++: ICE when late parsing noexcept/NSDMI [PR98333]
       c++: ICE with delayed noexcept and attribute used [PR97966]
       c++: Fix bogus -Wvolatile warning in C++20 [PR98947]
@@ -1006,6 +1007,7 @@ Marek Polacek (13):
       c++: ICE with real-to-int conversion in template [PR97973]
       c++: Use FOR_EACH_VEC_ELT instead of range-based for loop.
       c++: Fix noexcept with unevaluated operand [PR101087]
+      rtl: ICE with thread_local and inline asm  [PR104777]
 
 Marius Hillenbrand (1):
       IBM Z: Fix vector intrinsics vec_double and vec_floate
@@ -5284,10 +5286,19 @@ index 0719d810258..a9368325816 100644
 -10.3.0
 +10.3.1
 diff --git a/gcc/ChangeLog b/gcc/ChangeLog
-index 3b1384e707f..d869ed53ff2 100644
+index 3b1384e707f..ba7480da211 100644
 --- a/gcc/ChangeLog
 +++ b/gcc/ChangeLog
-@@ -1,3 +1,2844 @@
+@@ -1,3 +1,2853 @@
++2022-06-13  Marek Polacek  <polacek@redhat.com>
++
++	Backported from master:
++	2022-03-08  Marek Polacek  <polacek@redhat.com>
++
++	PR rtl-optimization/104777
++	* rtl.c (classify_insn): For ASM_OPERANDS, return JUMP_INSN only if
++	ASM_OPERANDS_LABEL_VEC has at least one element.
++
 +2022-06-09  Iain Sandoe  <iain@sandoe.co.uk>
 +
 +	Backported from master:
@@ -33841,7 +33852,7 @@ index 78b4049f465..5f099be43b3 100644
        return label_ref_label (x) == label_ref_label (y);
      case SYMBOL_REF:
 diff --git a/gcc/rtl.c b/gcc/rtl.c
-index 4411e067ba8..63f0a26c912 100644
+index 4411e067ba8..294206b98e2 100644
 --- a/gcc/rtl.c
 +++ b/gcc/rtl.c
 @@ -466,6 +466,11 @@ rtx_equal_p_cb (const_rtx x, const_rtx y, rtx_equal_p_callback_function cb)
@@ -33868,6 +33879,24 @@ index 4411e067ba8..63f0a26c912 100644
      case DEBUG_IMPLICIT_PTR:
        return DEBUG_IMPLICIT_PTR_DECL (x)
  	     == DEBUG_IMPLICIT_PTR_DECL (y);
+@@ -737,7 +747,7 @@ classify_insn (rtx x)
+     return CALL_INSN;
+   if (ANY_RETURN_P (x))
+     return JUMP_INSN;
+-  if (GET_CODE (x) == ASM_OPERANDS && ASM_OPERANDS_LABEL_VEC (x))
++  if (GET_CODE (x) == ASM_OPERANDS && ASM_OPERANDS_LABEL_LENGTH (x))
+     return JUMP_INSN;
+   if (GET_CODE (x) == SET)
+     {
+@@ -766,7 +776,7 @@ classify_insn (rtx x)
+       if (has_return_p)
+ 	return JUMP_INSN;
+       if (GET_CODE (XVECEXP (x, 0, 0)) == ASM_OPERANDS
+-	  && ASM_OPERANDS_LABEL_VEC (XVECEXP (x, 0, 0)))
++	  && ASM_OPERANDS_LABEL_LENGTH (XVECEXP (x, 0, 0)))
+ 	return JUMP_INSN;
+     }
+ #ifdef GENERATOR_FILE
 diff --git a/gcc/rtl.h b/gcc/rtl.h
 index b29afca8d6b..5d57ac6bc5f 100644
 --- a/gcc/rtl.h
@@ -34218,10 +34247,18 @@ index f5a6d507e91..6b2c3e17346 100644
  DEFHOOKPOD
  (have_tls,
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index 2913065bf31..1e2bf96860b 100644
+index 2913065bf31..561ba264757 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,3121 @@
+@@ -1,3 +1,3129 @@
++2022-06-13  Marek Polacek  <polacek@redhat.com>
++
++	Backported from master:
++	2022-03-08  Marek Polacek  <polacek@redhat.com>
++
++	PR rtl-optimization/104777
++	* gcc.dg/torture/tls/pr104777.c: New test.
++
 +2022-06-09  Iain Sandoe  <iain@sandoe.co.uk>
 +
 +	Backported from master:
@@ -44571,6 +44608,42 @@ index 00000000000..7d447035912
 +        assert(vals[i].value == argc + i - 1);
 +    }
 +    return 0;
++}
+diff --git a/gcc/testsuite/gcc.dg/torture/tls/pr104777.c b/gcc/testsuite/gcc.dg/torture/tls/pr104777.c
+new file mode 100644
+index 00000000000..abaf59731fc
+--- /dev/null
++++ b/gcc/testsuite/gcc.dg/torture/tls/pr104777.c
+@@ -0,0 +1,30 @@
++/* PR rtl-optimization/104777 */
++/* { dg-do compile } */
++/* { dg-require-effective-target tls } */
++ 
++int savestate_r;
++int savestate_ssb;
++extern void abort();
++__thread int  loop;
++void f (void)
++{
++  int savestate_r0_5;
++  int savestate_r1_6;
++
++  __asm__("" : "=m" (savestate_ssb), "=r" (savestate_r));
++  savestate_r0_5 = savestate_r;
++  if (savestate_r0_5 == 0)
++  {
++    __asm__ __volatile__("" :  : "m" (loop));
++    abort ();
++  }
++
++  __asm__("" : "=m" (savestate_ssb), "=r" (savestate_r));
++  savestate_r1_6 = savestate_r;
++  if (savestate_r1_6 != 0)
++    return;
++
++  __asm__ __volatile__("" :  : "m" (loop));
++  abort ();
++
 +}
 diff --git a/gcc/testsuite/gcc.dg/tree-ssa/loop-interchange-16.c b/gcc/testsuite/gcc.dg/tree-ssa/loop-interchange-16.c
 new file mode 100644
