@@ -100,7 +100,8 @@ François-Xavier Coudert (1):
 Fritz Reese (1):
       fortran: Fix conv of UNION constructors [PR105310]
 
-GCC Administrator (425):
+GCC Administrator (426):
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -604,7 +605,7 @@ Harald Anlauf (58):
 Hongyu Wang (1):
       AVX512F: Add missing macro for mask(z?)_scalf_s[sd] [PR 105339]
 
-Iain Buclaw (21):
+Iain Buclaw (22):
       d: Fix ICE in when formating a string with '%' or '`' characters (PR98457)
       d: Fix ICE in gimplify_var_or_parm_decl, at gimplify.c:2755 (PR100882)
       d: Respect explicit align(N) type alignment (PR100935)
@@ -626,6 +627,7 @@ Iain Buclaw (21):
       libphobos: Fix definition of stat_t for MIPS64 (PR103604)
       libphobos: Don't call free on the TLS array in the emutls destroy function.
       libphobos: Give _Unwind_Exception an alignment that best resembles __attribute__((aligned))
+      d: Set TYPE_ARTIFICIAL on internal TypeInfo types
 
 Iain Sandoe (36):
       coroutines: Fix a typo in rewriting the function.
@@ -668,7 +670,7 @@ Iain Sandoe (36):
 Ian Lance Taylor (1):
       compiler: correct condition for calling memclrHasPointers
 
-Jakub Jelinek (123):
+Jakub Jelinek (124):
       rs6000: Fix up libgcc ABI when built with --with-long-double-format=ieee [PR97653]
       dse: Fix up hard reg conflict checking in replace_read [PR99863]
       c++: Don't cache constexpr functions which are passed pointers to heap or static vars being constructed [PR99859]
@@ -792,6 +794,7 @@ Jakub Jelinek (123):
       rtlanal: Fix up replace_rtx [PR105333]
       asan: Fix up asan_redzone_buffer::emit_redzone_byte [PR105396]
       testsuite: Fix up pr104637 testcase [PR104637]
+      libcpp: Ignore CPP_PADDING tokens in _cpp_parse_expr [PR105732]
 
 Jan Hubicka (1):
       Fix looping flag discovery in ipa-pure-const
@@ -852,7 +855,7 @@ John David Anglin (5):
       Don't use 'G' constraint in integer move patterns
       Fix warnings building linux-atomic.c and fptr.c on hppa64-linux
 
-Jonathan Wakely (129):
+Jonathan Wakely (135):
       libstdc++: Fix Doxygen warning about ambiguous file name
       maintainer-scripts: Disable multilib when generating libstdc++ docs
       libstdc++: Fix doxygen markup for group close commands
@@ -982,6 +985,12 @@ Jonathan Wakely (129):
       libstdc++: Fix error reporting in filesystem::copy [PR99290]
       libstdc++: Run all tests in file
       libstdc++: Disable failing test [PR97944]
+      libstdc++: Clear RB tree after moving elements [PR103501]
+      libstdc++: Backport tests for associative container move constructors
+      libstdc++: Reset filesystem::recursive_directory_iterator on error
+      libstdc++: Do not use dirent::d_type unconditionally
+      libstdc++: Fix test that fails on Solaris [PR104731]
+      libstdc++: Use type_identity_t for non-deducible std::atomic_xxx args
 
 José Rui Faustino de Sousa (1):
       Fortran: Fix double function call with -fcheck=pointer [PR]
@@ -1016,6 +1025,9 @@ Marek Polacek (14):
 
 Marius Hillenbrand (1):
       IBM Z: Fix vector intrinsics vec_double and vec_floate
+
+Mark Mentovai (1):
+      libstdc++: Rename __null_terminated to avoid collision with Apple SDK
 
 Martin Jambor (4):
       ipa-sra: Fix thinko when overriding safe_to_import_accesses (PR 101066)
@@ -1140,7 +1152,7 @@ Philippe Blain (1):
 Piotr Kubaj (1):
       gcc/configure: Check for powerpc64le*-*-freebsd*
 
-Richard Biener (61):
+Richard Biener (62):
       Increment BASE-VER after release
       testsuite/100176 - fix struct-layout-1_generate.c compile
       middle-end/98726 - fix VECTOR_CST element access
@@ -1202,6 +1214,7 @@ Richard Biener (61):
       middle-end/105140 - fix bogus recursion in fold_convertible_p
       tree-optimization/105250 - adjust fold_convertible_p PR105140 fix
       add missing dg-require alias to gcc.dg/torture/pr100786.c
+      tree-optimization/105726 - adjust array bound heuristic
 
 Richard Earnshaw (12):
       arm: fix UB due to missing mode check [PR100311]
@@ -5292,10 +5305,16 @@ index 0719d810258..a9368325816 100644
 -10.3.0
 +10.3.1
 diff --git a/gcc/ChangeLog b/gcc/ChangeLog
-index 3b1384e707f..ba7480da211 100644
+index 3b1384e707f..f9c88e0568f 100644
 --- a/gcc/ChangeLog
 +++ b/gcc/ChangeLog
-@@ -1,3 +1,2853 @@
+@@ -1,3 +1,2859 @@
++2022-06-14  Vladimir N. Makarov  <vmakarov@redhat.com>
++
++	PR rtl-optimization/104637
++	* lra-assigns.c (lra_split_hard_reg_for): Split hard regs as many
++	as possible on one subpass.
++
 +2022-06-13  Marek Polacek  <polacek@redhat.com>
 +
 +	Backported from master:
@@ -26913,7 +26932,7 @@ index ad2255e1cd1..a579356104e 100644
    /* The decl to store the return expression.  */
    tree decl = DECL_RESULT (cfun->decl);
 diff --git a/gcc/d/typeinfo.cc b/gcc/d/typeinfo.cc
-index 6aa4f64a713..973729d3d8a 100644
+index 6aa4f64a713..c61bf621643 100644
 --- a/gcc/d/typeinfo.cc
 +++ b/gcc/d/typeinfo.cc
 @@ -27,6 +27,7 @@ along with GCC; see the file COPYING3.  If not see
@@ -26924,7 +26943,15 @@ index 6aa4f64a713..973729d3d8a 100644
  #include "dmd/template.h"
  #include "dmd/target.h"
  
-@@ -244,8 +245,8 @@ create_tinfo_types (Module *mod)
+@@ -178,6 +179,7 @@ make_internal_typeinfo (tinfo_kind tk, Identifier *ident, ...)
+ 
+   /* Create the TypeInfo type.  */
+   tree type = make_node (RECORD_TYPE);
++  TYPE_ARTIFICIAL (type) = 1;
+   finish_builtin_struct (type, ident->toChars (), fields, NULL_TREE);
+ 
+   tinfo_types[tk] = type;
+@@ -244,8 +246,8 @@ create_tinfo_types (Module *mod)
  static void
  create_frontend_tinfo_types (void)
  {
@@ -26935,7 +26962,7 @@ index 6aa4f64a713..973729d3d8a 100644
      return;
  
    /* Create all frontend TypeInfo classes declarations.  We rely on all
-@@ -1370,16 +1371,19 @@ get_classinfo_decl (ClassDeclaration *decl)
+@@ -1370,16 +1372,19 @@ get_classinfo_decl (ClassDeclaration *decl)
    return decl->csym;
  }
  
@@ -26959,7 +26986,7 @@ index 6aa4f64a713..973729d3d8a 100644
  	{
  	  error_at (make_location_t (loc),
  		    "%<object.TypeInfo%> cannot be used with %<-fno-rtti%>");
-@@ -1387,7 +1391,29 @@ build_typeinfo (const Loc &loc, Type *type)
+@@ -1387,7 +1392,29 @@ build_typeinfo (const Loc &loc, Type *type)
  	}
      }
  
@@ -30687,6 +30714,46 @@ index 1678e439e8f..96f46b706be 100644
        && (e = find_fallthru_edge (bb->succs))
        && e->dest == bb->next_bb)
      return BB_EXTENDED_VALID;
+diff --git a/gcc/gimple-ssa-warn-restrict.c b/gcc/gimple-ssa-warn-restrict.c
+index 19d2ec09aa5..0c567206d20 100644
+--- a/gcc/gimple-ssa-warn-restrict.c
++++ b/gcc/gimple-ssa-warn-restrict.c
+@@ -505,7 +505,6 @@ builtin_memref::set_base_and_offset (tree expr)
+     {
+       tree memrefoff = fold_convert (ptrdiff_type_node, TREE_OPERAND (base, 1));
+       extend_offset_range (memrefoff);
+-      base = TREE_OPERAND (base, 0);
+ 
+       if (refoff != HOST_WIDE_INT_MIN
+       	  && TREE_CODE (expr) == COMPONENT_REF)
+@@ -518,14 +517,19 @@ builtin_memref::set_base_and_offset (tree expr)
+ 	     REFOFF is set to s[1].b - (char*)s.  */
+ 	  offset_int off = tree_to_shwi (memrefoff);
+ 	  refoff += off;
+-      	}
+-
+-      if (!integer_zerop (memrefoff))
+-	/* A non-zero offset into an array of struct with flexible array
+-	   members implies that the array is empty because there is no
+-	   way to initialize such a member when it belongs to an array.
+-	   This must be some sort of a bug.  */
+-	refsize = 0;
++
++	  if (!integer_zerop (memrefoff)
++	      && !COMPLETE_TYPE_P (TREE_TYPE (expr))
++	      && multiple_of_p (sizetype, memrefoff,
++				TYPE_SIZE_UNIT (TREE_TYPE (base))))
++	    /* A non-zero offset into an array of struct with flexible array
++	       members implies that the array is empty because there is no
++	       way to initialize such a member when it belongs to an array.
++	       This must be some sort of a bug.  */
++	    refsize = 0;
++	}
++
++      base = TREE_OPERAND (base, 0);
+     }
+ 
+   if (TREE_CODE (ref) == COMPONENT_REF)
 diff --git a/gcc/gimplify.c b/gcc/gimplify.c
 index 89a4ae087ce..d324406193f 100644
 --- a/gcc/gimplify.c
@@ -34322,10 +34389,22 @@ index f5a6d507e91..6b2c3e17346 100644
  DEFHOOKPOD
  (have_tls,
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index 2913065bf31..561ba264757 100644
+index 2913065bf31..322b71d6749 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,3129 @@
+@@ -1,3 +1,3141 @@
++2022-06-14  Jakub Jelinek  <jakub@redhat.com>
++
++	PR rtl-optimization/104637
++	* gcc.target/i386/pr104637.c: Don't run on ia32.  Add -Wno-div-by-zero
++	to dg-options.
++	(foo): Remove extraneous initializer.
++
++2022-06-14  Vladimir N. Makarov  <vmakarov@redhat.com>
++
++	PR rtl-optimization/104637
++	* gcc.target/i386/pr104637.c: New.
++
 +2022-06-13  Marek Polacek  <polacek@redhat.com>
 +
 +	Backported from master:
@@ -37908,6 +37987,30 @@ index 00000000000..4ee237ed6ba
 +    __builtin_abort ();
 +  return 0;
 +}
+diff --git a/gcc/testsuite/c-c++-common/cpp/va-opt-10.c b/gcc/testsuite/c-c++-common/cpp/va-opt-10.c
+new file mode 100644
+index 00000000000..f810b429dd6
+--- /dev/null
++++ b/gcc/testsuite/c-c++-common/cpp/va-opt-10.c
+@@ -0,0 +1,18 @@
++/* PR preprocessor/105732 */
++/* { dg-do compile } */
++/* { dg-options "-std=gnu99" { target c } } */
++/* { dg-options "-std=c++20" { target c++ } } */
++
++#define m1(p1, p2, p3) p3
++#define m2(p1, ...) 1##__VA_OPT__(foo)
++#define m3(...) m1(1, 2, m2)
++#define m4(p1, ...) 1 __VA_OPT__()
++#define m5(...) m1(1, 2, m4)
++#if m3(,)(,)
++#else
++#error
++#endif
++#if m5(,)(,)
++#else
++#error
++#endif
 diff --git a/gcc/testsuite/c-c++-common/cpp/va-opt-9.c b/gcc/testsuite/c-c++-common/cpp/va-opt-9.c
 new file mode 100644
 index 00000000000..5f73ad03426
@@ -41415,6 +41518,28 @@ index 00000000000..49f75ed69cf
 +{
 +  X x;
 +  return x;
++}
+diff --git a/gcc/testsuite/g++.dg/warn/Warray-bounds-27.C b/gcc/testsuite/g++.dg/warn/Warray-bounds-27.C
+new file mode 100644
+index 00000000000..06ce089c4b0
+--- /dev/null
++++ b/gcc/testsuite/g++.dg/warn/Warray-bounds-27.C
+@@ -0,0 +1,16 @@
++// PR105726
++// { dg-do compile }
++// { dg-require-effective-target c++11 }
++// { dg-options "-O2 -Warray-bounds" }
++
++#include <array>
++#include <cstring>
++
++struct X {
++    char pad[4];
++    std::array<char, 1> mField;
++};
++
++void encode(char* aBuffer, const X& aMessage) {
++    strncpy(aBuffer, aMessage.mField.data(), 1); // { dg-bogus "bounds" }
 +}
 diff --git a/gcc/testsuite/g++.dg/warn/Wconversion5.C b/gcc/testsuite/g++.dg/warn/Wconversion5.C
 new file mode 100644
@@ -48102,6 +48227,16 @@ index 00000000000..f321cab8482
 +      s->cts_bits   = __builtin_bswap16(bsx2);
 +    }
 +}
+diff --git a/gcc/testsuite/gdc.dg/Wpadded.d b/gcc/testsuite/gdc.dg/Wpadded.d
+new file mode 100644
+index 00000000000..8a9cca7e225
+--- /dev/null
++++ b/gcc/testsuite/gdc.dg/Wpadded.d
+@@ -0,0 +1,4 @@
++// { dg-do compile }
++// { dg-options "-Wpadded" }
++
++class EmptyClass { }
 diff --git a/gcc/testsuite/gdc.dg/pr100882a.d b/gcc/testsuite/gdc.dg/pr100882a.d
 new file mode 100644
 index 00000000000..d94baff97ac
@@ -55263,6 +55398,21 @@ index bbfdfcd3368..cab9aad64d2 100644
  
        /* If we handled the entire pragma internally, make sure we get the
  	 line number correct for the next token.  */
+diff --git a/libcpp/expr.c b/libcpp/expr.c
+index 2ae9be07c1a..634190d26d6 100644
+--- a/libcpp/expr.c
++++ b/libcpp/expr.c
+@@ -1340,6 +1340,10 @@ _cpp_parse_expr (cpp_reader *pfile, bool is_if)
+ 	    op.op = CPP_UMINUS;
+ 	  break;
+ 
++	case CPP_PADDING:
++	  lex_count--;
++	  continue;
++
+ 	default:
+ 	  if ((int) op.op <= (int) CPP_EQ || (int) op.op >= (int) CPP_PLUS_EQ)
+ 	    SYNTAX_ERROR2_AT (op.loc,
 diff --git a/libcpp/include/line-map.h b/libcpp/include/line-map.h
 index dbbc13762e3..916cdebcd6a 100644
 --- a/libcpp/include/line-map.h
@@ -61693,10 +61843,50 @@ index 304b3a01a08..44359b3d1ac 100644
    UnmapOrDie(oldstack.ss_sp, oldstack.ss_size);
  }
 diff --git a/libstdc++-v3/ChangeLog b/libstdc++-v3/ChangeLog
-index fdd63cbff1a..532539d8590 100644
+index fdd63cbff1a..f5b790b4af4 100644
 --- a/libstdc++-v3/ChangeLog
 +++ b/libstdc++-v3/ChangeLog
-@@ -1,3 +1,1996 @@
+@@ -1,3 +1,2036 @@
++2022-06-14  Jonathan Wakely  <jwakely@redhat.com>
++
++	PR libstdc++/97944
++	* testsuite/30_threads/jthread/95989.cc: Mark XFAIL.
++
++2022-06-14  Jonathan Wakely  <jwakely@redhat.com>
++
++	Backported from master:
++	2020-11-24  Jonathan Wakely  <jwakely@redhat.com>
++
++	* testsuite/30_threads/jthread/95989.cc: Run all three test
++	functions, not just the first one twice.
++
++2022-06-14  Jonathan Wakely  <jwakely@redhat.com>
++
++	Backported from master:
++	2022-04-28  Jonathan Wakely  <jwakely@redhat.com>
++
++	PR libstdc++/99290
++	* src/c++17/fs_ops.cc (fs::copy): Pass error_code to
++	directory_iterator constructor, and check on each iteration.
++	* src/filesystem/ops.cc (fs::copy): Likewise.
++	* testsuite/27_io/filesystem/operations/copy.cc: Check for
++	errors during recursion.
++	* testsuite/experimental/filesystem/operations/copy.cc:
++	Likewise.
++
++2022-06-14  Jonathan Wakely  <jwakely@redhat.com>
++
++	Backported from master:
++	2021-11-05  Jonathan Wakely  <jwakely@redhat.com>
++
++	* testsuite/lib/gdb-test.exp: Add target selector support to the
++	dg-final directives.
++	* testsuite/libstdc++-prettyprinters/80276.cc: Add xfail for
++	C++20.
++	* testsuite/libstdc++-prettyprinters/libfundts.cc: Likewise.
++	* testsuite/libstdc++-prettyprinters/prettyprinters.exp: Tweak
++	comment.
++
 +2022-06-10  Jonathan Wakely  <jwakely@redhat.com>
 +
 +	Backported from master:
@@ -68077,7 +68267,7 @@ index da426650815..246c47a110a 100644
        template<typename _K1, typename _C1, typename _A1>
  	friend bool
 diff --git a/libstdc++-v3/include/bits/stl_tree.h b/libstdc++-v3/include/bits/stl_tree.h
-index 5be15afa257..21b72cebf2e 100644
+index 5be15afa257..1717ccbfff4 100644
 --- a/libstdc++-v3/include/bits/stl_tree.h
 +++ b/libstdc++-v3/include/bits/stl_tree.h
 @@ -698,7 +698,9 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
@@ -68091,6 +68281,23 @@ index 5be15afa257..21b72cebf2e 100644
  
  	  explicit
  	  _Rb_tree_impl(_Node_allocator&& __a)
+@@ -1667,6 +1669,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+ 	_M_move_data(__x, true_type());
+       else
+ 	{
++	  constexpr bool __move = !__move_if_noexcept_cond<value_type>::value;
+ 	  _Alloc_node __an(*this);
+ 	  auto __lbd =
+ 	    [&__an](const value_type& __cval)
+@@ -1675,6 +1678,8 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+ 	      return __an(std::move_if_noexcept(__val));
+ 	    };
+ 	  _M_root() = _M_copy(__x, __lbd);
++	  if _GLIBCXX17_CONSTEXPR (__move)
++	    __x.clear();
+ 	}
+     }
+ 
 diff --git a/libstdc++-v3/include/bits/stl_uninitialized.h b/libstdc++-v3/include/bits/stl_uninitialized.h
 index 3109a89462d..5f75f69d3a2 100644
 --- a/libstdc++-v3/include/bits/stl_uninitialized.h
@@ -69698,7 +69905,7 @@ index 61611ba53eb..aa29d19cd42 100644
  } // namespace filesystem
  } // namespace experimental
 diff --git a/libstdc++-v3/include/experimental/bits/fs_path.h b/libstdc++-v3/include/experimental/bits/fs_path.h
-index 69b823a3466..0a8f4eee0a1 100644
+index 69b823a3466..11b4ce0fe58 100644
 --- a/libstdc++-v3/include/experimental/bits/fs_path.h
 +++ b/libstdc++-v3/include/experimental/bits/fs_path.h
 @@ -124,7 +124,7 @@ namespace __detail
@@ -69710,6 +69917,51 @@ index 69b823a3466..0a8f4eee0a1 100644
      { };
  
    template<typename _Tp1, typename _Tp2 = void,
+@@ -140,10 +140,10 @@ namespace __detail
+     inline _Source
+     _S_range_begin(_Source __begin) { return __begin; }
+ 
+-  struct __null_terminated { };
++  struct __nul_terminated { };
+ 
+   template<typename _Source>
+-    inline __null_terminated
++    inline __nul_terminated
+     _S_range_end(_Source) { return {}; }
+ 
+   template<typename _CharT, typename _Traits, typename _Alloc>
+@@ -467,11 +467,11 @@ namespace __detail
+       struct _Cvt;
+ 
+     static string_type
+-    _S_convert(value_type* __src, __detail::__null_terminated)
++    _S_convert(value_type* __src, __detail::__nul_terminated)
+     { return string_type(__src); }
+ 
+     static string_type
+-    _S_convert(const value_type* __src, __detail::__null_terminated)
++    _S_convert(const value_type* __src, __detail::__nul_terminated)
+     { return string_type(__src); }
+ 
+     template<typename _Iter>
+@@ -485,7 +485,7 @@ namespace __detail
+ 
+     template<typename _InputIterator>
+       static string_type
+-      _S_convert(_InputIterator __src, __detail::__null_terminated)
++      _S_convert(_InputIterator __src, __detail::__nul_terminated)
+       {
+ 	auto __s = _S_string_from_iter(__src);
+ 	return _S_convert(__s.c_str(), __s.c_str() + __s.size());
+@@ -505,7 +505,7 @@ namespace __detail
+ 
+     template<typename _InputIterator>
+       static string_type
+-      _S_convert_loc(_InputIterator __src, __detail::__null_terminated,
++      _S_convert_loc(_InputIterator __src, __detail::__nul_terminated,
+ 		     const std::locale& __loc)
+       {
+ 	const std::string __s = _S_string_from_iter(__src);
 @@ -1268,7 +1268,7 @@ namespace __detail
      return _M_at_end == __rhs._M_at_end;
    }
@@ -70564,10 +70816,23 @@ index e13292296d3..1428858d600 100644
    template<typename _Tp>
      void
 diff --git a/libstdc++-v3/include/std/atomic b/libstdc++-v3/include/std/atomic
-index 2161cbed0d2..d511dfe7b60 100644
+index 2161cbed0d2..c585f95dc9e 100644
 --- a/libstdc++-v3/include/std/atomic
 +++ b/libstdc++-v3/include/std/atomic
-@@ -1549,7 +1549,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+@@ -1173,9 +1173,10 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+   atomic_flag_clear(volatile atomic_flag* __a) noexcept
+   { atomic_flag_clear_explicit(__a, memory_order_seq_cst); }
+ 
+-
++  // _GLIBCXX_RESOLVE_LIB_DEFECTS
++  // 3220. P0558 broke conforming C++14 uses of atomic shared_ptr
+   template<typename _Tp>
+-    using __atomic_val_t = typename atomic<_Tp>::value_type;
++    using __atomic_val_t = __type_identity_t<_Tp>;
+   template<typename _Tp>
+     using __atomic_diff_t = typename atomic<_Tp>::difference_type;
+ 
+@@ -1549,7 +1550,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
  
  #endif // C++2a
  
@@ -74433,6 +74698,44 @@ index 1f06e67feea..2c8fd4bf161 100644
          return std::error_condition(ev, std::generic_category());
  
        /* Additional system-dependent mappings from non-standard error codes
+diff --git a/libstdc++-v3/src/c++17/fs_dir.cc b/libstdc++-v3/src/c++17/fs_dir.cc
+index 21a80b7d56b..d728ac70e8a 100644
+--- a/libstdc++-v3/src/c++17/fs_dir.cc
++++ b/libstdc++-v3/src/c++17/fs_dir.cc
+@@ -306,6 +306,10 @@ fs::recursive_directory_iterator::increment(error_code& ec)
+ 	  return *this;
+ 	}
+     }
++
++  if (ec)
++    _M_dirs.reset();
++
+   return *this;
+ }
+ 
+@@ -329,16 +333,20 @@ fs::recursive_directory_iterator::pop(error_code& ec)
+ 	ec.clear();
+ 	return;
+       }
+-  } while (!_M_dirs->top().advance(skip_permission_denied, ec));
++  } while (!_M_dirs->top().advance(skip_permission_denied, ec) && !ec);
++
++  if (ec)
++    _M_dirs.reset();
+ }
+ 
+ void
+ fs::recursive_directory_iterator::pop()
+ {
++  [[maybe_unused]] const bool dereferenceable = _M_dirs != nullptr;
+   error_code ec;
+   pop(ec);
+   if (ec)
+-    _GLIBCXX_THROW_OR_ABORT(filesystem_error(_M_dirs
++    _GLIBCXX_THROW_OR_ABORT(filesystem_error(dereferenceable
+ 	  ? "recursive directory iterator cannot pop"
+ 	  : "non-dereferenceable recursive directory iterator cannot pop",
+ 	  ec));
 diff --git a/libstdc++-v3/src/c++17/fs_ops.cc b/libstdc++-v3/src/c++17/fs_ops.cc
 index 81c84dfb557..5231f67561e 100644
 --- a/libstdc++-v3/src/c++17/fs_ops.cc
@@ -74585,6 +74888,44 @@ index 6895780a5f7..68e3a95f9a0 100644
  
  @ENABLE_DUAL_ABI_TRUE@collate_members_cow.cc: ${glibcxx_srcdir}/$(CCOLLATE_CC)
  @ENABLE_DUAL_ABI_TRUE@	$(LN_S) ${glibcxx_srcdir}/$(CCOLLATE_CC) ./$@ || true
+diff --git a/libstdc++-v3/src/filesystem/dir.cc b/libstdc++-v3/src/filesystem/dir.cc
+index 64acb68f7d2..300e8c3ec64 100644
+--- a/libstdc++-v3/src/filesystem/dir.cc
++++ b/libstdc++-v3/src/filesystem/dir.cc
+@@ -289,6 +289,10 @@ fs::recursive_directory_iterator::increment(error_code& ec) noexcept
+ 	  return *this;
+ 	}
+     }
++
++  if (ec)
++    _M_dirs.reset();
++
+   return *this;
+ }
+ 
+@@ -312,16 +316,20 @@ fs::recursive_directory_iterator::pop(error_code& ec)
+ 	ec.clear();
+ 	return;
+       }
+-  } while (!_M_dirs->top().advance(skip_permission_denied, ec));
++  } while (!_M_dirs->top().advance(skip_permission_denied, ec) && !ec);
++
++  if (ec)
++    _M_dirs.reset();
+ }
+ 
+ void
+ fs::recursive_directory_iterator::pop()
+ {
++  [[maybe_unused]] const bool dereferenceable = _M_dirs != nullptr;
+   error_code ec;
+   pop(ec);
+   if (ec)
+-    _GLIBCXX_THROW_OR_ABORT(filesystem_error(_M_dirs
++    _GLIBCXX_THROW_OR_ABORT(filesystem_error(dereferenceable
+ 	  ? "recursive directory iterator cannot pop"
+ 	  : "non-dereferenceable recursive directory iterator cannot pop",
+ 	  ec));
 diff --git a/libstdc++-v3/src/filesystem/ops.cc b/libstdc++-v3/src/filesystem/ops.cc
 index 7cc82a50e01..e7b145f8d79 100644
 --- a/libstdc++-v3/src/filesystem/ops.cc
@@ -75680,6 +76021,65 @@ index 00000000000..0f6f520c33b
 +  test_stable();
 +  test_lwg3088();
 +}
+diff --git a/libstdc++-v3/testsuite/23_containers/map/allocator/move_cons.cc b/libstdc++-v3/testsuite/23_containers/map/allocator/move_cons.cc
+new file mode 100644
+index 00000000000..b82d3532135
+--- /dev/null
++++ b/libstdc++-v3/testsuite/23_containers/map/allocator/move_cons.cc
+@@ -0,0 +1,53 @@
++// Copyright (C) 2020-2021 Free Software Foundation, Inc.
++//
++// This file is part of the GNU ISO C++ Library.  This library is free
++// software; you can redistribute it and/or modify it under the
++// terms of the GNU General Public License as published by the
++// Free Software Foundation; either version 3, or (at your option)
++// any later version.
++
++// This library is distributed in the hope that it will be useful,
++// but WITHOUT ANY WARRANTY; without even the implied warranty of
++// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++// GNU General Public License for more details.
++
++// You should have received a copy of the GNU General Public License along
++// with this library; see the file COPYING3.  If not see
++// <http://www.gnu.org/licenses/>.
++
++// { dg-do run { target c++11 } }
++
++#include <map>
++#include <string>
++
++#include <testsuite_hooks.h>
++#include <testsuite_allocator.h>
++
++using Cmp = std::less<int>;
++
++using __gnu_test::uneq_allocator;
++
++void test01()
++{
++  typedef uneq_allocator<std::pair<const int, std::string>> alloc_type;
++  typedef std::map<int, std::string, Cmp, alloc_type> test_type;
++  test_type v1(alloc_type(1));
++  const char* str = "A long enough string to require dynamic allocation";
++  v1 = { { 1, str } };
++
++  alloc_type a2(2);
++  test_type v2(std::move(v1), a2);
++
++  VERIFY(1 == v1.get_allocator().get_personality());
++  VERIFY(2 == v2.get_allocator().get_personality());
++
++  VERIFY( v1.empty() );
++  VERIFY( v2[1] == str );
++}
++
++
++int main()
++{
++  test01();
++  return 0;
++}
 diff --git a/libstdc++-v3/testsuite/23_containers/map/cons/noexcept_move_construct.cc b/libstdc++-v3/testsuite/23_containers/map/cons/noexcept_move_construct.cc
 index 119b199ddff..25d1c9b5aca 100644
 --- a/libstdc++-v3/testsuite/23_containers/map/cons/noexcept_move_construct.cc
@@ -75729,6 +76129,65 @@ index 119b199ddff..25d1c9b5aca 100644
  	       const typename emtype::allocator_type&>::value,
 -	       "except move constructor with allocator" );
 +	       "not noexcept move constructor with allocator" );
+diff --git a/libstdc++-v3/testsuite/23_containers/multimap/allocator/move_cons.cc b/libstdc++-v3/testsuite/23_containers/multimap/allocator/move_cons.cc
+new file mode 100644
+index 00000000000..37db0f005d1
+--- /dev/null
++++ b/libstdc++-v3/testsuite/23_containers/multimap/allocator/move_cons.cc
+@@ -0,0 +1,53 @@
++// Copyright (C) 2020-2021 Free Software Foundation, Inc.
++//
++// This file is part of the GNU ISO C++ Library.  This library is free
++// software; you can redistribute it and/or modify it under the
++// terms of the GNU General Public License as published by the
++// Free Software Foundation; either version 3, or (at your option)
++// any later version.
++
++// This library is distributed in the hope that it will be useful,
++// but WITHOUT ANY WARRANTY; without even the implied warranty of
++// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++// GNU General Public License for more details.
++
++// You should have received a copy of the GNU General Public License along
++// with this library; see the file COPYING3.  If not see
++// <http://www.gnu.org/licenses/>.
++
++// { dg-do run { target c++11 } }
++
++#include <map>
++#include <string>
++
++#include <testsuite_hooks.h>
++#include <testsuite_allocator.h>
++
++using Cmp = std::less<int>;
++
++using __gnu_test::uneq_allocator;
++
++void test01()
++{
++  typedef uneq_allocator<std::pair<const int, std::string>> alloc_type;
++  typedef std::multimap<int, std::string, Cmp, alloc_type> test_type;
++  test_type v1(alloc_type(1));
++  const char* str = "A long enough string to require dynamic allocation";
++  v1 = { { 1, str } };
++
++  alloc_type a2(2);
++  test_type v2(std::move(v1), a2);
++
++  VERIFY(1 == v1.get_allocator().get_personality());
++  VERIFY(2 == v2.get_allocator().get_personality());
++
++  VERIFY( v1.empty() );
++  VERIFY( v2.begin()->second == str );
++}
++
++
++int main()
++{
++  test01();
++  return 0;
++}
 diff --git a/libstdc++-v3/testsuite/23_containers/multimap/cons/noexcept_move_construct.cc b/libstdc++-v3/testsuite/23_containers/multimap/cons/noexcept_move_construct.cc
 index 44c3015a282..af545ae297c 100644
 --- a/libstdc++-v3/testsuite/23_containers/multimap/cons/noexcept_move_construct.cc
@@ -75778,6 +76237,103 @@ index 44c3015a282..af545ae297c 100644
  	       const typename emmtype::allocator_type&>::value,
 -	       "except move constructor with allocator" );
 +	       "not noexcept move constructor with allocator" );
+diff --git a/libstdc++-v3/testsuite/23_containers/multiset/allocator/103501.cc b/libstdc++-v3/testsuite/23_containers/multiset/allocator/103501.cc
+new file mode 100644
+index 00000000000..24f657eceba
+--- /dev/null
++++ b/libstdc++-v3/testsuite/23_containers/multiset/allocator/103501.cc
+@@ -0,0 +1,32 @@
++// { dg-do run { target c++11 } }
++
++// PR libstdc++/103501
++
++#include <set>
++#include <testsuite_hooks.h>
++#include <testsuite_allocator.h>
++
++struct Y
++{
++  int i;
++
++  Y(int i) : i(i) { }
++  Y(const Y& y) noexcept : i(y.i) { }
++  Y(Y&& y) noexcept : i(y.i) { y.i = -y.i; }
++
++  bool operator<(const Y& rhs) const { return i < rhs.i; }
++};
++
++int main()
++{
++  using Alloc = __gnu_test::uneq_allocator<Y>;
++  std::multiset<Y, std::less<Y>, Alloc> s1{ {1, 2, 3}, Alloc(1)};
++  std::multiset<Y, std::less<Y>, Alloc> s2{ std::move(s1), Alloc(2) };
++  const Y* prev = nullptr;
++  for (const Y& y : s1)
++  {
++    if (prev)
++      VERIFY( !(y < *prev) );
++    prev = &y;
++  }
++}
+diff --git a/libstdc++-v3/testsuite/23_containers/multiset/allocator/move_cons.cc b/libstdc++-v3/testsuite/23_containers/multiset/allocator/move_cons.cc
+new file mode 100644
+index 00000000000..82dfbc98581
+--- /dev/null
++++ b/libstdc++-v3/testsuite/23_containers/multiset/allocator/move_cons.cc
+@@ -0,0 +1,53 @@
++// Copyright (C) 2020-2021 Free Software Foundation, Inc.
++//
++// This file is part of the GNU ISO C++ Library.  This library is free
++// software; you can redistribute it and/or modify it under the
++// terms of the GNU General Public License as published by the
++// Free Software Foundation; either version 3, or (at your option)
++// any later version.
++
++// This library is distributed in the hope that it will be useful,
++// but WITHOUT ANY WARRANTY; without even the implied warranty of
++// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++// GNU General Public License for more details.
++
++// You should have received a copy of the GNU General Public License along
++// with this library; see the file COPYING3.  If not see
++// <http://www.gnu.org/licenses/>.
++
++// { dg-do run { target c++11 } }
++
++#include <set>
++#include <string>
++
++#include <testsuite_hooks.h>
++#include <testsuite_allocator.h>
++
++using Cmp = std::less<std::string>;
++
++using __gnu_test::uneq_allocator;
++
++void test01()
++{
++  typedef uneq_allocator<std::string> alloc_type;
++  typedef std::multiset<std::string, Cmp, alloc_type> test_type;
++  test_type v1(alloc_type(1));
++  const char* str = "A long enough string to require dynamic allocation";
++  v1 = { str };
++
++  alloc_type a2(2);
++  test_type v2(std::move(v1), a2);
++
++  VERIFY(1 == v1.get_allocator().get_personality());
++  VERIFY(2 == v2.get_allocator().get_personality());
++
++  VERIFY( v1.count(str) == 0 );
++  VERIFY( v2.count(str) == 1 );
++}
++
++
++int main()
++{
++  test01();
++  return 0;
++}
 diff --git a/libstdc++-v3/testsuite/23_containers/multiset/cons/noexcept_move_construct.cc b/libstdc++-v3/testsuite/23_containers/multiset/cons/noexcept_move_construct.cc
 index 225b2206ad4..ed4d9128606 100644
 --- a/libstdc++-v3/testsuite/23_containers/multiset/cons/noexcept_move_construct.cc
@@ -75827,6 +76383,103 @@ index 225b2206ad4..ed4d9128606 100644
  	       const typename emstype::allocator_type&>::value,
 -	       "except move constructor with allocator" );
 +	       "not noexcept move constructor with allocator" );
+diff --git a/libstdc++-v3/testsuite/23_containers/set/allocator/103501.cc b/libstdc++-v3/testsuite/23_containers/set/allocator/103501.cc
+new file mode 100644
+index 00000000000..7267cf9663f
+--- /dev/null
++++ b/libstdc++-v3/testsuite/23_containers/set/allocator/103501.cc
+@@ -0,0 +1,32 @@
++// { dg-do run { target c++11 } }
++
++// PR libstdc++/103501
++
++#include <set>
++#include <testsuite_hooks.h>
++#include <testsuite_allocator.h>
++
++struct X
++{
++  int i;
++
++  X(int i) : i(i) { }
++  X(const X& x) noexcept : i(x.i) { }
++  X(X&& x) noexcept : i(x.i) { x.i = -1; }
++
++  bool operator<(const X& rhs) const { return i < rhs.i; }
++};
++
++int main()
++{
++  using Alloc = __gnu_test::uneq_allocator<X>;
++  std::set<X, std::less<X>, Alloc> s1{ {1, 2, 3}, Alloc(1)};
++  std::set<X, std::less<X>, Alloc> s2{ std::move(s1), Alloc(2) };
++  const X* prev = nullptr;
++  for (const X& x : s1)
++  {
++    if (prev)
++      VERIFY( *prev < x );
++    prev = &x;
++  }
++}
+diff --git a/libstdc++-v3/testsuite/23_containers/set/allocator/move_cons.cc b/libstdc++-v3/testsuite/23_containers/set/allocator/move_cons.cc
+new file mode 100644
+index 00000000000..b9b42fcd75c
+--- /dev/null
++++ b/libstdc++-v3/testsuite/23_containers/set/allocator/move_cons.cc
+@@ -0,0 +1,53 @@
++// Copyright (C) 2020-2021 Free Software Foundation, Inc.
++//
++// This file is part of the GNU ISO C++ Library.  This library is free
++// software; you can redistribute it and/or modify it under the
++// terms of the GNU General Public License as published by the
++// Free Software Foundation; either version 3, or (at your option)
++// any later version.
++
++// This library is distributed in the hope that it will be useful,
++// but WITHOUT ANY WARRANTY; without even the implied warranty of
++// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++// GNU General Public License for more details.
++
++// You should have received a copy of the GNU General Public License along
++// with this library; see the file COPYING3.  If not see
++// <http://www.gnu.org/licenses/>.
++
++// { dg-do run { target c++11 } }
++
++#include <set>
++#include <string>
++
++#include <testsuite_hooks.h>
++#include <testsuite_allocator.h>
++
++using Cmp = std::less<std::string>;
++
++using __gnu_test::uneq_allocator;
++
++void test01()
++{
++  typedef uneq_allocator<std::string> alloc_type;
++  typedef std::set<std::string, Cmp, alloc_type> test_type;
++  test_type v1(alloc_type(1));
++  const char* str = "A long enough string to require dynamic allocation";
++  v1 = { str };
++
++  alloc_type a2(2);
++  test_type v2(std::move(v1), a2);
++
++  VERIFY(1 == v1.get_allocator().get_personality());
++  VERIFY(2 == v2.get_allocator().get_personality());
++
++  VERIFY( v1.count(str) == 0 );
++  VERIFY( v2.count(str) == 1 );
++}
++
++
++int main()
++{
++  test01();
++  return 0;
++}
 diff --git a/libstdc++-v3/testsuite/23_containers/set/cons/noexcept_move_construct.cc b/libstdc++-v3/testsuite/23_containers/set/cons/noexcept_move_construct.cc
 index acd84a8fcd0..dc96236a668 100644
 --- a/libstdc++-v3/testsuite/23_containers/set/cons/noexcept_move_construct.cc
@@ -78138,6 +78791,160 @@ index 10d36dfe42b..2f6c3a04acd 100644
    remove_all(p, ec);
  }
  
+diff --git a/libstdc++-v3/testsuite/27_io/filesystem/iterators/error_reporting.cc b/libstdc++-v3/testsuite/27_io/filesystem/iterators/error_reporting.cc
+new file mode 100644
+index 00000000000..1c8ea4c9249
+--- /dev/null
++++ b/libstdc++-v3/testsuite/27_io/filesystem/iterators/error_reporting.cc
+@@ -0,0 +1,148 @@
++// Copyright (C) 2020-2022 Free Software Foundation, Inc.
++//
++// This file is part of the GNU ISO C++ Library.  This library is free
++// software; you can redistribute it and/or modify it under the
++// terms of the GNU General Public License as published by the
++// Free Software Foundation; either version 3, or (at your option)
++// any later version.
++
++// This library is distributed in the hope that it will be useful,
++// but WITHOUT ANY WARRANTY; without even the implied warranty of
++// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++// GNU General Public License for more details.
++
++// You should have received a copy of the GNU General Public License along
++// with this library; see the file COPYING3.  If not see
++// <http://www.gnu.org/licenses/>.
++
++// { dg-do run { target { c++17 } } }
++// { dg-require-filesystem-ts "" }
++
++#include <filesystem>
++#include <cerrno>
++#include <stdio.h>
++#include <stdlib.h>
++#include <dirent.h>
++#include <testsuite_hooks.h>
++#include <testsuite_fs.h>
++
++int choice;
++
++extern "C" struct dirent* readdir(DIR*)
++{
++  // On some targets dirent::d_name is very small, but the OS allocates
++  // a trailing char array after the dirent struct. Emulate that here.
++  union State
++  {
++    struct dirent d;
++    char buf[sizeof(struct dirent) + 16] = {};
++  };
++
++  static State state;
++  char* d_name = state.buf + offsetof(struct dirent, d_name);
++
++  switch (choice)
++  {
++  case 1:
++    state.d.d_ino = 999;
++#if defined _GLIBCXX_HAVE_STRUCT_DIRENT_D_TYPE && defined DT_REG
++    state.d.d_type = DT_REG;
++#endif
++    state.d.d_reclen = 0;
++    std::char_traits<char>::copy(d_name, "file", 5);
++    choice = 0;
++    return &state.d;
++  case 2:
++    state.d.d_ino = 111;
++#if defined _GLIBCXX_HAVE_STRUCT_DIRENT_D_TYPE && defined DT_DIR
++    state.d.d_type = DT_DIR;
++#endif
++    state.d.d_reclen = 60;
++    std::char_traits<char>::copy(d_name, "subdir", 7);
++    choice = 1;
++    return &state.d;
++  default:
++    errno = EIO;
++    return nullptr;
++  }
++  return &state.d;
++}
++
++void
++test01()
++{
++  namespace fs = std::filesystem;
++  std::error_code ec;
++  choice = 1;
++  fs::recursive_directory_iterator it(".", ec);
++  if (choice == 0) // custom readdir was called
++  {
++    it.increment(ec);
++    VERIFY( ec.value() == EIO );
++    VERIFY( it == end(it) );
++  }
++  else
++  {
++    puts("Custom readdir not used, cannot test error handling");
++    exit(0);
++  }
++
++#if __cpp_exceptions
++  choice = 1;
++  fs::recursive_directory_iterator it2(".", ec);
++  if (choice == 0)
++  {
++    try {
++      ++it2;
++      VERIFY( false );
++    } catch (const fs::filesystem_error& e) {
++      VERIFY( e.code().value() == EIO );
++      VERIFY( it2 == end(it2) );
++    }
++  }
++#endif
++}
++
++void
++test02()
++{
++  namespace fs = std::filesystem;
++  auto dir = __gnu_test::nonexistent_path();
++  fs::create_directories(dir/"subdir");
++
++  std::error_code ec;
++  choice = 2;
++  fs::recursive_directory_iterator it(dir, ec);
++  if (choice == 1)
++  {
++    ++it;
++    it.pop(ec);
++    VERIFY( ec.value() == EIO );
++    VERIFY( it == end(it) );
++  }
++
++#if __cpp_exceptions
++  choice = 2;
++  fs::recursive_directory_iterator it2(dir, ec);
++  if (choice == 1)
++  {
++    ++it2;
++    try {
++      it2.pop();
++      VERIFY( false );
++    } catch (const fs::filesystem_error& e) {
++      VERIFY( e.code().value() == EIO );
++      VERIFY( it2 == end(it2) );
++    }
++  }
++#endif
++
++  fs::remove_all(dir, ec);
++}
++
++int
++main()
++{
++  test01();
++  test02();
++}
 diff --git a/libstdc++-v3/testsuite/27_io/filesystem/iterators/recursive_directory_iterator.cc b/libstdc++-v3/testsuite/27_io/filesystem/iterators/recursive_directory_iterator.cc
 index 86a03c3c787..283024fe287 100644
 --- a/libstdc++-v3/testsuite/27_io/filesystem/iterators/recursive_directory_iterator.cc
@@ -78649,6 +79456,25 @@ index 00000000000..9e38c9edaa4
 +{
 +  test01();
 +}
+diff --git a/libstdc++-v3/testsuite/29_atomics/atomic/lwg3220.cc b/libstdc++-v3/testsuite/29_atomics/atomic/lwg3220.cc
+new file mode 100644
+index 00000000000..d2ff6cf9fe3
+--- /dev/null
++++ b/libstdc++-v3/testsuite/29_atomics/atomic/lwg3220.cc
+@@ -0,0 +1,13 @@
++// { dg-do compile { target c++11 } }
++// DR 3220. P0558 broke conforming C++14 uses of atomic shared_ptr
++
++#include <atomic>
++#include <memory>
++
++struct Abstract { virtual void test() = 0; };
++struct Concrete : Abstract { virtual void test() override {} };
++
++int main() {
++  std::shared_ptr<Abstract> ptr;
++  std::atomic_store<Abstract>(&ptr, std::make_shared<Concrete>());
++}
 diff --git a/libstdc++-v3/testsuite/30_threads/jthread/95989.cc b/libstdc++-v3/testsuite/30_threads/jthread/95989.cc
 index 46444b5ccab..a179eab3819 100644
 --- a/libstdc++-v3/testsuite/30_threads/jthread/95989.cc
@@ -78725,6 +79551,152 @@ index 82f39aa347f..6044a11e436 100644
    remove_all(p, ec);
  }
  
+diff --git a/libstdc++-v3/testsuite/experimental/filesystem/iterators/error_reporting.cc b/libstdc++-v3/testsuite/experimental/filesystem/iterators/error_reporting.cc
+new file mode 100644
+index 00000000000..806c511ebef
+--- /dev/null
++++ b/libstdc++-v3/testsuite/experimental/filesystem/iterators/error_reporting.cc
+@@ -0,0 +1,140 @@
++// Copyright (C) 2020-2022 Free Software Foundation, Inc.
++//
++// This file is part of the GNU ISO C++ Library.  This library is free
++// software; you can redistribute it and/or modify it under the
++// terms of the GNU General Public License as published by the
++// Free Software Foundation; either version 3, or (at your option)
++// any later version.
++
++// This library is distributed in the hope that it will be useful,
++// but WITHOUT ANY WARRANTY; without even the implied warranty of
++// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++// GNU General Public License for more details.
++
++// You should have received a copy of the GNU General Public License along
++// with this library; see the file COPYING3.  If not see
++// <http://www.gnu.org/licenses/>.
++
++// { dg-options "-DUSE_FILESYSTEM_TS -lstdc++fs" }
++// { dg-do run { target { c++11 } } }
++// { dg-require-filesystem-ts "" }
++
++#include <experimental/filesystem>
++#include <cerrno>
++#include <stdio.h>
++#include <stdlib.h>
++#include <dirent.h>
++#include <testsuite_hooks.h>
++#include <testsuite_fs.h>
++
++int choice;
++
++struct dirent global_dirent;
++
++extern "C" struct dirent* readdir(DIR*)
++{
++  switch (choice)
++  {
++  case 1:
++    global_dirent.d_ino = 999;
++#if defined _GLIBCXX_HAVE_STRUCT_DIRENT_D_TYPE && defined DT_REG
++    global_dirent.d_type = DT_REG;
++#endif
++    global_dirent.d_reclen = 0;
++    std::char_traits<char>::copy(global_dirent.d_name, "file", 5);
++    choice = 0;
++    return &global_dirent;
++  case 2:
++    global_dirent.d_ino = 111;
++#if defined _GLIBCXX_HAVE_STRUCT_DIRENT_D_TYPE && defined DT_DIR
++    global_dirent.d_type = DT_DIR;
++#endif
++    global_dirent.d_reclen = 60;
++    std::char_traits<char>::copy(global_dirent.d_name, "subdir", 7);
++    choice = 1;
++    return &global_dirent;
++  default:
++    errno = EIO;
++    return nullptr;
++  }
++  return &global_dirent;
++}
++
++void
++test01()
++{
++  namespace fs = std::experimental::filesystem;
++  std::error_code ec;
++  choice = 1;
++  fs::recursive_directory_iterator it(".", ec);
++  if (choice == 0) // custom readdir was called
++  {
++    it.increment(ec);
++    VERIFY( ec.value() == EIO );
++    VERIFY( it == end(it) );
++  }
++  else
++  {
++    puts("Custom readdir not used, cannot test error handling");
++    exit(0);
++  }
++
++#if __cpp_exceptions
++  choice = 1;
++  fs::recursive_directory_iterator it2(".", ec);
++  if (choice == 0) // custom readdir was called
++  {
++    try {
++      ++it2;
++      VERIFY( false );
++    } catch (const fs::filesystem_error& e) {
++      VERIFY( e.code().value() == EIO );
++      VERIFY( it2 == end(it2) );
++    }
++  }
++#endif
++}
++
++void
++test02()
++{
++  namespace fs = std::experimental::filesystem;
++  auto dir = __gnu_test::nonexistent_path();
++  fs::create_directories(dir/"subdir");
++
++  std::error_code ec;
++  choice = 2;
++  fs::recursive_directory_iterator it(dir, ec);
++  if (choice == 1)
++  {
++    ++it;
++    it.pop(ec);
++    VERIFY( ec.value() == EIO );
++    VERIFY( it == end(it) );
++  }
++
++#if __cpp_exceptions
++  choice = 2;
++  fs::recursive_directory_iterator it2(dir, ec);
++  if (choice == 1)
++  {
++    ++it2;
++    try {
++      it2.pop();
++      VERIFY( false );
++    } catch (const fs::filesystem_error& e) {
++      VERIFY( e.code().value() == EIO );
++      VERIFY( it2 == end(it2) );
++    }
++  }
++#endif
++
++  fs::remove_all(dir, ec);
++}
++
++int
++main()
++{
++  test01();
++  test02();
++}
 diff --git a/libstdc++-v3/testsuite/experimental/filesystem/iterators/recursive_directory_iterator.cc b/libstdc++-v3/testsuite/experimental/filesystem/iterators/recursive_directory_iterator.cc
 index 1c073e125f9..e9569c2dd53 100644
 --- a/libstdc++-v3/testsuite/experimental/filesystem/iterators/recursive_directory_iterator.cc
