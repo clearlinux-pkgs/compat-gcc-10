@@ -100,7 +100,8 @@ François-Xavier Coudert (1):
 Fritz Reese (1):
       fortran: Fix conv of UNION constructors [PR105310]
 
-GCC Administrator (426):
+GCC Administrator (427):
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -1026,8 +1027,9 @@ Marek Polacek (14):
 Marius Hillenbrand (1):
       IBM Z: Fix vector intrinsics vec_double and vec_floate
 
-Mark Mentovai (1):
+Mark Mentovai (2):
       libstdc++: Rename __null_terminated to avoid collision with Apple SDK
+      Darwin: Future-proof -mmacosx-version-min
 
 Martin Jambor (4):
       ipa-sra: Fix thinko when overriding safe_to_import_accesses (PR 101066)
@@ -1216,7 +1218,7 @@ Richard Biener (62):
       add missing dg-require alias to gcc.dg/torture/pr100786.c
       tree-optimization/105726 - adjust array bound heuristic
 
-Richard Earnshaw (12):
+Richard Earnshaw (13):
       arm: fix UB due to missing mode check [PR100311]
       arm: correctly handle inequality comparisons against max constants [PR100563]
       arm: Remove use of opts_set in arm_configure_build_target [PR100767]
@@ -1229,6 +1231,7 @@ Richard Earnshaw (12):
       arm: add erratum mitigation to __gnu_cmse_nonsecure_call [PR102035]
       arm: fix vlldm erratum for Armv8.1-m [PR102035]
       arm: Add tests for VLLDM mitigation [PR102035]
+      arm: big-endian issue in gen_cpymem_ldrd_strd [PR105981]
 
 Richard Sandiford (11):
       data-ref: Tighten index-based alias checks [PR99726]
@@ -1261,6 +1264,9 @@ Segher Boessenkool (5):
       rs6000: Don't use r12 for CR save on ELFv2 (PR102107)
       rs6000: Fix ELFv2 r12 use in epilogue
       rs6000/testsuite: Skip pr105140.c
+
+Simon Wright (1):
+      Darwin: Truncate kernel-provided version to OS major for Darwin >= 20.
 
 Srinath Parvathaneni (5):
       arm: Do not clobber callee saved registers with CMSE.
@@ -5305,10 +5311,36 @@ index 0719d810258..a9368325816 100644
 -10.3.0
 +10.3.1
 diff --git a/gcc/ChangeLog b/gcc/ChangeLog
-index 3b1384e707f..f9c88e0568f 100644
+index 3b1384e707f..dfafbf14dd4 100644
 --- a/gcc/ChangeLog
 +++ b/gcc/ChangeLog
-@@ -1,3 +1,2859 @@
+@@ -1,3 +1,2885 @@
++2022-06-15  Simon Wright  <simon@pushface.org>
++
++	Backported from master:
++	2022-06-12  Simon Wright  <simon@pushface.org>
++
++	PR target/104871
++	* config/darwin-driver.c (darwin_find_version_from_kernel): If the OS
++	version is darwin20 (macOS 11) or greater, truncate the version to the
++	major number.
++
++2022-06-15  Mark Mentovai  <mark@mentovai.com>
++
++	Backported from master:
++	2022-06-12  Mark Mentovai  <mark@mentovai.com>
++
++	* config/darwin-c.c: Make -mmacosx-version-min more future-proof.
++
++2022-06-15  Richard Biener  <rguenther@suse.de>
++
++	Backported from master:
++	2022-05-27  Richard Biener  <rguenther@suse.de>
++
++	PR tree-optimization/105726
++	* gimple-ssa-warn-restrict.c (builtin_memref::set_base_and_offset):
++	Constrain array-of-flexarray case more.
++
 +2022-06-14  Vladimir N. Makarov  <vmakarov@redhat.com>
 +
 +	PR rtl-optimization/104637
@@ -11185,7 +11217,7 @@ index bbbf67180f6..fac68cee8da 100644
  extern void arm_options_perform_arch_sanity_checks (void);
  extern void arm_pr_long_calls (struct cpp_reader *);
 diff --git a/gcc/config/arm/arm.c b/gcc/config/arm/arm.c
-index db37e2b8e71..f02d3d30b05 100644
+index db37e2b8e71..ce3899773d5 100644
 --- a/gcc/config/arm/arm.c
 +++ b/gcc/config/arm/arm.c
 @@ -77,10 +77,6 @@
@@ -11382,7 +11414,57 @@ index db37e2b8e71..f02d3d30b05 100644
  
        /* Values from double-precision helper functions are returned in core
  	 registers if the selected core only supports single-precision
-@@ -18740,10 +18775,14 @@ cmse_nonsecure_call_inline_register_clear (void)
+@@ -15479,13 +15514,21 @@ gen_cpymem_ldrd_strd (rtx *operands)
+     {
+       len -= 8;
+       reg0 = gen_reg_rtx (DImode);
+-      rtx low_reg = NULL_RTX;
+-      rtx hi_reg = NULL_RTX;
++      rtx first_reg = NULL_RTX;
++      rtx second_reg = NULL_RTX;
+ 
+       if (!src_aligned || !dst_aligned)
+ 	{
+-	  low_reg = gen_lowpart (SImode, reg0);
+-	  hi_reg = gen_highpart_mode (SImode, DImode, reg0);
++	  if (BYTES_BIG_ENDIAN)
++	    {
++	      second_reg = gen_lowpart (SImode, reg0);
++	      first_reg = gen_highpart_mode (SImode, DImode, reg0);
++	    }
++	  else
++	    {
++	      first_reg = gen_lowpart (SImode, reg0);
++	      second_reg = gen_highpart_mode (SImode, DImode, reg0);
++	    }
+ 	}
+       if (MEM_ALIGN (src) >= 2 * BITS_PER_WORD)
+ 	emit_move_insn (reg0, src);
+@@ -15493,9 +15536,9 @@ gen_cpymem_ldrd_strd (rtx *operands)
+ 	emit_insn (gen_unaligned_loaddi (reg0, src));
+       else
+ 	{
+-	  emit_insn (gen_unaligned_loadsi (low_reg, src));
++	  emit_insn (gen_unaligned_loadsi (first_reg, src));
+ 	  src = next_consecutive_mem (src);
+-	  emit_insn (gen_unaligned_loadsi (hi_reg, src));
++	  emit_insn (gen_unaligned_loadsi (second_reg, src));
+ 	}
+ 
+       if (MEM_ALIGN (dst) >= 2 * BITS_PER_WORD)
+@@ -15504,9 +15547,9 @@ gen_cpymem_ldrd_strd (rtx *operands)
+ 	emit_insn (gen_unaligned_storedi (dst, reg0));
+       else
+ 	{
+-	  emit_insn (gen_unaligned_storesi (dst, low_reg));
++	  emit_insn (gen_unaligned_storesi (dst, first_reg));
+ 	  dst = next_consecutive_mem (dst);
+-	  emit_insn (gen_unaligned_storesi (dst, hi_reg));
++	  emit_insn (gen_unaligned_storesi (dst, second_reg));
+ 	}
+ 
+       src = next_consecutive_mem (src);
+@@ -18740,10 +18783,14 @@ cmse_nonsecure_call_inline_register_clear (void)
  		  imm = gen_int_mode (- lazy_store_stack_frame_size, SImode);
  		  add_insn = emit_insn (gen_addsi3 (stack_pointer_rtx,
  						    stack_pointer_rtx, imm));
@@ -11401,7 +11483,7 @@ index db37e2b8e71..f02d3d30b05 100644
  		  emit_insn (gen_lazy_store_multiple_insn (stack_pointer_rtx));
  		}
  	      /* Save VFP callee-saved registers.  */
-@@ -18781,10 +18820,11 @@ cmse_nonsecure_call_inline_register_clear (void)
+@@ -18781,10 +18828,11 @@ cmse_nonsecure_call_inline_register_clear (void)
  		  rtx_insn *add_insn =
  		    emit_insn (gen_addsi3 (stack_pointer_rtx,
  					   stack_pointer_rtx, imm));
@@ -11417,7 +11499,7 @@ index db37e2b8e71..f02d3d30b05 100644
  		}
  	      /* Restore VFP callee-saved registers.  */
  	      else
-@@ -25242,7 +25282,7 @@ arm_hard_regno_mode_ok (unsigned int regno, machine_mode mode)
+@@ -25242,7 +25290,7 @@ arm_hard_regno_mode_ok (unsigned int regno, machine_mode mode)
      return false;
  
    if (IS_VPR_REGNUM (regno))
@@ -11426,7 +11508,7 @@ index db37e2b8e71..f02d3d30b05 100644
  
    if (TARGET_THUMB1)
      /* For the Thumb we only allow values bigger than SImode in
-@@ -27007,7 +27047,7 @@ cmse_nonsecure_entry_clear_before_return (void)
+@@ -27007,7 +27055,7 @@ cmse_nonsecure_entry_clear_before_return (void)
  	continue;
        if (IN_RANGE (regno, IP_REGNUM, PC_REGNUM))
  	continue;
@@ -11435,7 +11517,7 @@ index db37e2b8e71..f02d3d30b05 100644
  	  && (!IN_RANGE (regno, FIRST_VFP_REGNUM, LAST_VFP_REGNUM)
  	      || TARGET_HARD_FLOAT))
  	bitmap_set_bit (to_clear_bitmap, regno);
-@@ -28040,20 +28080,65 @@ arm_print_tune_info (void)
+@@ -28040,20 +28088,65 @@ arm_print_tune_info (void)
  	       (int) current_tune->sched_autopref);
  }
  
@@ -11505,7 +11587,7 @@ index db37e2b8e71..f02d3d30b05 100644
    if (!arch->common.extensions)
      return;
  
-@@ -28079,13 +28164,12 @@ arm_print_asm_arch_directives ()
+@@ -28079,13 +28172,12 @@ arm_print_asm_arch_directives ()
  		  && !TARGET_HAVE_MVE_FLOAT))
  	    continue;
  
@@ -11524,7 +11606,7 @@ index db37e2b8e71..f02d3d30b05 100644
  	}
      }
  }
-@@ -28095,46 +28179,23 @@ arm_file_start (void)
+@@ -28095,46 +28187,23 @@ arm_file_start (void)
  {
    int val;
  
@@ -11580,7 +11662,7 @@ index db37e2b8e71..f02d3d30b05 100644
  	}
  
        if (print_tune_info)
-@@ -28202,6 +28263,13 @@ arm_file_end (void)
+@@ -28202,6 +28271,13 @@ arm_file_end (void)
  {
    int regno;
  
@@ -11594,7 +11676,7 @@ index db37e2b8e71..f02d3d30b05 100644
    if (NEED_INDICATE_EXEC_STACK)
      /* Add .note.GNU-stack.  */
      file_end_indicate_exec_stack ();
-@@ -30470,13 +30538,31 @@ arm_split_compare_and_swap (rtx operands[])
+@@ -30470,13 +30546,31 @@ arm_split_compare_and_swap (rtx operands[])
      }
    else
      {
@@ -11630,7 +11712,7 @@ index db37e2b8e71..f02d3d30b05 100644
      }
  
    arm_emit_store_exclusive (mode, neg_bval, mem, newval, use_release);
-@@ -32397,10 +32483,8 @@ arm_can_inline_p (tree caller, tree callee)
+@@ -32397,10 +32491,8 @@ arm_can_inline_p (tree caller, tree callee)
    caller_target.isa = sbitmap_alloc (isa_num_bits);
    callee_target.isa = sbitmap_alloc (isa_num_bits);
  
@@ -11643,7 +11725,7 @@ index db37e2b8e71..f02d3d30b05 100644
    if (!bitmap_subset_p (callee_target.isa, caller_target.isa))
      can_inline = false;
  
-@@ -32536,7 +32620,7 @@ arm_valid_target_attribute_tree (tree args, struct gcc_options *opts,
+@@ -32536,7 +32628,7 @@ arm_valid_target_attribute_tree (tree args, struct gcc_options *opts,
      return NULL_TREE;
  
    cl_target_option_save (&cl_opts, opts);
@@ -11652,7 +11734,7 @@ index db37e2b8e71..f02d3d30b05 100644
    arm_option_check_internal (opts);
    /* Do any overrides, such as global options arch=xxx.
       We do this since arm_active_target was overridden.  */
-@@ -32680,58 +32764,7 @@ arm_declare_function_name (FILE *stream, const char *name, tree decl)
+@@ -32680,58 +32772,7 @@ arm_declare_function_name (FILE *stream, const char *name, tree decl)
      targ_options = TREE_TARGET_OPTION (target_option_current_node);
    gcc_assert (targ_options);
  
@@ -11712,7 +11794,7 @@ index db37e2b8e71..f02d3d30b05 100644
  
    fprintf (stream, "\t.syntax unified\n");
  
-@@ -32749,17 +32782,6 @@ arm_declare_function_name (FILE *stream, const char *name, tree decl)
+@@ -32749,17 +32790,6 @@ arm_declare_function_name (FILE *stream, const char *name, tree decl)
    else
      fprintf (stream, "\t.arm\n");
  
@@ -13064,20 +13146,21 @@ index 359f389a134..88183e69564 100644
  /*** Output and Generation of Labels.  */
  
 diff --git a/gcc/config/darwin-c.c b/gcc/config/darwin-c.c
-index 96172305711..3c2afe56522 100644
+index 96172305711..0f746e933c1 100644
 --- a/gcc/config/darwin-c.c
 +++ b/gcc/config/darwin-c.c
-@@ -691,7 +691,7 @@ macosx_version_as_macro (void)
+@@ -691,7 +691,8 @@ macosx_version_as_macro (void)
    if (!version_array)
      goto fail;
  
 -  if (version_array[MAJOR] < 10 || version_array[MAJOR] > 11)
-+  if (version_array[MAJOR] < 10 || version_array[MAJOR] > 12)
++  /* System tools accept up to 99 as a major version.  */
++  if (version_array[MAJOR] < 10 || version_array[MAJOR] > 99)
      goto fail;
  
    if (version_array[MAJOR] == 10 && version_array[MINOR] < 10)
 diff --git a/gcc/config/darwin-driver.c b/gcc/config/darwin-driver.c
-index f00d5a02d1d..b2e3afdad0d 100644
+index f00d5a02d1d..f96af2c0262 100644
 --- a/gcc/config/darwin-driver.c
 +++ b/gcc/config/darwin-driver.c
 @@ -64,17 +64,18 @@ validate_macosx_version_min (const char *version_str)
@@ -13103,26 +13186,33 @@ index f00d5a02d1d..b2e3afdad0d 100644
      /* We will rewrite 11 =>  11.0.0.  */
      need_rewrite = true;
    else if (major == 10 && (*end == '\0' || !ISDIGIT (version_str[0])))
-@@ -160,8 +161,7 @@ darwin_find_version_from_kernel (void)
+@@ -159,20 +160,13 @@ darwin_find_version_from_kernel (void)
+     goto parse_failed;
  
    /* Darwin20 sees a transition to macOS 11.  In this, it seems that the
-      mapping to macOS minor version is now shifted to the kernel minor
+-     mapping to macOS minor version is now shifted to the kernel minor
 -     version - 1 (at least for the initial releases).  At this stage, we
 -     don't know what macOS version will correspond to Darwin21.  */
-+     version - 1 (at least for the initial releases).  */
++     mapping to macOS minor version and patch level is now always 0, 0
++     (at least for macOS 11 and 12).  */
    if (major_vers >= 20)
      {
-       int minor_vers = *version_p++ - '0';
-@@ -172,7 +172,7 @@ darwin_find_version_from_kernel (void)
-       if (minor_vers > 0)
- 	minor_vers -= 1; /* Kernel 20.3 => macOS 11.2.  */
-       /* It's not yet clear whether patch level will be considered.  */
+-      int minor_vers = *version_p++ - '0';
+-      if (ISDIGIT (*version_p))
+-	minor_vers = minor_vers * 10 + (*version_p++ - '0');
+-      if (*version_p++ != '.')
+-	goto parse_failed;
+-      if (minor_vers > 0)
+-	minor_vers -= 1; /* Kernel 20.3 => macOS 11.2.  */
+-      /* It's not yet clear whether patch level will be considered.  */
 -      asprintf (&new_flag, "11.%02d.00", minor_vers);
-+      asprintf (&new_flag, "%d.%02d.00", major_vers - 9, minor_vers);
++      /* Apple clang doesn't include the minor version or the patch level
++	 in the object file, nor does it pass it to ld  */
++      asprintf (&new_flag, "%d.00.00", major_vers - 9);
      }
    else if (major_vers - 4 <= 4)
      /* On 10.4 and earlier, the old linker is used which does not
-@@ -259,14 +259,11 @@ maybe_get_sysroot_from_sdkroot ()
+@@ -259,14 +253,11 @@ maybe_get_sysroot_from_sdkroot ()
    return xstrndup (maybe_sysroot, strlen (maybe_sysroot));
  }
  
@@ -13142,7 +13232,7 @@ index f00d5a02d1d..b2e3afdad0d 100644
  
  void
  darwin_driver_init (unsigned int *decoded_options_count,
-@@ -284,6 +281,7 @@ darwin_driver_init (unsigned int *decoded_options_count,
+@@ -284,6 +275,7 @@ darwin_driver_init (unsigned int *decoded_options_count,
    const char *vers_string = NULL;
    bool seen_version_min = false;
    bool seen_sysroot_p = false;
@@ -13150,7 +13240,7 @@ index f00d5a02d1d..b2e3afdad0d 100644
  
    for (i = 1; i < *decoded_options_count; i++)
      {
-@@ -326,23 +324,6 @@ darwin_driver_init (unsigned int *decoded_options_count,
+@@ -326,23 +318,6 @@ darwin_driver_init (unsigned int *decoded_options_count,
  	  seenM64 = true;
  	  break;
  
@@ -13174,7 +13264,7 @@ index f00d5a02d1d..b2e3afdad0d 100644
  	case OPT_mmacosx_version_min_:
  	  seen_version_min = true;
  	  vers_string =
-@@ -369,6 +350,13 @@ darwin_driver_init (unsigned int *decoded_options_count,
+@@ -369,6 +344,13 @@ darwin_driver_init (unsigned int *decoded_options_count,
  	  seen_sysroot_p = true;
  	  break;
  
@@ -13188,7 +13278,7 @@ index f00d5a02d1d..b2e3afdad0d 100644
  	default:
  	  break;
  	}
-@@ -420,6 +408,10 @@ darwin_driver_init (unsigned int *decoded_options_count,
+@@ -420,6 +402,10 @@ darwin_driver_init (unsigned int *decoded_options_count,
      }
  #endif
  
@@ -13199,7 +13289,7 @@ index f00d5a02d1d..b2e3afdad0d 100644
    if (appendM32 || appendM64)
      {
        ++*decoded_options_count;
-@@ -430,7 +422,7 @@ darwin_driver_init (unsigned int *decoded_options_count,
+@@ -430,7 +416,7 @@ darwin_driver_init (unsigned int *decoded_options_count,
  		       &(*decoded_options)[*decoded_options_count - 1]);
      }
  
@@ -13208,7 +13298,7 @@ index f00d5a02d1d..b2e3afdad0d 100644
      {
        /* We will pick up an SDKROOT if we didn't specify a sysroot and treat
  	 it as overriding any configure-time --with-sysroot.  */
-@@ -449,7 +441,7 @@ darwin_driver_init (unsigned int *decoded_options_count,
+@@ -449,7 +435,7 @@ darwin_driver_init (unsigned int *decoded_options_count,
    /* We will need to know the OS X version we're trying to build for here
       so that we can figure out the mechanism and source for the sysroot to
       be used.  */
@@ -13217,7 +13307,7 @@ index f00d5a02d1d..b2e3afdad0d 100644
      /* Not set by the User, try to figure it out.  */
      vers_string = darwin_default_min_version ();
  
-@@ -486,4 +478,14 @@ darwin_driver_init (unsigned int *decoded_options_count,
+@@ -486,4 +472,14 @@ darwin_driver_init (unsigned int *decoded_options_count,
  			  &(*decoded_options)[*decoded_options_count - 1]);
          }
      }
@@ -25900,10 +25990,17 @@ index 53e9603868d..5ecedef0bb4 100644
        return DEBUG_IMPLICIT_PTR_DECL (x)
  	     == DEBUG_IMPLICIT_PTR_DECL (y);
 diff --git a/gcc/d/ChangeLog b/gcc/d/ChangeLog
-index 8bc729ae32d..23ef4f15d9a 100644
+index 8bc729ae32d..8300c256ac8 100644
 --- a/gcc/d/ChangeLog
 +++ b/gcc/d/ChangeLog
-@@ -1,3 +1,178 @@
+@@ -1,3 +1,185 @@
++2022-06-15  Iain Buclaw  <ibuclaw@gdcproject.org>
++
++	Backported from master:
++	2022-06-15  Iain Buclaw  <ibuclaw@gdcproject.org>
++
++	* typeinfo.cc (make_internal_typeinfo): Set TYPE_ARTIFICIAL.
++
 +2021-12-10  Iain Buclaw  <ibuclaw@gdcproject.org>
 +
 +	Backported from master:
@@ -34389,10 +34486,33 @@ index f5a6d507e91..6b2c3e17346 100644
  DEFHOOKPOD
  (have_tls,
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index 2913065bf31..322b71d6749 100644
+index 2913065bf31..6e681496c1c 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,3141 @@
+@@ -1,3 +1,3164 @@
++2022-06-15  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-05-29  Jakub Jelinek  <jakub@redhat.com>
++
++	PR preprocessor/105732
++	* c-c++-common/cpp/va-opt-10.c: New test.
++
++2022-06-15  Iain Buclaw  <ibuclaw@gdcproject.org>
++
++	Backported from master:
++	2022-06-15  Iain Buclaw  <ibuclaw@gdcproject.org>
++
++	* gdc.dg/Wpadded.d: New test.
++
++2022-06-15  Richard Biener  <rguenther@suse.de>
++
++	Backported from master:
++	2022-05-27  Richard Biener  <rguenther@suse.de>
++
++	PR tree-optimization/105726
++	* g++.dg/warn/Warray-bounds-27.C: New testcase.
++
 +2022-06-14  Jakub Jelinek  <jakub@redhat.com>
 +
 +	PR rtl-optimization/104637
@@ -55334,10 +55454,19 @@ index 2def836cb06..4276894062d 100644
  override LDFLAGS := $(filter-out -fsanitize=address,$(LDFLAGS))
  
 diff --git a/libcpp/ChangeLog b/libcpp/ChangeLog
-index 0d1120a6dd9..7b372b75988 100644
+index 0d1120a6dd9..4098b844213 100644
 --- a/libcpp/ChangeLog
 +++ b/libcpp/ChangeLog
-@@ -1,3 +1,46 @@
+@@ -1,3 +1,55 @@
++2022-06-15  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2022-05-29  Jakub Jelinek  <jakub@redhat.com>
++
++	PR preprocessor/105732
++	* expr.c (_cpp_parse_expr): Handle CPP_PADDING by just another
++	token.
++
 +2022-05-10  Jakub Jelinek  <jakub@redhat.com>
 +
 +	Backported from master:
@@ -61843,10 +61972,80 @@ index 304b3a01a08..44359b3d1ac 100644
    UnmapOrDie(oldstack.ss_sp, oldstack.ss_size);
  }
 diff --git a/libstdc++-v3/ChangeLog b/libstdc++-v3/ChangeLog
-index fdd63cbff1a..f5b790b4af4 100644
+index fdd63cbff1a..aa5331ba7f4 100644
 --- a/libstdc++-v3/ChangeLog
 +++ b/libstdc++-v3/ChangeLog
-@@ -1,3 +1,2036 @@
+@@ -1,3 +1,2106 @@
++2022-06-15  Jonathan Wakely  <jwakely@redhat.com>
++
++	Backported from master:
++	2022-06-13  Jonathan Wakely  <jwakely@redhat.com>
++
++	* include/std/atomic (__atomic_val_t): Use __type_identity_t
++	instead of atomic<T>::value_type, as per LWG 3220.
++	* testsuite/29_atomics/atomic/lwg3220.cc: New test.
++
++2022-06-15  Mark Mentovai  <mark@mentovai.com>
++
++	Backported from master:
++	2022-06-13  Mark Mentovai  <mark@mentovai.com>
++
++	* include/experimental/bits/fs_path.h (__detail::__null_terminated):
++	Rename to __nul_terminated to avoid colliding with a macro in
++	Apple's SDK.
++
++2022-06-15  Jonathan Wakely  <jwakely@redhat.com>
++
++	Backported from master:
++	2022-05-06  Jonathan Wakely  <jwakely@redhat.com>
++
++	PR libstdc++/104731
++	* testsuite/27_io/filesystem/iterators/error_reporting.cc:
++	Use a trailing char array as storage for dirent::d_name.
++
++2022-06-15  Jonathan Wakely  <jwakely@redhat.com>
++
++	Backported from master:
++	2022-02-02  Jonathan Wakely  <jwakely@redhat.com>
++
++	* testsuite/27_io/filesystem/iterators/error_reporting.cc: Use
++	autoconf macro to check whether d_type is present.
++	* testsuite/experimental/filesystem/iterators/error_reporting.cc:
++	Likewise.
++
++2022-06-15  Jonathan Wakely  <jwakely@redhat.com>
++
++	Backported from master:
++	2022-02-01  Jonathan Wakely  <jwakely@redhat.com>
++
++	* src/c++17/fs_dir.cc (recursive_directory_iterator::increment):
++	Reset state to past-the-end iterator on error.
++	(fs::recursive_directory_iterator::pop(error_code&)): Likewise.
++	(fs::recursive_directory_iterator::pop()): Check _M_dirs before
++	it might get reset.
++	* src/filesystem/dir.cc (recursive_directory_iterator): Likewise,
++	for the TS implementation.
++	* testsuite/27_io/filesystem/iterators/error_reporting.cc: New test.
++	* testsuite/experimental/filesystem/iterators/error_reporting.cc: New test.
++
++2022-06-15  Jonathan Wakely  <jwakely@redhat.com>
++
++	* testsuite/23_containers/map/allocator/move_cons.cc: New test.
++	* testsuite/23_containers/multimap/allocator/move_cons.cc: New test.
++	* testsuite/23_containers/multiset/allocator/move_cons.cc: New test.
++	* testsuite/23_containers/set/allocator/move_cons.cc: New test.
++
++2022-06-15  Jonathan Wakely  <jwakely@redhat.com>
++
++	Backported from master:
++	2021-12-01  Jonathan Wakely  <jwakely@redhat.com>
++
++	PR libstdc++/103501
++	* include/bits/stl_tree.h (_Rb_tree(_Rb_tree&&, false_type)):
++	Clear container if elements have been moved-from.
++	* testsuite/23_containers/multiset/allocator/103501.cc: New test.
++	* testsuite/23_containers/set/allocator/103501.cc: New test.
++
 +2022-06-14  Jonathan Wakely  <jwakely@redhat.com>
 +
 +	PR libstdc++/97944
