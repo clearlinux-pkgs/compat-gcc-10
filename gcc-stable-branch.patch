@@ -100,7 +100,10 @@ François-Xavier Coudert (1):
 Fritz Reese (1):
       fortran: Fix conv of UNION constructors [PR105310]
 
-GCC Administrator (428):
+GCC Administrator (431):
+      Daily bump.
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -672,7 +675,7 @@ Iain Sandoe (36):
 Ian Lance Taylor (1):
       compiler: correct condition for calling memclrHasPointers
 
-Jakub Jelinek (124):
+Jakub Jelinek (126):
       rs6000: Fix up libgcc ABI when built with --with-long-double-format=ieee [PR97653]
       dse: Fix up hard reg conflict checking in replace_read [PR99863]
       c++: Don't cache constexpr functions which are passed pointers to heap or static vars being constructed [PR99859]
@@ -797,9 +800,12 @@ Jakub Jelinek (124):
       asan: Fix up asan_redzone_buffer::emit_redzone_byte [PR105396]
       testsuite: Fix up pr104637 testcase [PR104637]
       libcpp: Ignore CPP_PADDING tokens in _cpp_parse_expr [PR105732]
+      fold-const: Fix up -fsanitize=null in C++ [PR105729]
+      varasm: Fix up ICE in narrowing_initializer_constant_valid_p [PR105998]
 
-Jan Hubicka (1):
+Jan Hubicka (2):
       Fix looping flag discovery in ipa-pure-const
+      Fix ipa-cp wrt volatile loads
 
 Jason Merrill (44):
       c++: lambda pack init-capture within generic lambda
@@ -27715,7 +27721,7 @@ index 991b26f3341..10f0b816dd1 100644
  
      case VEC_PACK_FLOAT_EXPR:
 diff --git a/gcc/fold-const.c b/gcc/fold-const.c
-index 6e635382fb4..2dccd10748a 100644
+index 6e635382fb4..9b65819463e 100644
 --- a/gcc/fold-const.c
 +++ b/gcc/fold-const.c
 @@ -511,7 +511,7 @@ negate_expr_p (tree t)
@@ -27814,7 +27820,28 @@ index 6e635382fb4..2dccd10748a 100644
        *p_low = n_low;
        *p_high = n_high;
        *p_in_p = in_p;
-@@ -14692,6 +14729,9 @@ fold_read_from_vector (tree arg, poly_uint64 idx)
+@@ -8852,8 +8889,18 @@ fold_unary_loc (location_t loc, enum tree_code code, tree type, tree op0)
+ 	  tree arg00 = TREE_OPERAND (arg0, 0);
+ 	  tree arg01 = TREE_OPERAND (arg0, 1);
+ 
+-	  return fold_build_pointer_plus_loc
+-		   (loc, fold_convert_loc (loc, type, arg00), arg01);
++	  /* Avoid this optimization in GENERIC for -fsanitize=null
++	     when type is a reference type and arg00's type is not,
++	     because arg00 could be validly nullptr and if arg01 doesn't return,
++	     we don't want false positive binding of reference to nullptr.  */
++	  if (TREE_CODE (type) == REFERENCE_TYPE
++	      && !in_gimple_form
++	      && (flag_sanitize & SANITIZE_NULL) != 0
++	      && TREE_CODE (TREE_TYPE (arg00)) != REFERENCE_TYPE)
++	    return NULL_TREE;
++
++	  arg00 = fold_convert_loc (loc, type, arg00);
++	  return fold_build_pointer_plus_loc (loc, arg00, arg01);
+ 	}
+ 
+       /* Convert (T1)(~(T2)X) into ~(T1)X if T1 and T2 are integral types
+@@ -14692,6 +14739,9 @@ fold_read_from_vector (tree arg, poly_uint64 idx)
  	return VECTOR_CST_ELT (arg, i);
        else if (TREE_CODE (arg) == CONSTRUCTOR)
  	{
@@ -31342,7 +31369,7 @@ index fbeea454084..8ae6efa7fe8 100644
        *stmt_p = new_stmt;
        return true;
 diff --git a/gcc/ipa-prop.c b/gcc/ipa-prop.c
-index 114a4ee2127..b17bcf44ab9 100644
+index 114a4ee2127..49e08ad19cc 100644
 --- a/gcc/ipa-prop.c
 +++ b/gcc/ipa-prop.c
 @@ -353,6 +353,8 @@ ipa_print_node_jump_functions_for_edge (FILE *f, struct cgraph_edge *cs)
@@ -31369,7 +31396,18 @@ index 114a4ee2127..b17bcf44ab9 100644
  }
  
  /* Get IPA BB information about the given BB.  FBI is the context of analyzis
-@@ -1361,7 +1364,8 @@ compute_complex_assign_jump_func (struct ipa_func_body_info *fbi,
+@@ -1097,6 +1100,10 @@ ipa_load_from_parm_agg (struct ipa_func_body_info *fbi,
+   if (!base)
+     return false;
+ 
++  /* We can not propagate across volatile loads.  */
++  if (TREE_THIS_VOLATILE (op))
++    return false;
++
+   if (DECL_P (base))
+     {
+       int index = ipa_get_param_decl_index_1 (descriptors, base);
+@@ -1361,7 +1368,8 @@ compute_complex_assign_jump_func (struct ipa_func_body_info *fbi,
    index = ipa_get_param_decl_index (info, SSA_NAME_VAR (ssa));
    if (index >= 0 && param_type && POINTER_TYPE_P (param_type))
      ipa_set_ancestor_jf (jfunc, offset,  index,
@@ -31379,7 +31417,7 @@ index 114a4ee2127..b17bcf44ab9 100644
  }
  
  /* Extract the base, offset and MEM_REF expression from a statement ASSIGN if
-@@ -1487,7 +1491,8 @@ compute_complex_ancestor_jump_func (struct ipa_func_body_info *fbi,
+@@ -1487,7 +1495,8 @@ compute_complex_ancestor_jump_func (struct ipa_func_body_info *fbi,
      }
  
    ipa_set_ancestor_jf (jfunc, offset, index,
@@ -31389,7 +31427,7 @@ index 114a4ee2127..b17bcf44ab9 100644
  }
  
  /* Inspect the given TYPE and return true iff it has the same structure (the
-@@ -3065,6 +3070,7 @@ update_jump_functions_after_inlining (struct cgraph_edge *cs,
+@@ -3065,6 +3074,7 @@ update_jump_functions_after_inlining (struct cgraph_edge *cs,
  	      dst->value.ancestor.offset += src->value.ancestor.offset;
  	      dst->value.ancestor.agg_preserved &=
  		src->value.ancestor.agg_preserved;
@@ -31397,7 +31435,7 @@ index 114a4ee2127..b17bcf44ab9 100644
  	    }
  	  else
  	    ipa_set_jf_unknown (dst);
-@@ -3142,7 +3148,8 @@ update_jump_functions_after_inlining (struct cgraph_edge *cs,
+@@ -3142,7 +3152,8 @@ update_jump_functions_after_inlining (struct cgraph_edge *cs,
  		    ipa_set_ancestor_jf (dst,
  					 ipa_get_jf_ancestor_offset (src),
  					 ipa_get_jf_ancestor_formal_id (src),
@@ -31407,7 +31445,7 @@ index 114a4ee2127..b17bcf44ab9 100644
  		    break;
  		  }
  		default:
-@@ -4535,6 +4542,7 @@ ipa_write_jump_function (struct output_block *ob,
+@@ -4535,6 +4546,7 @@ ipa_write_jump_function (struct output_block *ob,
        streamer_write_uhwi (ob, jump_func->value.ancestor.formal_id);
        bp = bitpack_create (ob->main_stream);
        bp_pack_value (&bp, jump_func->value.ancestor.agg_preserved, 1);
@@ -31415,7 +31453,7 @@ index 114a4ee2127..b17bcf44ab9 100644
        streamer_write_bitpack (&bp);
        break;
      default:
-@@ -4660,7 +4668,9 @@ ipa_read_jump_function (class lto_input_block *ib,
+@@ -4660,7 +4672,9 @@ ipa_read_jump_function (class lto_input_block *ib,
  	int formal_id = streamer_read_uhwi (ib);
  	struct bitpack_d bp = streamer_read_bitpack (ib);
  	bool agg_preserved = bp_unpack_value (&bp, 1);
@@ -38428,6 +38466,24 @@ index 00000000000..ea687eacc4c
 +
 +__attribute__((__int128)) int i;	/* { dg-warning "'__int128' attribute directive ignored" } */
 +__attribute__((__int128__)) int j;	/* { dg-warning "'__int128' attribute directive ignored" } */
+diff --git a/gcc/testsuite/c-c++-common/pr105998.c b/gcc/testsuite/c-c++-common/pr105998.c
+new file mode 100644
+index 00000000000..85277b97007
+--- /dev/null
++++ b/gcc/testsuite/c-c++-common/pr105998.c
+@@ -0,0 +1,12 @@
++/* PR middle-end/105998 */
++
++typedef int __attribute__((__vector_size__ (sizeof (long long)))) V;
++
++V v;
++
++long long
++foo (void)
++{
++  long long l = (long long) ((0 | v) - ((V) { } == 0));
++  return l;
++}
 diff --git a/gcc/testsuite/c-c++-common/ubsan/float-div-by-zero-2.c b/gcc/testsuite/c-c++-common/ubsan/float-div-by-zero-2.c
 new file mode 100644
 index 00000000000..61d050ae23b
@@ -41650,6 +41706,41 @@ index 00000000000..49f75ed69cf
 +  X x;
 +  return x;
 +}
+diff --git a/gcc/testsuite/g++.dg/ubsan/pr105729.C b/gcc/testsuite/g++.dg/ubsan/pr105729.C
+new file mode 100644
+index 00000000000..fb676630994
+--- /dev/null
++++ b/gcc/testsuite/g++.dg/ubsan/pr105729.C
+@@ -0,0 +1,29 @@
++// PR sanitizer/105729
++// { dg-do run }
++// { dg-options "-fsanitize=null -fno-sanitize-recover=null" }
++
++int
++foo (int x)
++{
++  throw 0;
++}
++
++struct S {};
++struct T {
++  S *data;
++  T () : data (0) {}
++  const S &bar (int x) const { return data[foo (x)]; }
++};
++
++int
++main ()
++{
++  T t;
++  try
++    {
++      t.bar (-1);
++    }
++  catch (...)
++    {
++    }
++}
 diff --git a/gcc/testsuite/g++.dg/warn/Warray-bounds-27.C b/gcc/testsuite/g++.dg/warn/Warray-bounds-27.C
 new file mode 100644
 index 00000000000..06ce089c4b0
@@ -42946,6 +43037,42 @@ index 00000000000..ae1b905af81
 +}
 +
 +/* { dg-final { scan-tree-dump-not "remove_any_mention" "optimized" } } */
+diff --git a/gcc/testsuite/gcc.dg/ipa/pr105739.c b/gcc/testsuite/gcc.dg/ipa/pr105739.c
+new file mode 100644
+index 00000000000..8dbe8fc2494
+--- /dev/null
++++ b/gcc/testsuite/gcc.dg/ipa/pr105739.c
+@@ -0,0 +1,30 @@
++/* { dg-do compile } */
++/* { dg-options "-O2 -fdump-tree-optimized" } */
++
++
++__attribute__((noinline))
++static int
++test2(int a)
++{
++        if (__builtin_constant_p (a))
++                __builtin_abort ();
++        return a;
++}
++static int
++test(int *a)
++{
++        int val = *(volatile int *)a;
++        if (__builtin_constant_p (val))
++                __builtin_abort ();
++        if (val)
++          return test2(val);
++        return 0;
++}
++int a;
++int
++main()
++{
++        a = 0;
++        return test (&a);
++}
++/* { dg-final { scan-tree-dump "test2" "optimized" } } */
 diff --git a/gcc/testsuite/gcc.dg/lto/pr101868_0.c b/gcc/testsuite/gcc.dg/lto/pr101868_0.c
 new file mode 100644
 index 00000000000..c84d19b0267
@@ -55240,10 +55367,34 @@ index fc861a0d8ce..8c965e68211 100644
        if (preserve)
  	preserve_value (v);
 diff --git a/gcc/varasm.c b/gcc/varasm.c
-index 814d29a02de..04d59727a79 100644
+index 814d29a02de..d65985d9748 100644
 --- a/gcc/varasm.c
 +++ b/gcc/varasm.c
-@@ -5271,14 +5271,20 @@ output_constructor_regular_field (oc_local_state *local)
+@@ -4455,7 +4455,10 @@ narrowing_initializer_constant_valid_p (tree value, tree endtype, tree *cache)
+     {
+       tree inner = TREE_OPERAND (op0, 0);
+       if (inner == error_mark_node
+-	  || ! INTEGRAL_MODE_P (TYPE_MODE (TREE_TYPE (inner)))
++	  || ! INTEGRAL_TYPE_P (TREE_TYPE (op0))
++	  || ! SCALAR_INT_MODE_P (TYPE_MODE (TREE_TYPE (op0)))
++	  || ! INTEGRAL_TYPE_P (TREE_TYPE (inner))
++	  || ! SCALAR_INT_MODE_P (TYPE_MODE (TREE_TYPE (inner)))
+ 	  || (GET_MODE_SIZE (SCALAR_INT_TYPE_MODE (TREE_TYPE (op0)))
+ 	      > GET_MODE_SIZE (SCALAR_INT_TYPE_MODE (TREE_TYPE (inner)))))
+ 	break;
+@@ -4467,7 +4470,10 @@ narrowing_initializer_constant_valid_p (tree value, tree endtype, tree *cache)
+     {
+       tree inner = TREE_OPERAND (op1, 0);
+       if (inner == error_mark_node
+-	  || ! INTEGRAL_MODE_P (TYPE_MODE (TREE_TYPE (inner)))
++	  || ! INTEGRAL_TYPE_P (TREE_TYPE (op1))
++	  || ! SCALAR_INT_MODE_P (TYPE_MODE (TREE_TYPE (op1)))
++	  || ! INTEGRAL_TYPE_P (TREE_TYPE (inner))
++	  || ! SCALAR_INT_MODE_P (TYPE_MODE (TREE_TYPE (inner)))
+ 	  || (GET_MODE_SIZE (SCALAR_INT_TYPE_MODE (TREE_TYPE (op1)))
+ 	      > GET_MODE_SIZE (SCALAR_INT_TYPE_MODE (TREE_TYPE (inner)))))
+ 	break;
+@@ -5271,14 +5277,20 @@ output_constructor_regular_field (oc_local_state *local)
  	  && (!TYPE_DOMAIN (TREE_TYPE (local->field))
  	      || !TYPE_MAX_VALUE (TYPE_DOMAIN (TREE_TYPE (local->field)))))
  	{
