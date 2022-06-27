@@ -100,7 +100,13 @@ François-Xavier Coudert (1):
 Fritz Reese (1):
       fortran: Fix conv of UNION constructors [PR105310]
 
-GCC Administrator (432):
+GCC Administrator (438):
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -611,7 +617,7 @@ Harald Anlauf (58):
 Hongyu Wang (1):
       AVX512F: Add missing macro for mask(z?)_scalf_s[sd] [PR 105339]
 
-Iain Buclaw (22):
+Iain Buclaw (23):
       d: Fix ICE in when formating a string with '%' or '`' characters (PR98457)
       d: Fix ICE in gimplify_var_or_parm_decl, at gimplify.c:2755 (PR100882)
       d: Respect explicit align(N) type alignment (PR100935)
@@ -634,6 +640,7 @@ Iain Buclaw (22):
       libphobos: Don't call free on the TLS array in the emutls destroy function.
       libphobos: Give _Unwind_Exception an alignment that best resembles __attribute__((aligned))
       d: Set TYPE_ARTIFICIAL on internal TypeInfo types
+      tilegx: Fix infinite loop in gen-mul-tables generator
 
 Iain Sandoe (36):
       coroutines: Fix a typo in rewriting the function.
@@ -5323,10 +5330,18 @@ index 0719d810258..a9368325816 100644
 -10.3.0
 +10.3.1
 diff --git a/gcc/ChangeLog b/gcc/ChangeLog
-index 3b1384e707f..223ff152f3e 100644
+index 3b1384e707f..3e3f7d52583 100644
 --- a/gcc/ChangeLog
 +++ b/gcc/ChangeLog
-@@ -1,3 +1,2961 @@
+@@ -1,3 +1,2969 @@
++2022-06-24  Iain Buclaw  <ibuclaw@gdcproject.org>
++
++	Backported from master:
++	2022-06-24  Iain Buclaw  <ibuclaw@gdcproject.org>
++
++	* config/tilepro/gen-mul-tables.cc (tilegx_emit): Adjust loop
++	condition to avoid overflow.
++
 +2022-06-20  Uros Bizjak  <ubizjak@gmail.com>
 +
 +	Backported from master:
@@ -22202,6 +22217,24 @@ index b3d688b392f..3eb1f3e9a48 100644
  EnumValue
  Enum(sparc_processor) String(sparclite) Value(PROCESSOR_SPARCLITE)
  
+diff --git a/gcc/config/tilepro/gen-mul-tables.cc b/gcc/config/tilepro/gen-mul-tables.cc
+index 2a345023aea..b57e6b125ec 100644
+--- a/gcc/config/tilepro/gen-mul-tables.cc
++++ b/gcc/config/tilepro/gen-mul-tables.cc
+@@ -1190,11 +1190,11 @@ tilegx_emit (long long multiplier, int num_ops)
+     long long next_pow10;
+ 
+     while (((j * 10) < abs_multiplier)
+-	   && (j < (INTMAX_MAX / 10)))
++	   && (j < (j * 10)))
+       j = j * 10;
+ 
+     prev_pow10 = j;
+-    next_pow10 = (j > (INTMAX_MAX / 10)) ? 0 : j * 10;
++    next_pow10 = j * 10;
+ 
+     if ((abs_multiplier - prev_pow10 <= 100)
+ 	|| (next_pow10
 diff --git a/gcc/configure b/gcc/configure
 index 8fe9c91fd7c..53c27dba58e 100755
 --- a/gcc/configure
