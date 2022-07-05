@@ -100,7 +100,14 @@ François-Xavier Coudert (1):
 Fritz Reese (1):
       fortran: Fix conv of UNION constructors [PR105310]
 
-GCC Administrator (439):
+GCC Administrator (446):
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -555,7 +562,7 @@ H.J. Lu (6):
 Hafiz Abid Qadeer (1):
       [OpenACC] Fix an ICE where a loop with GT condition is collapsed.
 
-Harald Anlauf (58):
+Harald Anlauf (63):
       PR fortran/63797 - Bogus ambiguous reference to 'sqrt'
       PR fortran/100154 - ICE in gfc_conv_procedure_call, at fortran/trans-expr.c:6131
       PR fortran/100274 - ICE in gfc_conv_procedure_call, at fortran/trans-expr.c:6131
@@ -614,11 +621,16 @@ Harald Anlauf (58):
       Fortran: a RECURSIVE procedure cannot be an INTRINSIC
       Fortran: improve error recovery on invalid array section
       Fortran: fix error recovery on invalid array section
+      Fortran: fix checking of arguments to UNPACK when MASK is a variable [PR105813]
+      Fortran: fix simplification of INDEX(str1,str2) [PR105691]
+      Fortran: handle explicit-shape specs with constant bounds [PR105954]
+      Fortran: improve error recovery for EXTENDS_TYPE_OF() [PR106121]
+      Fortran: error recovery on invalid CLASS(), PARAMETER declarations [PR105243]
 
 Hongyu Wang (1):
       AVX512F: Add missing macro for mask(z?)_scalf_s[sd] [PR 105339]
 
-Iain Buclaw (23):
+Iain Buclaw (24):
       d: Fix ICE in when formating a string with '%' or '`' characters (PR98457)
       d: Fix ICE in gimplify_var_or_parm_decl, at gimplify.c:2755 (PR100882)
       d: Respect explicit align(N) type alignment (PR100935)
@@ -642,6 +654,7 @@ Iain Buclaw (23):
       libphobos: Give _Unwind_Exception an alignment that best resembles __attribute__((aligned))
       d: Set TYPE_ARTIFICIAL on internal TypeInfo types
       tilegx: Fix infinite loop in gen-mul-tables generator
+      d: Fix error: aggregate value used where floating point was expected
 
 Iain Sandoe (36):
       coroutines: Fix a typo in rewriting the function.
@@ -26723,7 +26736,7 @@ index 8042f03f369..dcb8fc151f9 100644
      }
    else
 diff --git a/gcc/d/d-convert.cc b/gcc/d/d-convert.cc
-index f93405ed956..87062513c33 100644
+index f93405ed956..2cfc2c8cc19 100644
 --- a/gcc/d/d-convert.cc
 +++ b/gcc/d/d-convert.cc
 @@ -473,13 +473,18 @@ convert_expr (tree exp, Type *etype, Type *totype)
@@ -26750,7 +26763,23 @@ index f93405ed956..87062513c33 100644
  
  	  /* Assumes casting to dynamic array of same type or void.  */
  	  return d_array_value (build_ctype (totype), size_int (dim),
-@@ -595,6 +600,42 @@ convert_expr (tree exp, Type *etype, Type *totype)
+@@ -497,6 +502,15 @@ convert_expr (tree exp, Type *etype, Type *totype)
+ 	  gcc_assert (totype->size () == etype->size ());
+ 	  result = build_vconvert (build_ctype (totype), exp);
+ 	}
++      else if (tbtype->ty == Tvector && tbtype->size () == ebtype->size ())
++	{
++	  /* Allow casting from array to vector as if its an unaligned load.  */
++	  tree type = build_ctype (totype);
++	  tree unaligned_type = build_variant_type_copy (type);
++	  SET_TYPE_ALIGN (unaligned_type, 1 * BITS_PER_UNIT);
++	  TYPE_USER_ALIGN (unaligned_type) = 1;
++	  result = convert (type, build_vconvert (unaligned_type, exp));
++	}
+       else
+ 	{
+ 	  error ("cannot cast expression of type %qs to type %qs",
+@@ -595,6 +609,75 @@ convert_expr (tree exp, Type *etype, Type *totype)
    return result ? result : convert (build_ctype (totype), exp);
  }
  
@@ -26788,11 +26817,53 @@ index f93405ed956..87062513c33 100644
 +      break;
 +    }
 +
++  if (tbtype->ty == Tsarray
++      && ebtype->ty == Tsarray
++      && tbtype->nextOf ()->ty == ebtype->nextOf ()->ty
++      && INDIRECT_REF_P (expr)
++      && CONVERT_EXPR_CODE_P (TREE_CODE (TREE_OPERAND (expr, 0)))
++      && TREE_CODE (TREE_OPERAND (TREE_OPERAND (expr, 0), 0)) == ADDR_EXPR)
++    {
++      /* If expression is a vector that was casted to an array either by
++	 explicit type cast or by taking the vector's `.array' value, strip the
++	 reinterpret cast and build a constructor instead.  */
++      tree ptr = TREE_OPERAND (TREE_OPERAND (expr, 0), 0);
++
++      if (VECTOR_TYPE_P (TREE_TYPE (TREE_TYPE (ptr))))
++	{
++	  /* Rewrite: `*(Array *)&vector'
++		into: `{ vector[0], vector[1], ... }'  */
++	  tree array = d_save_expr (TREE_OPERAND (ptr, 0));
++	  array = build1 (VIEW_CONVERT_EXPR, TREE_TYPE (expr), array);
++
++	  uinteger_t dim = ((TypeSArray *)tbtype)->dim->toUInteger ();
++	  vec <constructor_elt, va_gc> *elms = NULL;
++	  for (uinteger_t i = 0; i < dim; i++)
++	    {
++	      tree index = size_int (i);
++	      tree value = build4 (ARRAY_REF, TREE_TYPE (TREE_TYPE (array)),
++				   array, index, NULL_TREE, NULL_TREE);
++	      CONSTRUCTOR_APPEND_ELT (elms, index, value);
++	    }
++
++	  return build_constructor (build_ctype (totype), elms);
++	}
++    }
++
 +  return result ? result : convert_expr (expr, etype, totype);
 +}
  
  /* Apply semantics of assignment to a value of type TOTYPE to EXPR
     (e.g., pointer = array -> pointer = &array[0])
+@@ -653,7 +736,7 @@ convert_for_assignment (tree expr, Type *etype, Type *totype)
+       return expr;
+     }
+ 
+-  return convert_expr (expr, etype, totype);
++  return convert_for_rvalue (expr, etype, totype);
+ }
+ 
+ /* Return a TREE representation of EXPR converted to represent
 diff --git a/gcc/d/d-diagnostic.cc b/gcc/d/d-diagnostic.cc
 index 6af35f71c31..dbe6bc1bb7b 100644
 --- a/gcc/d/d-diagnostic.cc
@@ -27286,7 +27357,7 @@ index 60448600e24..20ab7848e6b 100644
  };
  
 diff --git a/gcc/d/dmd/expressionsem.c b/gcc/d/dmd/expressionsem.c
-index 5ec4683848e..5096754e55f 100644
+index 5ec4683848e..3c199bf1b57 100644
 --- a/gcc/d/dmd/expressionsem.c
 +++ b/gcc/d/dmd/expressionsem.c
 @@ -2506,11 +2506,18 @@ public:
@@ -27307,6 +27378,14 @@ index 5ec4683848e..5096754e55f 100644
 +        e->type = Type::tvoid;
          result = e;
      }
+ 
+@@ -4302,6 +4309,7 @@ public:
+         if (tob->ty == Tvector && t1b->ty != Tvector)
+         {
+             result = new VectorExp(exp->loc, exp->e1, exp->to);
++            result = semantic(result, sc);
+             return;
+         }
  
 diff --git a/gcc/d/dmd/mtype.c b/gcc/d/dmd/mtype.c
 index c11772a7740..0ec577d0c1e 100644
@@ -27387,7 +27466,7 @@ index 26e5950518a..765e9c3b8c9 100644
                                  {
                                      fs->error("index type '%s' cannot cover index range 0..%llu", p->type->toChars(), ta->dim->toInteger());
 diff --git a/gcc/d/expr.cc b/gcc/d/expr.cc
-index ad2255e1cd1..a579356104e 100644
+index ad2255e1cd1..aca767cc93b 100644
 --- a/gcc/d/expr.cc
 +++ b/gcc/d/expr.cc
 @@ -162,7 +162,7 @@ class ExprVisitor : public Visitor
@@ -27425,7 +27504,52 @@ index ad2255e1cd1..a579356104e 100644
  	TARGET_EXPR_INITIAL (cleanup) = compound_expr (init, exp);
  	exp = cleanup;
        }
-@@ -3144,11 +3139,14 @@ build_return_dtor (Expression *e, Type *type, TypeFunction *tf)
+@@ -2998,21 +2993,20 @@ public:
+ 
+   void visit (VectorExp *e)
+   {
+-    tree type = build_ctype (e->type);
+-    tree etype = TREE_TYPE (type);
+-
+     /* First handle array literal expressions.  */
+     if (e->e1->op == TOKarrayliteral)
+       {
+ 	ArrayLiteralExp *ale = ((ArrayLiteralExp *) e->e1);
+ 	vec<constructor_elt, va_gc> *elms = NULL;
+ 	bool constant_p = true;
++	tree type = build_ctype (e->type);
+ 
+ 	vec_safe_reserve (elms, ale->elements->dim);
+ 	for (size_t i = 0; i < ale->elements->dim; i++)
+ 	  {
+ 	    Expression *expr = ale->getElement (i);
+-	    tree value = d_convert (etype, build_expr (expr, this->constp_));
++	    tree value = d_convert (TREE_TYPE (type),
++				    build_expr (expr, this->constp_));
+ 	    if (!CONSTANT_CLASS_P (value))
+ 	      constant_p = false;
+ 
+@@ -3025,10 +3019,18 @@ public:
+ 	else
+ 	  this->result_ = build_constructor (type, elms);
+       }
++    else if (e->e1->type->toBasetype ()->ty == Tsarray)
++      {
++	/* Build a vector representation from a static array.  */
++	this->result_ = convert_expr (build_expr (e->e1, this->constp_),
++				      e->e1->type, e->type);
++      }
+     else
+       {
+ 	/* Build constructor from single value.  */
+-	tree val = d_convert (etype, build_expr (e->e1, this->constp_));
++	tree type = build_ctype (e->type);
++	tree val = d_convert (TREE_TYPE (type),
++			      build_expr (e->e1, this->constp_));
+ 	this->result_ = build_vector_from_val (type, val);
+       }
+   }
+@@ -3144,11 +3146,14 @@ build_return_dtor (Expression *e, Type *type, TypeFunction *tf)
    tree result = build_expr (e);
  
    /* Convert for initializing the DECL_RESULT.  */
@@ -28251,10 +28375,64 @@ index 6e635382fb4..9b65819463e 100644
  	    return build_zero_cst (TREE_TYPE (TREE_TYPE (arg)));
  	  return CONSTRUCTOR_ELT (arg, i)->value;
 diff --git a/gcc/fortran/ChangeLog b/gcc/fortran/ChangeLog
-index aa5932be872..8edae9380d4 100644
+index aa5932be872..8fbe8cbf081 100644
 --- a/gcc/fortran/ChangeLog
 +++ b/gcc/fortran/ChangeLog
-@@ -1,3 +1,773 @@
+@@ -1,3 +1,827 @@
++2022-07-03  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2022-06-30  Harald Anlauf  <anlauf@gmx.de>
++		    Steven G. Kargl  <kargl@gcc.gnu.org>
++
++	PR fortran/103137
++	PR fortran/103138
++	PR fortran/103693
++	PR fortran/105243
++	* decl.c (gfc_match_data_decl): Reject CLASS entity declaration
++	when it is given the PARAMETER attribute.
++
++2022-07-03  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2022-06-29  Harald Anlauf  <anlauf@gmx.de>
++		    Steven G. Kargl  <kargl@gcc.gnu.org>
++
++	PR fortran/106121
++	* simplify.c (gfc_simplify_extends_type_of): Do not attempt to
++	simplify when one of the arguments is a CLASS variable that was
++	not properly declared.
++
++2022-07-01  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2022-06-26  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/105954
++	* decl.c (variable_decl): Adjust upper bounds for explicit-shape
++	specs with constant bound expressions to ensure non-negative
++	extents.
++
++2022-07-01  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2022-06-26  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/105691
++	* simplify.c (gfc_simplify_index): Replace old simplification
++	code by the equivalent of the runtime library implementation.  Use
++	HOST_WIDE_INT instead of int for string index, length variables.
++
++2022-07-01  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2022-06-24  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/105813
++	* check.c (gfc_check_unpack): Try to simplify MASK argument to
++	UNPACK so that checking of the VECTOR argument can work when MASK
++	is a variable.
++
 +2022-06-28  Release Manager
 +
 +	* GCC 10.4.0 released.
@@ -29117,7 +29295,7 @@ index 471523fb767..e7a14e9106d 100644
  	      return false;
  	    }
 diff --git a/gcc/fortran/check.c b/gcc/fortran/check.c
-index ca6f582625d..44e2da65a4c 100644
+index ca6f582625d..488c9aff94b 100644
 --- a/gcc/fortran/check.c
 +++ b/gcc/fortran/check.c
 @@ -289,7 +289,7 @@ bin2real (gfc_expr *x, int kind)
@@ -29447,6 +29625,15 @@ index ca6f582625d..44e2da65a4c 100644
      {
        gfc_error ("%<MOLD%> argument of %<TRANSFER%> intrinsic at %L is an "
  		 "array and shall not have storage size 0 when %<SOURCE%> "
+@@ -6326,6 +6329,8 @@ gfc_check_unpack (gfc_expr *vector, gfc_expr *mask, gfc_expr *field)
+   if (!same_type_check (vector, 0, field, 2))
+     return false;
+ 
++  gfc_simplify_expr (mask, 0);
++
+   if (mask->expr_type == EXPR_ARRAY
+       && gfc_array_size (vector, &vector_size))
+     {
 diff --git a/gcc/fortran/class.c b/gcc/fortran/class.c
 index f017fbe3be7..51bd6d18317 100644
 --- a/gcc/fortran/class.c
@@ -29506,7 +29693,7 @@ index f017fbe3be7..51bd6d18317 100644
      {
        gfc_symtree *st;
 diff --git a/gcc/fortran/decl.c b/gcc/fortran/decl.c
-index 9273976aa9a..2ad9fb63399 100644
+index 9273976aa9a..e7b745b0cdb 100644
 --- a/gcc/fortran/decl.c
 +++ b/gcc/fortran/decl.c
 @@ -896,9 +896,6 @@ match_clist_expr (gfc_expr **result, gfc_typespec *ts, gfc_array_spec *as)
@@ -29592,6 +29779,40 @@ index 9273976aa9a..2ad9fb63399 100644
  	      for (n = 0; n < (int)mpz_get_si (size); n++)
  		gfc_constructor_append_expr (&array->value.constructor,
  					     n == 0
+@@ -2652,6 +2685,18 @@ variable_decl (int elem)
+ 		  else
+ 		    gfc_free_expr (n);
+ 		}
++	      /* For an explicit-shape spec with constant bounds, ensure
++		 that the effective upper bound is not lower than the
++		 respective lower bound minus one.  Otherwise adjust it so
++		 that the extent is trivially derived to be zero.  */
++	      if (as->lower[i]->expr_type == EXPR_CONSTANT
++		  && as->upper[i]->expr_type == EXPR_CONSTANT
++		  && as->lower[i]->ts.type == BT_INTEGER
++		  && as->upper[i]->ts.type == BT_INTEGER
++		  && mpz_cmp (as->upper[i]->value.integer,
++			      as->lower[i]->value.integer) < 0)
++		mpz_sub_ui (as->upper[i]->value.integer,
++			    as->lower[i]->value.integer, 1);
+ 	    }
+ 	}
+     }
+@@ -6136,6 +6181,14 @@ gfc_match_data_decl (void)
+       goto cleanup;
+     }
+ 
++  /* F2018:C708.  */
++  if (current_ts.type == BT_CLASS && current_attr.flavor == FL_PARAMETER)
++    {
++      gfc_error ("CLASS entity at %C cannot have the PARAMETER attribute");
++      m = MATCH_ERROR;
++      goto cleanup;
++    }
++
+   if (current_ts.type == BT_CLASS
+ 	&& current_ts.u.derived->attr.unlimited_polymorphic)
+     goto ok;
 diff --git a/gcc/fortran/expr.c b/gcc/fortran/expr.c
 index f946145eb1b..6d95120be50 100644
 --- a/gcc/fortran/expr.c
@@ -30388,7 +30609,7 @@ index 7ca5f44f419..15c88b23927 100644
        gfc_error ("ELEMENTAL function %qs at %L must have a scalar "
  		 "result", sym->name, &sym->declared_at);
 diff --git a/gcc/fortran/simplify.c b/gcc/fortran/simplify.c
-index d28aa7a3c16..f0f322c1caf 100644
+index d28aa7a3c16..29d4c695302 100644
 --- a/gcc/fortran/simplify.c
 +++ b/gcc/fortran/simplify.c
 @@ -2077,6 +2077,9 @@ gfc_simplify_cshift (gfc_expr *array, gfc_expr *shift, gfc_expr *dim)
@@ -30411,7 +30632,177 @@ index d28aa7a3c16..f0f322c1caf 100644
    arrayvec = XCNEWVEC (gfc_expr *, arraysize);
    array_ctor = gfc_constructor_first (array->value.constructor);
    for (i = 0; i < arraysize; i++)
-@@ -4231,6 +4237,12 @@ simplify_bound (gfc_expr *array, gfc_expr *dim, gfc_expr *kind, int upper)
+@@ -3054,6 +3060,10 @@ gfc_simplify_extends_type_of (gfc_expr *a, gfc_expr *mold)
+   if (UNLIMITED_POLY (a) || UNLIMITED_POLY (mold))
+     return NULL;
+ 
++  if ((a->ts.type == BT_CLASS && !gfc_expr_attr (a).class_ok)
++      || (mold->ts.type == BT_CLASS && !gfc_expr_attr (mold).class_ok))
++    return NULL;
++
+   /* Return .false. if the dynamic type can never be an extension.  */
+   if ((a->ts.type == BT_CLASS && mold->ts.type == BT_CLASS
+        && !gfc_type_is_extension_of
+@@ -3464,17 +3474,15 @@ gfc_expr *
+ gfc_simplify_index (gfc_expr *x, gfc_expr *y, gfc_expr *b, gfc_expr *kind)
+ {
+   gfc_expr *result;
+-  int back, len, lensub;
+-  int i, j, k, count, index = 0, start;
++  bool back;
++  HOST_WIDE_INT len, lensub, start, last, i, index = 0;
++  int k, delta;
+ 
+   if (x->expr_type != EXPR_CONSTANT || y->expr_type != EXPR_CONSTANT
+       || ( b != NULL && b->expr_type !=  EXPR_CONSTANT))
+     return NULL;
+ 
+-  if (b != NULL && b->value.logical != 0)
+-    back = 1;
+-  else
+-    back = 0;
++  back = (b != NULL && b->value.logical != 0);
+ 
+   k = get_kind (BT_INTEGER, kind, "INDEX", gfc_default_integer_kind);
+   if (k == -1)
+@@ -3491,111 +3499,40 @@ gfc_simplify_index (gfc_expr *x, gfc_expr *y, gfc_expr *b, gfc_expr *kind)
+       return result;
+     }
+ 
+-  if (back == 0)
++  if (lensub == 0)
+     {
+-      if (lensub == 0)
+-	{
+-	  mpz_set_si (result->value.integer, 1);
+-	  return result;
+-	}
+-      else if (lensub == 1)
+-	{
+-	  for (i = 0; i < len; i++)
+-	    {
+-	      for (j = 0; j < lensub; j++)
+-		{
+-		  if (y->value.character.string[j]
+-		      == x->value.character.string[i])
+-		    {
+-		      index = i + 1;
+-		      goto done;
+-		    }
+-		}
+-	    }
+-	}
++      if (back)
++	index = len + 1;
+       else
+-	{
+-	  for (i = 0; i < len; i++)
+-	    {
+-	      for (j = 0; j < lensub; j++)
+-		{
+-		  if (y->value.character.string[j]
+-		      == x->value.character.string[i])
+-		    {
+-		      start = i;
+-		      count = 0;
+-
+-		      for (k = 0; k < lensub; k++)
+-			{
+-			  if (y->value.character.string[k]
+-			      == x->value.character.string[k + start])
+-			    count++;
+-			}
+-
+-		      if (count == lensub)
+-			{
+-			  index = start + 1;
+-			  goto done;
+-			}
+-		    }
+-		}
+-	    }
+-	}
++	index = 1;
++      goto done;
++    }
+ 
++  if (!back)
++    {
++      last = len + 1 - lensub;
++      start = 0;
++      delta = 1;
+     }
+   else
+     {
+-      if (lensub == 0)
+-	{
+-	  mpz_set_si (result->value.integer, len + 1);
+-	  return result;
+-	}
+-      else if (lensub == 1)
++      last = -1;
++      start = len - lensub;
++      delta = -1;
++    }
++
++  for (; start != last; start += delta)
++    {
++      for (i = 0; i < lensub; i++)
+ 	{
+-	  for (i = 0; i < len; i++)
+-	    {
+-	      for (j = 0; j < lensub; j++)
+-		{
+-		  if (y->value.character.string[j]
+-		      == x->value.character.string[len - i])
+-		    {
+-		      index = len - i + 1;
+-		      goto done;
+-		    }
+-		}
+-	    }
++	  if (x->value.character.string[start + i]
++	      != y->value.character.string[i])
++	    break;
+ 	}
+-      else
++      if (i == lensub)
+ 	{
+-	  for (i = 0; i < len; i++)
+-	    {
+-	      for (j = 0; j < lensub; j++)
+-		{
+-		  if (y->value.character.string[j]
+-		      == x->value.character.string[len - i])
+-		    {
+-		      start = len - i;
+-		      if (start <= len - lensub)
+-			{
+-			  count = 0;
+-			  for (k = 0; k < lensub; k++)
+-			    if (y->value.character.string[k]
+-			        == x->value.character.string[k + start])
+-			      count++;
+-
+-			  if (count == lensub)
+-			    {
+-			      index = start + 1;
+-			      goto done;
+-			    }
+-			}
+-		      else
+-			{
+-			  continue;
+-			}
+-		    }
+-		}
+-	    }
++	  index = start + 1;
++	  goto done;
+ 	}
+     }
+ 
+@@ -4231,6 +4168,12 @@ simplify_bound (gfc_expr *array, gfc_expr *dim, gfc_expr *kind, int upper)
  	     || (as->type == AS_ASSUMED_SHAPE && upper)))
      return NULL;
  
@@ -30424,7 +30815,7 @@ index d28aa7a3c16..f0f322c1caf 100644
    gcc_assert (!as
  	      || (as->type != AS_DEFERRED
  		  && array->expr_type == EXPR_VARIABLE
-@@ -6759,7 +6771,13 @@ gfc_simplify_reshape (gfc_expr *source, gfc_expr *shape_exp,
+@@ -6759,7 +6702,13 @@ gfc_simplify_reshape (gfc_expr *source, gfc_expr *shape_exp,
        gfc_extract_int (e, &shape[rank]);
  
        gcc_assert (rank >= 0 && rank < GFC_MAX_DIMENSIONS);
@@ -30439,7 +30830,7 @@ index d28aa7a3c16..f0f322c1caf 100644
  
        rank++;
      }
-@@ -7379,6 +7397,7 @@ simplify_size (gfc_expr *array, gfc_expr *dim, int k)
+@@ -7379,6 +7328,7 @@ simplify_size (gfc_expr *array, gfc_expr *dim, int k)
    mpz_t size;
    gfc_expr *return_value;
    int d;
@@ -30447,7 +30838,7 @@ index d28aa7a3c16..f0f322c1caf 100644
  
    /* For unary operations, the size of the result is given by the size
       of the operand.  For binary ones, it's the size of the first operand
-@@ -7435,6 +7454,10 @@ simplify_size (gfc_expr *array, gfc_expr *dim, int k)
+@@ -7435,6 +7385,10 @@ simplify_size (gfc_expr *array, gfc_expr *dim, int k)
        return simplified;
      }
  
@@ -30458,7 +30849,7 @@ index d28aa7a3c16..f0f322c1caf 100644
    if (dim == NULL)
      {
        if (!gfc_array_size (array, &size))
-@@ -8031,7 +8054,18 @@ gfc_simplify_transfer (gfc_expr *source, gfc_expr *mold, gfc_expr *size)
+@@ -8031,7 +7985,18 @@ gfc_simplify_transfer (gfc_expr *source, gfc_expr *mold, gfc_expr *size)
       set even for array expressions, in order to pass this information into
       gfc_target_interpret_expr.  */
    if (result->ts.type == BT_CHARACTER && gfc_is_constant_expr (mold_element))
@@ -30478,7 +30869,7 @@ index d28aa7a3c16..f0f322c1caf 100644
  
    /* Set the number of elements in the result, and determine its size.  */
  
-@@ -8071,6 +8105,9 @@ gfc_simplify_transpose (gfc_expr *matrix)
+@@ -8071,6 +8036,9 @@ gfc_simplify_transpose (gfc_expr *matrix)
  
    gcc_assert (matrix->rank == 2);
  
@@ -34994,10 +35385,56 @@ index f5a6d507e91..6b2c3e17346 100644
  DEFHOOKPOD
  (have_tls,
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index 2913065bf31..a032b35be83 100644
+index 2913065bf31..17eb57c7863 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,3207 @@
+@@ -1,3 +1,3253 @@
++2022-07-03  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2022-06-30  Harald Anlauf  <anlauf@gmx.de>
++		    Steven G. Kargl  <kargl@gcc.gnu.org>
++
++	PR fortran/103137
++	PR fortran/103138
++	PR fortran/103693
++	PR fortran/105243
++	* gfortran.dg/class_58.f90: Fix test.
++	* gfortran.dg/class_73.f90: New test.
++
++2022-07-03  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2022-06-29  Harald Anlauf  <anlauf@gmx.de>
++		    Steven G. Kargl  <kargl@gcc.gnu.org>
++
++	PR fortran/106121
++	* gfortran.dg/extends_type_of_4.f90: New test.
++
++2022-07-01  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2022-06-26  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/105954
++	* gfortran.dg/pr105954.f90: New test.
++
++2022-07-01  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2022-06-26  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/105691
++	* gfortran.dg/index_6.f90: New test.
++
++2022-07-01  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2022-06-24  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/105813
++	* gfortran.dg/unpack_vector_1.f90: New test.
++
 +2022-06-28  Release Manager
 +
 +	* GCC 10.4.0 released.
@@ -49253,6 +49690,156 @@ index 00000000000..68de4088512
 +    // { dg-final { scan-tree-dump "= val \\\+ fun101640 \\\(\\\(int &\\\) &val\\\);" "original" } }
 +    return val + fun101640(val);
 +}
+diff --git a/gcc/testsuite/gdc.dg/pr106139a.d b/gcc/testsuite/gdc.dg/pr106139a.d
+new file mode 100644
+index 00000000000..f635eabc745
+--- /dev/null
++++ b/gcc/testsuite/gdc.dg/pr106139a.d
+@@ -0,0 +1,36 @@
++// https://gcc.gnu.org/bugzilla/show_bug.cgi?id=106139
++// { dg-do compile }
++
++alias A = int[4];
++
++static if (__traits(compiles, __vector(A))):
++
++A vector2array(__vector(A) v)
++{
++    return cast(A)v;
++}
++
++void vector2array(ref A a, __vector(A) v)
++{
++    a = cast(A)v;
++}
++
++__vector(A) array2vector(A a)
++{
++    return cast(__vector(A)) a;
++}
++
++void array2vector(ref __vector(A) v, A a)
++{
++    v = cast(__vector(A))a;
++}
++
++A vector2array_array(__vector(A) v)
++{
++    return v.array;
++}
++
++void vector2array_array(ref A a, __vector(A) v)
++{
++    a = v.array;
++}
+diff --git a/gcc/testsuite/gdc.dg/pr106139b.d b/gcc/testsuite/gdc.dg/pr106139b.d
+new file mode 100644
+index 00000000000..f9caf026f86
+--- /dev/null
++++ b/gcc/testsuite/gdc.dg/pr106139b.d
+@@ -0,0 +1,36 @@
++// https://gcc.gnu.org/bugzilla/show_bug.cgi?id=106139
++// { dg-do compile }
++
++alias A = float[4];
++
++static if (__traits(compiles, __vector(A))):
++
++A vector2array(__vector(A) v)
++{
++    return cast(A)v;
++}
++
++void vector2array(ref A a, __vector(A) v)
++{
++    a = cast(A)v;
++}
++
++__vector(A) array2vector(A a)
++{
++    return cast(__vector(A)) a;
++}
++
++void array2vector(ref __vector(A) v, A a)
++{
++    v = cast(__vector(A))a;
++}
++
++A vector2array_array(__vector(A) v)
++{
++    return v.array;
++}
++
++void vector2array_array(ref A a, __vector(A) v)
++{
++    a = v.array;
++}
+diff --git a/gcc/testsuite/gdc.dg/pr106139c.d b/gcc/testsuite/gdc.dg/pr106139c.d
+new file mode 100644
+index 00000000000..3b6b7a83341
+--- /dev/null
++++ b/gcc/testsuite/gdc.dg/pr106139c.d
+@@ -0,0 +1,27 @@
++// https://gcc.gnu.org/bugzilla/show_bug.cgi?id=106139
++// { dg-do compile }
++
++alias V = int[4];
++alias A = float[4];
++
++static if (__traits(compiles, __vector(V))):
++
++A vector2array(__vector(V) v)
++{
++    return cast(A)v;
++}
++
++void vector2array(ref A a, __vector(V) v)
++{
++    a = cast(A)v;
++}
++
++__vector(V) array2vector(A a)
++{
++    return cast(__vector(V)) a;
++}
++
++void array2vector(ref __vector(V) v, A a)
++{
++    v = cast(__vector(V))a;
++}
+diff --git a/gcc/testsuite/gdc.dg/pr106139d.d b/gcc/testsuite/gdc.dg/pr106139d.d
+new file mode 100644
+index 00000000000..4c6f0ef3a3a
+--- /dev/null
++++ b/gcc/testsuite/gdc.dg/pr106139d.d
+@@ -0,0 +1,27 @@
++// https://gcc.gnu.org/bugzilla/show_bug.cgi?id=106139
++// { dg-do compile }
++
++alias V = float[4];
++alias A = int[4];
++
++static if (__traits(compiles, __vector(V))):
++
++A vector2array(__vector(V) v)
++{
++    return cast(A)v;
++}
++
++void vector2array(ref A a, __vector(V) v)
++{
++    a = cast(A)v;
++}
++
++__vector(V) array2vector(A a)
++{
++    return cast(__vector(V)) a;
++}
++
++void array2vector(ref __vector(V) v, A a)
++{
++    v = cast(__vector(V))a;
++}
 diff --git a/gcc/testsuite/gdc.dg/pr96435.d b/gcc/testsuite/gdc.dg/pr96435.d
 new file mode 100644
 index 00000000000..c6d8785ec5b
@@ -49982,6 +50569,25 @@ index d75d1bc44e7..58cabe3825b 100644
  template Foo(T) {}
  
  align(Foo!int)
+diff --git a/gcc/testsuite/gdc.test/fail_compilation/ice20264.d b/gcc/testsuite/gdc.test/fail_compilation/ice20264.d
+new file mode 100644
+index 00000000000..0d697e22c9f
+--- /dev/null
++++ b/gcc/testsuite/gdc.test/fail_compilation/ice20264.d
+@@ -0,0 +1,13 @@
++/*
++DISABLED: freebsd32 linux32 osx32 win32
++TEST_OUTPUT:
++---
++fail_compilation/ice20264.d(12): Error: `cast(__vector(float[4]))a` is not an lvalue and cannot be modified
++---
++*/
++
++void foo(float *a)
++{
++    alias float4 = __vector(float[4]);
++    cast(float4)(a) = 1.0f;
++}
 diff --git a/gcc/testsuite/gdc.test/fail_compilation/ice9406.d b/gcc/testsuite/gdc.test/fail_compilation/ice9406.d
 index d8c0837699a..c1807a0f542 100644
 --- a/gcc/testsuite/gdc.test/fail_compilation/ice9406.d
@@ -50514,6 +51120,40 @@ index 00000000000..8de90c77c01
 +end program test
 +
 +! { dg-final { scan-tree-dump-times "Substring out of bounds:" 2 "original" } }
+diff --git a/gcc/testsuite/gfortran.dg/class_58.f90 b/gcc/testsuite/gfortran.dg/class_58.f90
+index 20b601a2f51..fceb575432d 100644
+--- a/gcc/testsuite/gfortran.dg/class_58.f90
++++ b/gcc/testsuite/gfortran.dg/class_58.f90
+@@ -9,5 +9,5 @@ subroutine s
+   end type
+   class(t), parameter :: x = t()  ! { dg-error "cannot have the PARAMETER attribute" }
+   class(t), parameter :: y = x    ! { dg-error "cannot have the PARAMETER attribute" }
+-  class(t) :: z = x               ! { dg-error "must be dummy, allocatable or pointer" }
++  class(t) :: z = t()             ! { dg-error "must be dummy, allocatable or pointer" }
+ end
+diff --git a/gcc/testsuite/gfortran.dg/class_73.f90 b/gcc/testsuite/gfortran.dg/class_73.f90
+new file mode 100644
+index 00000000000..c11ee38c086
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/class_73.f90
+@@ -0,0 +1,17 @@
++! { dg-do compile }
++! Error recovery on invalid CLASS(), PARAMETER declarations
++! PR fortran/103137
++! PR fortran/103138
++! PR fortran/103693
++! PR fortran/105243
++! Contributed by G.Steinmetz
++
++program p
++  type t
++     character(3) :: c = '(a)'
++  end type
++  class(t), parameter :: x = 1.  ! { dg-error "PARAMETER attribute" }
++  class(*), parameter :: y = t() ! { dg-error "PARAMETER attribute" }
++  class(*), parameter :: z = 1   ! { dg-error "PARAMETER attribute" }
++  print x%c                      ! { dg-error "Syntax error" }
++end
 diff --git a/gcc/testsuite/gfortran.dg/class_dummy_6.f90 b/gcc/testsuite/gfortran.dg/class_dummy_6.f90
 new file mode 100644
 index 00000000000..79f6e86daa7
@@ -51036,6 +51676,32 @@ index 00000000000..f711b04a7da
 +  character(3), parameter :: a(:) = ['123'] ! { dg-error "deferred shape" }
 +  character(3), parameter :: b(*) = eoshift(a, 1)
 +end
+diff --git a/gcc/testsuite/gfortran.dg/extends_type_of_4.f90 b/gcc/testsuite/gfortran.dg/extends_type_of_4.f90
+new file mode 100644
+index 00000000000..64373322387
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/extends_type_of_4.f90
+@@ -0,0 +1,20 @@
++! { dg-do compile }
++! PR fortran/106121 - ICE in gfc_simplify_extends_type_of
++! Contributed by G.Steinmetz
++
++program p
++   type t
++   end type
++   type(t)  :: x
++   class(t) :: y               ! { dg-error "dummy, allocatable or pointer" }
++   print *, extends_type_of (x, y)
++end
++
++subroutine s
++   type t
++      integer :: i
++   end type
++   type(t)  :: x
++   class(t) :: y               ! { dg-error "dummy, allocatable or pointer" }
++   stop extends_type_of (x, y) ! { dg-error "STOP code" }
++end
 diff --git a/gcc/testsuite/gfortran.dg/fmt_nonchar_3.f90 b/gcc/testsuite/gfortran.dg/fmt_nonchar_3.f90
 new file mode 100644
 index 00000000000..3b3c260ef7f
@@ -51114,6 +51780,43 @@ index 00000000000..63927aafea9
 +  write (unit=line,fmt='(*(F6.2))') (mass(k+k), k=1,nbmode)
 +  if (line /= '  2.00  4.00  6.00') stop 1
 +end program
+diff --git a/gcc/testsuite/gfortran.dg/index_6.f90 b/gcc/testsuite/gfortran.dg/index_6.f90
+new file mode 100644
+index 00000000000..61d492985ad
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/index_6.f90
+@@ -0,0 +1,31 @@
++! { dg-do compile }
++! { dg-options "-fdump-tree-original" }
++! PR fortran/105691 - Incorrect calculation of INDEX(str1,str2) at compile time
++
++program main
++  implicit none
++  integer :: i
++  character(*), parameter :: s1 = "fortran.f90"
++  character(*), parameter :: s2 = "fortran"
++  character(*), parameter :: s3 = s2 // "*"
++  integer, parameter :: i0    = index(s1, s2)
++  integer, parameter :: i1    = index(s1, s2, back= .true.)
++  integer, parameter :: i2(*) = index(s1, s2, back=[.true.,.false.])
++  integer, parameter :: i3(*) = index(s1, s2, back=[(i==1, i=1,2)] )
++  integer, parameter :: i4    = index(s1, s3)
++  integer, parameter :: i5    = index(s1, s3, back= .true.)
++  integer, parameter :: i6(*) = index(s1, s3, back=[.true.,.false.])
++  integer, parameter :: i7(*) = index(s1, s3, back=[(i==1, i=1,2)] )
++  integer, parameter :: i8    = index(s1, "f", back= .true.)
++  if (     i0 /= 1 ) stop 1
++  if (     i1 /= 1 ) stop 2
++  if (any (i2 /= 1)) stop 3
++  if (any (i3 /= 1)) stop 4
++  if (     i4 /= 0 ) stop 5
++  if (     i5 /= 0 ) stop 6
++  if (any (i6 /= 0)) stop 7
++  if (any (i7 /= 0)) stop 8
++  if (i8 /= len(s1)-2) stop 9
++end program
++
++! { dg-final { scan-tree-dump-not "_gfortran_stop_numeric" "original" } }
 diff --git a/gcc/testsuite/gfortran.dg/inline_matmul_25.f90 b/gcc/testsuite/gfortran.dg/inline_matmul_25.f90
 new file mode 100644
 index 00000000000..df8ad06c123
@@ -52071,6 +52774,38 @@ index 00000000000..6c6b42ef9bf
 +  integer, parameter :: a(:) = [1, 2] ! { dg-error "deferred shape" }
 +  print *, reshape([3, 4], a(1:2))
 +end
+diff --git a/gcc/testsuite/gfortran.dg/pr105954.f90 b/gcc/testsuite/gfortran.dg/pr105954.f90
+new file mode 100644
+index 00000000000..89004bf9aa7
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/pr105954.f90
+@@ -0,0 +1,26 @@
++! { dg-do compile }
++! { dg-options "-fdump-tree-original" }
++! PR fortran/105954 - ICE in gfc_element_size, at fortran/target-memory.cc:132
++! Contributed by G.Steinmetz
++
++program p
++  use iso_c_binding, only: c_float, c_sizeof
++  implicit none
++  integer, parameter :: n = -99
++  type t
++     real :: b(3,7:n)
++  end type
++  type, bind(c) :: u
++     real(c_float) :: b(3,7:n)
++  end type
++  type(t) :: d
++  type(u) :: e
++  integer, parameter :: k = storage_size(d)
++  integer, parameter :: m = sizeof(d)
++  integer, parameter :: l = c_sizeof(e)
++  if (k /= 0) stop 1
++  if (m /= 0) stop 2
++  if (l /= 0) stop 3
++end
++
++! { dg-final { scan-tree-dump-not "_gfortran_stop_numeric" "original" } }
 diff --git a/gcc/testsuite/gfortran.dg/pr63797.f90 b/gcc/testsuite/gfortran.dg/pr63797.f90
 new file mode 100644
 index 00000000000..1131e8167b1
@@ -52837,6 +53572,24 @@ index 00000000000..e44d946c4a0
 +# All done.
 +ubsan_finish
 +dg-finish
+diff --git a/gcc/testsuite/gfortran.dg/unpack_vector_1.f90 b/gcc/testsuite/gfortran.dg/unpack_vector_1.f90
+new file mode 100644
+index 00000000000..5347c111e8f
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/unpack_vector_1.f90
+@@ -0,0 +1,12 @@
++! { dg-do compile }
++! PR fortran/105813
++! Fix checking of VECTOR argument to UNPACK when MASK is a variable.
++! Contributed by G.Steinmetz
++
++program p
++  logical, parameter :: mask(2,2) = reshape ([.true.,  .true.,  &
++                                              .false., .true.], &
++                                              shape (mask))
++  print *, unpack ([1,2,3], mask, 0) ! OK
++  print *, unpack ([1,2],   mask, 0) ! { dg-error "must provide at least" }
++end
 diff --git a/gcc/testsuite/gnat.dg/derived_type7.adb b/gcc/testsuite/gnat.dg/derived_type7.adb
 new file mode 100644
 index 00000000000..61e7abaa1d7
