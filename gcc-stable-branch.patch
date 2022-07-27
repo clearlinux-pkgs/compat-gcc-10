@@ -100,7 +100,28 @@ François-Xavier Coudert (1):
 Fritz Reese (1):
       fortran: Fix conv of UNION constructors [PR105310]
 
-GCC Administrator (447):
+GCC Administrator (468):
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -563,7 +584,7 @@ H.J. Lu (6):
 Hafiz Abid Qadeer (1):
       [OpenACC] Fix an ICE where a loop with GT condition is collapsed.
 
-Harald Anlauf (63):
+Harald Anlauf (64):
       PR fortran/63797 - Bogus ambiguous reference to 'sqrt'
       PR fortran/100154 - ICE in gfc_conv_procedure_call, at fortran/trans-expr.c:6131
       PR fortran/100274 - ICE in gfc_conv_procedure_call, at fortran/trans-expr.c:6131
@@ -627,6 +648,7 @@ Harald Anlauf (63):
       Fortran: handle explicit-shape specs with constant bounds [PR105954]
       Fortran: improve error recovery for EXTENDS_TYPE_OF() [PR106121]
       Fortran: error recovery on invalid CLASS(), PARAMETER declarations [PR105243]
+      Fortran: error recovery from calculation of storage size of a symbol [PR103504]
 
 Hongyu Wang (1):
       AVX512F: Add missing macro for mask(z?)_scalf_s[sd] [PR 105339]
@@ -695,8 +717,9 @@ Iain Sandoe (36):
       JIT, testsuite, Darwin: Initial testsuite fixes.
       Jit, testsuite: Amend expect processing to tolerate more platforms.
 
-Ian Lance Taylor (1):
+Ian Lance Taylor (2):
       compiler: correct condition for calling memclrHasPointers
+      libgo: don't include <linux/fs.h> when building gen-sysinfo.go
 
 Jakub Jelinek (128):
       rs6000: Fix up libgcc ABI when built with --with-long-double-format=ieee [PR97653]
@@ -888,7 +911,7 @@ John David Anglin (5):
       Don't use 'G' constraint in integer move patterns
       Fix warnings building linux-atomic.c and fptr.c on hppa64-linux
 
-Jonathan Wakely (135):
+Jonathan Wakely (137):
       libstdc++: Fix Doxygen warning about ambiguous file name
       maintainer-scripts: Disable multilib when generating libstdc++ docs
       libstdc++: Fix doxygen markup for group close commands
@@ -1024,6 +1047,8 @@ Jonathan Wakely (135):
       libstdc++: Do not use dirent::d_type unconditionally
       libstdc++: Fix test that fails on Solaris [PR104731]
       libstdc++: Use type_identity_t for non-deducible std::atomic_xxx args
+      libstdc++: Fix inconsistent noexcept-specific for valarray begin/end
+      libstdc++: Add missing prerequisite to generated header [PR106162]
 
 José Rui Faustino de Sousa (1):
       Fortran: Fix double function call with -fcheck=pointer [PR]
@@ -1063,13 +1088,14 @@ Mark Mentovai (2):
       libstdc++: Rename __null_terminated to avoid collision with Apple SDK
       Darwin: Future-proof -mmacosx-version-min
 
-Martin Jambor (4):
+Martin Jambor (5):
       ipa-sra: Fix thinko when overriding safe_to_import_accesses (PR 101066)
       sra: Fix corner case of total scalarization with virtual inheritance (PR 102505)
       ipa-sra: Check also ECF_LOOPING_CONST_OR_PURE when evaluating calls
       ipa: Careful processing ANCESTOR jump functions and NULL pointers (PR 103083)
+      tree-sra: Fix union handling in build_reconstructed_reference
 
-Martin Liska (14):
+Martin Liska (15):
       Sync gcc-changelog scripts.
       gcc-changelog: sync scripts.
       contrib: add git-commit-mklog wrapper
@@ -1084,6 +1110,7 @@ Martin Liska (14):
       git scripts: sync from master.
       gcc-changelog: sync from master.
       Sync git aliases from master.
+      libsanitizer: cherry-pick 9cf13067cb5088626ba7 from upstream
 
 Martin Sebor (2):
       PR middle-end/100571 - bogus -Wstringop-overflow with VLA of elements larger than byte
@@ -1105,7 +1132,7 @@ Mikael Morin (1):
 Pascal Obry (1):
       Properly reset the port handle when closing
 
-Patrick Palka (41):
+Patrick Palka (42):
       c++: Fix deduction with reference NTTP [PR83476]
       c++: Fix tsubsting CLASS_PLACEHOLDER_TEMPLATE [PR95434]
       c++: ICE in dependent_type_p with constrained auto [PR97052]
@@ -1147,6 +1174,7 @@ Patrick Palka (41):
       c++: cxx_eval_array_reference and empty elem type [PR101194]
       libstdc++: Implement P2325 changes to default-constructibility of views
       libstdc++: invalid default init in _CachedPosition [PR101231]
+      libstdc++: Fix backward compatibility of P2325R3 backport [PR106320]
 
 Paul A. Clarke (1):
       rs6000: __Uglify non-uglified local variables in headers
@@ -1284,8 +1312,9 @@ Roman Zhuykov (1):
 Saagar Jha (1):
       Darwin, config: Amend for Darwin 21 / macOS 12.
 
-Sebastian Huber (1):
+Sebastian Huber (2):
       powerpc: Fix asm machine directive for some CPUs
+      RTEMS: Do not define _GNU_SOURCE by default
 
 Sebastian Pop (1):
       add barriers to ool __sync builtins
@@ -1312,6 +1341,12 @@ Srinath Parvathaneni (5):
 Stefan Schulze Frielinghaus (2):
       PR rtl-optimization/100263: Ensure register can change mode
       IBM Z: Fix load-and-test peephole2 condition
+
+Steve Kargl (1):
+      Fortran: do not generate conflicting results under -ff2c [PR104313]
+
+Surya Kumari Jangala (1):
+      regrename: Fix -fcompare-debug issue in check_new_reg_p [PR105041]
 
 Tamar Christina (2):
       SVE: Fix wrong sve predicate split (PR100048)
@@ -5407,10 +5442,34 @@ index 0719d810258..da772b97257 100644
 -10.3.0
 +10.4.1
 diff --git a/gcc/ChangeLog b/gcc/ChangeLog
-index 3b1384e707f..1cfbda8124e 100644
+index 3b1384e707f..5de78c4c500 100644
 --- a/gcc/ChangeLog
 +++ b/gcc/ChangeLog
-@@ -1,3 +1,2973 @@
+@@ -1,3 +1,2997 @@
++2022-07-25  Sebastian Huber  <sebastian.huber@embedded-brains.de>
++
++	Backported from master:
++	2022-07-25  Sebastian Huber  <sebastian.huber@embedded-brains.de>
++
++	* config/rs6000/rtems.h (CPLUSPLUS_CPP_SPEC): Undef.
++
++2022-07-22  Surya Kumari Jangala  <jskumari@linux.vnet.ibm.com>
++
++	Backported from master:
++	2022-06-14  Surya Kumari Jangala  <jskumari@linux.ibm.com>
++
++	PR rtl-optimization/105041
++	* regrename.c (check_new_reg_p): Use nregs value from du chain.
++
++2022-07-13  Martin Jambor  <mjambor@suse.cz>
++
++	Backported from master:
++	2022-07-04  Martin Jambor  <mjambor@suse.cz>
++
++	PR tree-optimization/105860
++	* tree-sra.c (build_reconstructed_reference): Start expr
++	traversal only just below the outermost union.
++
 +2022-06-28  Release Manager
 +
 +	* GCC 10.4.0 released.
@@ -20126,6 +20185,20 @@ index c4d7cdb6fa7..61a14fb5b9f 100644
  (define_insn "*rsqrt<mode>2"
    [(set (match_operand:SFDF 0 "gpc_reg_operand" "=<Ff>,wa")
  	(unspec:SFDF [(match_operand:SFDF 1 "gpc_reg_operand" "<Ff>,wa")]
+diff --git a/gcc/config/rs6000/rtems.h b/gcc/config/rs6000/rtems.h
+index 40db6606f17..bd9057914c8 100644
+--- a/gcc/config/rs6000/rtems.h
++++ b/gcc/config/rs6000/rtems.h
+@@ -23,6 +23,9 @@
+    see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
+    <http://www.gnu.org/licenses/>.  */
+ 
++/* Undef gnu-user.h macro we don't want.  */
++#undef CPLUSPLUS_CPP_SPEC
++
+ /* Copy and paste from linux64.h and freebsd64.h */
+ #ifdef IN_LIBGCC2
+ #undef TARGET_64BIT
 diff --git a/gcc/config/rs6000/tmmintrin.h b/gcc/config/rs6000/tmmintrin.h
 index 9763a32ce93..9a78c70cde3 100644
 --- a/gcc/config/rs6000/tmmintrin.h
@@ -28391,10 +28464,28 @@ index 6e635382fb4..9b65819463e 100644
  	    return build_zero_cst (TREE_TYPE (TREE_TYPE (arg)));
  	  return CONSTRUCTOR_ELT (arg, i)->value;
 diff --git a/gcc/fortran/ChangeLog b/gcc/fortran/ChangeLog
-index aa5932be872..8fbe8cbf081 100644
+index aa5932be872..0f27acdb552 100644
 --- a/gcc/fortran/ChangeLog
 +++ b/gcc/fortran/ChangeLog
-@@ -1,3 +1,827 @@
+@@ -1,3 +1,845 @@
++2022-07-26  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2022-07-26  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/103504
++	* interface.c (get_sym_storage_size): Array bounds and character
++	length can only be of integer type.
++
++2022-07-16  Steve Kargl  <kargl@gcc.gnu.org>
++
++	Backported from master:
++	2022-07-15  Steve Kargl  <kargl@gcc.gnu.org>
++
++	PR fortran/104313
++	* trans-decl.c (gfc_generate_return): Do not generate conflicting
++	fake results for functions with no result variable under -ff2c.
++
 +2022-07-03  Harald Anlauf  <anlauf@gmx.de>
 +
 +	Backported from master:
@@ -30150,7 +30241,7 @@ index e4bb8b8591f..2a669a37708 100644
  
  gfc_expr *gfc_get_expr (void);
 diff --git a/gcc/fortran/interface.c b/gcc/fortran/interface.c
-index 70219a537b9..a09a09c925e 100644
+index 70219a537b9..a8a88f19908 100644
 --- a/gcc/fortran/interface.c
 +++ b/gcc/fortran/interface.c
 @@ -2326,6 +2326,7 @@ compare_parameter (gfc_symbol *formal, gfc_expr *actual,
@@ -30202,7 +30293,28 @@ index 70219a537b9..a09a09c925e 100644
        && actual_attr.codimension)
      {
        if (formal->attr.intent == INTENT_OUT)
-@@ -3248,10 +3254,13 @@ gfc_compare_actual_formal (gfc_actual_arglist **ap, gfc_formal_arglist *formal,
+@@ -2753,7 +2759,8 @@ get_sym_storage_size (gfc_symbol *sym)
+   if (sym->ts.type == BT_CHARACTER)
+     {
+       if (sym->ts.u.cl && sym->ts.u.cl->length
+-          && sym->ts.u.cl->length->expr_type == EXPR_CONSTANT)
++	  && sym->ts.u.cl->length->expr_type == EXPR_CONSTANT
++	  && sym->ts.u.cl->length->ts.type == BT_INTEGER)
+ 	strlen = mpz_get_ui (sym->ts.u.cl->length->value.integer);
+       else
+ 	return 0;
+@@ -2770,7 +2777,9 @@ get_sym_storage_size (gfc_symbol *sym)
+   for (i = 0; i < sym->as->rank; i++)
+     {
+       if (sym->as->upper[i]->expr_type != EXPR_CONSTANT
+-	  || sym->as->lower[i]->expr_type != EXPR_CONSTANT)
++	  || sym->as->lower[i]->expr_type != EXPR_CONSTANT
++	  || sym->as->upper[i]->ts.type != BT_INTEGER
++	  || sym->as->lower[i]->ts.type != BT_INTEGER)
+ 	return 0;
+ 
+       elements *= mpz_get_si (sym->as->upper[i]->value.integer)
+@@ -3248,10 +3257,13 @@ gfc_compare_actual_formal (gfc_actual_arglist **ap, gfc_formal_arglist *formal,
  	  && f->sym->attr.flavor != FL_PROCEDURE)
  	{
  	  if (a->expr->ts.type == BT_CHARACTER && !f->sym->as && where)
@@ -30985,7 +31097,7 @@ index 46fd1dda4c4..65f66b8cdd3 100644
  
        /* If we have an array section or are assigning make sure that
 diff --git a/gcc/fortran/trans-decl.c b/gcc/fortran/trans-decl.c
-index 529417fa8aa..8aa71ede989 100644
+index 529417fa8aa..765c492520c 100644
 --- a/gcc/fortran/trans-decl.c
 +++ b/gcc/fortran/trans-decl.c
 @@ -737,6 +737,8 @@ gfc_finish_var_decl (tree decl, gfc_symbol * sym)
@@ -31037,6 +31149,15 @@ index 529417fa8aa..8aa71ede989 100644
      gfc_defer_symbol_init (sym);
  
    /* Dummy PDT 'len' parameters should be checked when they are explicit.  */
+@@ -6536,7 +6545,7 @@ gfc_generate_return (void)
+ 	     NULL_TREE, and a 'return' is generated without a variable.
+ 	     The following generates a 'return __result_XXX' where XXX is
+ 	     the function name.  */
+-	  if (sym == sym->result && sym->attr.function)
++	  if (sym == sym->result && sym->attr.function && !flag_f2c)
+ 	    {
+ 	      result = gfc_get_fake_result_decl (sym, 0);
+ 	      result = fold_build2_loc (input_location, MODIFY_EXPR,
 diff --git a/gcc/fortran/trans-expr.c b/gcc/fortran/trans-expr.c
 index c2321a9ff5f..5f4a464b0f9 100644
 --- a/gcc/fortran/trans-expr.c
@@ -34989,6 +35110,20 @@ index d2a01130fe1..662097b580f 100644
    /* Link DR at the end of the value chain used by SR.  */
  
    vd->e[dr].oldest_regno = vd->e[sr].oldest_regno;
+diff --git a/gcc/regrename.c b/gcc/regrename.c
+index 669a6ead705..5ec46b45610 100644
+--- a/gcc/regrename.c
++++ b/gcc/regrename.c
+@@ -324,8 +324,7 @@ static bool
+ check_new_reg_p (int reg ATTRIBUTE_UNUSED, int new_reg,
+ 		 class du_head *this_head, HARD_REG_SET this_unavailable)
+ {
+-  machine_mode mode = GET_MODE (*this_head->first->loc);
+-  int nregs = hard_regno_nregs (new_reg, mode);
++  int nregs = this_head->nregs;
+   int i;
+   struct du_chain *tmp;
+ 
 diff --git a/gcc/reload.c b/gcc/reload.c
 index 78b4049f465..5f099be43b3 100644
 --- a/gcc/reload.c
@@ -35401,10 +35536,43 @@ index f5a6d507e91..6b2c3e17346 100644
  DEFHOOKPOD
  (have_tls,
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index 2913065bf31..c21639a2b06 100644
+index 2913065bf31..f862e4d01c4 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,3265 @@
+@@ -1,3 +1,3298 @@
++2022-07-26  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2022-07-26  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/103504
++	* gfortran.dg/pr103504.f90: New test.
++
++2022-07-22  Surya Kumari Jangala  <jskumari@linux.vnet.ibm.com>
++
++	Backported from master:
++	2022-06-14  Surya Kumari Jangala  <jskumari@linux.ibm.com>
++
++	PR rtl-optimization/105041
++	* gcc.target/powerpc/pr105041.c: New test.
++
++2022-07-16  Steve Kargl  <kargl@gcc.gnu.org>
++
++	Backported from master:
++	2022-07-15  Steve Kargl  <kargl@gcc.gnu.org>
++
++	PR fortran/104313
++	* gfortran.dg/pr104313.f: New test.
++
++2022-07-13  Martin Jambor  <mjambor@suse.cz>
++
++	Backported from master:
++	2022-07-04  Martin Jambor  <mjambor@suse.cz>
++
++	PR tree-optimization/105860
++	* gcc.dg/tree-ssa/alias-access-path-13.c: New test.
++	* gcc.dg/tree-ssa/pr105860.c: Likewise.
++
 +2022-07-05  Iain Buclaw  <ibuclaw@gdcproject.org>
 +
 +	Backported from master:
@@ -46070,6 +46238,48 @@ index 00000000000..abaf59731fc
 +  abort ();
 +
 +}
+diff --git a/gcc/testsuite/gcc.dg/tree-ssa/alias-access-path-13.c b/gcc/testsuite/gcc.dg/tree-ssa/alias-access-path-13.c
+new file mode 100644
+index 00000000000..87a94f5bf31
+--- /dev/null
++++ b/gcc/testsuite/gcc.dg/tree-ssa/alias-access-path-13.c
+@@ -0,0 +1,36 @@
++/* { dg-do compile } */
++/* { dg-options "-O2 -fdump-tree-fre1" } */
++
++struct inn
++{
++  int val;
++};
++
++struct biggerstruct
++{
++  int a, b;
++};
++
++union foo
++{
++  struct inn inn;
++  struct biggerstruct baz;
++} *fooptr;
++
++struct bar
++{
++  union foo foo;
++  int val2;
++} *barptr;
++
++int
++test ()
++{
++  union foo foo;
++  foo.inn.val = 0;
++  barptr->val2 = 123;
++  *fooptr = foo;
++  return barptr->val2;
++}
++
++/* { dg-final { scan-tree-dump-times "return 123" 1 "fre1"} } */
 diff --git a/gcc/testsuite/gcc.dg/tree-ssa/loop-interchange-16.c b/gcc/testsuite/gcc.dg/tree-ssa/loop-interchange-16.c
 new file mode 100644
 index 00000000000..781555e085d
@@ -46146,6 +46356,75 @@ index 00000000000..d5987e14360
 +   when going through FRAME.  */
 +/* { dg-final { scan-tree-dump-not "Executing predictive commoning" "pcom" } } */
 +/* { dg-final { scan-tree-dump " ={v} FRAME" "optimized" } } */
+diff --git a/gcc/testsuite/gcc.dg/tree-ssa/pr105860.c b/gcc/testsuite/gcc.dg/tree-ssa/pr105860.c
+new file mode 100644
+index 00000000000..77bcb4a6739
+--- /dev/null
++++ b/gcc/testsuite/gcc.dg/tree-ssa/pr105860.c
+@@ -0,0 +1,63 @@
++/* { dg-do run } */
++/* { dg-options "-O1" } */
++
++struct S1  {
++        unsigned int _0;
++        unsigned int _1;
++} ;
++struct S2  {
++        struct S1 _s1;
++        unsigned long _x2;
++} ;
++
++struct ufld_type1  {
++        unsigned int _u1t;
++        struct S2 _s2;
++} ;
++
++struct ufld_type2  {
++        unsigned int _u2t;
++        struct S1 _s1;
++} ;
++struct parm_type {
++        union {
++                struct ufld_type1 var_1;
++                struct ufld_type2 var_2;
++        } U;
++};
++
++struct parm_type  bad_function( struct parm_type arg0 )
++{
++        struct parm_type rv;
++        struct S2 var4;
++        switch( arg0.U.var_2._u2t ) {
++        case 4294967041:
++                var4._s1 = arg0.U.var_1._s2._s1;
++                rv.U.var_1._u1t = 4294967041;
++                rv.U.var_1._s2 = var4;
++                break;
++        case 4294967043:
++                rv.U.var_2._u2t = 4294967043;
++                rv.U.var_2._s1 = arg0.U.var_2._s1;
++                break;
++        default:
++                break;
++        }
++        return rv;
++}
++
++int main() {
++        struct parm_type val;
++        struct parm_type out;
++        val.U.var_2._u2t = 4294967043;
++        val.U.var_2._s1._0 = 0x01010101;
++        val.U.var_2._s1._1 = 0x02020202;
++        out = bad_function(val);
++	if (val.U.var_2._u2t != 4294967043)
++	  __builtin_abort ();
++        if (out.U.var_2._s1._0 != 0x01010101)
++	  __builtin_abort ();
++        if (val.U.var_2._s1._1 != 0x02020202 )
++	  __builtin_abort ();
++	return 0;
++}
 diff --git a/gcc/testsuite/gcc.dg/tree-ssa/ssa-fre-93.c b/gcc/testsuite/gcc.dg/tree-ssa/ssa-fre-93.c
 new file mode 100644
 index 00000000000..7f66b7ee3f4
@@ -49257,6 +49536,34 @@ index 00000000000..e5f9499b7c8
 +    abort ();
 +
 +  return 0;
++}
+diff --git a/gcc/testsuite/gcc.target/powerpc/pr105041.c b/gcc/testsuite/gcc.target/powerpc/pr105041.c
+new file mode 100644
+index 00000000000..c52b7a5ef30
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/powerpc/pr105041.c
+@@ -0,0 +1,22 @@
++/* { dg-options "-mdejagnu-cpu=power4 -O2 -fcompare-debug -frename-registers" } */
++
++double m;
++int n;
++
++unsigned int
++foo (unsigned int x, int y)
++{
++  long long int a = y, b = !a;
++  int c = 0;
++
++  if (b != x)
++    while ((int) m == a)
++      {
++        c = a;
++        a = 0;
++      }
++
++  n = b = y;
++
++  return x + c;
 +}
 diff --git a/gcc/testsuite/gcc.target/powerpc/pr87496-2.c b/gcc/testsuite/gcc.target/powerpc/pr87496-2.c
 index 26c07ebb900..f9dc6426418 100644
@@ -52679,6 +52986,40 @@ index 00000000000..d0a7356c0f5
 +  integer(kind=4) :: a(1024)
 +  a(:) = modulo (a(:), 39)
 +end function
+diff --git a/gcc/testsuite/gfortran.dg/pr103504.f90 b/gcc/testsuite/gfortran.dg/pr103504.f90
+new file mode 100644
+index 00000000000..607d1c6c8cc
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/pr103504.f90
+@@ -0,0 +1,28 @@
++! { dg-do compile }
++! PR fortran/103504 - ICE in get_sym_storage_size, at fortran/interface.c:2800
++! Contributed by G.Steinmetz
++
++program p
++  implicit none
++  real      :: y(1)
++  character :: b
++  call s(y)
++  call t(y)
++  call u(y)
++  call c(b)
++contains
++  subroutine s(x)
++    real :: x(abs(1.):1)        ! { dg-error "must be of INTEGER type" }
++  end
++  subroutine t(x)
++    real :: x(abs(1.):1)        ! { dg-error "must be of INTEGER type" }
++  end
++  subroutine u(x)
++    real :: x(1:abs(1.))        ! { dg-error "must be of INTEGER type" }
++  end
++  subroutine c(z)
++    character(len=abs(1.)) :: z ! { dg-error "must be of INTEGER type" }
++  end subroutine c
++end
++
++! { dg-prune-output "must be of INTEGER type" }
 diff --git a/gcc/testsuite/gfortran.dg/pr103505.f90 b/gcc/testsuite/gfortran.dg/pr103505.f90
 new file mode 100644
 index 00000000000..522e53efcb2
@@ -52773,6 +53114,23 @@ index 00000000000..9687a3cec9d
 +end
 +
 +! { dg-final { scan-tree-dump-not "_gfortran_stop_numeric" "original" } }
+diff --git a/gcc/testsuite/gfortran.dg/pr104313.f b/gcc/testsuite/gfortran.dg/pr104313.f
+new file mode 100644
+index 00000000000..89c8947cb0a
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/pr104313.f
+@@ -0,0 +1,11 @@
++! { dg-do compile }
++! { dg-additional-options "-ff2c -fdump-tree-original" }
++!
++! PR fortran/104313 - ICE verify_gimple failed with -ff2c
++! Contributed by G.Steinmetz
++
++      function f(a)
++      return
++      end
++
++! { dg-final { scan-tree-dump-times "return" 1 "original" } }
 diff --git a/gcc/testsuite/gfortran.dg/pr104849.f90 b/gcc/testsuite/gfortran.dg/pr104849.f90
 new file mode 100644
 index 00000000000..ae221b5ba10
@@ -54945,10 +55303,30 @@ index d2dcfe7f42d..931236decb9 100644
  }
  
 diff --git a/gcc/tree-sra.c b/gcc/tree-sra.c
-index 85b9cc9ed7f..09d951a261b 100644
+index 85b9cc9ed7f..420329f63f6 100644
 --- a/gcc/tree-sra.c
 +++ b/gcc/tree-sra.c
-@@ -3265,6 +3265,8 @@ totally_scalarize_subtree (struct access *root)
+@@ -1647,7 +1647,18 @@ build_ref_for_offset (location_t loc, tree base, poly_int64 offset,
+ static tree
+ build_reconstructed_reference (location_t, tree base, struct access *model)
+ {
+-  tree expr = model->expr, prev_expr = NULL;
++  tree expr = model->expr;
++  /* We have to make sure to start just below the outermost union.  */
++  tree start_expr = expr;
++  while (handled_component_p (expr))
++    {
++      if (TREE_CODE (TREE_TYPE (TREE_OPERAND (expr, 0))) == UNION_TYPE)
++	start_expr = expr;
++      expr = TREE_OPERAND (expr, 0);
++    }
++
++  expr = start_expr;
++  tree prev_expr = NULL_TREE;
+   while (!types_compatible_p (TREE_TYPE (expr), TREE_TYPE (base)))
+     {
+       if (!handled_component_p (expr))
+@@ -3265,6 +3276,8 @@ totally_scalarize_subtree (struct access *root)
  	      continue;
  
  	    HOST_WIDE_INT pos = root->offset + int_bit_position (fld);
@@ -59271,6 +59649,20 @@ index 9d265f34068..2feaa7730c6 100644
    if (ret->base_addr == NULL || unlikely (compile_options.bounds_check))
      {
        /* Count the elements, either for allocating memory or
+diff --git a/libgo/sysinfo.c b/libgo/sysinfo.c
+index 0692fd41eb7..1825387c710 100644
+--- a/libgo/sysinfo.c
++++ b/libgo/sysinfo.c
+@@ -150,9 +150,6 @@
+ #if defined(HAVE_LINUX_ETHER_H)
+ #include <linux/ether.h>
+ #endif
+-#if defined(HAVE_LINUX_FS_H)
+-#include <linux/fs.h>
+-#endif
+ #if defined(HAVE_LINUX_REBOOT_H)
+ #include <linux/reboot.h>
+ #endif
 diff --git a/libgomp/ChangeLog b/libgomp/ChangeLog
 index f76d32e398c..aac1d805a49 100644
 --- a/libgomp/ChangeLog
@@ -63569,10 +63961,20 @@ index e09d568d802..7f7191b9c22 100644
  }
  
 diff --git a/libsanitizer/sanitizer_common/sanitizer_platform_limits_posix.cpp b/libsanitizer/sanitizer_common/sanitizer_platform_limits_posix.cpp
-index aa845df4dde..badf6a401cc 100644
+index aa845df4dde..670c2f20653 100644
 --- a/libsanitizer/sanitizer_common/sanitizer_platform_limits_posix.cpp
 +++ b/libsanitizer/sanitizer_common/sanitizer_platform_limits_posix.cpp
-@@ -130,7 +130,6 @@ typedef struct user_fpregs elf_fpregset_t;
+@@ -72,7 +72,9 @@
+ #include <sys/vt.h>
+ #include <linux/cdrom.h>
+ #include <linux/fd.h>
++#if SANITIZER_ANDROID
+ #include <linux/fs.h>
++#endif
+ #include <linux/hdreg.h>
+ #include <linux/input.h>
+ #include <linux/ioctl.h>
+@@ -130,7 +132,6 @@ typedef struct user_fpregs elf_fpregset_t;
  # include <sys/procfs.h>
  #endif
  #include <sys/user.h>
@@ -63580,7 +63982,7 @@ index aa845df4dde..badf6a401cc 100644
  #include <linux/if_eql.h>
  #include <linux/if_plip.h>
  #include <linux/lp.h>
-@@ -443,7 +442,6 @@ unsigned struct_ElfW_Phdr_sz = sizeof(Elf_Phdr);
+@@ -443,7 +444,6 @@ unsigned struct_ElfW_Phdr_sz = sizeof(Elf_Phdr);
  
  #if SANITIZER_LINUX && !SANITIZER_ANDROID
    unsigned struct_ax25_parms_struct_sz = sizeof(struct ax25_parms_struct);
@@ -63588,7 +63990,7 @@ index aa845df4dde..badf6a401cc 100644
  #if EV_VERSION > (0x010000)
    unsigned struct_input_keymap_entry_sz = sizeof(struct input_keymap_entry);
  #else
-@@ -809,15 +807,6 @@ unsigned struct_ElfW_Phdr_sz = sizeof(Elf_Phdr);
+@@ -809,15 +809,6 @@ unsigned struct_ElfW_Phdr_sz = sizeof(Elf_Phdr);
  #endif // SANITIZER_LINUX
  
  #if SANITIZER_LINUX && !SANITIZER_ANDROID
@@ -63604,6 +64006,21 @@ index aa845df4dde..badf6a401cc 100644
    unsigned IOCTL_EQL_EMANCIPATE = EQL_EMANCIPATE;
    unsigned IOCTL_EQL_ENSLAVE = EQL_ENSLAVE;
    unsigned IOCTL_EQL_GETMASTRCFG = EQL_GETMASTRCFG;
+@@ -833,10 +824,10 @@ unsigned struct_ElfW_Phdr_sz = sizeof(Elf_Phdr);
+   unsigned IOCTL_EVIOCGPROP = IOCTL_NOT_PRESENT;
+   unsigned IOCTL_EVIOCSKEYCODE_V2 = IOCTL_NOT_PRESENT;
+ #endif
+-  unsigned IOCTL_FS_IOC_GETFLAGS = FS_IOC_GETFLAGS;
+-  unsigned IOCTL_FS_IOC_GETVERSION = FS_IOC_GETVERSION;
+-  unsigned IOCTL_FS_IOC_SETFLAGS = FS_IOC_SETFLAGS;
+-  unsigned IOCTL_FS_IOC_SETVERSION = FS_IOC_SETVERSION;
++  unsigned IOCTL_FS_IOC_GETFLAGS = _IOR('f', 1, long);
++  unsigned IOCTL_FS_IOC_GETVERSION = _IOR('v', 1, long);
++  unsigned IOCTL_FS_IOC_SETFLAGS = _IOW('f', 2, long);
++  unsigned IOCTL_FS_IOC_SETVERSION = _IOW('v', 2, long);
+   unsigned IOCTL_GIO_CMAP = GIO_CMAP;
+   unsigned IOCTL_GIO_FONT = GIO_FONT;
+   unsigned IOCTL_GIO_UNIMAP = GIO_UNIMAP;
 diff --git a/libsanitizer/sanitizer_common/sanitizer_platform_limits_posix.h b/libsanitizer/sanitizer_common/sanitizer_platform_limits_posix.h
 index d82fd5e4005..dc6423bc297 100644
 --- a/libsanitizer/sanitizer_common/sanitizer_platform_limits_posix.h
@@ -63685,10 +64102,49 @@ index b9177041fc3..5acf87f8bb7 100644
  
  	* GCC 10.3.0 released.
 diff --git a/libstdc++-v3/ChangeLog b/libstdc++-v3/ChangeLog
-index fdd63cbff1a..ad0c46e655a 100644
+index fdd63cbff1a..c8b67bdb58b 100644
 --- a/libstdc++-v3/ChangeLog
 +++ b/libstdc++-v3/ChangeLog
-@@ -1,3 +1,2110 @@
+@@ -1,3 +1,2149 @@
++2022-07-23  Jonathan Wakely  <jwakely@redhat.com>
++
++	Backported from master:
++	2022-07-01  Jonathan Wakely  <jwakely@redhat.com>
++
++	PR libstdc++/106162
++	* include/Makefile.am (largefile-config.h): Add
++	stamp-${host_alias} prerequisite.
++	* include/Makefile.in: Regenerate.
++
++2022-07-23  Jonathan Wakely  <jwakely@redhat.com>
++
++	Backported from master:
++	2021-11-05  Jonathan Wakely  <jwakely@redhat.com>
++
++	* include/bits/range_access.h (begin(valarray), end(valarray)):
++	Add noexcept.
++
++2022-07-22  Patrick Palka  <ppalka@redhat.com>
++
++	Backported from master:
++	2022-07-22  Patrick Palka  <ppalka@redhat.com>
++
++	PR libstdc++/106320
++	* include/std/ranges (single_view): Relax constraints on
++	default constructor so as to preserve pre-P2325R3 behavior.
++	(filter_view): Likewise.
++	(transform_view): Likewise.
++	(take_while_view): Likewise.
++	(drop_while_view): Likewise.
++	* testsuite/std/ranges/adaptors/join.cc (test13): New test.
++	* testsuite/std/ranges/p2325.cc: Fix S to be only non default
++	constructible and not also non copy constructible.  XFAIL the
++	tests that verify a non default constructible functor makes a
++	view non default constructible (lines 94, 97 and 98).  XFAIL
++	the test that effectively verifies a non default constructible
++	element type makes single_view non default constructible (line
++	114).
++
 +2022-06-28  Release Manager
 +
 +	* GCC 10.4.0 released.
@@ -66224,9 +66680,18 @@ index 92d892da8ac..80ec4b637fa 100644
  
  <!-- Status is Yes or No, Broken/Partial-->
 diff --git a/libstdc++-v3/include/Makefile.am b/libstdc++-v3/include/Makefile.am
-index e131ce04f8c..fad5c683824 100644
+index e131ce04f8c..ffac9427434 100644
 --- a/libstdc++-v3/include/Makefile.am
 +++ b/libstdc++-v3/include/Makefile.am
+@@ -1248,7 +1248,7 @@ stamp-float128:
+ endif
+ 
+ # This header is not installed, it's only used to build libstdc++ itself.
+-${host_builddir}/largefile-config.h: ${CONFIG_HEADER}
++${host_builddir}/largefile-config.h: ${CONFIG_HEADER} stamp-${host_alias}
+ 	@rm -f $@.tmp
+ 	@-grep 'define _DARWIN_USE_64_BIT_INODE' ${CONFIG_HEADER} >> $@.tmp
+ 	@-grep 'define _FILE_OFFSET_BITS' ${CONFIG_HEADER} >> $@.tmp
 @@ -1297,6 +1297,8 @@ ${host_builddir}/c++config.h: ${CONFIG_HEADER} \
  	    -e 's/PACKAGE/_GLIBCXX_PACKAGE/g' \
  	    -e 's/VERSION/_GLIBCXX_VERSION/g' \
@@ -66237,9 +66702,18 @@ index e131ce04f8c..fad5c683824 100644
  	    -e 's/_FILE_OFFSET_BITS/_GLIBCXX_FILE_OFFSET_BITS/g' \
  	    -e 's/_LARGE_FILES/_GLIBCXX_LARGE_FILES/g' \
 diff --git a/libstdc++-v3/include/Makefile.in b/libstdc++-v3/include/Makefile.in
-index ae20f6b1d21..1ca4b7be55e 100644
+index ae20f6b1d21..32e3c8e1f37 100644
 --- a/libstdc++-v3/include/Makefile.in
 +++ b/libstdc++-v3/include/Makefile.in
+@@ -1729,7 +1729,7 @@ stamp-host: ${host_headers} ${bits_host_headers} ${ext_host_headers} ${host_head
+ @ENABLE_FLOAT128_FALSE@	echo 'undef _GLIBCXX_USE_FLOAT128' > stamp-float128
+ 
+ # This header is not installed, it's only used to build libstdc++ itself.
+-${host_builddir}/largefile-config.h: ${CONFIG_HEADER}
++${host_builddir}/largefile-config.h: ${CONFIG_HEADER} stamp-${host_alias}
+ 	@rm -f $@.tmp
+ 	@-grep 'define _DARWIN_USE_64_BIT_INODE' ${CONFIG_HEADER} >> $@.tmp
+ 	@-grep 'define _FILE_OFFSET_BITS' ${CONFIG_HEADER} >> $@.tmp
 @@ -1778,6 +1778,8 @@ ${host_builddir}/c++config.h: ${CONFIG_HEADER} \
  	    -e 's/PACKAGE/_GLIBCXX_PACKAGE/g' \
  	    -e 's/VERSION/_GLIBCXX_VERSION/g' \
@@ -67594,9 +68068,24 @@ index a921b9bf815..024879a263d 100644
  	_M_v.push_back(__detail::__mod<result_type,
  		       __detail::_Shift<result_type, 32>::__value>(*__iter));
 diff --git a/libstdc++-v3/include/bits/range_access.h b/libstdc++-v3/include/bits/range_access.h
-index c93d1e37f34..aee72c3fae4 100644
+index c93d1e37f34..98c81a153f3 100644
 --- a/libstdc++-v3/include/bits/range_access.h
 +++ b/libstdc++-v3/include/bits/range_access.h
+@@ -104,10 +104,10 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+ 
+   template<typename _Tp> class valarray;
+   // These overloads must be declared for cbegin and cend to use them.
+-  template<typename _Tp> _Tp* begin(valarray<_Tp>&);
+-  template<typename _Tp> const _Tp* begin(const valarray<_Tp>&);
+-  template<typename _Tp> _Tp* end(valarray<_Tp>&);
+-  template<typename _Tp> const _Tp* end(const valarray<_Tp>&);
++  template<typename _Tp> _Tp* begin(valarray<_Tp>&) noexcept;
++  template<typename _Tp> const _Tp* begin(const valarray<_Tp>&) noexcept;
++  template<typename _Tp> _Tp* end(valarray<_Tp>&) noexcept;
++  template<typename _Tp> const _Tp* end(const valarray<_Tp>&) noexcept;
+ 
+   /**
+    *  @brief  Return an iterator pointing to the first element of
 @@ -773,7 +773,7 @@ namespace ranges
  	_S_noexcept()
  	{
@@ -73646,7 +74135,7 @@ index 9a80adf3a5a..97ff1cee4e6 100644
    // Standard basic_ostream manipulators
  
 diff --git a/libstdc++-v3/include/std/ranges b/libstdc++-v3/include/std/ranges
-index 8e00222c2e8..17018a5616c 100644
+index 8e00222c2e8..faa55ebceb7 100644
 --- a/libstdc++-v3/include/std/ranges
 +++ b/libstdc++-v3/include/std/ranges
 @@ -70,8 +70,7 @@ namespace ranges
@@ -73733,15 +74222,6 @@ index 8e00222c2e8..17018a5616c 100644
  	  return *this;
  	}
        };
-@@ -528,7 +518,7 @@ namespace ranges
-     class single_view : public view_interface<single_view<_Tp>>
-     {
-     public:
--      single_view() = default;
-+      single_view() requires default_initializable<_Tp> = default;
- 
-       constexpr explicit
-       single_view(const _Tp& __t)
 @@ -625,22 +615,29 @@ namespace ranges
  	  { __j - __j } -> convertible_to<__iota_diff_t<_It>>;
  	};
@@ -74051,18 +74531,16 @@ index 8e00222c2e8..17018a5616c 100644
  	{ }
  
  	constexpr sentinel_t<_Vp>
-@@ -1592,7 +1592,9 @@ namespace views
+@@ -1592,7 +1592,7 @@ namespace views
        [[no_unique_address]] __detail::_CachedPosition<_Vp> _M_cached_begin;
  
      public:
 -      filter_view() = default;
-+      filter_view() requires (default_initializable<_Vp>
-+			      && default_initializable<_Pred>)
-+	= default;
++      filter_view() requires default_initializable<_Vp> = default;
  
        constexpr
        filter_view(_Vp __base, _Pred __pred)
-@@ -1615,23 +1617,23 @@ namespace views
+@@ -1615,23 +1615,23 @@ namespace views
        begin()
        {
  	if (_M_cached_begin._M_has_value())
@@ -74090,7 +74568,7 @@ index 8e00222c2e8..17018a5616c 100644
        }
      };
  
-@@ -1656,36 +1658,26 @@ namespace views
+@@ -1656,36 +1656,26 @@ namespace views
      {
      private:
        template<bool _Const>
@@ -74137,7 +74615,7 @@ index 8e00222c2e8..17018a5616c 100644
  		if constexpr (derived_from<_Cat, contiguous_iterator_tag>)
  		  return random_access_iterator_tag{};
  		else
-@@ -1694,6 +1686,32 @@ namespace views
+@@ -1694,6 +1684,32 @@ namespace views
  	    else
  	      return input_iterator_tag{};
  	  }
@@ -74170,7 +74648,7 @@ index 8e00222c2e8..17018a5616c 100644
  
  	  using _Base_iter = iterator_t<_Base>;
  
-@@ -1702,17 +1720,17 @@ namespace views
+@@ -1702,17 +1718,17 @@ namespace views
  
  	public:
  	  using iterator_concept = decltype(_S_iter_concept());
@@ -74192,7 +74670,7 @@ index 8e00222c2e8..17018a5616c 100644
  	  { }
  
  	  constexpr
-@@ -1722,9 +1740,8 @@ namespace views
+@@ -1722,9 +1738,8 @@ namespace views
  	    : _M_current(std::move(__i._M_current)), _M_parent(__i._M_parent)
  	  { }
  
@@ -74204,7 +74682,7 @@ index 8e00222c2e8..17018a5616c 100644
  	  { return _M_current; }
  
  	  constexpr _Base_iter
-@@ -1825,17 +1842,17 @@ namespace views
+@@ -1825,17 +1840,17 @@ namespace views
  	  friend constexpr _Iterator
  	  operator+(_Iterator __i, difference_type __n)
  	    requires random_access_range<_Base>
@@ -74225,7 +74703,7 @@ index 8e00222c2e8..17018a5616c 100644
  
  	  // _GLIBCXX_RESOLVE_LIB_DEFECTS
  	  // 3483. transform_view::iterator's difference is overconstrained
-@@ -1853,12 +1870,6 @@ namespace views
+@@ -1853,12 +1868,6 @@ namespace views
  	      return *__i;
  	  }
  
@@ -74238,7 +74716,7 @@ index 8e00222c2e8..17018a5616c 100644
  	  friend _Iterator<!_Const>;
  	  template<bool> friend struct _Sentinel;
  	};
-@@ -1868,7 +1879,7 @@ namespace views
+@@ -1868,7 +1877,7 @@ namespace views
  	{
  	private:
  	  using _Parent = __detail::__maybe_const_t<_Const, transform_view>;
@@ -74247,18 +74725,16 @@ index 8e00222c2e8..17018a5616c 100644
  
  	  template<bool _Const2>
  	    constexpr auto
-@@ -1929,7 +1940,9 @@ namespace views
+@@ -1929,7 +1938,7 @@ namespace views
        __detail::__box<_Fp> _M_fun;
  
      public:
 -      transform_view() = default;
-+      transform_view() requires (default_initializable<_Vp>
-+				 && default_initializable<_Fp>)
-+	= default;
++      transform_view() requires default_initializable<_Vp> = default;
  
        constexpr
        transform_view(_Vp __base, _Fp __fun)
-@@ -1946,13 +1959,13 @@ namespace views
+@@ -1946,13 +1955,13 @@ namespace views
  
        constexpr _Iterator<false>
        begin()
@@ -74274,7 +74750,7 @@ index 8e00222c2e8..17018a5616c 100644
  
        constexpr _Sentinel<false>
        end()
-@@ -1960,7 +1973,7 @@ namespace views
+@@ -1960,7 +1969,7 @@ namespace views
  
        constexpr _Iterator<false>
        end() requires common_range<_Vp>
@@ -74283,7 +74759,7 @@ index 8e00222c2e8..17018a5616c 100644
  
        constexpr _Sentinel<true>
        end() const
-@@ -1972,7 +1985,7 @@ namespace views
+@@ -1972,7 +1981,7 @@ namespace views
        end() const
  	requires common_range<const _Vp>
  	  && regular_invocable<const _Fp&, range_reference_t<const _Vp>>
@@ -74292,7 +74768,7 @@ index 8e00222c2e8..17018a5616c 100644
  
        constexpr auto
        size() requires sized_range<_Vp>
-@@ -2046,7 +2059,7 @@ namespace views
+@@ -2046,7 +2055,7 @@ namespace views
        range_difference_t<_Vp> _M_count = 0;
  
      public:
@@ -74301,7 +74777,7 @@ index 8e00222c2e8..17018a5616c 100644
  
        constexpr
        take_view(_Vp base, range_difference_t<_Vp> __count)
-@@ -2127,14 +2140,14 @@ namespace views
+@@ -2127,14 +2136,14 @@ namespace views
        size() requires sized_range<_Vp>
        {
  	auto __n = ranges::size(_M_base);
@@ -74318,18 +74794,16 @@ index 8e00222c2e8..17018a5616c 100644
        }
      };
  
-@@ -2207,7 +2220,9 @@ namespace views
+@@ -2207,7 +2216,7 @@ namespace views
        __detail::__box<_Pred> _M_pred;
  
      public:
 -      take_while_view() = default;
-+      take_while_view() requires (default_initializable<_Vp>
-+				  && default_initializable<_Pred>)
-+	= default;
++      take_while_view() requires default_initializable<_Vp> = default;
  
        constexpr
        take_while_view(_Vp base, _Pred __pred)
-@@ -2278,7 +2293,7 @@ namespace views
+@@ -2278,7 +2287,7 @@ namespace views
  				      _M_cached_begin;
  
      public:
@@ -74338,18 +74812,16 @@ index 8e00222c2e8..17018a5616c 100644
  
        constexpr
        drop_view(_Vp __base, range_difference_t<_Vp> __count)
-@@ -2374,7 +2389,9 @@ namespace views
+@@ -2374,7 +2383,7 @@ namespace views
        [[no_unique_address]] __detail::_CachedPosition<_Vp> _M_cached_begin;
  
      public:
 -      drop_while_view() = default;
-+      drop_while_view() requires (default_initializable<_Vp>
-+				  && default_initializable<_Pred>)
-+	= default;
++      drop_while_view() requires default_initializable<_Vp> = default;
  
        constexpr
        drop_while_view(_Vp __base, _Pred __pred)
-@@ -2399,6 +2416,7 @@ namespace views
+@@ -2399,6 +2408,7 @@ namespace views
  	if (_M_cached_begin._M_has_value())
  	  return _M_cached_begin._M_get(_M_base);
  
@@ -74357,7 +74829,7 @@ index 8e00222c2e8..17018a5616c 100644
  	auto __it = __detail::find_if_not(ranges::begin(_M_base),
  					  ranges::end(_M_base),
  					  std::cref(*_M_pred));
-@@ -2438,18 +2456,62 @@ namespace views
+@@ -2438,18 +2448,62 @@ namespace views
      private:
        using _InnerRange = range_reference_t<_Vp>;
  
@@ -74423,7 +74895,7 @@ index 8e00222c2e8..17018a5616c 100644
  
  	  constexpr void
  	  _M_satisfy()
-@@ -2489,30 +2551,8 @@ namespace views
+@@ -2489,30 +2543,8 @@ namespace views
  	      return input_iterator_tag{};
  	  }
  
@@ -74456,7 +74928,7 @@ index 8e00222c2e8..17018a5616c 100644
  
  	  _Outer_iter _M_outer = _Outer_iter();
  	  _Inner_iter _M_inner = _Inner_iter();
-@@ -2520,18 +2560,20 @@ namespace views
+@@ -2520,18 +2552,20 @@ namespace views
  
  	public:
  	  using iterator_concept = decltype(_S_iter_concept());
@@ -74481,7 +74953,7 @@ index 8e00222c2e8..17018a5616c 100644
  	  { _M_satisfy(); }
  
  	  constexpr
-@@ -2539,7 +2581,7 @@ namespace views
+@@ -2539,7 +2573,7 @@ namespace views
  	    requires _Const
  	      && convertible_to<iterator_t<_Vp>, _Outer_iter>
  	      && convertible_to<iterator_t<_InnerRange>, _Inner_iter>
@@ -74490,7 +74962,7 @@ index 8e00222c2e8..17018a5616c 100644
  	      _M_parent(__i._M_parent)
  	  { }
  
-@@ -2558,7 +2600,7 @@ namespace views
+@@ -2558,7 +2592,7 @@ namespace views
  	  constexpr _Iterator&
  	  operator++()
  	  {
@@ -74499,7 +74971,7 @@ index 8e00222c2e8..17018a5616c 100644
  	      if constexpr (_S_ref_is_glvalue)
  		return *_M_outer;
  	      else
-@@ -2629,6 +2671,7 @@ namespace views
+@@ -2629,6 +2663,7 @@ namespace views
  	  friend constexpr void
  	  iter_swap(const _Iterator& __x, const _Iterator& __y)
  	    noexcept(noexcept(ranges::iter_swap(__x._M_inner, __y._M_inner)))
@@ -74507,7 +74979,7 @@ index 8e00222c2e8..17018a5616c 100644
  	  { return ranges::iter_swap(__x._M_inner, __y._M_inner); }
  
  	  friend _Iterator<!_Const>;
-@@ -2640,7 +2683,7 @@ namespace views
+@@ -2640,7 +2675,7 @@ namespace views
  	{
  	private:
  	  using _Parent = __detail::__maybe_const_t<_Const, join_view>;
@@ -74516,7 +74988,7 @@ index 8e00222c2e8..17018a5616c 100644
  
  	  template<bool _Const2>
  	    constexpr bool
-@@ -2653,8 +2696,8 @@ namespace views
+@@ -2653,8 +2688,8 @@ namespace views
  	  _Sentinel() = default;
  
  	  constexpr explicit
@@ -74527,7 +74999,7 @@ index 8e00222c2e8..17018a5616c 100644
  	  { }
  
  	  constexpr
-@@ -2681,7 +2724,7 @@ namespace views
+@@ -2681,7 +2716,7 @@ namespace views
  				    views::all_t<_InnerRange>> _M_inner;
  
      public:
@@ -74536,7 +75008,7 @@ index 8e00222c2e8..17018a5616c 100644
  
        constexpr explicit
        join_view(_Vp __base)
-@@ -2702,7 +2745,7 @@ namespace views
+@@ -2702,7 +2737,7 @@ namespace views
  	constexpr bool __use_const
  	  = (__detail::__simple_view<_Vp>
  	     && is_reference_v<range_reference_t<_Vp>>);
@@ -74545,7 +75017,7 @@ index 8e00222c2e8..17018a5616c 100644
        }
  
        constexpr auto
-@@ -2710,7 +2753,7 @@ namespace views
+@@ -2710,7 +2745,7 @@ namespace views
  	requires input_range<const _Vp>
  	  && is_reference_v<range_reference_t<const _Vp>>
        {
@@ -74554,7 +75026,7 @@ index 8e00222c2e8..17018a5616c 100644
        }
  
        constexpr auto
-@@ -2719,10 +2762,10 @@ namespace views
+@@ -2719,10 +2754,10 @@ namespace views
  	if constexpr (forward_range<_Vp> && is_reference_v<_InnerRange>
  		      && forward_range<_InnerRange>
  		      && common_range<_Vp> && common_range<_InnerRange>)
@@ -74567,7 +75039,7 @@ index 8e00222c2e8..17018a5616c 100644
        }
  
        constexpr auto
-@@ -2735,9 +2778,9 @@ namespace views
+@@ -2735,9 +2770,9 @@ namespace views
  		      && forward_range<range_reference_t<const _Vp>>
  		      && common_range<const _Vp>
  		      && common_range<range_reference_t<const _Vp>>)
@@ -74579,7 +75051,7 @@ index 8e00222c2e8..17018a5616c 100644
        }
      };
  
-@@ -2765,6 +2808,35 @@ namespace views
+@@ -2765,6 +2800,35 @@ namespace views
  	&& requires
  	   { typename __require_constant<remove_reference_t<_Range>::size()>; }
  	&& (remove_reference_t<_Range>::size() <= 1);
@@ -74615,7 +75087,7 @@ index 8e00222c2e8..17018a5616c 100644
    }
  
    template<input_range _Vp, forward_range _Pattern>
-@@ -2775,15 +2847,19 @@ namespace views
+@@ -2775,15 +2839,19 @@ namespace views
      class split_view : public view_interface<split_view<_Vp, _Pattern>>
      {
      private:
@@ -74636,7 +75108,7 @@ index 8e00222c2e8..17018a5616c 100644
  
  	  constexpr bool
  	  __at_end() const
-@@ -2822,7 +2898,7 @@ namespace views
+@@ -2822,7 +2890,7 @@ namespace views
  	  using iterator_concept = conditional_t<forward_range<_Base>,
  						 forward_iterator_tag,
  						 input_iterator_tag>;
@@ -74645,7 +75117,7 @@ index 8e00222c2e8..17018a5616c 100644
  	  using difference_type = range_difference_t<_Base>;
  
  	  struct value_type : view_interface<value_type>
-@@ -2840,14 +2916,8 @@ namespace views
+@@ -2840,14 +2908,8 @@ namespace views
  
  	    constexpr _InnerIter<_Const>
  	    begin() const
@@ -74660,7 +75132,7 @@ index 8e00222c2e8..17018a5616c 100644
  	    constexpr default_sentinel_t
  	    end() const
  	    { return default_sentinel; }
-@@ -2856,14 +2926,14 @@ namespace views
+@@ -2856,14 +2918,14 @@ namespace views
  	  _OuterIter() = default;
  
  	  constexpr explicit
@@ -74679,7 +75151,7 @@ index 8e00222c2e8..17018a5616c 100644
  	      _M_current(std::move(__current))
  	  { }
  
-@@ -2881,21 +2951,31 @@ namespace views
+@@ -2881,21 +2943,31 @@ namespace views
  	  constexpr _OuterIter&
  	  operator++()
  	  {
@@ -74715,7 +75187,7 @@ index 8e00222c2e8..17018a5616c 100644
  		} while (++__current() != __end);
  	    return *this;
  	  }
-@@ -2928,9 +3008,10 @@ namespace views
+@@ -2928,9 +3000,10 @@ namespace views
  
        template<bool _Const>
  	struct _InnerIter
@@ -74727,7 +75199,7 @@ index 8e00222c2e8..17018a5616c 100644
  
  	  constexpr bool
  	  __at_end() const
-@@ -2964,17 +3045,6 @@ namespace views
+@@ -2964,17 +3037,6 @@ namespace views
  	      }
  	  }
  
@@ -74745,7 +75217,7 @@ index 8e00222c2e8..17018a5616c 100644
  	  constexpr auto&
  	  _M_i_current() noexcept
  	  { return _M_i.__current(); }
-@@ -2989,7 +3059,7 @@ namespace views
+@@ -2989,7 +3051,7 @@ namespace views
  	public:
  	  using iterator_concept
  	    = typename _OuterIter<_Const>::iterator_concept;
@@ -74754,7 +75226,7 @@ index 8e00222c2e8..17018a5616c 100644
  	  using value_type = range_value_t<_Base>;
  	  using difference_type = range_difference_t<_Base>;
  
-@@ -3000,6 +3070,14 @@ namespace views
+@@ -3000,6 +3062,14 @@ namespace views
  	    : _M_i(std::move(__i))
  	  { }
  
@@ -74769,7 +75241,7 @@ index 8e00222c2e8..17018a5616c 100644
  	  constexpr decltype(auto)
  	  operator*() const
  	  { return *_M_i_current(); }
-@@ -3018,7 +3096,7 @@ namespace views
+@@ -3018,7 +3088,7 @@ namespace views
  	  constexpr decltype(auto)
  	  operator++(int)
  	  {
@@ -74778,7 +75250,7 @@ index 8e00222c2e8..17018a5616c 100644
  	      {
  		auto __tmp = *this;
  		++*this;
-@@ -3060,7 +3138,10 @@ namespace views
+@@ -3060,7 +3130,10 @@ namespace views
  
  
      public:
@@ -74790,7 +75262,7 @@ index 8e00222c2e8..17018a5616c 100644
  
        constexpr
        split_view(_Vp __base, _Pattern __pattern)
-@@ -3089,25 +3170,25 @@ namespace views
+@@ -3089,25 +3162,25 @@ namespace views
        {
  	if constexpr (forward_range<_Vp>)
  	  return _OuterIter<__detail::__simple_view<_Vp>>{
@@ -74820,7 +75292,7 @@ index 8e00222c2e8..17018a5616c 100644
        }
  
        constexpr auto
-@@ -3116,7 +3197,7 @@ namespace views
+@@ -3116,7 +3189,7 @@ namespace views
  	if constexpr (forward_range<_Vp>
  		      && forward_range<const _Vp>
  		      && common_range<const _Vp>)
@@ -74829,7 +75301,7 @@ index 8e00222c2e8..17018a5616c 100644
  	else
  	  return default_sentinel;
        }
-@@ -3166,7 +3247,7 @@ namespace views
+@@ -3166,7 +3239,7 @@ namespace views
        _Vp _M_base = _Vp();
  
      public:
@@ -74838,7 +75310,7 @@ index 8e00222c2e8..17018a5616c 100644
  
        constexpr explicit
        common_view(_Vp __r)
-@@ -3276,7 +3357,7 @@ namespace views
+@@ -3276,7 +3349,7 @@ namespace views
  				      _M_cached_begin;
  
      public:
@@ -74847,7 +75319,7 @@ index 8e00222c2e8..17018a5616c 100644
  
        constexpr explicit
        reverse_view(_Vp __r)
-@@ -3388,6 +3469,10 @@ namespace views
+@@ -3388,6 +3461,10 @@ namespace views
  	{ std::get<_Nm>(__t) }
  	  -> convertible_to<const tuple_element_t<_Nm, _Tp>&>;
        };
@@ -74858,7 +75330,7 @@ index 8e00222c2e8..17018a5616c 100644
    }
  
    template<input_range _Vp, size_t _Nm>
-@@ -3395,10 +3480,11 @@ namespace views
+@@ -3395,10 +3472,11 @@ namespace views
        && __detail::__has_tuple_element<range_value_t<_Vp>, _Nm>
        && __detail::__has_tuple_element<remove_reference_t<range_reference_t<_Vp>>,
  				       _Nm>
@@ -74871,7 +75343,7 @@ index 8e00222c2e8..17018a5616c 100644
  
        constexpr explicit
        elements_view(_Vp base)
-@@ -3446,26 +3532,80 @@ namespace views
+@@ -3446,26 +3524,80 @@ namespace views
        { return ranges::size(_M_base); }
  
      private:
@@ -74957,7 +75429,7 @@ index 8e00222c2e8..17018a5616c 100644
  
  	  constexpr explicit
  	  _Iterator(iterator_t<_Base> current)
-@@ -3478,9 +3618,8 @@ namespace views
+@@ -3478,9 +3610,8 @@ namespace views
  	    : _M_current(std::move(i._M_current))
  	  { }
  
@@ -74969,7 +75441,7 @@ index 8e00222c2e8..17018a5616c 100644
  	  { return _M_current; }
  
  	  constexpr iterator_t<_Base>
-@@ -3488,8 +3627,8 @@ namespace views
+@@ -3488,8 +3619,8 @@ namespace views
  	  { return std::move(_M_current); }
  
  	  constexpr decltype(auto)
@@ -74980,7 +75452,7 @@ index 8e00222c2e8..17018a5616c 100644
  
  	  constexpr _Iterator&
  	  operator++()
-@@ -3499,7 +3638,7 @@ namespace views
+@@ -3499,7 +3630,7 @@ namespace views
  	  }
  
  	  constexpr void
@@ -74989,7 +75461,7 @@ index 8e00222c2e8..17018a5616c 100644
  	  { ++_M_current; }
  
  	  constexpr _Iterator
-@@ -3544,7 +3683,7 @@ namespace views
+@@ -3544,7 +3675,7 @@ namespace views
  	  constexpr decltype(auto)
  	  operator[](difference_type __n) const
  	    requires random_access_range<_Base>
@@ -74998,7 +75470,7 @@ index 8e00222c2e8..17018a5616c 100644
  
  	  friend constexpr bool
  	  operator==(const _Iterator& __x, const _Iterator& __y)
-@@ -3601,18 +3740,24 @@ namespace views
+@@ -3601,18 +3732,24 @@ namespace views
  	    requires sized_sentinel_for<iterator_t<_Base>, iterator_t<_Base>>
  	  { return __x._M_current - __y._M_current; }
  
@@ -75028,7 +75500,7 @@ index 8e00222c2e8..17018a5616c 100644
  	  sentinel_t<_Base> _M_end = sentinel_t<_Base>();
  
  	public:
-@@ -3646,14 +3791,14 @@ namespace views
+@@ -3646,14 +3783,14 @@ namespace views
  	    requires sized_sentinel_for<sentinel_t<_Base>, iterator_t<_Base2>>
  	    friend constexpr range_difference_t<_Base2>
  	    operator-(const _Iterator<_Const2>& __x, const _Sentinel& __y)
@@ -82477,10 +82949,10 @@ index 94dd7c94505..1ad05361d00 100644
 +  test07();
  }
 diff --git a/libstdc++-v3/testsuite/std/ranges/adaptors/join.cc b/libstdc++-v3/testsuite/std/ranges/adaptors/join.cc
-index 8bbea9a6b25..9c0231b704b 100644
+index 8bbea9a6b25..c75fb8142cc 100644
 --- a/libstdc++-v3/testsuite/std/ranges/adaptors/join.cc
 +++ b/libstdc++-v3/testsuite/std/ranges/adaptors/join.cc
-@@ -149,6 +149,16 @@ test08()
+@@ -149,6 +149,31 @@ test08()
    VERIFY( i->a == 5 );
  }
  
@@ -82494,14 +82966,30 @@ index 8bbea9a6b25..9c0231b704b 100644
 +  VERIFY( ranges::next(v.begin()) == v.end() );
 +}
 +
++
++void
++test13()
++{
++  // PR libstdc++/106320
++  auto l = std::views::transform([](auto x) {
++    return x | std::views::transform([x=0](auto y) {
++      return y;
++    });
++  });
++  static_assert(!std::default_initializable<decltype(l)>);
++  std::vector<std::vector<int>> v{{5, 6, 7}};
++  v | l | std::views::join;
++}
++
  int
  main()
  {
-@@ -160,4 +170,5 @@ main()
+@@ -160,4 +185,6 @@ main()
    test06();
    test07();
    test08();
 +  test10();
++  test13();
  }
 diff --git a/libstdc++-v3/testsuite/std/ranges/adaptors/reverse.cc b/libstdc++-v3/testsuite/std/ranges/adaptors/reverse.cc
 index 37d003d11f0..cacaa275335 100644
@@ -82735,10 +83223,10 @@ index 00000000000..1b422e44f16
 +}
 diff --git a/libstdc++-v3/testsuite/std/ranges/p2325.cc b/libstdc++-v3/testsuite/std/ranges/p2325.cc
 new file mode 100644
-index 00000000000..aff3bd6ca28
+index 00000000000..8dbce6d6db8
 --- /dev/null
 +++ b/libstdc++-v3/testsuite/std/ranges/p2325.cc
-@@ -0,0 +1,181 @@
+@@ -0,0 +1,185 @@
 +// { dg-options "-std=gnu++20" }
 +// { dg-do compile { target c++20 } }
 +// P2325R3 "Views should not be required to be default constructible"
@@ -82746,8 +83234,8 @@ index 00000000000..aff3bd6ca28
 +// Parts of P2325R3 are deliberately omitted in libstdc++ 10, in particular the
 +// removal of default ctors for back_/front_insert_iterator, ostream_iterator,
 +// ref_view and basic_istream_view/::iterator, so as to maximize backward
-+// compatibility with pre-P2325R3 code.  So most static_asserts in this test fail,
-+// see the xfails at the end of this file.
++// compatibility with pre-P2325R3 code.  Namely all asserts that verify lack of
++// default constructibility fail; see the xfails at the end of this file.
 +
 +#include <ranges>
 +#include <iterator>
@@ -82834,7 +83322,7 @@ index 00000000000..aff3bd6ca28
 +  static_assert(default_initializable<decltype(views::single(0) | adaptor(f1))>);
 +  static_assert(!default_initializable<decltype(views::single(0) | adaptor(f2))>);
 +
-+  struct S { S() = delete; };
++  struct S { S() = delete; S(const S&) = default; S(S&&) = default; };
 +  static_assert(!default_initializable<decltype(views::single(declval<S>()) | adaptor(f1))>);
 +  static_assert(!default_initializable<decltype(views::single(declval<S>()) | adaptor(f2))>);
 +}
@@ -82850,7 +83338,7 @@ index 00000000000..aff3bd6ca28
 +test07()
 +{
 +  // Verify join_view is conditionally default constructible.
-+  struct S { S() = delete; };
++  struct S { S() = delete; S(const S&) = default; S(S&&) = default; };
 +  using type1 = ranges::join_view<ranges::single_view<ranges::single_view<S>>>;
 +  static_assert(!default_initializable<type1>);
 +  using type2 = ranges::join_view<ranges::single_view<ranges::single_view<int>>>;
@@ -82914,6 +83402,10 @@ index 00000000000..aff3bd6ca28
 +// { dg-bogus "static assertion failed" "" { xfail *-*-* } 76 }
 +// { dg-bogus "static assertion failed" "" { xfail *-*-* } 77 }
 +// { dg-bogus "static assertion failed" "" { xfail *-*-* } 84 }
++// { dg-bogus "static assertion failed" "" { xfail *-*-* } 94 }
++// { dg-bogus "static assertion failed" "" { xfail *-*-* } 97 }
++// { dg-bogus "static assertion failed" "" { xfail *-*-* } 98 }
++// { dg-bogus "static assertion failed" "" { xfail *-*-* } 114 }
 +// { dg-bogus "static assertion failed" "" { xfail *-*-* } 124 }
 +// { dg-bogus "static assertion failed" "" { xfail *-*-* } 126 }
 +// { dg-bogus "static assertion failed" "" { xfail *-*-* } 128 }
