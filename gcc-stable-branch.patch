@@ -1069,6 +1069,9 @@ Kewen Lin (8):
       testsuite: Skip pr105250.c for powerpc and s390 [PR105266]
       rs6000: Preserve REG_EH_REGION when replacing load/store [PR106091]
 
+Lewis Hyatt (1):
+      c: Fix location for _Pragma tokens [PR97498]
+
 Maciej W. Rozycki (1):
       RISC-V: Add target machine headers as a dependency for riscv-sr.o
 
@@ -9702,7 +9705,7 @@ index bd21d247051..698bc76bd9f 100644
  	warning_at (loc, OPT_Wshift_negative_value,
  		    "left shift of negative value");
 diff --git a/gcc/c/c-parser.c b/gcc/c/c-parser.c
-index 5176549acaf..2d347ad927c 100644
+index 5176549acaf..b2c7a74b464 100644
 --- a/gcc/c/c-parser.c
 +++ b/gcc/c/c-parser.c
 @@ -4812,6 +4812,11 @@ c_parser_balanced_token_sequence (c_parser *parser)
@@ -9740,6 +9743,14 @@ index 5176549acaf..2d347ad927c 100644
 +  set_c_expr_source_range (&result, start, finish);
    return result;
  }
+ 
+@@ -12320,6 +12328,7 @@ c_parser_pragma (c_parser *parser, enum pragma_context context, bool *if_p)
+   unsigned int id;
+   const char *construct = NULL;
+ 
++  input_location = c_parser_peek_token (parser)->location;
+   id = c_parser_peek_token (parser)->pragma_kind;
+   gcc_assert (id != PRAGMA_NONE);
  
 diff --git a/gcc/c/c-typeck.c b/gcc/c/c-typeck.c
 index 9342d3a071a..1892d93fb75 100644
@@ -39685,6 +39696,16 @@ index 00000000000..85277b97007
 +  long long l = (long long) ((0 | v) - ((V) { } == 0));
 +  return l;
 +}
+diff --git a/gcc/testsuite/c-c++-common/pr97498.c b/gcc/testsuite/c-c++-common/pr97498.c
+new file mode 100644
+index 00000000000..f5fa420415b
+--- /dev/null
++++ b/gcc/testsuite/c-c++-common/pr97498.c
+@@ -0,0 +1,4 @@
++/* { dg-do compile } */
++/* { dg-additional-options "-Wunused-function" } */
++#pragma GCC diagnostic ignored "-Wunused-function"
++static void f() {} _Pragma("GCC diagnostic error \"-Wunused-function\"") /* { dg-bogus "-Wunused-function" } */
 diff --git a/gcc/testsuite/c-c++-common/ubsan/float-div-by-zero-2.c b/gcc/testsuite/c-c++-common/ubsan/float-div-by-zero-2.c
 new file mode 100644
 index 00000000000..61d050ae23b
@@ -45417,6 +45438,25 @@ index 00000000000..6878b00ce0d
 +  va_arg (0, long);	/* { dg-error "first argument to 'va_arg' not of type 'va_list'" } */
 +  void *b[] = 0;	/* { dg-error "invalid initializer" } */
 +}
+diff --git a/gcc/testsuite/gcc.dg/pragma-message.c b/gcc/testsuite/gcc.dg/pragma-message.c
+index 2f44b617710..1b7cf09de0a 100644
+--- a/gcc/testsuite/gcc.dg/pragma-message.c
++++ b/gcc/testsuite/gcc.dg/pragma-message.c
+@@ -42,9 +42,11 @@
+ #pragma message ("Okay " THREE)  /* { dg-message "Okay 3" } */
+ 
+ /* Create a TODO() that prints a message on compilation.  */
+-#define DO_PRAGMA(x) _Pragma (#x)
+-#define TODO(x) DO_PRAGMA(message ("TODO - " #x))
+-TODO(Okay 4)                     /* { dg-message "TODO - Okay 4" } */
++#define DO_PRAGMA(x) _Pragma (#x) /* { dg-line pragma_loc1 } */
++#define TODO(x) DO_PRAGMA(message ("TODO - " #x)) /* { dg-line pragma_loc2 } */
++TODO(Okay 4) /* { dg-message "in expansion of macro 'TODO'" } */
++/* { dg-message "TODO - Okay 4" "test4.1" { target *-*-* } pragma_loc1 } */
++/* { dg-message "in expansion of macro 'DO_PRAGMA'" "test4.2" { target *-*-* } pragma_loc2 } */
+ 
+ #if 0
+ #pragma message ("Not printed")
 diff --git a/gcc/testsuite/gcc.dg/sso-16.c b/gcc/testsuite/gcc.dg/sso-16.c
 new file mode 100644
 index 00000000000..7bf89385ec6
@@ -57552,10 +57592,18 @@ index 0d1120a6dd9..9a17c78ad6b 100644
  
  	* GCC 10.3.0 released.
 diff --git a/libcpp/directives.c b/libcpp/directives.c
-index bbfdfcd3368..cab9aad64d2 100644
+index bbfdfcd3368..0d8545a7df9 100644
 --- a/libcpp/directives.c
 +++ b/libcpp/directives.c
-@@ -1911,8 +1911,7 @@ destringize_and_run (cpp_reader *pfile, const cpp_string *in,
+@@ -1887,6 +1887,7 @@ destringize_and_run (cpp_reader *pfile, const cpp_string *in,
+       maxcount = 50;
+       toks = XNEWVEC (cpp_token, maxcount);
+       toks[0] = pfile->directive_result;
++      toks[0].src_loc = expansion_loc;
+ 
+       do
+ 	{
+@@ -1911,8 +1912,7 @@ destringize_and_run (cpp_reader *pfile, const cpp_string *in,
    else
      {
        count = 1;
