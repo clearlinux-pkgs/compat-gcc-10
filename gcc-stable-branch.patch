@@ -100,7 +100,8 @@ François-Xavier Coudert (1):
 Fritz Reese (1):
       fortran: Fix conv of UNION constructors [PR105310]
 
-GCC Administrator (475):
+GCC Administrator (476):
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -1210,7 +1211,7 @@ Paul Thomas (11):
 Pavel I. Kryukov (1):
       libstdc++: Add self-merge check to std::forward_list::merge [PR103853]
 
-Peter Bergner (12):
+Peter Bergner (13):
       rs6000: MMA test case ICEs using -O3 [PR99842]
       rs6000: Add new __builtin_vsx_build_pair and __builtin_mma_build_acc built-ins
       rs6000: MMA builtin usage ICEs when used in a #pragma omp parallel and using -fopenmp [PR100777]
@@ -1223,6 +1224,7 @@ Peter Bergner (12):
       rs6000: MMA test case emits wrong code when building a vector pair [PR102976]
       rs6000: Allow -mlong-double-64 after -mabi={ibm,ieee}longdouble [PR104208, PR87496]
       rs6000: Adjust -mdejagnu-cpu to filter out -mtune [PR106345]
+      rs6000: Update testsuite to use -mdejagnu-cpu= and -mdejagnu-tune= options
 
 Philippe Blain (1):
       libstdc++: Install libstdc++*-gdb.py more robustly [PR 99453]
@@ -42677,6 +42679,132 @@ index 00000000000..0102caa7df8
 +  foo (&c);
 +  return 0;
 +}
+diff --git a/gcc/testsuite/g++.dg/pr65240-1.C b/gcc/testsuite/g++.dg/pr65240-1.C
+index d2e25b65fca..ff8910df6a1 100644
+--- a/gcc/testsuite/g++.dg/pr65240-1.C
++++ b/gcc/testsuite/g++.dg/pr65240-1.C
+@@ -1,8 +1,7 @@
+ /* { dg-do compile { target { powerpc*-*-* && lp64 } } } */
+ /* { dg-skip-if "" { powerpc*-*-darwin* } } */
+ /* { dg-require-effective-target powerpc_p8vector_ok } */
+-/* { dg-skip-if "do not override -mcpu" { powerpc*-*-* } { "-mcpu=*" } { "-mcpu=power8" } } */
+-/* { dg-options "-mcpu=power8 -O3 -ffast-math -mcmodel=small -mno-fp-in-toc -Wno-return-type" } */
++/* { dg-options "-mdejagnu-cpu=power8 -O3 -ffast-math -mcmodel=small -mno-fp-in-toc -Wno-return-type" } */
+ 
+ /* target/65240, compiler got a 'insn does not satisfy its constraints' error.  */
+ 
+diff --git a/gcc/testsuite/g++.dg/pr65240-2.C b/gcc/testsuite/g++.dg/pr65240-2.C
+index 38d5020bd19..bdb7a62d73d 100644
+--- a/gcc/testsuite/g++.dg/pr65240-2.C
++++ b/gcc/testsuite/g++.dg/pr65240-2.C
+@@ -1,8 +1,7 @@
+ /* { dg-do compile { target { powerpc*-*-* && lp64 } } } */
+ /* { dg-skip-if "" { powerpc*-*-darwin* } } */
+ /* { dg-require-effective-target powerpc_p8vector_ok } */
+-/* { dg-skip-if "do not override -mcpu" { powerpc*-*-* } { "-mcpu=*" } { "-mcpu=power8" } } */
+-/* { dg-options "-mcpu=power8 -O3 -ffast-math -mcmodel=small -mfp-in-toc -Wno-return-type" } */
++/* { dg-options "-mdejagnu-cpu=power8 -O3 -ffast-math -mcmodel=small -mfp-in-toc -Wno-return-type" } */
+ 
+ /* target/65240, compiler got a 'insn does not satisfy its constraints' error.  */
+ 
+diff --git a/gcc/testsuite/g++.dg/pr65240-3.C b/gcc/testsuite/g++.dg/pr65240-3.C
+index e8463c91494..f37db9025d1 100644
+--- a/gcc/testsuite/g++.dg/pr65240-3.C
++++ b/gcc/testsuite/g++.dg/pr65240-3.C
+@@ -1,8 +1,7 @@
+ /* { dg-do compile { target { powerpc*-*-* && lp64 } } } */
+ /* { dg-skip-if "" { powerpc*-*-darwin* } } */
+ /* { dg-require-effective-target powerpc_p8vector_ok } */
+-/* { dg-skip-if "do not override -mcpu" { powerpc*-*-* } { "-mcpu=*" } { "-mcpu=power8" } } */
+-/* { dg-options "-mcpu=power8 -O3 -ffast-math -mcmodel=medium -Wno-return-type" } */
++/* { dg-options "-mdejagnu-cpu=power8 -O3 -ffast-math -mcmodel=medium -Wno-return-type" } */
+ 
+ /* target/65240, compiler got a 'insn does not satisfy its constraints' error.  */
+ 
+diff --git a/gcc/testsuite/g++.dg/pr65240-4.C b/gcc/testsuite/g++.dg/pr65240-4.C
+index a119752d18e..efb6a6c06e7 100644
+--- a/gcc/testsuite/g++.dg/pr65240-4.C
++++ b/gcc/testsuite/g++.dg/pr65240-4.C
+@@ -1,8 +1,7 @@
+ /* { dg-do compile { target { powerpc*-*-* && lp64 } } } */
+ /* { dg-skip-if "" { powerpc*-*-darwin* } } */
+ /* { dg-require-effective-target powerpc_vsx_ok } */
+-/* { dg-skip-if "do not override -mcpu" { powerpc*-*-* } { "-mcpu=*" } { "-mcpu=power7" } } */
+-/* { dg-options "-mcpu=power7 -O3 -ffast-math -Wno-return-type" } */
++/* { dg-options "-mdejagnu-cpu=power7 -O3 -ffast-math -Wno-return-type" } */
+ 
+ /* target/65240, compiler got a 'insn does not satisfy its constraints' error.  */
+ 
+diff --git a/gcc/testsuite/g++.dg/pr65242.C b/gcc/testsuite/g++.dg/pr65242.C
+index be2ddaa85b2..662f375015f 100644
+--- a/gcc/testsuite/g++.dg/pr65242.C
++++ b/gcc/testsuite/g++.dg/pr65242.C
+@@ -1,8 +1,7 @@
+ /* { dg-do compile { target { powerpc*-*-* && lp64 } } } */
+ /* { dg-skip-if "" { powerpc*-*-darwin* } } */
+ /* { dg-require-effective-target powerpc_p8vector_ok } */
+-/* { dg-skip-if "do not override -mcpu" { powerpc*-*-* } { "-mcpu=*" } { "-mcpu=power8" } } */
+-/* { dg-options "-mcpu=power8 -O3" } */
++/* { dg-options "-mdejagnu-cpu=power8 -O3" } */
+ 
+ class A {
+ public:
+diff --git a/gcc/testsuite/g++.dg/pr67211.C b/gcc/testsuite/g++.dg/pr67211.C
+index cb3d342c122..ac241818ab5 100644
+--- a/gcc/testsuite/g++.dg/pr67211.C
++++ b/gcc/testsuite/g++.dg/pr67211.C
+@@ -1,8 +1,7 @@
+ /* { dg-do compile { target { powerpc*-*-* && lp64 } } } */
+ /* { dg-skip-if "" { powerpc*-*-darwin* } } */
+ /* { dg-require-effective-target powerpc_p8vector_ok } */
+-/* { dg-skip-if "do not override -mcpu" { powerpc*-*-* } { "-mcpu=*" } { "-mcpu=power7" } } */
+-/* { dg-options "-mcpu=power7 -mtune=power8 -O3 -w" } */
++/* { dg-options "-mdejagnu-cpu=power7 -mdejagnu-tune=power8 -O3 -w" } */
+ 
+ /* target/67211, compiler got a 'insn does not satisfy its constraints' error.  */
+ 
+diff --git a/gcc/testsuite/g++.dg/pr69667.C b/gcc/testsuite/g++.dg/pr69667.C
+index 76f7cb3d40b..422116dd599 100644
+--- a/gcc/testsuite/g++.dg/pr69667.C
++++ b/gcc/testsuite/g++.dg/pr69667.C
+@@ -1,8 +1,7 @@
+ /* { dg-do compile { target { powerpc*-*-* && lp64 } } } */
+ /* { dg-skip-if "" { powerpc*-*-darwin* } } */
+ /* { dg-require-effective-target powerpc_p8vector_ok } */
+-/* { dg-skip-if "do not override -mcpu" { powerpc*-*-* } { "-mcpu=*" } { "-mcpu=power7" } } */
+-/* { dg-options "-mcpu=power8 -w -std=c++14" } */
++/* { dg-options "-mdejagnu-cpu=power8 -w -std=c++14" } */
+ 
+ /* target/69667, compiler got
+    internal compiler error: Max. number of generated reload insns per insn is achieved (90)  */
+diff --git a/gcc/testsuite/g++.dg/pr71294.C b/gcc/testsuite/g++.dg/pr71294.C
+index 67675dd7e30..716fa0d44b2 100644
+--- a/gcc/testsuite/g++.dg/pr71294.C
++++ b/gcc/testsuite/g++.dg/pr71294.C
+@@ -1,7 +1,6 @@
+ // { dg-do compile { target { powerpc64*-*-* && lp64 } } }
+ // { dg-require-effective-target powerpc_p8vector_ok } */
+-// { dg-skip-if "do not override -mcpu" { powerpc*-*-* } { "-mcpu=*" } { "-mcpu=power8" } }
+-// { dg-options "-mcpu=power8 -O3 -fstack-protector" }
++// { dg-options "-mdejagnu-cpu=power8 -O3 -fstack-protector" }
+ 
+ // PAR target/71294 failed because RELOAD could not figure how create a V2DI
+ // vector that auto vectorization created with each element being the same
+diff --git a/gcc/testsuite/g++.dg/pr84279.C b/gcc/testsuite/g++.dg/pr84279.C
+index a88d3fb8470..e78201c30db 100644
+--- a/gcc/testsuite/g++.dg/pr84279.C
++++ b/gcc/testsuite/g++.dg/pr84279.C
+@@ -1,8 +1,8 @@
+ /* { dg-do compile { target { powerpc*-*-* } } } */
+ /* { dg-skip-if "" { powerpc*-*-darwin* } } */
+ /* { dg-require-effective-target powerpc_p8vector_ok } */
+-/* { dg-skip-if "do not override -mcpu" { powerpc*-*-* } { "-mcpu=*" } { "-mcpu=power8" } } */
+-/* { dg-options "-O3 -mcpu=power8 -g -fPIC -fvisibility=hidden -fstack-protector-strong" } */
++/* { dg-require-effective-target fpic } */
++/* { dg-options "-O3 -mdejagnu-cpu=power8 -g -fPIC -fvisibility=hidden -fstack-protector-strong" } */
+ 
+ template <typename, typename T> struct E { T e; };
+ struct J {
 diff --git a/gcc/testsuite/g++.dg/pr98032.C b/gcc/testsuite/g++.dg/pr98032.C
 new file mode 100644
 index 00000000000..d7eef276668
@@ -42875,6 +43003,18 @@ index 00000000000..c43c67edf70
 +  A<n> a;
 +  f(a);
 +}
+diff --git a/gcc/testsuite/g++.dg/torture/ppc-ldst-array.C b/gcc/testsuite/g++.dg/torture/ppc-ldst-array.C
+index 75862e2b5be..fef69e7cf09 100644
+--- a/gcc/testsuite/g++.dg/torture/ppc-ldst-array.C
++++ b/gcc/testsuite/g++.dg/torture/ppc-ldst-array.C
+@@ -1,6 +1,5 @@
+ /* { dg-do compile { target { powerpc64*-*-* } } } */
+-/* { dg-skip-if "do not override mcpu" { powerpc*-*-* } { "-mcpu=*" } { "-mcpu=power8" } } */
+-/* { dg-options "-mcpu=power8" } */
++/* { dg-options "-mdejagnu-cpu=power8" } */
+ 
+ /* When compiled with C++, this code was breaking because of different
+    tree representations of arrays between C and C++.  */
 diff --git a/gcc/testsuite/g++.dg/torture/pr102505.C b/gcc/testsuite/g++.dg/torture/pr102505.C
 new file mode 100644
 index 00000000000..a846751a0d6
@@ -49048,6 +49188,32 @@ index 0d2b8b3cba0..683895e599e 100644
  test_4 (_mm512_mask_shuffle_f32x4, __m512, __m512, __mmask16, __m512, __m512, 1)
  test_4 (_mm512_mask_shuffle_f64x2, __m512d, __m512d, __mmask8, __m512d, __m512d, 1)
  test_4 (_mm512_mask_shuffle_i32x4, __m512i, __m512i, __mmask16, __m512i, __m512i, 1)
+diff --git a/gcc/testsuite/gcc.target/powerpc/fusion.c b/gcc/testsuite/gcc.target/powerpc/fusion.c
+index 876b9f54d5a..2a115580439 100644
+--- a/gcc/testsuite/gcc.target/powerpc/fusion.c
++++ b/gcc/testsuite/gcc.target/powerpc/fusion.c
+@@ -1,7 +1,7 @@
+ /* { dg-do compile { target { powerpc*-*-* } } } */
+ /* { dg-skip-if "" { powerpc*-*-darwin* } } */
+ /* { dg-require-effective-target powerpc_p8vector_ok } */
+-/* { dg-options "-mdejagnu-cpu=power7 -mtune=power8 -O3 -dp" } */
++/* { dg-options "-mdejagnu-cpu=power7 -mdejagnu-tune=power8 -O3 -dp" } */
+ 
+ #define LARGE 0x12345
+ 
+diff --git a/gcc/testsuite/gcc.target/powerpc/fusion2.c b/gcc/testsuite/gcc.target/powerpc/fusion2.c
+index b3f457a28e2..40ca00a7405 100644
+--- a/gcc/testsuite/gcc.target/powerpc/fusion2.c
++++ b/gcc/testsuite/gcc.target/powerpc/fusion2.c
+@@ -2,7 +2,7 @@
+ /* { dg-skip-if "" { powerpc*-*-darwin* } } */
+ /* { dg-skip-if "" { powerpc*le-*-* } } */
+ /* { dg-require-effective-target powerpc_p8vector_ok } */
+-/* { dg-options "-mdejagnu-cpu=power7 -mtune=power8 -O3" } */
++/* { dg-options "-mdejagnu-cpu=power7 -mdejagnu-tune=power8 -O3" } */
+ 
+ vector double fusion_vector (vector double *p) { return p[2]; }
+ 
 diff --git a/gcc/testsuite/gcc.target/powerpc/mma-builtin-4.c b/gcc/testsuite/gcc.target/powerpc/mma-builtin-4.c
 index 3bedf531de0..a9fb0107d12 100644
 --- a/gcc/testsuite/gcc.target/powerpc/mma-builtin-4.c
@@ -49847,6 +50013,18 @@ index 00000000000..c487fbc403e
 +  __trampoline_setup (tramp, SIZE, 0, 0);
 +  return 0;
 +}
+diff --git a/gcc/testsuite/gcc.target/powerpc/test_mffsl.c b/gcc/testsuite/gcc.target/powerpc/test_mffsl.c
+index 41377efba1a..045d0bfa349 100644
+--- a/gcc/testsuite/gcc.target/powerpc/test_mffsl.c
++++ b/gcc/testsuite/gcc.target/powerpc/test_mffsl.c
+@@ -1,5 +1,6 @@
+ /* { dg-do run { target { powerpc*-*-* } } } */
+-/* { dg-options "-O2 -std=c99" } */
++/* { dg-options "-O2 -std=c99 -mdejagnu-cpu=power9" } */
++/* { dg-require-effective-target p9vector_hw } */
+ 
+ #ifdef DEBUG
+ #include <stdio.h>
 diff --git a/gcc/testsuite/gcc.target/riscv/pr98777.c b/gcc/testsuite/gcc.target/riscv/pr98777.c
 new file mode 100644
 index 00000000000..ea2c2f9ca64
@@ -52463,6 +52641,20 @@ index f624b703cc9..d968ea0e5cd 100644
    call move_alloc (x%a, a)      ! { dg-error "cannot be INTENT.IN." }
    call move_alloc (x%ptr%a, a)  ! OK (6)
    call move_alloc (px%a, a)     ! OK (7)
+diff --git a/gcc/testsuite/gfortran.dg/nint_p7.f90 b/gcc/testsuite/gfortran.dg/nint_p7.f90
+index 8f3552293c5..2239824a7fb 100644
+--- a/gcc/testsuite/gfortran.dg/nint_p7.f90
++++ b/gcc/testsuite/gfortran.dg/nint_p7.f90
+@@ -1,8 +1,7 @@
+ ! Fortran
+ ! { dg-do compile { target { powerpc*-*-* } } }
+ ! { dg-require-effective-target powerpc_vsx_ok } 
+-! { dg-skip-if "do not override -mcpu" { powerpc*-*-* } { "-mcpu=*" } { "-mcpu=power7" } } 
+-! { dg-options "-O2 -mcpu=power7 -ffast-math" } 
++! { dg-options "-O2 -mdejagnu-cpu=power7 -ffast-math" } 
+ ! { dg-final { scan-assembler-times "xsrdpi" 2 } } 
+ 
+ 	subroutine test_nint(x4,x8)
 diff --git a/gcc/testsuite/gfortran.dg/overload_4.f90 b/gcc/testsuite/gfortran.dg/overload_4.f90
 new file mode 100644
 index 00000000000..43207e358ba
@@ -53153,15 +53345,14 @@ index 00000000000..c081a69f0ea
 +end
 diff --git a/gcc/testsuite/gfortran.dg/pr102860.f90 b/gcc/testsuite/gfortran.dg/pr102860.f90
 new file mode 100644
-index 00000000000..d0a7356c0f5
+index 00000000000..6b1feaa9d79
 --- /dev/null
 +++ b/gcc/testsuite/gfortran.dg/pr102860.f90
-@@ -0,0 +1,10 @@
+@@ -0,0 +1,9 @@
 +! PR middle-end/102860
 +! { dg-do compile { target { powerpc*-*-* } } }
 +! { dg-require-effective-target powerpc_vsx_ok } 
-+! { dg-skip-if "do not override -mcpu" { powerpc*-*-* } { "-mcpu=*" } { "-mcpu=power10" } } 
-+! { dg-options "-O2 -mcpu=power10" } 
++! { dg-options "-O2 -mdejagnu-cpu=power10" } 
 +
 +function foo(a)
 +  integer(kind=4) :: a(1024)
@@ -53373,6 +53564,31 @@ index 00000000000..89004bf9aa7
 +end
 +
 +! { dg-final { scan-tree-dump-not "_gfortran_stop_numeric" "original" } }
+diff --git a/gcc/testsuite/gfortran.dg/pr47614.f b/gcc/testsuite/gfortran.dg/pr47614.f
+index 500d210a2a4..d772eef257f 100644
+--- a/gcc/testsuite/gfortran.dg/pr47614.f
++++ b/gcc/testsuite/gfortran.dg/pr47614.f
+@@ -1,6 +1,7 @@
+ ! { dg-do run { target { powerpc*-*-* } } }
+ ! { dg-skip-if "" { powerpc*-*-darwin* } }
+-! { dg-options "-O3 -funroll-loops -ffast-math -mcpu=power4" }
++! { dg-options "-O3 -funroll-loops -ffast-math -mdejagnu-cpu=power4" }
++! { dg-options "-O3 -funroll-loops -ffast-math" { target powerpc64le*-*-linux* } }
+ 
+ 
+       SUBROUTINE SFCPAR(ZET,NZ,ZMH,TSL,TMES)
+diff --git a/gcc/testsuite/gfortran.dg/pr58968.f b/gcc/testsuite/gfortran.dg/pr58968.f
+index b6ea17f4ae2..a7f1e1e710b 100644
+--- a/gcc/testsuite/gfortran.dg/pr58968.f
++++ b/gcc/testsuite/gfortran.dg/pr58968.f
+@@ -1,6 +1,6 @@
+ C PR rtl-optimization/58968.f
+ C { dg-do compile { target powerpc*-*-* } }
+-C { dg-options "-mcpu=power7 -O3 -w -ffast-math  -funroll-loops" }
++C { dg-options "-mdejagnu-cpu=power7 -O3 -w -ffast-math  -funroll-loops" }
+       SUBROUTINE MAKTABS(IW,SOME,LBOX1,LBOX2,LBOX3,NSPACE,NA,NB,
+      *            LBST,X,
+      *            NX,IAMA,IAMI,IBMA,IBMI,MNUM,IDIM,MSTA,IBO,
 diff --git a/gcc/testsuite/gfortran.dg/pr63797.f90 b/gcc/testsuite/gfortran.dg/pr63797.f90
 new file mode 100644
 index 00000000000..1131e8167b1
@@ -64301,10 +64517,54 @@ index b9177041fc3..5acf87f8bb7 100644
  
  	* GCC 10.3.0 released.
 diff --git a/libstdc++-v3/ChangeLog b/libstdc++-v3/ChangeLog
-index fdd63cbff1a..c8b67bdb58b 100644
+index fdd63cbff1a..20629202323 100644
 --- a/libstdc++-v3/ChangeLog
 +++ b/libstdc++-v3/ChangeLog
-@@ -1,3 +1,2149 @@
+@@ -1,3 +1,2193 @@
++2022-08-03  Jonathan Wakely  <jwakely@redhat.com>
++
++	Backported from master:
++	2021-08-31  Jonathan Wakely  <jwakely@redhat.com>
++
++	PR libstdc++/98421
++	* include/std/span (span(Iter, size_type), span(Iter, Iter)):
++	Add valid range checks.
++	* testsuite/23_containers/span/cons_1_assert_neg.cc: New test.
++	* testsuite/23_containers/span/cons_2_assert_neg.cc: New test.
++
++2022-08-03  Jonathan Wakely  <jwakely@redhat.com>
++
++	* include/bits/list.tcc (list::merge) [!USE_CXX11_ABI]: Remove
++	call to size() and try-catch block.
++
++2022-08-03  Tim Adye  <Tim.Adye@cern.ch>
++
++	Backported from master:
++	2021-06-04  Tim Adye  <Tim.Adye@cern.ch>
++
++	* include/std/any (any::_Manager::_S_access): New static
++	function to access the contained value.
++	(any::emplace, __any_caster): Use _S_access member of the
++	manager type.
++
++2022-08-03  Jonathan Wakely  <jwakely@redhat.com>
++
++	Backported from master:
++	2021-06-15  Jonathan Wakely  <jwakely@redhat.com>
++
++	* include/std/ranges (subrange(i, s, n)): Remove assertion.
++	* testsuite/std/ranges/subrange/constexpr.cc: New test.
++
++2022-08-03  Jonathan Wakely  <jwakely@redhat.com>
++
++	Backported from master:
++	2021-11-10  Jonathan Wakely  <jwakely@redhat.com>
++
++	PR libstdc++/100748
++	PR libstdc++/103133
++	* config/os/gnu-linux/os_defines.h (_GLIBCXX_GTHREAD_USE_WEAK):
++	Define for glibc 2.34 and later.
++
 +2022-07-23  Jonathan Wakely  <jwakely@redhat.com>
 +
 +	Backported from master:
