@@ -100,7 +100,18 @@ François-Xavier Coudert (1):
 Fritz Reese (1):
       fortran: Fix conv of UNION constructors [PR105310]
 
-GCC Administrator (477):
+GCC Administrator (488):
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -662,7 +673,7 @@ Harald Anlauf (64):
 Hongyu Wang (1):
       AVX512F: Add missing macro for mask(z?)_scalf_s[sd] [PR 105339]
 
-Iain Buclaw (24):
+Iain Buclaw (25):
       d: Fix ICE in when formating a string with '%' or '`' characters (PR98457)
       d: Fix ICE in gimplify_var_or_parm_decl, at gimplify.c:2755 (PR100882)
       d: Respect explicit align(N) type alignment (PR100935)
@@ -687,6 +698,7 @@ Iain Buclaw (24):
       d: Set TYPE_ARTIFICIAL on internal TypeInfo types
       tilegx: Fix infinite loop in gen-mul-tables generator
       d: Fix error: aggregate value used where floating point was expected
+      d: Update DIP links in gdc documentation to point at upstream repository
 
 Iain Sandoe (36):
       coroutines: Fix a typo in rewriting the function.
@@ -27774,6 +27786,24 @@ index ad2255e1cd1..aca767cc93b 100644
  
    /* The decl to store the return expression.  */
    tree decl = DECL_RESULT (cfun->decl);
+diff --git a/gcc/d/gdc.texi b/gcc/d/gdc.texi
+index 2ce560f3cae..45e76727764 100644
+--- a/gcc/d/gdc.texi
++++ b/gcc/d/gdc.texi
+@@ -633,9 +633,11 @@ Give deprecation messages about @option{-ftransition=import} anomalies.
+ @item complex
+ List all usages of complex or imaginary types.
+ @item dip1000
+-Implements @uref{http://wiki.dlang.org/DIP1000} (experimental).
++Implements @uref{https://github.com/dlang/DIPs/blob/master/DIPs/other/DIP1000.md}
++(Scoped pointers).
+ @item dip25
+-Implements @uref{http://wiki.dlang.org/DIP25} (experimental).
++Implements @uref{https://github.com/dlang/DIPs/blob/master/DIPs/archive/DIP25.md}
++(Sealed references).
+ @item field
+ List all non-mutable fields which occupy an object instance.
+ @item import
 diff --git a/gcc/d/typeinfo.cc b/gcc/d/typeinfo.cc
 index 6aa4f64a713..c61bf621643 100644
 --- a/gcc/d/typeinfo.cc
