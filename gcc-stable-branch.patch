@@ -1351,7 +1351,7 @@ Sebastian Huber (2):
 Sebastian Pop (1):
       add barriers to ool __sync builtins
 
-Segher Boessenkool (8):
+Segher Boessenkool (10):
       rs6000: Fix cpu selection w/ isel (PR100108)
       combine: Don't create REG_UNUSED notes if the reg already died (PR99927)
       rs6000: Don't use r12 for CR save on ELFv2 (PR102107)
@@ -1360,6 +1360,8 @@ Segher Boessenkool (8):
       rs6000: Improve .machine
       rs6000: Do not use rs6000_cpu for .machine ppc and ppc64 (PR104829)
       rs6000: Disparage lfiwzx and similar
+      rs6000: Add effective target has_arch_ppc64
+      rs6000: Make the has_arch target selectors actually work
 
 Simon Wright (1):
       Darwin: Truncate kernel-provided version to OS major for Darwin >= 20.
@@ -54980,7 +54982,7 @@ index eea4bf383a7..a5d09c78106 100644
      # line numbers by converting them to "NN" form.
      set text [maybe-handle-nn-line-numbers $text]
 diff --git a/gcc/testsuite/lib/target-supports.exp b/gcc/testsuite/lib/target-supports.exp
-index bd62a0d9e79..1aa64a5a6bd 100644
+index bd62a0d9e79..31a531c7c6b 100644
 --- a/gcc/testsuite/lib/target-supports.exp
 +++ b/gcc/testsuite/lib/target-supports.exp
 @@ -4671,6 +4671,23 @@ proc check_effective_target_arm_cmse_ok {} {
@@ -55007,7 +55009,81 @@ index bd62a0d9e79..1aa64a5a6bd 100644
  # Return 1 if the target supports executing MVE instructions, 0
  # otherwise.
  
-@@ -10330,6 +10347,21 @@ proc check_effective_target_indirect_calls { } {
+@@ -5846,53 +5863,63 @@ proc check_effective_target_powerpc_p9modulo_ok { } {
+ # return 1 if our compiler returns the ARCH_PWR defines with the options
+ # as provided by the test.
+ proc check_effective_target_has_arch_pwr5 { } {
+-	return [check_no_compiler_messages arch_pwr5 assembly {
++	return [check_no_compiler_messages_nocache arch_pwr5 assembly {
+ 		#ifndef _ARCH_PWR5
+ 		#error does not have power5 support.
+ 		#else
+ 		/* "has power5 support" */
+ 		#endif
+-	}]
++	} [current_compiler_flags]]
+ }
+ 
+ proc check_effective_target_has_arch_pwr6 { } {
+-	return [check_no_compiler_messages arch_pwr6 assembly {
++	return [check_no_compiler_messages_nocache arch_pwr6 assembly {
+ 		#ifndef _ARCH_PWR6
+ 		#error does not have power6 support.
+ 		#else
+ 		/* "has power6 support" */
+ 		#endif
+-	}]
++	} [current_compiler_flags]]
+ }
+ 
+ proc check_effective_target_has_arch_pwr7 { } {
+-	return [check_no_compiler_messages arch_pwr7 assembly {
++	return [check_no_compiler_messages_nocache arch_pwr7 assembly {
+ 		#ifndef _ARCH_PWR7
+ 		#error does not have power7 support.
+ 		#else
+ 		/* "has power7 support" */
+ 		#endif
+-	}]
++	} [current_compiler_flags]]
+ }
+ 
+ proc check_effective_target_has_arch_pwr8 { } {
+-	return [check_no_compiler_messages arch_pwr8 assembly {
++	return [check_no_compiler_messages_nocache arch_pwr8 assembly {
+ 		#ifndef _ARCH_PWR8
+ 		#error does not have power8 support.
+ 		#else
+ 		/* "has power8 support" */
+ 		#endif
+-	}]
++	} [current_compiler_flags]]
+ }
+ 
+ proc check_effective_target_has_arch_pwr9 { } {
+-	return [check_no_compiler_messages arch_pwr9 assembly {
++	return [check_no_compiler_messages_nocache arch_pwr9 assembly {
+ 		#ifndef _ARCH_PWR9
+ 		#error does not have power9 support.
+ 		#else
+ 		/* "has power9 support" */
+ 		#endif
+-	}]
++	} [current_compiler_flags]]
++}
++
++proc check_effective_target_has_arch_ppc64 { } {
++	return [check_no_compiler_messages_nocache arch_ppc64 assembly {
++		#ifndef _ARCH_PPC64
++		#error does not have ppc64 support.
++		#else
++		/* "has ppc64 support" */
++		#endif
++	} [current_compiler_flags]]
+ }
+ 
+ # Return 1 if this is a PowerPC target supporting -mcpu=power10.
+@@ -10330,6 +10357,21 @@ proc check_effective_target_indirect_calls { } {
    return 1
  }
  
@@ -55029,7 +55105,7 @@ index bd62a0d9e79..1aa64a5a6bd 100644
  # Return 1 if we're able to assemble movdiri and movdir64b
  
  proc check_effective_target_movdir { } {
-@@ -10352,13 +10384,14 @@ proc check_effective_target_tune_cortex_a76 { } {
+@@ -10352,13 +10394,14 @@ proc check_effective_target_tune_cortex_a76 { } {
      return [check_configured_with "with-tune=cortex-a76"]
  }
  
