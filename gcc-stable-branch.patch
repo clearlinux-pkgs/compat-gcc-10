@@ -100,7 +100,13 @@ François-Xavier Coudert (1):
 Fritz Reese (1):
       fortran: Fix conv of UNION constructors [PR105310]
 
-GCC Administrator (490):
+GCC Administrator (496):
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -1080,7 +1086,7 @@ Jonathan Wakely (141):
 José Rui Faustino de Sousa (1):
       Fortran: Fix double function call with -fcheck=pointer [PR]
 
-Kewen Lin (8):
+Kewen Lin (9):
       ipa-fnsummary: Remove inconsistent bp_pack_value
       vect: Don't update inits for simd_lane_access DRs [PR102789]
       rs6000/doc: Rename future cpu with power10
@@ -1089,6 +1095,7 @@ Kewen Lin (8):
       rs6000: Move the hunk affecting VSX/ALTIVEC ahead [PR103627]
       testsuite: Skip pr105250.c for powerpc and s390 [PR105266]
       rs6000: Preserve REG_EH_REGION when replacing load/store [PR106091]
+      rs6000: Adjust mov optabs for opaque modes [PR103353]
 
 Lewis Hyatt (1):
       c: Fix location for _Pragma tokens [PR97498]
@@ -18012,7 +18019,7 @@ index 163f08738c3..be5c2bee415 100644
  
  #endif /* _MM_MALLOC_H_INCLUDED */
 diff --git a/gcc/config/rs6000/mma.md b/gcc/config/rs6000/mma.md
-index d9757160845..27f64d2cb7c 100644
+index d9757160845..c6e07e5dd78 100644
 --- a/gcc/config/rs6000/mma.md
 +++ b/gcc/config/rs6000/mma.md
 @@ -36,7 +36,8 @@
@@ -18036,7 +18043,58 @@ index d9757160845..27f64d2cb7c 100644
  ;; MMA instructions with 1 accumulator argument
  (define_int_iterator MMA_ACC		[UNSPEC_MMA_XXMFACC
  					 UNSPEC_MMA_XXMTACC])
-@@ -325,42 +330,55 @@
+@@ -278,10 +283,25 @@
+ (define_expand "movpoi"
+   [(set (match_operand:POI 0 "nonimmediate_operand")
+ 	(match_operand:POI 1 "input_operand"))]
+-  "TARGET_MMA"
++  ""
+ {
+-  rs6000_emit_move (operands[0], operands[1], POImode);
+-  DONE;
++  if (TARGET_MMA)
++    {
++      rs6000_emit_move (operands[0], operands[1], POImode);
++      DONE;
++    }
++  else if (currently_expanding_to_rtl && seen_error ())
++    {
++      /* PR103353 shows we may want to continue to expand the __builtin_vsx_lxvp
++	 built-in function, even if we have already emitted error messages about
++	 some missing required conditions.  As shown in that PR, without one
++	 explicit mov optab on POImode provided, it would call emit_move_insn
++	 recursively.  So we allow this pattern to be generated when we are
++	 expanding to RTL and have seen errors.  It would not cause further ICEs
++	 as the compilation would stop soon after expanding.  */
++    }
++  else
++    gcc_unreachable ();
+ })
+ 
+ (define_insn_and_split "*movpoi"
+@@ -318,49 +338,74 @@
+ (define_expand "movpxi"
+   [(set (match_operand:PXI 0 "nonimmediate_operand")
+ 	(match_operand:PXI 1 "input_operand"))]
+-  "TARGET_MMA"
++  ""
+ {
+-  rs6000_emit_move (operands[0], operands[1], PXImode);
+-  DONE;
++  if (TARGET_MMA)
++    {
++      rs6000_emit_move (operands[0], operands[1], PXImode);
++      DONE;
++    }
++  else if (currently_expanding_to_rtl && seen_error ())
++    {
++      /* PR103353 shows we may want to continue to expand the __builtin_vsx_lxvp
++	 built-in function, even if we have already emitted error messages about
++	 some missing required conditions.  So do the same handlings for PXImode
++	 as POImode here.  */
++    }
++  else
++    gcc_unreachable ();
  })
  
  (define_insn_and_split "*movpxi"
@@ -18110,7 +18168,7 @@ index d9757160845..27f64d2cb7c 100644
    DONE;
  })
  
-@@ -380,8 +398,11 @@
+@@ -380,8 +425,11 @@
    DONE;
  })
  
@@ -18123,7 +18181,7 @@ index d9757160845..27f64d2cb7c 100644
  	(unspec:PXI [(match_operand:V16QI 1 "mma_assemble_input_operand" "mwa")
  		     (match_operand:V16QI 2 "mma_assemble_input_operand" "mwa")
  		     (match_operand:V16QI 3 "mma_assemble_input_operand" "mwa")
-@@ -413,14 +434,16 @@
+@@ -413,14 +461,16 @@
    "<acc> %A0"
    [(set_attr "type" "mma")])
  
@@ -49779,6 +49837,34 @@ index 00000000000..5a4320f8e0a
 +
 +/* { dg-final { scan-assembler-times {(?p)\mxxlor \d+,44,44\M} 1 } } */
 +/* { dg-final { scan-assembler-times {(?p)\mxxlor \d+,32,32\M} 1 } } */
+diff --git a/gcc/testsuite/gcc.target/powerpc/pr103353.c b/gcc/testsuite/gcc.target/powerpc/pr103353.c
+new file mode 100644
+index 00000000000..5d519fb1b7b
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/powerpc/pr103353.c
+@@ -0,0 +1,22 @@
++/* { dg-require-effective-target powerpc_altivec_ok } */
++/* If the default cpu type is power10 or later, MMA is enabled by default.
++   To keep the test point available all the time, this case specifies
++   -mdejagnu-cpu=power6 to make it be tested without MMA.  */
++/* { dg-options "-maltivec -mdejagnu-cpu=power6" } */
++
++/* Verify there is no ICE and don't check the error messages on MMA
++   requirement since they could be fragile and are not test points
++   of this case.  */
++/* { dg-excess-errors "pr103353" } */
++
++void
++foo (__vector_pair *dst, double *x)
++{
++  dst[0] = __builtin_vsx_lxvp (0, (__vector_pair *)(void *)x);
++}
++
++void
++bar (__vector_pair *src, double *x)
++{
++  __builtin_vsx_stxvp (src[0], 0, (__vector_pair *)(void *)x);
++}
 diff --git a/gcc/testsuite/gcc.target/powerpc/pr103627-1.c b/gcc/testsuite/gcc.target/powerpc/pr103627-1.c
 new file mode 100644
 index 00000000000..5cecf515e58
