@@ -100,7 +100,8 @@ François-Xavier Coudert (1):
 Fritz Reese (1):
       fortran: Fix conv of UNION constructors [PR105310]
 
-GCC Administrator (496):
+GCC Administrator (497):
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -5488,10 +5489,20 @@ index 0719d810258..da772b97257 100644
 -10.3.0
 +10.4.1
 diff --git a/gcc/ChangeLog b/gcc/ChangeLog
-index 3b1384e707f..d6aeabb9bf4 100644
+index 3b1384e707f..4bbadc51d41 100644
 --- a/gcc/ChangeLog
 +++ b/gcc/ChangeLog
-@@ -1,3 +1,3032 @@
+@@ -1,3 +1,3042 @@
++2022-08-24  Kewen Lin  <linkw@linux.ibm.com>
++
++	Backported from master:
++	2022-08-16  Kewen Lin  <linkw@linux.ibm.com>
++
++	PR target/103353
++	* config/rs6000/mma.md (define_expand movpoi): Move TARGET_MMA condition
++	check to preparation statements and add handlings for !TARGET_MMA.
++	(define_expand movpxi): Likewise.
++
 +2022-08-16  Segher Boessenkool  <segher@kernel.crashing.org>
 +
 +	Backported from master:
@@ -35846,10 +35857,18 @@ index f5a6d507e91..6b2c3e17346 100644
  DEFHOOKPOD
  (have_tls,
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index 2913065bf31..cbb1f32646e 100644
+index 2913065bf31..11d58f419ea 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,3359 @@
+@@ -1,3 +1,3367 @@
++2022-08-24  Kewen Lin  <linkw@linux.ibm.com>
++
++	Backported from master:
++	2022-08-16  Kewen Lin  <linkw@linux.ibm.com>
++
++	PR target/103353
++	* gcc.target/powerpc/pr103353.c: New test.
++
 +2022-08-17  Segher Boessenkool  <segher@kernel.crashing.org>
 +
 +	Backported from master:
