@@ -100,7 +100,11 @@ François-Xavier Coudert (1):
 Fritz Reese (1):
       fortran: Fix conv of UNION constructors [PR105310]
 
-GCC Administrator (512):
+GCC Administrator (516):
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -1102,7 +1106,7 @@ Jonathan Wakely (141):
 José Rui Faustino de Sousa (1):
       Fortran: Fix double function call with -fcheck=pointer [PR]
 
-Kewen Lin (9):
+Kewen Lin (10):
       ipa-fnsummary: Remove inconsistent bp_pack_value
       vect: Don't update inits for simd_lane_access DRs [PR102789]
       rs6000/doc: Rename future cpu with power10
@@ -1112,6 +1116,7 @@ Kewen Lin (9):
       testsuite: Skip pr105250.c for powerpc and s390 [PR105266]
       rs6000: Preserve REG_EH_REGION when replacing load/store [PR106091]
       rs6000: Adjust mov optabs for opaque modes [PR103353]
+      rs6000/test: Fix empty TU in some cases of effective targets [PR106345]
 
 Lewis Hyatt (1):
       c: Fix location for _Pragma tokens [PR97498]
@@ -55236,7 +55241,7 @@ index eea4bf383a7..a5d09c78106 100644
      # line numbers by converting them to "NN" form.
      set text [maybe-handle-nn-line-numbers $text]
 diff --git a/gcc/testsuite/lib/target-supports.exp b/gcc/testsuite/lib/target-supports.exp
-index bd62a0d9e79..31a531c7c6b 100644
+index bd62a0d9e79..2e6cf66e2a4 100644
 --- a/gcc/testsuite/lib/target-supports.exp
 +++ b/gcc/testsuite/lib/target-supports.exp
 @@ -4671,6 +4671,23 @@ proc check_effective_target_arm_cmse_ok {} {
@@ -55263,81 +55268,138 @@ index bd62a0d9e79..31a531c7c6b 100644
  # Return 1 if the target supports executing MVE instructions, 0
  # otherwise.
  
-@@ -5846,53 +5863,63 @@ proc check_effective_target_powerpc_p9modulo_ok { } {
+@@ -5846,53 +5863,81 @@ proc check_effective_target_powerpc_p9modulo_ok { } {
  # return 1 if our compiler returns the ARCH_PWR defines with the options
  # as provided by the test.
  proc check_effective_target_has_arch_pwr5 { } {
 -	return [check_no_compiler_messages arch_pwr5 assembly {
 +	return [check_no_compiler_messages_nocache arch_pwr5 assembly {
++		void test (void)
++		{
  		#ifndef _ARCH_PWR5
  		#error does not have power5 support.
  		#else
  		/* "has power5 support" */
  		#endif
 -	}]
++		}
 +	} [current_compiler_flags]]
  }
  
  proc check_effective_target_has_arch_pwr6 { } {
 -	return [check_no_compiler_messages arch_pwr6 assembly {
 +	return [check_no_compiler_messages_nocache arch_pwr6 assembly {
++		void test (void)
++		{
  		#ifndef _ARCH_PWR6
  		#error does not have power6 support.
  		#else
  		/* "has power6 support" */
  		#endif
 -	}]
++		}
 +	} [current_compiler_flags]]
  }
  
  proc check_effective_target_has_arch_pwr7 { } {
 -	return [check_no_compiler_messages arch_pwr7 assembly {
 +	return [check_no_compiler_messages_nocache arch_pwr7 assembly {
++		void test (void)
++		{
  		#ifndef _ARCH_PWR7
  		#error does not have power7 support.
  		#else
  		/* "has power7 support" */
  		#endif
 -	}]
++		}
 +	} [current_compiler_flags]]
  }
  
  proc check_effective_target_has_arch_pwr8 { } {
 -	return [check_no_compiler_messages arch_pwr8 assembly {
 +	return [check_no_compiler_messages_nocache arch_pwr8 assembly {
++		void test (void)
++		{
  		#ifndef _ARCH_PWR8
  		#error does not have power8 support.
  		#else
  		/* "has power8 support" */
  		#endif
 -	}]
++		}
 +	} [current_compiler_flags]]
  }
  
  proc check_effective_target_has_arch_pwr9 { } {
 -	return [check_no_compiler_messages arch_pwr9 assembly {
 +	return [check_no_compiler_messages_nocache arch_pwr9 assembly {
++		void test (void)
++		{
  		#ifndef _ARCH_PWR9
  		#error does not have power9 support.
  		#else
  		/* "has power9 support" */
  		#endif
 -	}]
++		}
 +	} [current_compiler_flags]]
 +}
 +
 +proc check_effective_target_has_arch_ppc64 { } {
 +	return [check_no_compiler_messages_nocache arch_ppc64 assembly {
++		void test (void)
++		{
 +		#ifndef _ARCH_PPC64
 +		#error does not have ppc64 support.
 +		#else
 +		/* "has ppc64 support" */
 +		#endif
++		}
 +	} [current_compiler_flags]]
  }
  
  # Return 1 if this is a PowerPC target supporting -mcpu=power10.
-@@ -10330,6 +10357,21 @@ proc check_effective_target_indirect_calls { } {
+@@ -5978,9 +6023,12 @@ proc check_effective_target_powerpc_float128_hw_ok { } {
+ 
+ proc check_effective_target_ppc_float128 { } {
+     return [check_no_compiler_messages_nocache ppc_float128 object {
++	void test (void)
++	{
+ 	#ifndef __FLOAT128__
+ 	  nope no good
+ 	#endif
++	}
+     }]
+ }
+ 
+@@ -5988,9 +6036,12 @@ proc check_effective_target_ppc_float128 { } {
+ 
+ proc check_effective_target_ppc_float128_insns { } {
+     return [check_no_compiler_messages_nocache ppc_float128 object {
++	void test (void)
++	{
+ 	#ifndef __FLOAT128_HARDWARE__
+ 	  nope no good
+ 	#endif
++	}
+     }]
+ }
+ 
+@@ -5998,9 +6049,12 @@ proc check_effective_target_ppc_float128_insns { } {
+ 
+ proc check_effective_target_powerpc_vsx { } {
+     return [check_no_compiler_messages_nocache powerpc_vsx object {
++	void test (void)
++	{
+ 	#ifndef __VSX__
+ 	  nope no vsx
+ 	#endif
++	}
+     }]
+ }
+ 
+@@ -10330,6 +10384,21 @@ proc check_effective_target_indirect_calls { } {
    return 1
  }
  
@@ -55359,7 +55421,7 @@ index bd62a0d9e79..31a531c7c6b 100644
  # Return 1 if we're able to assemble movdiri and movdir64b
  
  proc check_effective_target_movdir { } {
-@@ -10352,13 +10394,14 @@ proc check_effective_target_tune_cortex_a76 { } {
+@@ -10352,13 +10421,14 @@ proc check_effective_target_tune_cortex_a76 { } {
      return [check_configured_with "with-tune=cortex-a76"]
  }
  
