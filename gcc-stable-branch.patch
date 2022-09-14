@@ -100,7 +100,8 @@ François-Xavier Coudert (1):
 Fritz Reese (1):
       fortran: Fix conv of UNION constructors [PR105310]
 
-GCC Administrator (516):
+GCC Administrator (517):
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -1254,7 +1255,7 @@ Paul Thomas (11):
 Pavel I. Kryukov (1):
       libstdc++: Add self-merge check to std::forward_list::merge [PR103853]
 
-Peter Bergner (14):
+Peter Bergner (15):
       rs6000: MMA test case ICEs using -O3 [PR99842]
       rs6000: Add new __builtin_vsx_build_pair and __builtin_mma_build_acc built-ins
       rs6000: MMA builtin usage ICEs when used in a #pragma omp parallel and using -fopenmp [PR100777]
@@ -1269,6 +1270,7 @@ Peter Bergner (14):
       rs6000: Adjust -mdejagnu-cpu to filter out -mtune [PR106345]
       rs6000: Update testsuite to use -mdejagnu-cpu= and -mdejagnu-tune= options
       rs6000: Allow conversions of MMA pointer types [PR106017]
+      rs6000: Don't ICE when we disassemble an MMA variable [PR101322]
 
 Philippe Blain (1):
       libstdc++: Install libstdc++*-gdb.py more robustly [PR 99453]
@@ -1421,12 +1423,13 @@ Tamar Christina (2):
 Thomas Koenig (1):
       Do not replace variable op variable in I/O implied DO loop replacement.
 
-Thomas Schwinge (5):
+Thomas Schwinge (6):
       Add 'libgomp.oacc-c-c++-common/static-variable-1.c' [PR84991, PR84992, PR90779]
       Restore 'gcc.dg/pr78213.c' testing
       libstdc++: Avoid illegal argument to verbose in dg-test callback, continued
       Fix up 'gcc.dg/pr78213.c' for '--enable-checking=release' etc.
       Fix 'OMP_CLAUSE_TILE' operands handling in 'gcc/tree.c:walk_tree_1'
+      nvptx: Define (dummy) 'TARGET_PTX_6_0'
 
 Tim Adye (1):
       libstdc++: Optimize std::any_cast by replacing indirect call
@@ -1440,6 +1443,10 @@ Tobias Burnus (5):
       Fortran/OpenMP: Fix var-list expr parsing with array/dt
       OpenMP: Support complex/float in && and || reduction
       g++.dg/gomp/clause-3.C: Fix - missing in r12-438-g1580fc7 [PR100422]
+
+Tom de Vries (2):
+      [nvptx] Add bar.warp.sync
+      [nvptx] Add uniform_warp_check insn
 
 Uros Bizjak (9):
       i386: Fix atomic FP peepholes [PR100182]
@@ -5511,10 +5518,19 @@ index 0719d810258..da772b97257 100644
 -10.3.0
 +10.4.1
 diff --git a/gcc/ChangeLog b/gcc/ChangeLog
-index 3b1384e707f..7e2d8799b6d 100644
+index 3b1384e707f..bfb9419ac71 100644
 --- a/gcc/ChangeLog
 +++ b/gcc/ChangeLog
-@@ -1,3 +1,3058 @@
+@@ -1,3 +1,3067 @@
++2022-09-13  Peter Bergner  <bergner@linux.ibm.com>
++
++	Backported from master:
++	2022-09-01  Peter Bergner  <bergner@linux.ibm.com>
++
++	PR target/101322
++	* config/rs6000/rs6000-call.c (rs6000_gimple_fold_mma_builtin):
++	Enforce the use of a valid MMA pointer type.
++
 +2022-09-08  Sebastian Huber  <sebastian.huber@embedded-brains.de>
 +
 +	* config/rs6000/rtems.h (CPP_OS_DEFAULT_SPEC): Define __PPC_VRSAVE__ if
@@ -15991,7 +16007,7 @@ index 513fc5fe295..c1bd2332eb8 100644
    *update = build2 (COMPOUND_EXPR, void_type_node, *update,
  		    set_fcsr_update_call);
 diff --git a/gcc/config/nvptx/nvptx.c b/gcc/config/nvptx/nvptx.c
-index e3e84dfd4e4..243bf9da51a 100644
+index e3e84dfd4e4..0b67d544e48 100644
 --- a/gcc/config/nvptx/nvptx.c
 +++ b/gcc/config/nvptx/nvptx.c
 @@ -3571,9 +3571,9 @@ nvptx_sese_pseudo (basic_block me, bb_sese *sese, int depth, int dir,
@@ -16033,6 +16049,110 @@ index e3e84dfd4e4..243bf9da51a 100644
        sese->push (node_back);
      }
  
+@@ -4392,6 +4392,7 @@ nvptx_single (unsigned mask, basic_block from, basic_block to)
+   rtx_insn *neuter_start = NULL;
+   rtx_insn *worker_label = NULL, *vector_label = NULL;
+   rtx_insn *worker_jump = NULL, *vector_jump = NULL;
++  rtx_insn *warp_sync = NULL;
+   for (mode = GOMP_DIM_WORKER; mode <= GOMP_DIM_VECTOR; mode++)
+     if (GOMP_DIM_MASK (mode) & skip_mask)
+       {
+@@ -4424,11 +4425,29 @@ nvptx_single (unsigned mask, basic_block from, basic_block to)
+ 	if (tail_branch)
+ 	  {
+ 	    label_insn = emit_label_before (label, before);
++	    if (mode == GOMP_DIM_VECTOR)
++	      {
++		if (TARGET_PTX_6_0)
++		  warp_sync = emit_insn_after (gen_nvptx_warpsync (),
++					       label_insn);
++		else
++		  warp_sync = emit_insn_after (gen_nvptx_uniform_warp_check (),
++					       label_insn);
++	      }
+ 	    before = label_insn;
+ 	  }
+ 	else
+ 	  {
+ 	    label_insn = emit_label_after (label, tail);
++	    if (mode == GOMP_DIM_VECTOR)
++	      {
++		if (TARGET_PTX_6_0)
++		  warp_sync = emit_insn_after (gen_nvptx_warpsync (),
++					       label_insn);
++		else
++		  warp_sync = emit_insn_after (gen_nvptx_uniform_warp_check (),
++					       label_insn);
++	      }
+ 	    if ((mode == GOMP_DIM_VECTOR || mode == GOMP_DIM_WORKER)
+ 		&& CALL_P (tail) && find_reg_note (tail, REG_NORETURN, NULL))
+ 	      emit_insn_after (gen_exit (), label_insn);
+@@ -4496,6 +4515,8 @@ nvptx_single (unsigned mask, basic_block from, basic_block to)
+ 		 setp.ne.u32 %rcond,%rcondu32,0;
+ 	  */
+ 	  rtx_insn *label = PREV_INSN (tail);
++	  if (label == warp_sync)
++	    label = PREV_INSN (label);
+ 	  gcc_assert (label && LABEL_P (label));
+ 	  rtx tmp = gen_reg_rtx (BImode);
+ 	  emit_insn_before (gen_movbi (tmp, const0_rtx),
+diff --git a/gcc/config/nvptx/nvptx.h b/gcc/config/nvptx/nvptx.h
+index 6ebcc760771..ca1aa11d852 100644
+--- a/gcc/config/nvptx/nvptx.h
++++ b/gcc/config/nvptx/nvptx.h
+@@ -95,6 +95,9 @@
+ 
+ #define TARGET_SM35 (ptx_isa_option >= PTX_ISA_SM35)
+ 
++/* 'TARGET_PTX_*' not applicable before GCC 12.  */
++#define TARGET_PTX_6_0 false
++
+ /* Registers.  Since ptx is a virtual target, we just define a few
+    hard registers for special purposes and leave pseudos unallocated.
+    We have to have some available hard registers, to keep gcc setup
+diff --git a/gcc/config/nvptx/nvptx.md b/gcc/config/nvptx/nvptx.md
+index 089cdf04f2e..34062027312 100644
+--- a/gcc/config/nvptx/nvptx.md
++++ b/gcc/config/nvptx/nvptx.md
+@@ -55,6 +55,8 @@
+    UNSPECV_CAS
+    UNSPECV_XCHG
+    UNSPECV_BARSYNC
++   UNSPECV_WARPSYNC
++   UNSPECV_UNIFORM_WARP_CHECK
+    UNSPECV_MEMBAR
+    UNSPECV_MEMBAR_CTA
+    UNSPECV_DIM_POS
+@@ -1476,6 +1478,29 @@
+   }
+   [(set_attr "predicable" "false")])
+ 
++(define_insn "nvptx_warpsync"
++  [(unspec_volatile [(const_int 0)] UNSPECV_WARPSYNC)]
++  "TARGET_PTX_6_0"
++  "\\tbar.warp.sync\\t0xffffffff;"
++  [(set_attr "predicable" "false")])
++
++(define_insn "nvptx_uniform_warp_check"
++  [(unspec_volatile [(const_int 0)] UNSPECV_UNIFORM_WARP_CHECK)]
++  ""
++  {
++    output_asm_insn ("{", NULL);
++    output_asm_insn ("\\t"	 ".reg.b32"	   "\\t" "act;", NULL);
++    output_asm_insn ("\\t"	 "vote.ballot.b32" "\\t" "act,1;", NULL);
++    output_asm_insn ("\\t"	 ".reg.pred"	   "\\t" "uni;", NULL);
++    output_asm_insn ("\\t"	 "setp.eq.b32"	   "\\t" "uni,act,0xffffffff;",
++		     NULL);
++    output_asm_insn ("@ !uni\\t" "trap;", NULL);
++    output_asm_insn ("@ !uni\\t" "exit;", NULL);
++    output_asm_insn ("}", NULL);
++    return "";
++  }
++  [(set_attr "predicable" "false")])
++
+ (define_expand "memory_barrier"
+   [(set (match_dup 0)
+ 	(unspec_volatile:BLK [(match_dup 0)] UNSPECV_MEMBAR))]
 diff --git a/gcc/config/pa/pa.md b/gcc/config/pa/pa.md
 index 3a82fac85e3..1803c66cd21 100644
 --- a/gcc/config/pa/pa.md
@@ -19675,7 +19795,7 @@ index 1766d325bfb..b3ae6fea640 100644
  BU_MMA_5 (PMXVF32GER,	    "pmxvf32ger",       MISC, mma_pmxvf32ger)
  BU_MMA_5 (PMXVF64GER,	    "pmxvf64ger",       PAIR, mma_pmxvf64ger)
 diff --git a/gcc/config/rs6000/rs6000-call.c b/gcc/config/rs6000/rs6000-call.c
-index a112593878a..6a47389d564 100644
+index a112593878a..c910ee5c71a 100644
 --- a/gcc/config/rs6000/rs6000-call.c
 +++ b/gcc/config/rs6000/rs6000-call.c
 @@ -9434,12 +9434,23 @@ mma_expand_builtin (tree exp, rtx target, bool *expandedp)
@@ -19702,7 +19822,7 @@ index a112593878a..6a47389d564 100644
        pat = GEN_FCN (icode) (op[0], op[1], op[2], op[3], op[4]);
        break;
      case 6:
-@@ -10837,17 +10848,15 @@ rs6000_gimple_fold_mma_builtin (gimple_stmt_iterator *gsi)
+@@ -10837,17 +10848,20 @@ rs6000_gimple_fold_mma_builtin (gimple_stmt_iterator *gsi)
    gimple *new_call;
    tree new_decl;
  
@@ -19717,13 +19837,19 @@ index a112593878a..6a47389d564 100644
        push_gimplify_context (true);
        tree dst_ptr = gimple_call_arg (stmt, 0);
        tree src_ptr = gimple_call_arg (stmt, 1);
-       tree src_type = TREE_TYPE (src_ptr);
+-      tree src_type = TREE_TYPE (src_ptr);
 -      tree src = make_ssa_name (TREE_TYPE (src_type));
++      tree src_type = (fncode == MMA_BUILTIN_DISASSEMBLE_ACC)
++		      ? build_pointer_type (vector_quad_type_node)
++		      : build_pointer_type (vector_pair_type_node);
++      if (TREE_TYPE (src_ptr) != src_type)
++	src_ptr = build1 (NOP_EXPR, src_type, src_ptr);
++
 +      tree src = create_tmp_reg_or_ssa_name (TREE_TYPE (src_type));
        gimplify_assign (src, build_simple_mem_ref (src_ptr), &new_seq);
  
        /* If we are disassembling an accumulator/pair and our destination is
-@@ -10871,7 +10880,7 @@ rs6000_gimple_fold_mma_builtin (gimple_stmt_iterator *gsi)
+@@ -10871,7 +10885,7 @@ rs6000_gimple_fold_mma_builtin (gimple_stmt_iterator *gsi)
  	{
  	  new_decl = rs6000_builtin_decls[MMA_BUILTIN_XXMFACC_INTERNAL];
  	  new_call = gimple_build_call (new_decl, 1, src);
@@ -19732,7 +19858,7 @@ index a112593878a..6a47389d564 100644
  	  gimple_call_set_lhs (new_call, src);
  	  gimple_seq_add_stmt (&new_seq, new_call);
  	}
-@@ -10897,6 +10906,38 @@ rs6000_gimple_fold_mma_builtin (gimple_stmt_iterator *gsi)
+@@ -10897,6 +10911,38 @@ rs6000_gimple_fold_mma_builtin (gimple_stmt_iterator *gsi)
        gsi_replace_with_seq (gsi, new_seq, true);
        return true;
      }
@@ -19771,7 +19897,7 @@ index a112593878a..6a47389d564 100644
  
    /* Convert this built-in into an internal version that uses pass-by-value
       arguments.  The internal built-in follows immediately after this one.  */
-@@ -10909,7 +10950,7 @@ rs6000_gimple_fold_mma_builtin (gimple_stmt_iterator *gsi)
+@@ -10909,7 +10955,7 @@ rs6000_gimple_fold_mma_builtin (gimple_stmt_iterator *gsi)
      {
        /* This built-in has a pass-by-reference accumulator input, so load it
  	 into a temporary accumulator for use as a pass-by-value input.  */
@@ -19780,7 +19906,7 @@ index a112593878a..6a47389d564 100644
        for (unsigned i = 1; i < nopnds; i++)
  	op[i] = gimple_call_arg (stmt, i);
        gimplify_assign (op[0], build_simple_mem_ref (acc), &new_seq);
-@@ -10956,10 +10997,10 @@ rs6000_gimple_fold_mma_builtin (gimple_stmt_iterator *gsi)
+@@ -10956,10 +11002,10 @@ rs6000_gimple_fold_mma_builtin (gimple_stmt_iterator *gsi)
        gcc_unreachable ();
      }
  
@@ -19794,7 +19920,7 @@ index a112593878a..6a47389d564 100644
    gimple_call_set_lhs (new_call, lhs);
    gimple_seq_add_stmt (&new_seq, new_call);
    gimplify_assign (build_simple_mem_ref (acc), lhs, &new_seq);
-@@ -12544,23 +12585,17 @@ rs6000_init_builtins (void)
+@@ -12544,23 +12590,17 @@ rs6000_init_builtins (void)
      }
  }
  
@@ -19822,7 +19948,7 @@ index a112593878a..6a47389d564 100644
    return rs6000_builtin_decls[code];
  }
  
-@@ -13190,11 +13225,15 @@ mma_init_builtins (void)
+@@ -13190,11 +13230,15 @@ mma_init_builtins (void)
        if (gimple_func)
  	{
  	  gcc_assert (icode == CODE_FOR_nothing);
@@ -19840,7 +19966,7 @@ index a112593878a..6a47389d564 100644
  	}
        else
  	{
-@@ -13205,18 +13244,30 @@ mma_init_builtins (void)
+@@ -13205,18 +13249,30 @@ mma_init_builtins (void)
  	  gcc_assert (attr_args == insn_data[icode].n_operands - 1);
  	}
  
@@ -19875,7 +20001,7 @@ index a112593878a..6a47389d564 100644
        else
  	{
  	  /* This is a normal MMA built-in function.  */
-@@ -13226,8 +13277,10 @@ mma_init_builtins (void)
+@@ -13226,8 +13282,10 @@ mma_init_builtins (void)
  	      machine_mode mode = insn_data[icode].operand[j].mode;
  	      if (gimple_func && mode == PXImode)
  		op[nopnds++] = build_pointer_type (vector_quad_type_node);
@@ -19888,7 +20014,7 @@ index a112593878a..6a47389d564 100644
  		op[nopnds++] = build_pointer_type (vector_pair_type_node);
  	      else
  		/* MMA uses unsigned types.  */
-@@ -13582,6 +13635,16 @@ builtin_function_type (machine_mode mode_ret, machine_mode mode_arg0,
+@@ -13582,6 +13640,16 @@ builtin_function_type (machine_mode mode_ret, machine_mode mode_arg0,
        h.uns_p[2] = 1;
        break;
  
@@ -35956,10 +36082,35 @@ index f5a6d507e91..6b2c3e17346 100644
  DEFHOOKPOD
  (have_tls,
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index 2913065bf31..2467f0a4dcf 100644
+index 2913065bf31..a97ae4dad05 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,3375 @@
+@@ -1,3 +1,3400 @@
++2022-09-13  Peter Bergner  <bergner@linux.ibm.com>
++
++	Backported from master:
++	2022-09-01  Peter Bergner  <bergner@linux.ibm.com>
++
++	PR target/101322
++	* g++.target/powerpc/pr101322.C: New test.
++
++2022-09-13  Kewen Lin  <linkw@linux.ibm.com>
++
++	Backported from master:
++	2022-09-07  Kewen Lin  <linkw@linux.ibm.com>
++
++	PR testsuite/106345
++	* lib/target-supports.exp (check_effective_target_has_arch_pwr5): Add
++	a function definition to avoid pedwarn about empty translation unit.
++	(check_effective_target_has_arch_pwr6): Likewise.
++	(check_effective_target_has_arch_pwr7): Likewise.
++	(check_effective_target_has_arch_pwr8): Likewise.
++	(check_effective_target_has_arch_pwr9): Likewise.
++	(check_effective_target_has_arch_ppc64): Likewise.
++	(check_effective_target_ppc_float128): Likewise.
++	(check_effective_target_ppc_float128_insns): Likewise.
++	(check_effective_target_powerpc_vsx): Likewise.
++
 +2022-08-30  Peter Bergner  <bergner@linux.ibm.com>
 +
 +	Backported from master:
@@ -43736,6 +43887,29 @@ index 00000000000..e0865e3515b
 +v4ui f(unsigned int *array)
 +{
 +    return t1<1>(array+7);
++}
+diff --git a/gcc/testsuite/g++.target/powerpc/pr101322.C b/gcc/testsuite/g++.target/powerpc/pr101322.C
+new file mode 100644
+index 00000000000..43eaf3afcd4
+--- /dev/null
++++ b/gcc/testsuite/g++.target/powerpc/pr101322.C
+@@ -0,0 +1,17 @@
++/* PR target/101322 */
++/* { dg-require-effective-target power10_ok } */
++/* { dg-options "-O2 -mdejagnu-cpu=power10" } */
++
++/* Verify we don't ICE on the following test cases.  */
++
++void
++foo (char *resp, char *vpp)
++{
++  __builtin_vsx_disassemble_pair (resp, (__vector_pair *) vpp);
++}
++
++void
++bar (char *resp, char *vpp)
++{
++  __builtin_mma_disassemble_acc (resp, (__vector_quad *)vpp);
 +}
 diff --git a/gcc/testsuite/g++.target/powerpc/pr99842.C b/gcc/testsuite/g++.target/powerpc/pr99842.C
 new file mode 100644
