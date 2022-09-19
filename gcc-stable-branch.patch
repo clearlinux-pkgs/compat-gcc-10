@@ -100,7 +100,11 @@ François-Xavier Coudert (1):
 Fritz Reese (1):
       fortran: Fix conv of UNION constructors [PR105310]
 
-GCC Administrator (518):
+GCC Administrator (522):
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -622,6 +626,9 @@ GCC Administrator (518):
 
 Geng Qi (1):
       RISC-V: For '-march' and '-mabi' options, add 'Negative' property mentions itself.
+
+Georg-Johann Lay (1):
+      Fix PR target/99184: Wrong cast from double to 16-bit and 32-bit ints
 
 H.J. Lu (6):
       x86: Document -fcf-protection requires i686 or newer
@@ -59348,6 +59355,81 @@ index ba85e15739f..7d85d86f63c 100644
  2021-04-08  Release Manager
  
  	* GCC 10.3.0 released.
+diff --git a/libgcc/config/avr/libf7/libf7-asm.sx b/libgcc/config/avr/libf7/libf7-asm.sx
+index 7972557d31c..8df4756ef1b 100644
+--- a/libgcc/config/avr/libf7/libf7-asm.sx
++++ b/libgcc/config/avr/libf7/libf7-asm.sx
+@@ -601,9 +601,6 @@ DEFUN to_integer
+     tst     C6
+     brmi    .Lsaturate.T    ;   > INTxx_MAX  =>  saturate
+ 
+-    rcall   .Lround
+-    brmi    .Lsaturate.T    ;   > INTxx_MAX  =>  saturate
+-
+     brtc 9f                 ;   >= 0         =>  return
+     sbrc    Mask,   5
+     .global __negdi2
+@@ -658,30 +655,6 @@ DEFUN to_integer
+     .global __clr_8
+     XJMP    __clr_8
+ 
+-.Lround:
+-    ;; C6.7 is known to be 0 here.
+-    ;; Return N = 1 iff we have to saturate.
+-    cpi     Mask,   0xf
+-    breq .Lround16
+-    cpi     Mask,   0x1f
+-    breq .Lround32
+-
+-    ;; For now, no rounding in the 64-bit case.  This rounding
+-    ;; would have to be integrated into the right-shift.
+-    cln
+-    ret
+-
+-.Lround32:
+-    rol     C2
+-    adc     C3,     ZERO
+-    adc     C4,     ZERO
+-    rjmp 2f
+-
+-.Lround16:
+-    rol     C4
+-2:  adc     C5,     ZERO
+-    adc     C6,     ZERO
+-    ret
+ ENDF to_integer
+ #endif /* F7MOD_to_integer_ */
+ 
+@@ -725,29 +698,6 @@ DEFUN to_unsigned
+     clr     CA
+     F7call  lshrdi3
+     POP     r16
+-
+-    ;; Rounding
+-    ;; ??? C6.7 is known to be 0 here.
+-    cpi     Mask,   0xf
+-    breq .Lround16
+-    cpi     Mask,   0x1f
+-    breq .Lround32
+-
+-    ;; For now, no rounding in the 64-bit case.  This rounding
+-    ;; would have to be integrated into the right-shift.
+-    ret
+-
+-.Lround32:
+-    rol     C2
+-    adc     C3,     ZERO
+-    adc     C4,     ZERO
+-    rjmp 2f
+-
+-.Lround16:
+-    rol     C4
+-2:  adc     C5,     ZERO
+-    adc     C6,     ZERO
+-    brcs    .Lset_0xffff    ; Rounding overflow  =>  saturate
+     ret
+ 
+ .Lset_0xffff:
 diff --git a/libgcc/config/darwin-unwind.ver b/libgcc/config/darwin-unwind.ver
 new file mode 100644
 index 00000000000..fb74cb2c5d2
