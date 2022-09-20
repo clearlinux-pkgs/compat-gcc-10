@@ -100,7 +100,8 @@ François-Xavier Coudert (1):
 Fritz Reese (1):
       fortran: Fix conv of UNION constructors [PR105310]
 
-GCC Administrator (522):
+GCC Administrator (523):
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -59344,10 +59345,19 @@ index 3625a2590be..c1553d4e5d8 100644
  endif
 -endif
 diff --git a/libgcc/config/avr/libf7/ChangeLog b/libgcc/config/avr/libf7/ChangeLog
-index ba85e15739f..7d85d86f63c 100644
+index ba85e15739f..88e90a8dfaa 100644
 --- a/libgcc/config/avr/libf7/ChangeLog
 +++ b/libgcc/config/avr/libf7/ChangeLog
-@@ -1,3 +1,7 @@
+@@ -1,3 +1,16 @@
++2022-09-19  Georg-Johann Lay  <avr@gjlay.de>
++
++	Backported from master:
++	2022-09-19  Georg-Johann Lay  <avr@gjlay.de>
++
++	PR target/99184
++	* libf7-asm.sx (to_integer, to_unsigned): Don't round 16-bit
++	and 32-bit integers.
++
 +2022-06-28  Release Manager
 +
 +	* GCC 10.4.0 released.
