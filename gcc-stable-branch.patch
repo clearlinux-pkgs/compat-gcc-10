@@ -644,7 +644,7 @@ H.J. Lu (6):
 Hafiz Abid Qadeer (1):
       [OpenACC] Fix an ICE where a loop with GT condition is collapsed.
 
-Harald Anlauf (64):
+Harald Anlauf (65):
       PR fortran/63797 - Bogus ambiguous reference to 'sqrt'
       PR fortran/100154 - ICE in gfc_conv_procedure_call, at fortran/trans-expr.c:6131
       PR fortran/100274 - ICE in gfc_conv_procedure_call, at fortran/trans-expr.c:6131
@@ -709,6 +709,7 @@ Harald Anlauf (64):
       Fortran: improve error recovery for EXTENDS_TYPE_OF() [PR106121]
       Fortran: error recovery on invalid CLASS(), PARAMETER declarations [PR105243]
       Fortran: error recovery from calculation of storage size of a symbol [PR103504]
+      Fortran: catch NULL pointer dereferences while simplifying PACK [PR106857]
 
 Hongyu Wang (1):
       AVX512F: Add missing macro for mask(z?)_scalf_s[sd] [PR 105339]
@@ -31360,7 +31361,7 @@ index 7ca5f44f419..15c88b23927 100644
        gfc_error ("ELEMENTAL function %qs at %L must have a scalar "
  		 "result", sym->name, &sym->declared_at);
 diff --git a/gcc/fortran/simplify.c b/gcc/fortran/simplify.c
-index d28aa7a3c16..29d4c695302 100644
+index d28aa7a3c16..b3d73935771 100644
 --- a/gcc/fortran/simplify.c
 +++ b/gcc/fortran/simplify.c
 @@ -2077,6 +2077,9 @@ gfc_simplify_cshift (gfc_expr *array, gfc_expr *shift, gfc_expr *dim)
@@ -31566,6 +31567,15 @@ index d28aa7a3c16..29d4c695302 100644
    gcc_assert (!as
  	      || (as->type != AS_DEFERRED
  		  && array->expr_type == EXPR_VARIABLE
+@@ -6350,7 +6293,7 @@ gfc_simplify_pack (gfc_expr *array, gfc_expr *mask, gfc_expr *vector)
+       /* Copy only those elements of ARRAY to RESULT whose
+ 	 MASK equals .TRUE..  */
+       mask_ctor = gfc_constructor_first (mask->value.constructor);
+-      while (mask_ctor)
++      while (mask_ctor && array_ctor)
+ 	{
+ 	  if (mask_ctor->expr->value.logical)
+ 	    {
 @@ -6759,7 +6702,13 @@ gfc_simplify_reshape (gfc_expr *source, gfc_expr *shape_exp,
        gfc_extract_int (e, &shape[rank]);
  
@@ -54232,6 +54242,24 @@ index 00000000000..89004bf9aa7
 +end
 +
 +! { dg-final { scan-tree-dump-not "_gfortran_stop_numeric" "original" } }
+diff --git a/gcc/testsuite/gfortran.dg/pr106857.f90 b/gcc/testsuite/gfortran.dg/pr106857.f90
+new file mode 100644
+index 00000000000..4b0f86a75a6
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/pr106857.f90
+@@ -0,0 +1,12 @@
++! { dg-do compile }
++! PR fortran/106857 - ICE in gfc_simplify_pack
++! Contributed by G.Steinmetz
++
++program p
++  type t
++     integer :: n
++  end type
++  type(t), parameter :: a(2,2) = t(1)
++  type(t), parameter :: b(4) = reshape(a, [2])                          ! { dg-error "Different shape" }
++  type(t), parameter :: c(2) = pack(b, [.false.,.true.,.false.,.true.]) ! { dg-error "Different shape" }
++end
 diff --git a/gcc/testsuite/gfortran.dg/pr47614.f b/gcc/testsuite/gfortran.dg/pr47614.f
 index 500d210a2a4..d772eef257f 100644
 --- a/gcc/testsuite/gfortran.dg/pr47614.f
