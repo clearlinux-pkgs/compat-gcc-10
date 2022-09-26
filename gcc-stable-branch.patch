@@ -648,7 +648,7 @@ H.J. Lu (6):
 Hafiz Abid Qadeer (1):
       [OpenACC] Fix an ICE where a loop with GT condition is collapsed.
 
-Harald Anlauf (65):
+Harald Anlauf (66):
       PR fortran/63797 - Bogus ambiguous reference to 'sqrt'
       PR fortran/100154 - ICE in gfc_conv_procedure_call, at fortran/trans-expr.c:6131
       PR fortran/100274 - ICE in gfc_conv_procedure_call, at fortran/trans-expr.c:6131
@@ -714,6 +714,7 @@ Harald Anlauf (65):
       Fortran: error recovery on invalid CLASS(), PARAMETER declarations [PR105243]
       Fortran: error recovery from calculation of storage size of a symbol [PR103504]
       Fortran: catch NULL pointer dereferences while simplifying PACK [PR106857]
+      Fortran: error recovery on invalid ARRAY argument to FINDLOC [PR106986]
 
 Hongyu Wang (1):
       AVX512F: Add missing macro for mask(z?)_scalf_s[sd] [PR 105339]
@@ -31384,7 +31385,7 @@ index 7ca5f44f419..15c88b23927 100644
        gfc_error ("ELEMENTAL function %qs at %L must have a scalar "
  		 "result", sym->name, &sym->declared_at);
 diff --git a/gcc/fortran/simplify.c b/gcc/fortran/simplify.c
-index d28aa7a3c16..b3d73935771 100644
+index d28aa7a3c16..149353ef784 100644
 --- a/gcc/fortran/simplify.c
 +++ b/gcc/fortran/simplify.c
 @@ -2077,6 +2077,9 @@ gfc_simplify_cshift (gfc_expr *array, gfc_expr *shift, gfc_expr *dim)
@@ -31590,7 +31591,15 @@ index d28aa7a3c16..b3d73935771 100644
    gcc_assert (!as
  	      || (as->type != AS_DEFERRED
  		  && array->expr_type == EXPR_VARIABLE
-@@ -6350,7 +6293,7 @@ gfc_simplify_pack (gfc_expr *array, gfc_expr *mask, gfc_expr *vector)
+@@ -5814,6 +5757,7 @@ gfc_simplify_findloc (gfc_expr *array, gfc_expr *value, gfc_expr *dim,
+   bool back_val = false;
+ 
+   if (!is_constant_array_expr (array)
++      || array->shape == NULL
+       || !gfc_is_constant_expr (dim))
+     return NULL;
+ 
+@@ -6350,7 +6294,7 @@ gfc_simplify_pack (gfc_expr *array, gfc_expr *mask, gfc_expr *vector)
        /* Copy only those elements of ARRAY to RESULT whose
  	 MASK equals .TRUE..  */
        mask_ctor = gfc_constructor_first (mask->value.constructor);
@@ -31599,7 +31608,7 @@ index d28aa7a3c16..b3d73935771 100644
  	{
  	  if (mask_ctor->expr->value.logical)
  	    {
-@@ -6759,7 +6702,13 @@ gfc_simplify_reshape (gfc_expr *source, gfc_expr *shape_exp,
+@@ -6759,7 +6703,13 @@ gfc_simplify_reshape (gfc_expr *source, gfc_expr *shape_exp,
        gfc_extract_int (e, &shape[rank]);
  
        gcc_assert (rank >= 0 && rank < GFC_MAX_DIMENSIONS);
@@ -31614,7 +31623,7 @@ index d28aa7a3c16..b3d73935771 100644
  
        rank++;
      }
-@@ -7379,6 +7328,7 @@ simplify_size (gfc_expr *array, gfc_expr *dim, int k)
+@@ -7379,6 +7329,7 @@ simplify_size (gfc_expr *array, gfc_expr *dim, int k)
    mpz_t size;
    gfc_expr *return_value;
    int d;
@@ -31622,7 +31631,7 @@ index d28aa7a3c16..b3d73935771 100644
  
    /* For unary operations, the size of the result is given by the size
       of the operand.  For binary ones, it's the size of the first operand
-@@ -7435,6 +7385,10 @@ simplify_size (gfc_expr *array, gfc_expr *dim, int k)
+@@ -7435,6 +7386,10 @@ simplify_size (gfc_expr *array, gfc_expr *dim, int k)
        return simplified;
      }
  
@@ -31633,7 +31642,7 @@ index d28aa7a3c16..b3d73935771 100644
    if (dim == NULL)
      {
        if (!gfc_array_size (array, &size))
-@@ -8031,7 +7985,18 @@ gfc_simplify_transfer (gfc_expr *source, gfc_expr *mold, gfc_expr *size)
+@@ -8031,7 +7986,18 @@ gfc_simplify_transfer (gfc_expr *source, gfc_expr *mold, gfc_expr *size)
       set even for array expressions, in order to pass this information into
       gfc_target_interpret_expr.  */
    if (result->ts.type == BT_CHARACTER && gfc_is_constant_expr (mold_element))
@@ -31653,7 +31662,7 @@ index d28aa7a3c16..b3d73935771 100644
  
    /* Set the number of elements in the result, and determine its size.  */
  
-@@ -8071,6 +8036,9 @@ gfc_simplify_transpose (gfc_expr *matrix)
+@@ -8071,6 +8037,9 @@ gfc_simplify_transpose (gfc_expr *matrix)
  
    gcc_assert (matrix->rank == 2);
  
@@ -54342,6 +54351,20 @@ index 00000000000..4b0f86a75a6
 +  type(t), parameter :: a(2,2) = t(1)
 +  type(t), parameter :: b(4) = reshape(a, [2])                          ! { dg-error "Different shape" }
 +  type(t), parameter :: c(2) = pack(b, [.false.,.true.,.false.,.true.]) ! { dg-error "Different shape" }
++end
+diff --git a/gcc/testsuite/gfortran.dg/pr106986.f90 b/gcc/testsuite/gfortran.dg/pr106986.f90
+new file mode 100644
+index 00000000000..a309b25d181
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/pr106986.f90
+@@ -0,0 +1,8 @@
++! { dg-do compile }
++! PR fortran/106986 - ICE in simplify_findloc_nodim
++! Contributed by G.Steinmetz
++
++program p
++  integer, parameter :: a(:) = [1] ! { dg-error "deferred shape" }
++  print *, findloc (a, 1)
 +end
 diff --git a/gcc/testsuite/gfortran.dg/pr47614.f b/gcc/testsuite/gfortran.dg/pr47614.f
 index 500d210a2a4..d772eef257f 100644
