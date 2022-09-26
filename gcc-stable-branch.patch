@@ -100,7 +100,10 @@ François-Xavier Coudert (1):
 Fritz Reese (1):
       fortran: Fix conv of UNION constructors [PR105310]
 
-GCC Administrator (526):
+GCC Administrator (529):
+      Daily bump.
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -1117,8 +1120,9 @@ Jonathan Wakely (141):
       libstdc++: Avoid try-catch and O(N) size in std::list::merge for old ABI
       libstdc++: Add valid range checks to std::span constructors [PR98421]
 
-José Rui Faustino de Sousa (1):
+José Rui Faustino de Sousa (2):
       Fortran: Fix double function call with -fcheck=pointer [PR]
+      Fortran: Fix ICE with automatic reallocation [PR100245]
 
 Kewen Lin (10):
       ipa-fnsummary: Remove inconsistent bp_pack_value
@@ -29089,10 +29093,19 @@ index 6e635382fb4..9b65819463e 100644
  	    return build_zero_cst (TREE_TYPE (TREE_TYPE (arg)));
  	  return CONSTRUCTOR_ELT (arg, i)->value;
 diff --git a/gcc/fortran/ChangeLog b/gcc/fortran/ChangeLog
-index aa5932be872..0ac0056381d 100644
+index aa5932be872..c838e5d66ab 100644
 --- a/gcc/fortran/ChangeLog
 +++ b/gcc/fortran/ChangeLog
-@@ -1,3 +1,854 @@
+@@ -1,3 +1,863 @@
++2022-09-24  José Rui Faustino de Sousa  <jrfsousa@gmail.com>
++
++	Backported from master:
++	2022-09-03  José Rui Faustino de Sousa  <jrfsousa@gmail.com>
++
++	PR fortran/100245
++	* trans-expr.c (trans_class_assignment): Add if clause to handle
++	derived type in the LHS.
++
 +2022-09-22  Harald Anlauf  <anlauf@gmx.de>
 +
 +	Backported from master:
@@ -31802,7 +31815,7 @@ index 529417fa8aa..765c492520c 100644
  	      result = gfc_get_fake_result_decl (sym, 0);
  	      result = fold_build2_loc (input_location, MODIFY_EXPR,
 diff --git a/gcc/fortran/trans-expr.c b/gcc/fortran/trans-expr.c
-index c2321a9ff5f..5f4a464b0f9 100644
+index c2321a9ff5f..82341f65e28 100644
 --- a/gcc/fortran/trans-expr.c
 +++ b/gcc/fortran/trans-expr.c
 @@ -1648,8 +1648,9 @@ gfc_trans_class_init_assign (gfc_code *code)
@@ -31925,7 +31938,17 @@ index c2321a9ff5f..5f4a464b0f9 100644
                              gfc_component *un, gfc_expr *init)
  {
    gfc_constructor *ctor;
-@@ -11046,7 +11070,8 @@ gfc_trans_assignment_1 (gfc_expr * expr1, gfc_expr * expr2, bool init_flag,
+@@ -10880,6 +10904,9 @@ trans_class_assignment (stmtblock_t *block, gfc_expr *lhs, gfc_expr *rhs,
+       class_han = GFC_CLASS_TYPE_P (TREE_TYPE (lse->expr))
+ 	  ? gfc_class_data_get (lse->expr) : lse->expr;
+ 
++      if (!POINTER_TYPE_P (TREE_TYPE (class_han)))
++	class_han = gfc_build_addr_expr (NULL_TREE, class_han);
++
+       /* Allocate block.  */
+       gfc_init_block (&alloc);
+       gfc_allocate_using_malloc (&alloc, class_han, size, NULL_TREE);
+@@ -11046,7 +11073,8 @@ gfc_trans_assignment_1 (gfc_expr * expr1, gfc_expr * expr2, bool init_flag,
  		       || gfc_is_class_array_ref (expr1, NULL)
  		       || gfc_is_class_scalar_expr (expr1)
  		       || gfc_is_class_array_ref (expr2, NULL)
@@ -36179,10 +36202,18 @@ index f5a6d507e91..6b2c3e17346 100644
  DEFHOOKPOD
  (have_tls,
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index 2913065bf31..b807b652674 100644
+index 2913065bf31..a1328f0656d 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,3408 @@
+@@ -1,3 +1,3416 @@
++2022-09-24  José Rui Faustino de Sousa  <jrfsousa@gmail.com>
++
++	Backported from master:
++	2022-09-03  José Rui Faustino de Sousa  <jrfsousa@gmail.com>
++
++	PR fortran/100245
++	* gfortran.dg/PR100245.f90: New test.
++
 +2022-09-22  Harald Anlauf  <anlauf@gmx.de>
 +
 +	Backported from master:
@@ -52033,6 +52064,40 @@ index 00000000000..cb755ef2679
 +*/
 +
 +static foreach (a; Object) {}
+diff --git a/gcc/testsuite/gfortran.dg/PR100245.f90 b/gcc/testsuite/gfortran.dg/PR100245.f90
+new file mode 100644
+index 00000000000..07c1f7b3a1c
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/PR100245.f90
+@@ -0,0 +1,28 @@
++! { dg-do run }
++!
++! Test the fix for PR100245
++!
++
++program main_p
++
++  implicit none
++
++  type :: foo_t
++    integer :: a
++  end type foo_t
++
++  integer, parameter :: a = 42
++
++  class(foo_t), allocatable :: val
++  class(foo_t), allocatable :: rs1
++  type(foo_t),  allocatable :: rs2
++
++  allocate(val, source=foo_t(42))
++  if (val%a/=a) stop 1
++  rs1 = val
++  if (rs1%a/=a) stop 2
++  rs2 = val
++  if (rs2%a/=a) stop 3
++  deallocate(val, rs1, rs2)
++
++end program main_p
 diff --git a/gcc/testsuite/gfortran.dg/PR82376.f90 b/gcc/testsuite/gfortran.dg/PR82376.f90
 new file mode 100644
 index 00000000000..07143ab7e82
