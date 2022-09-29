@@ -100,7 +100,9 @@ François-Xavier Coudert (1):
 Fritz Reese (1):
       fortran: Fix conv of UNION constructors [PR105310]
 
-GCC Administrator (530):
+GCC Administrator (532):
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -1137,6 +1139,9 @@ Kewen Lin (10):
       rs6000: Preserve REG_EH_REGION when replacing load/store [PR106091]
       rs6000: Adjust mov optabs for opaque modes [PR103353]
       rs6000/test: Fix empty TU in some cases of effective targets [PR106345]
+
+Kyrylo Tkachov (1):
+      aarch64: Add support for -mcpu=neoverse-v2
 
 Lewis Hyatt (1):
       c: Fix location for _Pragma tokens [PR97498]
@@ -5538,10 +5543,16 @@ index 0719d810258..da772b97257 100644
 -10.3.0
 +10.4.1
 diff --git a/gcc/ChangeLog b/gcc/ChangeLog
-index 3b1384e707f..846570b2d35 100644
+index 3b1384e707f..fabb51e5db5 100644
 --- a/gcc/ChangeLog
 +++ b/gcc/ChangeLog
-@@ -1,3 +1,3102 @@
+@@ -1,3 +1,3108 @@
++2022-09-28  Kyrylo Tkachov  <kyrylo.tkachov@arm.com>
++
++	* config/aarch64/aarch64-cores.def (neoverse-v2): New entry.
++	* config/aarch64/aarch64-tune.md: Regenerate.
++	* doc/invoke.texi (AArch64 Options): Document neoverse-v2.
++
 +2022-09-21  Richard Sandiford  <richard.sandiford@arm.com>
 +
 +	Backported from master:
@@ -11168,10 +11179,10 @@ index 98026695fdb..d0035c735a3 100644
  		      emit_insn_after (bti_insn, label);
  		    }
 diff --git a/gcc/config/aarch64/aarch64-cores.def b/gcc/config/aarch64/aarch64-cores.def
-index 9c290292479..fc60e2ae1ac 100644
+index 9c290292479..6b817c61efe 100644
 --- a/gcc/config/aarch64/aarch64-cores.def
 +++ b/gcc/config/aarch64/aarch64-cores.def
-@@ -135,6 +135,7 @@ AARCH64_CORE("thunderx3t110",  thunderx3t110,  thunderx3t110, 8_3A,  AARCH64_FL_
+@@ -135,12 +135,14 @@ AARCH64_CORE("thunderx3t110",  thunderx3t110,  thunderx3t110, 8_3A,  AARCH64_FL_
  /* Arm ('A') cores.  */
  AARCH64_CORE("zeus", zeus, cortexa57, 8_4A,  AARCH64_FL_FOR_ARCH8_4 | AARCH64_FL_SVE | AARCH64_FL_RCPC | AARCH64_FL_I8MM | AARCH64_FL_BF16 | AARCH64_FL_F16 | AARCH64_FL_PROFILE | AARCH64_FL_SSBS | AARCH64_FL_RNG, neoversev1, 0x41, 0xd40, -1)
  AARCH64_CORE("neoverse-v1", neoversev1, cortexa57, 8_4A,  AARCH64_FL_FOR_ARCH8_4 | AARCH64_FL_SVE | AARCH64_FL_RCPC | AARCH64_FL_I8MM | AARCH64_FL_BF16 | AARCH64_FL_F16 | AARCH64_FL_PROFILE | AARCH64_FL_SSBS | AARCH64_FL_RNG, neoversev1, 0x41, 0xd40, -1)
@@ -11179,6 +11190,13 @@ index 9c290292479..fc60e2ae1ac 100644
  
  /* Qualcomm ('Q') cores. */
  AARCH64_CORE("saphira",     saphira,    saphira,    8_4A,  AARCH64_FL_FOR_ARCH8_4 | AARCH64_FL_CRYPTO | AARCH64_FL_RCPC, saphira,   0x51, 0xC01, -1)
+ 
+ /* Armv8.5-A Architecture Processors.  */
+ AARCH64_CORE("neoverse-n2", neoversen2, cortexa57, 8_5A, AARCH64_FL_FOR_ARCH8_5 | AARCH64_FL_I8MM | AARCH64_FL_BF16 | AARCH64_FL_F16 | AARCH64_FL_SVE | AARCH64_FL_SVE2 | AARCH64_FL_SVE2_BITPERM | AARCH64_FL_RNG | AARCH64_FL_MEMTAG, neoversen2, 0x41, 0xd49, -1)
++AARCH64_CORE("neoverse-v2", neoversev2, cortexa57, 8_5A, AARCH64_FL_FOR_ARCH8_5 | AARCH64_FL_I8MM | AARCH64_FL_BF16 | AARCH64_FL_F16 | AARCH64_FL_SVE | AARCH64_FL_SVE2 | AARCH64_FL_SVE2_BITPERM | AARCH64_FL_RNG | AARCH64_FL_MEMTAG, neoversev1, 0x41, 0xd4f, -1)
+ 
+ /* ARMv8-A big.LITTLE implementations.  */
+ 
 diff --git a/gcc/config/aarch64/aarch64-protos.h b/gcc/config/aarch64/aarch64-protos.h
 index bebd1b36228..61e2ad54f88 100644
 --- a/gcc/config/aarch64/aarch64-protos.h
@@ -11391,7 +11409,7 @@ index d17a7770690..bd51323e57d 100644
  ;; == Conversions
  ;; =========================================================================
 diff --git a/gcc/config/aarch64/aarch64-tune.md b/gcc/config/aarch64/aarch64-tune.md
-index 7fda2294b8a..aa68d67bdf4 100644
+index 7fda2294b8a..d116b0e5e97 100644
 --- a/gcc/config/aarch64/aarch64-tune.md
 +++ b/gcc/config/aarch64/aarch64-tune.md
 @@ -1,5 +1,5 @@
@@ -11399,7 +11417,7 @@ index 7fda2294b8a..aa68d67bdf4 100644
  ;; Generated automatically by gentune.sh from aarch64-cores.def
  (define_attr "tune"
 -	"cortexa34,cortexa35,cortexa53,cortexa57,cortexa72,cortexa73,thunderx,thunderxt88p1,thunderxt88,octeontx,octeontxt81,octeontxt83,thunderxt81,thunderxt83,emag,xgene1,falkor,qdf24xx,exynosm1,phecda,thunderx2t99p1,vulcan,thunderx2t99,cortexa55,cortexa75,cortexa76,cortexa76ae,cortexa77,cortexa65,cortexa65ae,ares,neoversen1,neoversee1,octeontx2,octeontx2t98,octeontx2t96,octeontx2t93,octeontx2f95,octeontx2f95n,octeontx2f95mm,a64fx,tsv110,thunderx3t110,zeus,neoversev1,saphira,neoversen2,cortexa57cortexa53,cortexa72cortexa53,cortexa73cortexa35,cortexa73cortexa53,cortexa75cortexa55,cortexa76cortexa55"
-+	"cortexa34,cortexa35,cortexa53,cortexa57,cortexa72,cortexa73,thunderx,thunderxt88p1,thunderxt88,octeontx,octeontxt81,octeontxt83,thunderxt81,thunderxt83,emag,xgene1,falkor,qdf24xx,exynosm1,phecda,thunderx2t99p1,vulcan,thunderx2t99,cortexa55,cortexa75,cortexa76,cortexa76ae,cortexa77,cortexa65,cortexa65ae,ares,neoversen1,neoversee1,octeontx2,octeontx2t98,octeontx2t96,octeontx2t93,octeontx2f95,octeontx2f95n,octeontx2f95mm,a64fx,tsv110,thunderx3t110,zeus,neoversev1,neoverse512tvb,saphira,neoversen2,cortexa57cortexa53,cortexa72cortexa53,cortexa73cortexa35,cortexa73cortexa53,cortexa75cortexa55,cortexa76cortexa55"
++	"cortexa34,cortexa35,cortexa53,cortexa57,cortexa72,cortexa73,thunderx,thunderxt88p1,thunderxt88,octeontx,octeontxt81,octeontxt83,thunderxt81,thunderxt83,emag,xgene1,falkor,qdf24xx,exynosm1,phecda,thunderx2t99p1,vulcan,thunderx2t99,cortexa55,cortexa75,cortexa76,cortexa76ae,cortexa77,cortexa65,cortexa65ae,ares,neoversen1,neoversee1,octeontx2,octeontx2t98,octeontx2t96,octeontx2t93,octeontx2f95,octeontx2f95n,octeontx2f95mm,a64fx,tsv110,thunderx3t110,zeus,neoversev1,neoverse512tvb,saphira,neoversen2,neoversev2,cortexa57cortexa53,cortexa72cortexa53,cortexa73cortexa35,cortexa73cortexa53,cortexa75cortexa55,cortexa76cortexa55"
  	(const (symbol_ref "((enum attr_tune) aarch64_tune)")))
 diff --git a/gcc/config/aarch64/aarch64.c b/gcc/config/aarch64/aarch64.c
 index 9b400c49ac6..67c2f1123b4 100644
@@ -28464,7 +28482,7 @@ index 7d98ec4190a..83f97cb2ce5 100644
  Specify that stabs debugging
  information should be used instead of whatever format the host normally
 diff --git a/gcc/doc/invoke.texi b/gcc/doc/invoke.texi
-index eabeec944e7..d7c787af226 100644
+index eabeec944e7..4f399d3eeac 100644
 --- a/gcc/doc/invoke.texi
 +++ b/gcc/doc/invoke.texi
 @@ -770,6 +770,7 @@ Objective-C and Objective-C++ Dialects}.
@@ -28521,7 +28539,7 @@ index eabeec944e7..d7c787af226 100644
 -@samp{neoverse-n1}, @samp{neoverse-n2}, @samp{neoverse-v1}, @samp{qdf24xx},
 +@samp{ares}, @samp{exynos-m1}, @samp{emag}, @samp{falkor},
 +@samp{neoverse-e1}, @samp{neoverse-n1}, @samp{neoverse-n2},
-+@samp{neoverse-v1}, @samp{neoverse-512tvb}, @samp{qdf24xx},
++@samp{neoverse-v1}, @samp{neoverse-v2}, @samp{neoverse-512tvb}, @samp{qdf24xx},
  @samp{saphira}, @samp{phecda}, @samp{xgene1}, @samp{vulcan}, @samp{octeontx},
  @samp{octeontx81},  @samp{octeontx83},
  @samp{octeontx2}, @samp{octeontx2t98}, @samp{octeontx2t96}
