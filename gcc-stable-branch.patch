@@ -100,7 +100,8 @@ François-Xavier Coudert (1):
 Fritz Reese (1):
       fortran: Fix conv of UNION constructors [PR105310]
 
-GCC Administrator (532):
+GCC Administrator (533):
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -651,7 +652,7 @@ H.J. Lu (6):
 Hafiz Abid Qadeer (1):
       [OpenACC] Fix an ICE where a loop with GT condition is collapsed.
 
-Harald Anlauf (66):
+Harald Anlauf (70):
       PR fortran/63797 - Bogus ambiguous reference to 'sqrt'
       PR fortran/100154 - ICE in gfc_conv_procedure_call, at fortran/trans-expr.c:6131
       PR fortran/100274 - ICE in gfc_conv_procedure_call, at fortran/trans-expr.c:6131
@@ -718,6 +719,10 @@ Harald Anlauf (66):
       Fortran: error recovery from calculation of storage size of a symbol [PR103504]
       Fortran: catch NULL pointer dereferences while simplifying PACK [PR106857]
       Fortran: error recovery on invalid ARRAY argument to FINDLOC [PR106986]
+      Fortran: improve error recovery while simplifying size of bad array [PR103694]
+      Fortran: NULL pointer dereference in invalid simplification [PR106985]
+      Fortran: fix ICE in generate_coarray_sym_init [PR82868]
+      Fortran: error recovery while simplifying intrinsic UNPACK [PR107054]
 
 Hongyu Wang (1):
       AVX512F: Add missing macro for mask(z?)_scalf_s[sd] [PR 105339]
@@ -30597,7 +30602,7 @@ index 9273976aa9a..e7b745b0cdb 100644
  	&& current_ts.u.derived->attr.unlimited_polymorphic)
      goto ok;
 diff --git a/gcc/fortran/expr.c b/gcc/fortran/expr.c
-index f946145eb1b..6d95120be50 100644
+index f946145eb1b..1129f5f3302 100644
 --- a/gcc/fortran/expr.c
 +++ b/gcc/fortran/expr.c
 @@ -990,6 +990,34 @@ done:
@@ -30711,7 +30716,17 @@ index f946145eb1b..6d95120be50 100644
  	  if (isym && isym->elemental)
  	    scalarize_intrinsic_call (p, false);
  	}
-@@ -2295,6 +2329,31 @@ gfc_simplify_expr (gfc_expr *p, int type)
+@@ -2243,7 +2277,8 @@ gfc_simplify_expr (gfc_expr *p, int type)
+ 	 initialization expression, or we want a subsection.  */
+       if (p->symtree->n.sym->attr.flavor == FL_PARAMETER
+ 	  && (gfc_init_expr_flag || p->ref
+-	      || p->symtree->n.sym->value->expr_type != EXPR_ARRAY))
++	      || (p->symtree->n.sym->value
++		  && p->symtree->n.sym->value->expr_type != EXPR_ARRAY)))
+ 	{
+ 	  if (!simplify_parameter_variable (p, type))
+ 	    return false;
+@@ -2295,6 +2330,31 @@ gfc_simplify_expr (gfc_expr *p, int type)
  }
  
  
@@ -30743,7 +30758,7 @@ index f946145eb1b..6d95120be50 100644
  /* Returns the type of an expression with the exception that iterator
     variables are automatically integers no matter what else they may
     be declared as.  */
-@@ -3809,6 +3868,9 @@ gfc_check_pointer_assign (gfc_expr *lvalue, gfc_expr *rvalue,
+@@ -3809,6 +3869,9 @@ gfc_check_pointer_assign (gfc_expr *lvalue, gfc_expr *rvalue,
    int proc_pointer;
    bool same_rank;
  
@@ -30753,7 +30768,7 @@ index f946145eb1b..6d95120be50 100644
    lhs_attr = gfc_expr_attr (lvalue);
    if (lvalue->ts.type == BT_UNKNOWN && !lhs_attr.proc_pointer)
      {
-@@ -4273,6 +4335,7 @@ gfc_check_pointer_assign (gfc_expr *lvalue, gfc_expr *rvalue,
+@@ -4273,6 +4336,7 @@ gfc_check_pointer_assign (gfc_expr *lvalue, gfc_expr *rvalue,
      {
        gfc_symbol *sym;
        bool target;
@@ -30761,7 +30776,7 @@ index f946145eb1b..6d95120be50 100644
  
        if (gfc_is_size_zero_array (rvalue))
  	{
-@@ -4302,6 +4365,39 @@ gfc_check_pointer_assign (gfc_expr *lvalue, gfc_expr *rvalue,
+@@ -4302,6 +4366,39 @@ gfc_check_pointer_assign (gfc_expr *lvalue, gfc_expr *rvalue,
  		     &rvalue->where);
  	  return false;
  	}
@@ -30801,7 +30816,7 @@ index f946145eb1b..6d95120be50 100644
      }
    else
      {
-@@ -5088,7 +5184,8 @@ gfc_get_variable_expr (gfc_symtree *var)
+@@ -5088,7 +5185,8 @@ gfc_get_variable_expr (gfc_symtree *var)
  
    if (var->n.sym->attr.flavor != FL_PROCEDURE
        && ((var->n.sym->as != NULL && var->n.sym->ts.type != BT_CLASS)
@@ -30811,7 +30826,7 @@ index f946145eb1b..6d95120be50 100644
  	       && CLASS_DATA (var->n.sym)->as)))
      {
        e->rank = var->n.sym->ts.type == BT_CLASS
-@@ -6168,10 +6265,13 @@ gfc_check_vardef_context (gfc_expr* e, bool pointer, bool alloc_obj,
+@@ -6168,10 +6266,13 @@ gfc_check_vardef_context (gfc_expr* e, bool pointer, bool alloc_obj,
      {
        if (ptr_component && ref->type == REF_COMPONENT)
  	check_intentin = false;
@@ -31413,7 +31428,7 @@ index 7ca5f44f419..15c88b23927 100644
        gfc_error ("ELEMENTAL function %qs at %L must have a scalar "
  		 "result", sym->name, &sym->declared_at);
 diff --git a/gcc/fortran/simplify.c b/gcc/fortran/simplify.c
-index d28aa7a3c16..149353ef784 100644
+index d28aa7a3c16..c1db8650b0d 100644
 --- a/gcc/fortran/simplify.c
 +++ b/gcc/fortran/simplify.c
 @@ -2077,6 +2077,9 @@ gfc_simplify_cshift (gfc_expr *array, gfc_expr *shift, gfc_expr *dim)
@@ -31659,18 +31674,19 @@ index d28aa7a3c16..149353ef784 100644
  
    /* For unary operations, the size of the result is given by the size
       of the operand.  For binary ones, it's the size of the first operand
-@@ -7435,6 +7386,10 @@ simplify_size (gfc_expr *array, gfc_expr *dim, int k)
+@@ -7435,6 +7386,11 @@ simplify_size (gfc_expr *array, gfc_expr *dim, int k)
        return simplified;
      }
  
 +  for (ref = array->ref; ref; ref = ref->next)
-+    if (ref->type == REF_ARRAY && ref->u.ar.as)
-+      gfc_resolve_array_spec (ref->u.ar.as, 0);
++    if (ref->type == REF_ARRAY && ref->u.ar.as
++	&& !gfc_resolve_array_spec (ref->u.ar.as, 0))
++      return NULL;
 +
    if (dim == NULL)
      {
        if (!gfc_array_size (array, &size))
-@@ -8031,7 +7986,18 @@ gfc_simplify_transfer (gfc_expr *source, gfc_expr *mold, gfc_expr *size)
+@@ -8031,7 +7987,18 @@ gfc_simplify_transfer (gfc_expr *source, gfc_expr *mold, gfc_expr *size)
       set even for array expressions, in order to pass this information into
       gfc_target_interpret_expr.  */
    if (result->ts.type == BT_CHARACTER && gfc_is_constant_expr (mold_element))
@@ -31690,7 +31706,7 @@ index d28aa7a3c16..149353ef784 100644
  
    /* Set the number of elements in the result, and determine its size.  */
  
-@@ -8071,6 +8037,9 @@ gfc_simplify_transpose (gfc_expr *matrix)
+@@ -8071,6 +8038,9 @@ gfc_simplify_transpose (gfc_expr *matrix)
  
    gcc_assert (matrix->rank == 2);
  
@@ -31700,6 +31716,26 @@ index d28aa7a3c16..149353ef784 100644
    result = gfc_get_array_expr (matrix->ts.type, matrix->ts.kind,
  			       &matrix->where);
    result->rank = 2;
+@@ -8338,9 +8308,16 @@ gfc_simplify_unpack (gfc_expr *vector, gfc_expr *mask, gfc_expr *field)
+     {
+       if (mask_ctor->expr->value.logical)
+ 	{
+-	  gcc_assert (vector_ctor);
+-	  e = gfc_copy_expr (vector_ctor->expr);
+-	  vector_ctor = gfc_constructor_next (vector_ctor);
++	  if (vector_ctor)
++	    {
++	      e = gfc_copy_expr (vector_ctor->expr);
++	      vector_ctor = gfc_constructor_next (vector_ctor);
++	    }
++	  else
++	    {
++	      gfc_free_expr (result);
++	      return NULL;
++	    }
+ 	}
+       else if (field->expr_type == EXPR_ARRAY)
+ 	e = gfc_copy_expr (field_ctor->expr);
 diff --git a/gcc/fortran/target-memory.c b/gcc/fortran/target-memory.c
 index 7f209913028..82d762cbd1f 100644
 --- a/gcc/fortran/target-memory.c
@@ -31790,7 +31826,7 @@ index 46fd1dda4c4..65f66b8cdd3 100644
  
        /* If we have an array section or are assigning make sure that
 diff --git a/gcc/fortran/trans-decl.c b/gcc/fortran/trans-decl.c
-index 529417fa8aa..765c492520c 100644
+index 529417fa8aa..bb72eb6731d 100644
 --- a/gcc/fortran/trans-decl.c
 +++ b/gcc/fortran/trans-decl.c
 @@ -737,6 +737,8 @@ gfc_finish_var_decl (tree decl, gfc_symbol * sym)
@@ -31842,7 +31878,15 @@ index 529417fa8aa..765c492520c 100644
      gfc_defer_symbol_init (sym);
  
    /* Dummy PDT 'len' parameters should be checked when they are explicit.  */
-@@ -6536,7 +6545,7 @@ gfc_generate_return (void)
+@@ -5596,6 +5605,7 @@ generate_coarray_sym_init (gfc_symbol *sym)
+ 
+   if (sym->attr.dummy || sym->attr.allocatable || !sym->attr.codimension
+       || sym->attr.use_assoc || !sym->attr.referenced
++      || sym->attr.associate_var
+       || sym->attr.select_type_temporary)
+     return;
+ 
+@@ -6536,7 +6546,7 @@ gfc_generate_return (void)
  	     NULL_TREE, and a 'return' is generated without a variable.
  	     The following generates a 'return __result_XXX' where XXX is
  	     the function name.  */
@@ -52329,6 +52373,27 @@ index 00000000000..9bfb2bfbafb
 +   end
 +end
 +
+diff --git a/gcc/testsuite/gfortran.dg/associate_26a.f90 b/gcc/testsuite/gfortran.dg/associate_26a.f90
+new file mode 100644
+index 00000000000..85aebebd4d8
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/associate_26a.f90
+@@ -0,0 +1,15 @@
++! { dg-do compile }
++! { dg-options "-fcoarray=lib" }
++!
++! Test the fix for PR78152 and the followup in PR82868
++!
++! Contributed by <physiker@toast2.net>
++!
++program co_assoc
++  implicit none
++  integer, parameter :: p = 5
++  real, allocatable :: a(:,:)[:,:]
++  allocate (a(p,p)[2,*])
++  associate (i => a(1:p, 1:p))
++  end associate
++end program co_assoc
 diff --git a/gcc/testsuite/gfortran.dg/associate_54.f90 b/gcc/testsuite/gfortran.dg/associate_54.f90
 new file mode 100644
 index 00000000000..003175a47fd
@@ -54292,6 +54357,23 @@ index 00000000000..9687a3cec9d
 +end
 +
 +! { dg-final { scan-tree-dump-not "_gfortran_stop_numeric" "original" } }
+diff --git a/gcc/testsuite/gfortran.dg/pr103694.f90 b/gcc/testsuite/gfortran.dg/pr103694.f90
+new file mode 100644
+index 00000000000..3ed8b2088da
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/pr103694.f90
+@@ -0,0 +1,11 @@
++! { dg-do compile }
++! PR fortran/103694 - ICE in gfc_conv_expr_op
++! Contributed by G.Steinmetz
++
++subroutine s
++  type t
++     integer :: a(2)
++  end type
++  type(t) :: x((0.)/0)
++  integer :: n = size(x(1)%a) ! { dg-error "does not reduce to a constant expression" }
++end
 diff --git a/gcc/testsuite/gfortran.dg/pr104313.f b/gcc/testsuite/gfortran.dg/pr104313.f
 new file mode 100644
 index 00000000000..89c8947cb0a
@@ -54388,6 +54470,20 @@ index 00000000000..4b0f86a75a6
 +  type(t), parameter :: b(4) = reshape(a, [2])                          ! { dg-error "Different shape" }
 +  type(t), parameter :: c(2) = pack(b, [.false.,.true.,.false.,.true.]) ! { dg-error "Different shape" }
 +end
+diff --git a/gcc/testsuite/gfortran.dg/pr106985.f90 b/gcc/testsuite/gfortran.dg/pr106985.f90
+new file mode 100644
+index 00000000000..f4ed92577a3
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/pr106985.f90
+@@ -0,0 +1,8 @@
++! { dg-do compile }
++! PR fortran/106985 - ICE in gfc_simplify_expr
++! Contributed by G.Steinmetz
++
++program p
++  integer, parameter :: a(2) = 1
++  integer, parameter :: b = a(2) + b ! { dg-error "before its definition is complete" }
++end
 diff --git a/gcc/testsuite/gfortran.dg/pr106986.f90 b/gcc/testsuite/gfortran.dg/pr106986.f90
 new file mode 100644
 index 00000000000..a309b25d181
@@ -54401,6 +54497,25 @@ index 00000000000..a309b25d181
 +program p
 +  integer, parameter :: a(:) = [1] ! { dg-error "deferred shape" }
 +  print *, findloc (a, 1)
++end
+diff --git a/gcc/testsuite/gfortran.dg/pr107054.f90 b/gcc/testsuite/gfortran.dg/pr107054.f90
+new file mode 100644
+index 00000000000..bbfe646beba
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/pr107054.f90
+@@ -0,0 +1,13 @@
++! { dg-do compile }
++! PR fortran/107054 - ICE in gfc_simplify_unpack
++! Contributed by G.Steinmetz
++
++program p
++  type t
++     integer :: n = 0
++  end type
++  type(t), parameter :: a(4) = t(2)
++  type(t), parameter :: b(4) = reshape(a,[2]) ! { dg-error "Different shape" }
++  type(t), parameter :: c(2) = pack(b,[.false.,.true.,.false.,.true.]) ! { dg-error "Different shape" }
++  type(t), parameter :: d(4) = unpack(c,[.false.,.true.,.false.,.true.],a)
 +end
 diff --git a/gcc/testsuite/gfortran.dg/pr47614.f b/gcc/testsuite/gfortran.dg/pr47614.f
 index 500d210a2a4..d772eef257f 100644
