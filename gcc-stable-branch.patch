@@ -100,7 +100,8 @@ François-Xavier Coudert (1):
 Fritz Reese (1):
       fortran: Fix conv of UNION constructors [PR105310]
 
-GCC Administrator (536):
+GCC Administrator (537):
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -1429,6 +1430,9 @@ Segher Boessenkool (10):
       rs6000: Disparage lfiwzx and similar
       rs6000: Add effective target has_arch_ppc64
       rs6000: Make the has_arch target selectors actually work
+
+Sergei Trofimovich (1):
+      gcc/config/t-i386: add build dependencies on i386-builtin-types.inc
 
 Simon Wright (1):
       Darwin: Truncate kernel-provided version to OS major for Darwin >= 20.
@@ -5552,10 +5556,20 @@ index 0719d810258..da772b97257 100644
 -10.3.0
 +10.4.1
 diff --git a/gcc/ChangeLog b/gcc/ChangeLog
-index 3b1384e707f..fabb51e5db5 100644
+index 3b1384e707f..87466f49785 100644
 --- a/gcc/ChangeLog
 +++ b/gcc/ChangeLog
-@@ -1,3 +1,3108 @@
+@@ -1,3 +1,3118 @@
++2022-10-03  Sergei Trofimovich  <siarheit@google.com>
++
++	Backported from master:
++	2022-10-03  Sergei Trofimovich  <siarheit@google.com>
++
++	PR target/107064
++	* config/i386/t-i386: Add build-time dependencies against
++	i386-builtin-types.inc to i386-builtins.o, i386-expand.o,
++	i386-features.o.
++
 +2022-09-28  Kyrylo Tkachov  <kyrylo.tkachov@arm.com>
 +
 +	* config/aarch64/aarch64-cores.def (neoverse-v2): New entry.
@@ -16037,6 +16051,23 @@ index 502d5673789..4e25670e05d 100644
    if (result != operands[0])
      emit_move_insn (operands[0], result);
    DONE;
+diff --git a/gcc/config/i386/t-i386 b/gcc/config/i386/t-i386
+index e5fb0618fe6..bcb19f891f2 100644
+--- a/gcc/config/i386/t-i386
++++ b/gcc/config/i386/t-i386
+@@ -61,7 +61,12 @@ i386-features.o: $(srcdir)/config/i386/i386-features.c
+ 	$(COMPILE) $<
+ 	$(POSTCOMPILE)
+ 
++# i386-builtin-types.inc is included into i386-builtins.h.
++# Below are direct users of i386-builtins.h:
+ i386.o: i386-builtin-types.inc
++i386-builtins.o: i386-builtin-types.inc
++i386-expand.o: i386-builtin-types.inc
++i386-features.o: i386-builtin-types.inc
+ 
+ i386-builtin-types.inc: s-i386-bt ; @true
+ s-i386-bt: $(srcdir)/config/i386/i386-builtin-types.awk \
 diff --git a/gcc/config/i386/winnt.c b/gcc/config/i386/winnt.c
 index 201f69e74c4..92510efa985 100644
 --- a/gcc/config/i386/winnt.c
