@@ -61,7 +61,7 @@ David Edelsohn (1):
 Diane Meirowitz (1):
       doc: improve -fsanitize=undefined description
 
-Eric Botcazou (26):
+Eric Botcazou (27):
       Fix thinko in libcpp preparation patch for modules
       Further increase the limit on the size of accepted Ada files
       Fix another -freorder-blocks-and-partition glitch with Windows SEH
@@ -88,6 +88,7 @@ Eric Botcazou (26):
       Properly enable -freorder-blocks-and-partition on 64-bit Windows
       Fix reverse scalar storage order issues in IPA-SRA
       Fix internal error with vectorization on SPARC
+      Fix PR target/107248
 
 François Dumont (3):
       libstdc++: Fix [multi]map/[multi]set move constructors noexcept qualification
@@ -100,7 +101,10 @@ François-Xavier Coudert (1):
 Fritz Reese (1):
       fortran: Fix conv of UNION constructors [PR105310]
 
-GCC Administrator (544):
+GCC Administrator (547):
+      Daily bump.
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -1323,7 +1327,7 @@ Philippe Blain (1):
 Piotr Kubaj (1):
       gcc/configure: Check for powerpc64le*-*-freebsd*
 
-Richard Biener (62):
+Richard Biener (67):
       Increment BASE-VER after release
       testsuite/100176 - fix struct-layout-1_generate.c compile
       middle-end/98726 - fix VECTOR_CST element access
@@ -1386,6 +1390,11 @@ Richard Biener (62):
       tree-optimization/105250 - adjust fold_convertible_p PR105140 fix
       add missing dg-require alias to gcc.dg/torture/pr100786.c
       tree-optimization/105726 - adjust array bound heuristic
+      tree-optimization/106112 - fix CSE from wider operation
+      tree-optimization/106131 - wrong code with FRE rewriting
+      middle-end/106331 - fix mem attributes for string op arguments
+      tree-optimization/106513 - fix mistake in bswap symbolic number shifts
+      lto/106540 - fix LTO tree input wrt dwarf2out_register_external_die
 
 Richard Earnshaw (13):
       arm: fix UB due to missing mode check [PR100311]
@@ -9460,10 +9469,45 @@ index 26730eef424..3800d632607 100644
  
  	* GCC 10.3.0 released.
 diff --git a/gcc/builtins.c b/gcc/builtins.c
-index 10b6fd3bb4d..d89ce37c496 100644
+index 10b6fd3bb4d..978909815de 100644
 --- a/gcc/builtins.c
 +++ b/gcc/builtins.c
-@@ -2927,16 +2927,28 @@ expand_builtin_int_roundingfn_2 (tree exp, rtx target)
+@@ -1471,7 +1471,7 @@ expand_builtin_prefetch (tree exp)
+ static rtx
+ get_memory_rtx (tree exp, tree len)
+ {
+-  tree orig_exp = exp;
++  tree orig_exp = exp, base;
+   rtx addr, mem;
+ 
+   /* When EXP is not resolved SAVE_EXPR, MEM_ATTRS can be still derived
+@@ -1502,10 +1502,11 @@ get_memory_rtx (tree exp, tree len)
+   if (is_gimple_mem_ref_addr (TREE_OPERAND (exp, 0)))
+     set_mem_attributes (mem, exp, 0);
+   else if (TREE_CODE (TREE_OPERAND (exp, 0)) == ADDR_EXPR
+-	   && (exp = get_base_address (TREE_OPERAND (TREE_OPERAND (exp, 0),
+-						     0))))
++	   && (base = get_base_address (TREE_OPERAND (TREE_OPERAND (exp, 0),
++						      0))))
+     {
+-      exp = build_fold_addr_expr (exp);
++      unsigned int align = get_pointer_alignment (TREE_OPERAND (exp, 0));
++      exp = build_fold_addr_expr (base);
+       exp = fold_build2 (MEM_REF,
+ 			 build_array_type (char_type_node,
+ 					   build_range_type (sizetype,
+@@ -1513,6 +1514,10 @@ get_memory_rtx (tree exp, tree len)
+ 							     NULL)),
+ 			 exp, build_int_cst (ptr_type_node, 0));
+       set_mem_attributes (mem, exp, 0);
++      /* Since we stripped parts make sure the offset is unknown and the
++	 alignment is computed from the original address.  */
++      clear_mem_offset (mem);
++      set_mem_align (mem, align);
+     }
+   set_mem_alias_set (mem, 0);
+   return mem;
+@@ -2927,16 +2932,28 @@ expand_builtin_int_roundingfn_2 (tree exp, rtx target)
  	 BUILT_IN_IROUND and if __builtin_iround is called directly, emit
  	 a call to lround in the hope that the target provides at least some
  	 C99 functions.  This should result in the best user experience for
@@ -22607,7 +22651,7 @@ index 5bda749ee38..59ad06e491f 100644
    PROCESSOR_SPARCLITE,
    PROCESSOR_F930,
 diff --git a/gcc/config/sparc/sparc.c b/gcc/config/sparc/sparc.c
-index d0843102148..7cfa9f80676 100644
+index d0843102148..d643c3e618d 100644
 --- a/gcc/config/sparc/sparc.c
 +++ b/gcc/config/sparc/sparc.c
 @@ -269,6 +269,31 @@ struct processor_costs leon3_costs = {
@@ -22859,6 +22903,71 @@ index d0843102148..7cfa9f80676 100644
      case PROCESSOR_SPARCLET:
      case PROCESSOR_TSC701:
        sparc_costs = &sparclet_costs;
+@@ -6032,6 +6118,9 @@ sparc_expand_prologue (void)
+ 	}
+ 
+       RTX_FRAME_RELATED_P (insn) = 1;
++
++      /* Ensure no memory access is done before the frame is established.  */
++      emit_insn (gen_frame_blockage ());
+     }
+   else
+     {
+@@ -6046,13 +6135,7 @@ sparc_expand_prologue (void)
+ 	  /* %sp is not the CFA register anymore.  */
+ 	  emit_insn (gen_stack_pointer_inc (GEN_INT (4096 - size)));
+ 
+-	  /* Make sure no %fp-based store is issued until after the frame is
+-	     established.  The offset between the frame pointer and the stack
+-	     pointer is calculated relative to the value of the stack pointer
+-	     at the end of the function prologue, and moving instructions that
+-	     access the stack via the frame pointer between the instructions
+-	     that decrement the stack pointer could result in accessing the
+-	     register window save area, which is volatile.  */
++	  /* Likewise.  */
+ 	  emit_insn (gen_frame_blockage ());
+ 	}
+       else
+@@ -6148,8 +6231,8 @@ sparc_flat_expand_prologue (void)
+ 	}
+       RTX_FRAME_RELATED_P (insn) = 1;
+ 
+-      /* Ensure nothing is scheduled until after the frame is established.  */
+-      emit_insn (gen_blockage ());
++      /* Ensure no memory access is done before the frame is established.  */
++      emit_insn (gen_frame_blockage ());
+ 
+       if (frame_pointer_needed)
+ 	{
+@@ -6236,6 +6319,9 @@ sparc_expand_epilogue (bool for_eh)
+     ; /* do nothing.  */
+   else if (sparc_leaf_function_p)
+     {
++      /* Ensure no memory access is done after the frame is destroyed.  */
++      emit_insn (gen_frame_blockage ());
++
+       if (size <= 4096)
+ 	emit_insn (gen_stack_pointer_inc (GEN_INT (size)));
+       else if (size <= 8192)
+@@ -6286,15 +6372,15 @@ sparc_flat_expand_epilogue (bool for_eh)
+     ; /* do nothing.  */
+   else if (frame_pointer_needed)
+     {
+-      /* Make sure the frame is destroyed after everything else is done.  */
+-      emit_insn (gen_blockage ());
++      /* Ensure no memory access is done after the frame is destroyed.  */
++      emit_insn (gen_frame_blockage ());
+ 
+       emit_move_insn (stack_pointer_rtx, gen_rtx_REG (Pmode, 1));
+     }
+   else
+     {
+       /* Likewise.  */
+-      emit_insn (gen_blockage ());
++      emit_insn (gen_frame_blockage ());
+ 
+       if (size <= 4096)
+ 	emit_insn (gen_stack_pointer_inc (GEN_INT (size)));
 @@ -8866,8 +8952,20 @@ epilogue_renumber (register rtx *where, int test)
        if (REGNO (*where) >= 8 && REGNO (*where) < 24)      /* oX or lX */
  	return 1;
@@ -32817,9 +32926,18 @@ index 9f8ce5575a2..8389a58b00d 100644
  		  set_ssa_range_info (vrs[i].first, vrs[i].second);
  		  maybe_set_nonzero_bits (pred_e, vrs[i].first);
 diff --git a/gcc/gimple-ssa-store-merging.c b/gcc/gimple-ssa-store-merging.c
-index 1678e439e8f..96f46b706be 100644
+index 1678e439e8f..3eeb73ffc9e 100644
 --- a/gcc/gimple-ssa-store-merging.c
 +++ b/gcc/gimple-ssa-store-merging.c
+@@ -263,7 +263,7 @@ do_shift_rotate (enum tree_code code,
+ 		 int count)
+ {
+   int i, size = TYPE_PRECISION (n->type) / BITS_PER_UNIT;
+-  unsigned head_marker;
++  uint64_t head_marker;
+ 
+   if (count < 0
+       || count >= TYPE_PRECISION (n->type)
 @@ -822,12 +822,18 @@ find_bswap_or_nop_finalize (struct symbolic_number *n, uint64_t *cmpxchg,
  	{
  	  mask = ((uint64_t) 1 << (rsize * BITS_PER_MARKER)) - 1;
@@ -35105,6 +35223,27 @@ index 3543ce3993c..2d40471a4a1 100644
    
    timevar_push (TV_LRA);
  
+diff --git a/gcc/lto-streamer-in.c b/gcc/lto-streamer-in.c
+index d5f581439fb..b0f8407a1d7 100644
+--- a/gcc/lto-streamer-in.c
++++ b/gcc/lto-streamer-in.c
+@@ -1689,11 +1689,14 @@ lto_read_tree_1 (class lto_input_block *ib, class data_in *data_in, tree expr)
+   /* Read all the pointer fields in EXPR.  */
+   streamer_read_tree_body (ib, data_in, expr);
+ 
+-  /* Read any LTO-specific data not read by the tree streamer.  */
++  /* Read any LTO-specific data not read by the tree streamer.  Do not use
++     stream_read_tree here since that flushes the dref_queue in mids of
++     SCC reading.  */
+   if (DECL_P (expr)
+       && TREE_CODE (expr) != FUNCTION_DECL
+       && TREE_CODE (expr) != TRANSLATION_UNIT_DECL)
+-    DECL_INITIAL (expr) = stream_read_tree (ib, data_in);
++    DECL_INITIAL (expr)
++      = lto_input_tree_1 (ib, data_in, streamer_read_record_start (ib), 0);
+ 
+   /* Stream references to early generated DIEs.  Keep in sync with the
+      trees handled in dwarf2out_register_external_die.  */
 diff --git a/gcc/lto-streamer.h b/gcc/lto-streamer.h
 index 03440f0254c..7ac3b63fd33 100644
 --- a/gcc/lto-streamer.h
@@ -44240,6 +44379,46 @@ index 00000000000..a3870772cfe
 +  if (d != 1)
 +    __builtin_abort ();
 +}
+diff --git a/gcc/testsuite/g++.dg/torture/pr106131.C b/gcc/testsuite/g++.dg/torture/pr106131.C
+new file mode 100644
+index 00000000000..e110f4a8fe6
+--- /dev/null
++++ b/gcc/testsuite/g++.dg/torture/pr106131.C
+@@ -0,0 +1,34 @@
++// { dg-do run { target c++11 } }
++
++struct Pair {
++    int a, b;
++    Pair(const Pair &) = default;
++    Pair(int _a, int _b) : a(_a), b(_b) {}
++    Pair &operator=(const Pair &z) {
++	a = z.a;
++	b = z.b;
++	return *this;
++    }
++};
++
++const int &max(const int &a, const int &b)
++{
++  return a < b ? b : a;
++}
++
++int foo(Pair x, Pair y)
++{
++  return max(x.b, y.b);
++}
++
++int main()
++{
++  auto f = new Pair[3] {{0, -11}, {0, -8}, {0, 2}};
++  for (int i = 0; i < 1; i++) {
++      f[i] = f[0];
++      if(i == 0)
++	f[i] = f[2];
++      if (foo(f[i], f[1]) != 2)
++	__builtin_abort();
++  }
++}
 diff --git a/gcc/testsuite/g++.dg/ubsan/pr101210.C b/gcc/testsuite/g++.dg/ubsan/pr101210.C
 new file mode 100644
 index 00000000000..955b8203f44
@@ -47533,6 +47712,60 @@ index 00000000000..91f92afc163
 +{
 +  int x[3] = {0, 1, 4};
 +  next_set(x, 5, 3);
++  return 0;
++}
+diff --git a/gcc/testsuite/gcc.dg/torture/pr106112.c b/gcc/testsuite/gcc.dg/torture/pr106112.c
+new file mode 100644
+index 00000000000..bd7f63c0935
+--- /dev/null
++++ b/gcc/testsuite/gcc.dg/torture/pr106112.c
+@@ -0,0 +1,16 @@
++/* { dg-do run } */
++
++__INT32_TYPE__ a = 5, b, c, d;
++__UINT64_TYPE__ e = 20862985922;
++int main()
++{
++  __UINT32_TYPE__ f = 4294967292;
++  e = e | f;
++  c = -1 % ((~f ^ 4294967292) - (e - d));
++  b = ~-~e % ~-d;
++  if (b)
++    a = 0;
++  if (a < 1)
++    __builtin_abort();
++  return 0;
++}
+diff --git a/gcc/testsuite/gcc.dg/torture/pr106513.c b/gcc/testsuite/gcc.dg/torture/pr106513.c
+new file mode 100644
+index 00000000000..aa4f4d513d7
+--- /dev/null
++++ b/gcc/testsuite/gcc.dg/torture/pr106513.c
+@@ -0,0 +1,26 @@
++/* { dg-do run } */
++
++typedef __INT64_TYPE__ int64_t;
++
++__attribute__((noinline)) int64_t
++swap64 (int64_t n)
++{
++  return (((n & (((int64_t) 0xff) )) << 56) |
++          ((n & (((int64_t) 0xff) << 8)) << 40) |
++          ((n & (((int64_t) 0xff) << 16)) << 24) |
++          ((n & (((int64_t) 0xff) << 24)) << 8) |
++          ((n & (((int64_t) 0xff) << 32)) >> 8) |
++          ((n & (((int64_t) 0xff) << 40)) >> 24) |
++          ((n & (((int64_t) 0xff) << 48)) >> 40) |
++          ((n & ((int64_t)(0xffull << 56))) >> 56));
++}
++
++int main (void)
++{
++  volatile int64_t n = 0x8000000000000000ll;
++
++  if (swap64(n) != 0xffffffffffffff80ll)
++    __builtin_abort ();
++
 +  return 0;
 +}
 diff --git a/gcc/testsuite/gcc.dg/torture/pr96513.c b/gcc/testsuite/gcc.dg/torture/pr96513.c
@@ -55100,6 +55333,19 @@ index 00000000000..89004bf9aa7
 +end
 +
 +! { dg-final { scan-tree-dump-not "_gfortran_stop_numeric" "original" } }
+diff --git a/gcc/testsuite/gfortran.dg/pr106331.f90 b/gcc/testsuite/gfortran.dg/pr106331.f90
+new file mode 100644
+index 00000000000..3873863be48
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/pr106331.f90
+@@ -0,0 +1,7 @@
++! { dg-do run }
++! { dg-options "-Og" }
++
++PROGRAM main
++  CHARACTER(LEN=24) :: a(2)
++  a = ''
++END PROGRAM
 diff --git a/gcc/testsuite/gfortran.dg/pr106857.f90 b/gcc/testsuite/gfortran.dg/pr106857.f90
 new file mode 100644
 index 00000000000..4b0f86a75a6
@@ -57972,7 +58218,7 @@ index af8df8563bc..3a4d7e046c5 100644
  	    }
  	}
 diff --git a/gcc/tree-ssa-sccvn.c b/gcc/tree-ssa-sccvn.c
-index 926b4a976ae..e0cde2359cd 100644
+index 926b4a976ae..18263bd8c9a 100644
 --- a/gcc/tree-ssa-sccvn.c
 +++ b/gcc/tree-ssa-sccvn.c
 @@ -492,7 +492,7 @@ vuse_ssa_val (tree x)
@@ -58163,7 +58409,41 @@ index 926b4a976ae..e0cde2359cd 100644
  	   && !contains_storage_order_barrier_p (vr->operands)
  	   && gimple_assign_single_p (def_stmt)
  	   && TREE_CODE (gimple_assign_rhs1 (def_stmt)) == SSA_NAME)
-@@ -3167,7 +3195,7 @@ vn_reference_lookup_3 (ao_ref *ref, tree vuse, void *data_,
+@@ -3108,12 +3136,12 @@ vn_reference_lookup_3 (ao_ref *ref, tree vuse, void *data_,
+       poly_int64 extra_off = 0;
+       if (j == 0 && i >= 0
+ 	  && lhs_ops[0].opcode == MEM_REF
+-	  && maybe_ne (lhs_ops[0].off, -1))
++	  && known_ne (lhs_ops[0].off, -1))
+ 	{
+ 	  if (known_eq (lhs_ops[0].off, vr->operands[i].off))
+ 	    i--, j--;
+ 	  else if (vr->operands[i].opcode == MEM_REF
+-		   && maybe_ne (vr->operands[i].off, -1))
++		   && known_ne (vr->operands[i].off, -1))
+ 	    {
+ 	      extra_off = vr->operands[i].off - lhs_ops[0].off;
+ 	      i--, j--;
+@@ -3140,6 +3168,7 @@ vn_reference_lookup_3 (ao_ref *ref, tree vuse, void *data_,
+       copy_reference_ops_from_ref (rhs1, &rhs);
+ 
+       /* Apply an extra offset to the inner MEM_REF of the RHS.  */
++      bool force_no_tbaa = false;
+       if (maybe_ne (extra_off, 0))
+ 	{
+ 	  if (rhs.length () < 2)
+@@ -3152,6 +3181,10 @@ vn_reference_lookup_3 (ao_ref *ref, tree vuse, void *data_,
+ 	  rhs[ix].op0 = int_const_binop (PLUS_EXPR, rhs[ix].op0,
+ 					 build_int_cst (TREE_TYPE (rhs[ix].op0),
+ 							extra_off));
++	  /* When we have offsetted the RHS, reading only parts of it,
++	     we can no longer use the original TBAA type, force alias-set
++	     zero.  */
++	  force_no_tbaa = true;
+ 	}
+ 
+       /* Save the operands since we need to use the original ones for
+@@ -3167,7 +3200,7 @@ vn_reference_lookup_3 (ao_ref *ref, tree vuse, void *data_,
  	vr->operands.truncate (i + 1 + rhs.length ());
        FOR_EACH_VEC_ELT (rhs, j, vro)
  	vr->operands[i + 1 + j] = *vro;
@@ -58172,7 +58452,21 @@ index 926b4a976ae..e0cde2359cd 100644
        if (old == shared_lookup_references)
  	shared_lookup_references = vr->operands;
        vr->hashcode = vn_reference_compute_hash (vr);
-@@ -3460,8 +3488,9 @@ vn_reference_lookup_pieces (tree vuse, alias_set_type set,
+@@ -3204,8 +3237,11 @@ vn_reference_lookup_3 (ao_ref *ref, tree vuse, void *data_,
+       /* Adjust *ref from the new operands.  */
+       ao_ref rhs1_ref;
+       ao_ref_init (&rhs1_ref, rhs1);
+-      if (!ao_ref_init_from_vn_reference (&r, ao_ref_alias_set (&rhs1_ref),
+-					  ao_ref_base_alias_set (&rhs1_ref),
++      if (!ao_ref_init_from_vn_reference (&r,
++					  force_no_tbaa ? 0
++					  : ao_ref_alias_set (&rhs1_ref),
++					  force_no_tbaa ? 0
++					  : ao_ref_base_alias_set (&rhs1_ref),
+ 					  vr->type, vr->operands))
+ 	return (void *)-1;
+       /* This can happen with bitfields.  */
+@@ -3460,8 +3496,9 @@ vn_reference_lookup_pieces (tree vuse, alias_set_type set,
  	  operands.address (),
  	  sizeof (vn_reference_op_s)
  	  * operands.length ());
@@ -58184,7 +58478,7 @@ index 926b4a976ae..e0cde2359cd 100644
    vr1.type = type;
    vr1.set = set;
    vr1.base_set = base_set;
-@@ -3477,13 +3506,31 @@ vn_reference_lookup_pieces (tree vuse, alias_set_type set,
+@@ -3477,13 +3514,31 @@ vn_reference_lookup_pieces (tree vuse, alias_set_type set,
        ao_ref r;
        unsigned limit = param_sccvn_max_alias_queries_per_access;
        vn_walk_cb_data data (&vr1, NULL_TREE, NULL, kind, true, NULL_TREE);
@@ -58217,7 +58511,7 @@ index 926b4a976ae..e0cde2359cd 100644
        gcc_checking_assert (vr1.operands == shared_lookup_references);
      }
  
-@@ -3512,14 +3559,14 @@ vn_reference_lookup (tree op, tree vuse, vn_lookup_kind kind,
+@@ -3512,14 +3567,14 @@ vn_reference_lookup (tree op, tree vuse, vn_lookup_kind kind,
  {
    vec<vn_reference_op_s> operands;
    struct vn_reference_s vr1;
@@ -58234,7 +58528,7 @@ index 926b4a976ae..e0cde2359cd 100644
    vr1.type = TREE_TYPE (op);
    ao_ref op_ref;
    ao_ref_init (&op_ref, op);
-@@ -3535,11 +3582,18 @@ vn_reference_lookup (tree op, tree vuse, vn_lookup_kind kind,
+@@ -3535,11 +3590,18 @@ vn_reference_lookup (tree op, tree vuse, vn_lookup_kind kind,
        vn_reference_t wvnresult;
        ao_ref r;
        unsigned limit = param_sccvn_max_alias_queries_per_access;
@@ -58255,7 +58549,7 @@ index 926b4a976ae..e0cde2359cd 100644
  	ao_ref_init (&r, op);
        vn_walk_cb_data data (&vr1, r.ref ? NULL_TREE : op,
  			    last_vuse_ptr, kind, tbaa_p, mask);
-@@ -3667,7 +3721,8 @@ vn_reference_insert_pieces (tree vuse, alias_set_type set,
+@@ -3667,7 +3729,8 @@ vn_reference_insert_pieces (tree vuse, alias_set_type set,
    vr1 = XOBNEW (&vn_tables_obstack, vn_reference_s);
    vr1->value_id = value_id;
    vr1->vuse = vuse_ssa_val (vuse);
@@ -58265,7 +58559,7 @@ index 926b4a976ae..e0cde2359cd 100644
    vr1->type = type;
    vr1->punned = false;
    vr1->set = set;
-@@ -4105,7 +4160,7 @@ vn_nary_op_insert_pieces_predicated (unsigned int length, enum tree_code code,
+@@ -4105,7 +4168,7 @@ vn_nary_op_insert_pieces_predicated (unsigned int length, enum tree_code code,
  }
  
  static bool
@@ -58274,7 +58568,7 @@ index 926b4a976ae..e0cde2359cd 100644
  
  static tree
  vn_nary_op_get_predicated_value (vn_nary_op_t vno, basic_block bb)
-@@ -4114,9 +4169,12 @@ vn_nary_op_get_predicated_value (vn_nary_op_t vno, basic_block bb)
+@@ -4114,9 +4177,12 @@ vn_nary_op_get_predicated_value (vn_nary_op_t vno, basic_block bb)
      return vno->u.result;
    for (vn_pval *val = vno->u.values; val; val = val->next)
      for (unsigned i = 0; i < val->n; ++i)
@@ -58290,7 +58584,7 @@ index 926b4a976ae..e0cde2359cd 100644
  	return val->result;
    return NULL_TREE;
  }
-@@ -4401,10 +4459,11 @@ vn_phi_insert (gimple *phi, tree result, bool backedges_varying_p)
+@@ -4401,10 +4467,11 @@ vn_phi_insert (gimple *phi, tree result, bool backedges_varying_p)
  
  
  /* Return true if BB1 is dominated by BB2 taking into account edges
@@ -58304,7 +58598,7 @@ index 926b4a976ae..e0cde2359cd 100644
  {
    edge_iterator ei;
    edge e;
-@@ -4421,7 +4480,8 @@ dominated_by_p_w_unex (basic_block bb1, basic_block bb2)
+@@ -4421,7 +4488,8 @@ dominated_by_p_w_unex (basic_block bb1, basic_block bb2)
      {
        edge prede = NULL;
        FOR_EACH_EDGE (e, ei, bb1->preds)
@@ -58314,7 +58608,7 @@ index 926b4a976ae..e0cde2359cd 100644
  	  {
  	    if (prede)
  	      {
-@@ -4443,7 +4503,8 @@ dominated_by_p_w_unex (basic_block bb1, basic_block bb2)
+@@ -4443,7 +4511,8 @@ dominated_by_p_w_unex (basic_block bb1, basic_block bb2)
    /* Iterate to the single executable bb2 successor.  */
    edge succe = NULL;
    FOR_EACH_EDGE (e, ei, bb2->succs)
@@ -58324,7 +58618,7 @@ index 926b4a976ae..e0cde2359cd 100644
        {
  	if (succe)
  	  {
-@@ -4461,7 +4522,8 @@ dominated_by_p_w_unex (basic_block bb1, basic_block bb2)
+@@ -4461,7 +4530,8 @@ dominated_by_p_w_unex (basic_block bb1, basic_block bb2)
  	{
  	  FOR_EACH_EDGE (e, ei, succe->dest->preds)
  	    if (e != succe
@@ -58334,7 +58628,16 @@ index 926b4a976ae..e0cde2359cd 100644
  	      {
  		succe = NULL;
  		break;
-@@ -6190,7 +6252,7 @@ eliminate_dom_walker::eliminate_stmt (basic_block b, gimple_stmt_iterator *gsi)
+@@ -4696,7 +4766,7 @@ valueized_wider_op (tree wide_type, tree op, bool allow_truncate)
+ 
+   /* For constants simply extend it.  */
+   if (TREE_CODE (op) == INTEGER_CST)
+-    return wide_int_to_tree (wide_type, wi::to_wide (op));
++    return wide_int_to_tree (wide_type, wi::to_widest (op));
+ 
+   return NULL_TREE;
+ }
+@@ -6190,7 +6260,7 @@ eliminate_dom_walker::eliminate_stmt (basic_block b, gimple_stmt_iterator *gsi)
  	   at the definition are also available at uses.  */
  	sprime = eliminate_avail (gimple_bb (SSA_NAME_DEF_STMT (use)), use);
        if (sprime && sprime != use
@@ -58343,7 +58646,7 @@ index 926b4a976ae..e0cde2359cd 100644
  	  /* We substitute into debug stmts to avoid excessive
  	     debug temporaries created by removed stmts, but we need
  	     to avoid doing so for inserted sprimes as we never want
-@@ -6758,7 +6820,7 @@ rpo_elim::eliminate_avail (basic_block bb, tree op)
+@@ -6758,7 +6828,7 @@ rpo_elim::eliminate_avail (basic_block bb, tree op)
  	     may also be able to "pre-compute" (bits of) the next immediate
  	     (non-)dominator during the RPO walk when marking edges as
  	     executable.  */
@@ -58352,7 +58655,7 @@ index 926b4a976ae..e0cde2359cd 100644
  	    {
  	      tree leader = ssa_name (av->leader);
  	      /* Prevent eliminations that break loop-closed SSA.  */
-@@ -7351,11 +7413,9 @@ do_rpo_vn (function *fn, edge entry, bitmap exit_bbs,
+@@ -7351,11 +7421,9 @@ do_rpo_vn (function *fn, edge entry, bitmap exit_bbs,
      e->flags &= ~EDGE_DFS_BACK;
  
    int *rpo = XNEWVEC (int, n_basic_blocks_for_fn (fn) - NUM_FIXED_BLOCKS);
@@ -58366,7 +58669,7 @@ index 926b4a976ae..e0cde2359cd 100644
  
    if (!do_region)
      BITMAP_FREE (exit_bbs);
-@@ -7433,12 +7493,20 @@ do_rpo_vn (function *fn, edge entry, bitmap exit_bbs,
+@@ -7433,12 +7501,20 @@ do_rpo_vn (function *fn, edge entry, bitmap exit_bbs,
    vn_valueize = rpo_vn_valueize;
  
    /* Initialize the unwind state and edge/BB executable state.  */
@@ -58388,7 +58691,7 @@ index 926b4a976ae..e0cde2359cd 100644
        bb->flags &= ~BB_EXECUTABLE;
        bool has_backedges = false;
        edge e;
-@@ -7450,51 +7518,12 @@ do_rpo_vn (function *fn, edge entry, bitmap exit_bbs,
+@@ -7450,51 +7526,12 @@ do_rpo_vn (function *fn, edge entry, bitmap exit_bbs,
  	  e->flags &= ~EDGE_EXECUTABLE;
  	  if (iterate || e == entry || (skip_entry_phis && bb == entry->dest))
  	    continue;
