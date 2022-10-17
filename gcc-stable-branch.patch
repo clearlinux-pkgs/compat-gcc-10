@@ -101,7 +101,9 @@ François-Xavier Coudert (1):
 Fritz Reese (1):
       fortran: Fix conv of UNION constructors [PR105310]
 
-GCC Administrator (548):
+GCC Administrator (550):
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -1241,6 +1243,9 @@ Mikael Morin (4):
 
 Pascal Obry (1):
       Properly reset the port handle when closing
+
+Pat Haugen (1):
+      Fix register count when not splitting Complex IEEE 128-bit args.
 
 Patrick Palka (42):
       c++: Fix deduction with reference NTTP [PR83476]
@@ -20051,10 +20056,23 @@ index 1766d325bfb..b3ae6fea640 100644
  BU_MMA_5 (PMXVF32GER,	    "pmxvf32ger",       MISC, mma_pmxvf32ger)
  BU_MMA_5 (PMXVF64GER,	    "pmxvf64ger",       PAIR, mma_pmxvf64ger)
 diff --git a/gcc/config/rs6000/rs6000-call.c b/gcc/config/rs6000/rs6000-call.c
-index a112593878a..c910ee5c71a 100644
+index a112593878a..4e55cbaab55 100644
 --- a/gcc/config/rs6000/rs6000-call.c
 +++ b/gcc/config/rs6000/rs6000-call.c
-@@ -9434,12 +9434,23 @@ mma_expand_builtin (tree exp, rtx target, bool *expandedp)
+@@ -6534,6 +6534,12 @@ rs6000_function_arg_advance_1 (CUMULATIVE_ARGS *cum, machine_mode mode,
+ 	{
+ 	  cum->vregno += n_elts;
+ 
++	  /* If we are not splitting Complex IEEE128 args then account for the
++	     fact that they are passed in 2 VSX regs. */
++	  if (!targetm.calls.split_complex_arg && type
++	      && TREE_CODE (type) == COMPLEX_TYPE && elt_mode == KCmode)
++	    cum->vregno++;
++
+ 	  if (!TARGET_ALTIVEC)
+ 	    error ("cannot pass argument in vector register because"
+ 		   " altivec instructions are disabled, use %qs"
+@@ -9434,12 +9440,23 @@ mma_expand_builtin (tree exp, rtx target, bool *expandedp)
        pat = GEN_FCN (icode) (op[0], op[1]);
        break;
      case 3:
@@ -20078,7 +20096,7 @@ index a112593878a..c910ee5c71a 100644
        pat = GEN_FCN (icode) (op[0], op[1], op[2], op[3], op[4]);
        break;
      case 6:
-@@ -10837,17 +10848,20 @@ rs6000_gimple_fold_mma_builtin (gimple_stmt_iterator *gsi)
+@@ -10837,17 +10854,20 @@ rs6000_gimple_fold_mma_builtin (gimple_stmt_iterator *gsi)
    gimple *new_call;
    tree new_decl;
  
@@ -20105,7 +20123,7 @@ index a112593878a..c910ee5c71a 100644
        gimplify_assign (src, build_simple_mem_ref (src_ptr), &new_seq);
  
        /* If we are disassembling an accumulator/pair and our destination is
-@@ -10871,7 +10885,7 @@ rs6000_gimple_fold_mma_builtin (gimple_stmt_iterator *gsi)
+@@ -10871,7 +10891,7 @@ rs6000_gimple_fold_mma_builtin (gimple_stmt_iterator *gsi)
  	{
  	  new_decl = rs6000_builtin_decls[MMA_BUILTIN_XXMFACC_INTERNAL];
  	  new_call = gimple_build_call (new_decl, 1, src);
@@ -20114,7 +20132,7 @@ index a112593878a..c910ee5c71a 100644
  	  gimple_call_set_lhs (new_call, src);
  	  gimple_seq_add_stmt (&new_seq, new_call);
  	}
-@@ -10897,6 +10911,38 @@ rs6000_gimple_fold_mma_builtin (gimple_stmt_iterator *gsi)
+@@ -10897,6 +10917,38 @@ rs6000_gimple_fold_mma_builtin (gimple_stmt_iterator *gsi)
        gsi_replace_with_seq (gsi, new_seq, true);
        return true;
      }
@@ -20153,7 +20171,7 @@ index a112593878a..c910ee5c71a 100644
  
    /* Convert this built-in into an internal version that uses pass-by-value
       arguments.  The internal built-in follows immediately after this one.  */
-@@ -10909,7 +10955,7 @@ rs6000_gimple_fold_mma_builtin (gimple_stmt_iterator *gsi)
+@@ -10909,7 +10961,7 @@ rs6000_gimple_fold_mma_builtin (gimple_stmt_iterator *gsi)
      {
        /* This built-in has a pass-by-reference accumulator input, so load it
  	 into a temporary accumulator for use as a pass-by-value input.  */
@@ -20162,7 +20180,7 @@ index a112593878a..c910ee5c71a 100644
        for (unsigned i = 1; i < nopnds; i++)
  	op[i] = gimple_call_arg (stmt, i);
        gimplify_assign (op[0], build_simple_mem_ref (acc), &new_seq);
-@@ -10956,10 +11002,10 @@ rs6000_gimple_fold_mma_builtin (gimple_stmt_iterator *gsi)
+@@ -10956,10 +11008,10 @@ rs6000_gimple_fold_mma_builtin (gimple_stmt_iterator *gsi)
        gcc_unreachable ();
      }
  
@@ -20176,7 +20194,7 @@ index a112593878a..c910ee5c71a 100644
    gimple_call_set_lhs (new_call, lhs);
    gimple_seq_add_stmt (&new_seq, new_call);
    gimplify_assign (build_simple_mem_ref (acc), lhs, &new_seq);
-@@ -12544,23 +12590,17 @@ rs6000_init_builtins (void)
+@@ -12544,23 +12596,17 @@ rs6000_init_builtins (void)
      }
  }
  
@@ -20204,7 +20222,7 @@ index a112593878a..c910ee5c71a 100644
    return rs6000_builtin_decls[code];
  }
  
-@@ -13190,11 +13230,15 @@ mma_init_builtins (void)
+@@ -13190,11 +13236,15 @@ mma_init_builtins (void)
        if (gimple_func)
  	{
  	  gcc_assert (icode == CODE_FOR_nothing);
@@ -20222,7 +20240,7 @@ index a112593878a..c910ee5c71a 100644
  	}
        else
  	{
-@@ -13205,18 +13249,30 @@ mma_init_builtins (void)
+@@ -13205,18 +13255,30 @@ mma_init_builtins (void)
  	  gcc_assert (attr_args == insn_data[icode].n_operands - 1);
  	}
  
@@ -20257,7 +20275,7 @@ index a112593878a..c910ee5c71a 100644
        else
  	{
  	  /* This is a normal MMA built-in function.  */
-@@ -13226,8 +13282,10 @@ mma_init_builtins (void)
+@@ -13226,8 +13288,10 @@ mma_init_builtins (void)
  	      machine_mode mode = insn_data[icode].operand[j].mode;
  	      if (gimple_func && mode == PXImode)
  		op[nopnds++] = build_pointer_type (vector_quad_type_node);
@@ -20270,7 +20288,7 @@ index a112593878a..c910ee5c71a 100644
  		op[nopnds++] = build_pointer_type (vector_pair_type_node);
  	      else
  		/* MMA uses unsigned types.  */
-@@ -13582,6 +13640,16 @@ builtin_function_type (machine_mode mode_ret, machine_mode mode_arg0,
+@@ -13582,6 +13646,16 @@ builtin_function_type (machine_mode mode_ret, machine_mode mode_arg0,
        h.uns_p[2] = 1;
        break;
  
