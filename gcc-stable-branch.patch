@@ -101,7 +101,8 @@ François-Xavier Coudert (1):
 Fritz Reese (1):
       fortran: Fix conv of UNION constructors [PR105310]
 
-GCC Administrator (550):
+GCC Administrator (551):
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -5582,10 +5583,16 @@ index 0719d810258..da772b97257 100644
 -10.3.0
 +10.4.1
 diff --git a/gcc/ChangeLog b/gcc/ChangeLog
-index 3b1384e707f..289fc05eeec 100644
+index 3b1384e707f..41998460e75 100644
 --- a/gcc/ChangeLog
 +++ b/gcc/ChangeLog
-@@ -1,3 +1,3175 @@
+@@ -1,3 +1,3181 @@
++2022-10-17  Pat Haugen  <pthaugen@linux.ibm.com>
++
++	PR target/99685
++	* config/rs6000/rs6000-call.c (rs6000_function_arg_advance_1): Bump
++	register count when not splitting IEEE 128-bit Complex.
++
 +2022-10-14  Richard Biener  <rguenther@suse.de>
 +
 +	Backported from master:
