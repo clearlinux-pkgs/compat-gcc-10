@@ -101,7 +101,9 @@ François-Xavier Coudert (1):
 Fritz Reese (1):
       fortran: Fix conv of UNION constructors [PR105310]
 
-GCC Administrator (551):
+GCC Administrator (553):
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -1154,7 +1156,7 @@ José Rui Faustino de Sousa (4):
       Fortran: Fix function attributes [PR100132]
       Fortran: Fix ICE and wrong code for assumed-rank arrays [PR100029, PR100040]
 
-Kewen Lin (10):
+Kewen Lin (11):
       ipa-fnsummary: Remove inconsistent bp_pack_value
       vect: Don't update inits for simd_lane_access DRs [PR102789]
       rs6000/doc: Rename future cpu with power10
@@ -1165,6 +1167,7 @@ Kewen Lin (10):
       rs6000: Preserve REG_EH_REGION when replacing load/store [PR106091]
       rs6000: Adjust mov optabs for opaque modes [PR103353]
       rs6000/test: Fix empty TU in some cases of effective targets [PR106345]
+      rs6000: Fix the condition with frame_pointer_needed_indeed [PR96072]
 
 Kyrylo Tkachov (1):
       aarch64: Add support for -mcpu=neoverse-v2
@@ -20313,7 +20316,7 @@ index a112593878a..4e55cbaab55 100644
        break;
      }
 diff --git a/gcc/config/rs6000/rs6000-logue.c b/gcc/config/rs6000/rs6000-logue.c
-index 6aad1ff826a..fbde3b62f48 100644
+index 6aad1ff826a..ebfc3ff868f 100644
 --- a/gcc/config/rs6000/rs6000-logue.c
 +++ b/gcc/config/rs6000/rs6000-logue.c
 @@ -3254,10 +3254,13 @@ rs6000_emit_prologue (void)
@@ -20345,6 +20348,15 @@ index 6aad1ff826a..fbde3b62f48 100644
        cr_save_reg = load_cr_save (cr_save_regno, frame_reg_rtx,
  				  info->cr_save_offset + frame_off,
  				  exit_func);
+@@ -4878,7 +4885,7 @@ rs6000_emit_epilogue (enum epilogue_type epilogue_type)
+ 	 a REG_CFA_DEF_CFA note, but that's OK;  A duplicate is
+ 	 discarded by dwarf2cfi.c/dwarf2out.c, and in any case would
+ 	 be harmless if emitted.  */
+-      if (frame_pointer_needed)
++      if (frame_pointer_needed_indeed)
+ 	{
+ 	  insn = get_last_insn ();
+ 	  add_reg_note (insn, REG_CFA_DEF_CFA,
 diff --git a/gcc/config/rs6000/rs6000-p8swap.c b/gcc/config/rs6000/rs6000-p8swap.c
 index 3d5dc7d8aae..02f99ba5df7 100644
 --- a/gcc/config/rs6000/rs6000-p8swap.c
@@ -51517,6 +51529,26 @@ index 1be39975f64..39fb73cbb32 100644
  
  int i;
  
+diff --git a/gcc/testsuite/gcc.target/powerpc/pr96072.c b/gcc/testsuite/gcc.target/powerpc/pr96072.c
+new file mode 100644
+index 00000000000..10341c91d2f
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/powerpc/pr96072.c
+@@ -0,0 +1,14 @@
++/* { dg-options "-O2" } */
++
++/* This used to ICE with the SYSV ABI (PR96072).  */
++
++void
++he (int jn)
++{
++  {
++    int bh[jn];
++    if (jn != 0)
++      goto wa;
++  }
++wa:;
++}
 diff --git a/gcc/testsuite/gcc.target/powerpc/pr97142.c b/gcc/testsuite/gcc.target/powerpc/pr97142.c
 new file mode 100644
 index 00000000000..0e5f1c1f61b
