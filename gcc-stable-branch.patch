@@ -102,7 +102,10 @@ François-Xavier Coudert (1):
 Fritz Reese (1):
       fortran: Fix conv of UNION constructors [PR105310]
 
-GCC Administrator (554):
+GCC Administrator (557):
+      Daily bump.
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -675,7 +678,7 @@ H.J. Lu (6):
 Hafiz Abid Qadeer (1):
       [OpenACC] Fix an ICE where a loop with GT condition is collapsed.
 
-Harald Anlauf (70):
+Harald Anlauf (71):
       PR fortran/63797 - Bogus ambiguous reference to 'sqrt'
       PR fortran/100154 - ICE in gfc_conv_procedure_call, at fortran/trans-expr.c:6131
       PR fortran/100274 - ICE in gfc_conv_procedure_call, at fortran/trans-expr.c:6131
@@ -746,6 +749,7 @@ Harald Anlauf (70):
       Fortran: NULL pointer dereference in invalid simplification [PR106985]
       Fortran: fix ICE in generate_coarray_sym_init [PR82868]
       Fortran: error recovery while simplifying intrinsic UNPACK [PR107054]
+      Fortran: error recovery with references of bad array constructors [PR105633]
 
 Hongyu Wang (1):
       AVX512F: Add missing macro for mask(z?)_scalf_s[sd] [PR 105339]
@@ -5591,10 +5595,46 @@ index 0719d810258..da772b97257 100644
 -10.3.0
 +10.4.1
 diff --git a/gcc/ChangeLog b/gcc/ChangeLog
-index 3b1384e707f..43c15288d7c 100644
+index 3b1384e707f..d2aed6b9a43 100644
 --- a/gcc/ChangeLog
 +++ b/gcc/ChangeLog
-@@ -1,3 +1,3191 @@
+@@ -1,3 +1,3227 @@
++2022-10-21  Eric Botcazou  <ebotcazou@adacore.com>
++
++	PR target/107336
++	* optabs.c (expand_vec_cond_expr): Query both VCOND and VCONDU for
++	EQ and NE.
++
++2022-10-21  Richard Sandiford  <richard.sandiford@arm.com>
++
++	Backported from master:
++	2022-10-20  Richard Sandiford  <richard.sandiford@arm.com>
++
++	* config/aarch64/aarch64-sve.md (*aarch64_brk<brk_op>_cc): Remove
++	merging alternative.
++	(*aarch64_brk<brk_op>_ptest): Likewise.
++
++2022-10-21  Richard Sandiford  <richard.sandiford@arm.com>
++
++	Backported from master:
++	2022-10-20  Richard Sandiford  <richard.sandiford@arm.com>
++
++	* config/aarch64/iterators.md (SVE_BRKP): New iterator.
++	* config/aarch64/aarch64-sve.md (*aarch64_brkn_cc): New pattern.
++	(*aarch64_brkn_ptest): Likewise.
++	(*aarch64_brk<brk_op>_cc): Restrict to SVE_BRKP.
++	(*aarch64_brk<brk_op>_ptest): Likewise.
++
++2022-10-21  Richard Sandiford  <richard.sandiford@arm.com>
++
++	* config/aarch64/aarch64.h (AARCH64_FL_FOR_ARCH8_3): Add
++	AARCH64_FL_RCPC.
++	(AARCH64_ISA_RCPC): New macro.
++	* config/aarch64/aarch64-cores.def (thunderx3t110, zeus, neoverse-v1)
++	(neoverse-512tvb, saphira): Remove RCPC from these Armv8.3-A+ cores.
++	* config/aarch64/aarch64-c.c (aarch64_update_cpp_builtins): Define
++	__ARM_FEATURE_RCPC when appropriate.
++
 +2022-10-20  Kewen Lin  <linkw@linux.ibm.com>
 +
 +	Backported from master:
@@ -29593,10 +29633,20 @@ index 6e635382fb4..9b65819463e 100644
  	    return build_zero_cst (TREE_TYPE (TREE_TYPE (arg)));
  	  return CONSTRUCTOR_ELT (arg, i)->value;
 diff --git a/gcc/fortran/ChangeLog b/gcc/fortran/ChangeLog
-index aa5932be872..491c0c2cbd5 100644
+index aa5932be872..032b92fa687 100644
 --- a/gcc/fortran/ChangeLog
 +++ b/gcc/fortran/ChangeLog
-@@ -1,3 +1,962 @@
+@@ -1,3 +1,972 @@
++2022-10-23  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2022-10-20  Harald Anlauf  <anlauf@gmx.de>
++		    Steven G. Kargl  <kargl@gcc.gnu.org>
++
++	PR fortran/105633
++	* expr.c (find_array_section): Move check for NULL pointers so
++	that both subscript triplets and vector subscripts are covered.
++
 +2022-10-10  Mikael Morin  <mikael@gcc.gnu.org>
 +
 +	Backported from master:
@@ -31167,7 +31217,7 @@ index 9273976aa9a..e7b745b0cdb 100644
  	&& current_ts.u.derived->attr.unlimited_polymorphic)
      goto ok;
 diff --git a/gcc/fortran/expr.c b/gcc/fortran/expr.c
-index f946145eb1b..1129f5f3302 100644
+index f946145eb1b..b65fc764fb8 100644
 --- a/gcc/fortran/expr.c
 +++ b/gcc/fortran/expr.c
 @@ -990,6 +990,34 @@ done:
@@ -31237,18 +31287,20 @@ index f946145eb1b..1129f5f3302 100644
        /* Check the bounds.  */
        if ((ar->as->upper[i]
  	   && mpz_cmp (e->value.integer,
-@@ -1560,7 +1591,9 @@ find_array_section (gfc_expr *expr, gfc_ref *ref)
+@@ -1518,6 +1549,12 @@ find_array_section (gfc_expr *expr, gfc_ref *ref)
+       lower = ref->u.ar.as->lower[d];
+       upper = ref->u.ar.as->upper[d];
+ 
++      if (!lower || !upper)
++	{
++	  t = false;
++	  goto cleanup;
++	}
++
+       if (ref->u.ar.dimen_type[d] == DIMEN_VECTOR)  /* Vector subscript.  */
  	{
- 	  if ((begin && begin->expr_type != EXPR_CONSTANT)
- 	      || (finish && finish->expr_type != EXPR_CONSTANT)
--	      || (step && step->expr_type != EXPR_CONSTANT))
-+	      || (step && step->expr_type != EXPR_CONSTANT)
-+	      || !lower
-+	      || !upper)
- 	    {
- 	      t = false;
- 	      goto cleanup;
-@@ -1725,8 +1758,8 @@ find_substring_ref (gfc_expr *p, gfc_expr **newp)
+ 	  gfc_constructor *ci;
+@@ -1725,8 +1762,8 @@ find_substring_ref (gfc_expr *p, gfc_expr **newp)
    *newp = gfc_copy_expr (p);
    free ((*newp)->value.character.string);
  
@@ -31259,7 +31311,7 @@ index f946145eb1b..1129f5f3302 100644
    if (end >= start)
      length = end - start + 1;
    else
-@@ -2095,6 +2128,8 @@ simplify_parameter_variable (gfc_expr *p, int type)
+@@ -2095,6 +2132,8 @@ simplify_parameter_variable (gfc_expr *p, int type)
        if (e == NULL)
  	return false;
  
@@ -31268,7 +31320,7 @@ index f946145eb1b..1129f5f3302 100644
        e->rank = p->rank;
  
        if (e->ts.type == BT_CHARACTER && p->ts.u.cl)
-@@ -2183,10 +2218,9 @@ gfc_simplify_expr (gfc_expr *p, int type)
+@@ -2183,10 +2222,9 @@ gfc_simplify_expr (gfc_expr *p, int type)
  	  && gfc_intrinsic_func_interface (p, 1) == MATCH_ERROR)
  	return false;
  
@@ -31281,7 +31333,7 @@ index f946145eb1b..1129f5f3302 100644
  	  if (isym && isym->elemental)
  	    scalarize_intrinsic_call (p, false);
  	}
-@@ -2243,7 +2277,8 @@ gfc_simplify_expr (gfc_expr *p, int type)
+@@ -2243,7 +2281,8 @@ gfc_simplify_expr (gfc_expr *p, int type)
  	 initialization expression, or we want a subsection.  */
        if (p->symtree->n.sym->attr.flavor == FL_PARAMETER
  	  && (gfc_init_expr_flag || p->ref
@@ -31291,7 +31343,7 @@ index f946145eb1b..1129f5f3302 100644
  	{
  	  if (!simplify_parameter_variable (p, type))
  	    return false;
-@@ -2295,6 +2330,31 @@ gfc_simplify_expr (gfc_expr *p, int type)
+@@ -2295,6 +2334,31 @@ gfc_simplify_expr (gfc_expr *p, int type)
  }
  
  
@@ -31323,7 +31375,7 @@ index f946145eb1b..1129f5f3302 100644
  /* Returns the type of an expression with the exception that iterator
     variables are automatically integers no matter what else they may
     be declared as.  */
-@@ -3809,6 +3869,9 @@ gfc_check_pointer_assign (gfc_expr *lvalue, gfc_expr *rvalue,
+@@ -3809,6 +3873,9 @@ gfc_check_pointer_assign (gfc_expr *lvalue, gfc_expr *rvalue,
    int proc_pointer;
    bool same_rank;
  
@@ -31333,7 +31385,7 @@ index f946145eb1b..1129f5f3302 100644
    lhs_attr = gfc_expr_attr (lvalue);
    if (lvalue->ts.type == BT_UNKNOWN && !lhs_attr.proc_pointer)
      {
-@@ -4273,6 +4336,7 @@ gfc_check_pointer_assign (gfc_expr *lvalue, gfc_expr *rvalue,
+@@ -4273,6 +4340,7 @@ gfc_check_pointer_assign (gfc_expr *lvalue, gfc_expr *rvalue,
      {
        gfc_symbol *sym;
        bool target;
@@ -31341,7 +31393,7 @@ index f946145eb1b..1129f5f3302 100644
  
        if (gfc_is_size_zero_array (rvalue))
  	{
-@@ -4302,6 +4366,39 @@ gfc_check_pointer_assign (gfc_expr *lvalue, gfc_expr *rvalue,
+@@ -4302,6 +4370,39 @@ gfc_check_pointer_assign (gfc_expr *lvalue, gfc_expr *rvalue,
  		     &rvalue->where);
  	  return false;
  	}
@@ -31381,7 +31433,7 @@ index f946145eb1b..1129f5f3302 100644
      }
    else
      {
-@@ -5088,7 +5185,8 @@ gfc_get_variable_expr (gfc_symtree *var)
+@@ -5088,7 +5189,8 @@ gfc_get_variable_expr (gfc_symtree *var)
  
    if (var->n.sym->attr.flavor != FL_PROCEDURE
        && ((var->n.sym->as != NULL && var->n.sym->ts.type != BT_CLASS)
@@ -31391,7 +31443,7 @@ index f946145eb1b..1129f5f3302 100644
  	       && CLASS_DATA (var->n.sym)->as)))
      {
        e->rank = var->n.sym->ts.type == BT_CLASS
-@@ -6168,10 +6266,13 @@ gfc_check_vardef_context (gfc_expr* e, bool pointer, bool alloc_obj,
+@@ -6168,10 +6270,13 @@ gfc_check_vardef_context (gfc_expr* e, bool pointer, bool alloc_obj,
      {
        if (ptr_component && ref->type == REF_COMPONENT)
  	check_intentin = false;
@@ -37106,10 +37158,41 @@ index f5a6d507e91..6b2c3e17346 100644
  DEFHOOKPOD
  (have_tls,
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index 2913065bf31..a1062409152 100644
+index 2913065bf31..db5e5ee60f6 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,3530 @@
+@@ -1,3 +1,3561 @@
++2022-10-23  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2022-10-20  Harald Anlauf  <anlauf@gmx.de>
++		    Steven G. Kargl  <kargl@gcc.gnu.org>
++
++	PR fortran/105633
++	* gfortran.dg/pr105633.f90: New test.
++
++2022-10-21  Richard Sandiford  <richard.sandiford@arm.com>
++
++	Backported from master:
++	2022-10-20  Richard Sandiford  <richard.sandiford@arm.com>
++
++	* gcc.target/aarch64/sve/acle/general/brka_1.c: Expect a separate
++	PTEST instruction.
++	* gcc.target/aarch64/sve/acle/general/brkb_1.c: Likewise.
++
++2022-10-21  Richard Sandiford  <richard.sandiford@arm.com>
++
++	Backported from master:
++	2022-10-20  Richard Sandiford  <richard.sandiford@arm.com>
++
++	* gcc.target/aarch64/sve/acle/general/brkn_1.c: Expect separate
++	PTEST instructions.
++	* gcc.target/aarch64/sve/acle/general/brkn_2.c: New test.
++
++2022-10-21  Richard Sandiford  <richard.sandiford@arm.com>
++
++	* gcc.target/aarch64/pragma_cpp_predefs_1.c: Add RCPC tests.
++
 +2022-10-20  Kewen Lin  <linkw@linux.ibm.com>
 +
 +	Backported from master:
@@ -55794,6 +55877,20 @@ index 00000000000..6c6b42ef9bf
 +program p
 +  integer, parameter :: a(:) = [1, 2] ! { dg-error "deferred shape" }
 +  print *, reshape([3, 4], a(1:2))
++end
+diff --git a/gcc/testsuite/gfortran.dg/pr105633.f90 b/gcc/testsuite/gfortran.dg/pr105633.f90
+new file mode 100644
+index 00000000000..f2dbc5e742a
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/pr105633.f90
+@@ -0,0 +1,8 @@
++! { dg-do compile }
++! PR fortran/105633 - ICE in find_array_section
++! Contributed by G.Steinmetz
++
++program p
++  integer, parameter :: a(:) = [1,2] ! { dg-error "deferred shape" }
++  print *, [a([1,2])]
 +end
 diff --git a/gcc/testsuite/gfortran.dg/pr105954.f90 b/gcc/testsuite/gfortran.dg/pr105954.f90
 new file mode 100644
