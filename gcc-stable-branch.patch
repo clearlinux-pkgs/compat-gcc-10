@@ -102,7 +102,11 @@ François-Xavier Coudert (1):
 Fritz Reese (1):
       fortran: Fix conv of UNION constructors [PR105310]
 
-GCC Administrator (560):
+GCC Administrator (564):
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -681,7 +685,7 @@ H.J. Lu (6):
 Hafiz Abid Qadeer (1):
       [OpenACC] Fix an ICE where a loop with GT condition is collapsed.
 
-Harald Anlauf (71):
+Harald Anlauf (72):
       PR fortran/63797 - Bogus ambiguous reference to 'sqrt'
       PR fortran/100154 - ICE in gfc_conv_procedure_call, at fortran/trans-expr.c:6131
       PR fortran/100274 - ICE in gfc_conv_procedure_call, at fortran/trans-expr.c:6131
@@ -753,6 +757,7 @@ Harald Anlauf (71):
       Fortran: fix ICE in generate_coarray_sym_init [PR82868]
       Fortran: error recovery while simplifying intrinsic UNPACK [PR107054]
       Fortran: error recovery with references of bad array constructors [PR105633]
+      Fortran: BOZ literal constants are not compatible to any type [PR103413]
 
 Hongyu Wang (1):
       AVX512F: Add missing macro for mask(z?)_scalf_s[sd] [PR 105339]
@@ -29740,10 +29745,19 @@ index 6e635382fb4..9b65819463e 100644
  	    return build_zero_cst (TREE_TYPE (TREE_TYPE (arg)));
  	  return CONSTRUCTOR_ELT (arg, i)->value;
 diff --git a/gcc/fortran/ChangeLog b/gcc/fortran/ChangeLog
-index aa5932be872..032b92fa687 100644
+index aa5932be872..7bc801b0686 100644
 --- a/gcc/fortran/ChangeLog
 +++ b/gcc/fortran/ChangeLog
-@@ -1,3 +1,972 @@
+@@ -1,3 +1,981 @@
++2022-10-28  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2022-10-26  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/103413
++	* symbol.c (gfc_type_compatible): A boz-literal-constant has no type
++	and thus is not considered compatible to any type.
++
 +2022-10-23  Harald Anlauf  <anlauf@gmx.de>
 +
 +	Backported from master:
@@ -32460,6 +32474,21 @@ index d28aa7a3c16..c1db8650b0d 100644
  	}
        else if (field->expr_type == EXPR_ARRAY)
  	e = gfc_copy_expr (field_ctor->expr);
+diff --git a/gcc/fortran/symbol.c b/gcc/fortran/symbol.c
+index 96e4cee3040..dff4b7f1659 100644
+--- a/gcc/fortran/symbol.c
++++ b/gcc/fortran/symbol.c
+@@ -5123,6 +5123,10 @@ gfc_type_compatible (gfc_typespec *ts1, gfc_typespec *ts2)
+   bool is_union1 = (ts1->type == BT_UNION);
+   bool is_union2 = (ts2->type == BT_UNION);
+ 
++  /* A boz-literal-constant has no type.  */
++  if (ts1->type == BT_BOZ || ts2->type == BT_BOZ)
++    return false;
++
+   if (is_class1
+       && ts1->u.derived->components
+       && ((ts1->u.derived->attr.is_class
 diff --git a/gcc/fortran/target-memory.c b/gcc/fortran/target-memory.c
 index 7f209913028..82d762cbd1f 100644
 --- a/gcc/fortran/target-memory.c
@@ -37265,10 +37294,18 @@ index f5a6d507e91..6b2c3e17346 100644
  DEFHOOKPOD
  (have_tls,
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index 2913065bf31..03d0d3e6482 100644
+index 2913065bf31..4c1872e0bc2 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,3571 @@
+@@ -1,3 +1,3579 @@
++2022-10-28  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2022-10-26  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/103413
++	* gfortran.dg/illegal_boz_arg_4.f90: New test.
++
 +2022-10-25  Stefan Schulze Frielinghaus  <stefansf@linux.ibm.com>
 +
 +	Backported from master:
@@ -54915,6 +54952,25 @@ index 00000000000..59fefa90971
 +program p
 +  use iso_c_binding, only : c_sizeof
 +  integer, parameter :: a = c_sizeof(z'1') ! { dg-error "cannot appear" }
++end
+diff --git a/gcc/testsuite/gfortran.dg/illegal_boz_arg_4.f90 b/gcc/testsuite/gfortran.dg/illegal_boz_arg_4.f90
+new file mode 100644
+index 00000000000..856cfa9211f
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/illegal_boz_arg_4.f90
+@@ -0,0 +1,13 @@
++! { dg-do compile }
++! { dg-options "-std=f2018" }
++! PR fortran/103413
++! Contributed by G.Steinmetz
++
++program p
++  type t
++     class(*), allocatable :: a
++  end type
++  type(t) :: x
++  allocate (x%a, source=z'1') ! { dg-error "type incompatible" }
++  allocate (x%a, mold=z'1')   ! { dg-error "type incompatible" }
 +end
 diff --git a/gcc/testsuite/gfortran.dg/implied_do_io_7.f90 b/gcc/testsuite/gfortran.dg/implied_do_io_7.f90
 new file mode 100644
