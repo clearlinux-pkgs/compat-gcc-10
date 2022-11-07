@@ -102,7 +102,13 @@ François-Xavier Coudert (1):
 Fritz Reese (1):
       fortran: Fix conv of UNION constructors [PR105310]
 
-GCC Administrator (564):
+GCC Administrator (570):
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -1021,7 +1027,7 @@ John David Anglin (5):
       Don't use 'G' constraint in integer move patterns
       Fix warnings building linux-atomic.c and fptr.c on hppa64-linux
 
-Jonathan Wakely (141):
+Jonathan Wakely (142):
       libstdc++: Fix Doxygen warning about ambiguous file name
       maintainer-scripts: Disable multilib when generating libstdc++ docs
       libstdc++: Fix doxygen markup for group close commands
@@ -1163,6 +1169,7 @@ Jonathan Wakely (141):
       libstdc++: Remove precondition checks from ranges::subrange
       libstdc++: Avoid try-catch and O(N) size in std::list::merge for old ABI
       libstdc++: Add valid range checks to std::span constructors [PR98421]
+      doc: Document correct -fwide-exec-charset defaults [PR41041]
 
 José Rui Faustino de Sousa (4):
       Fortran: Fix double function call with -fcheck=pointer [PR]
@@ -5605,10 +5612,19 @@ index 0719d810258..da772b97257 100644
 -10.3.0
 +10.4.1
 diff --git a/gcc/ChangeLog b/gcc/ChangeLog
-index 3b1384e707f..04095703fc2 100644
+index 3b1384e707f..775d4654682 100644
 --- a/gcc/ChangeLog
 +++ b/gcc/ChangeLog
-@@ -1,3 +1,3247 @@
+@@ -1,3 +1,3256 @@
++2022-11-05  Jonathan Wakely  <jwakely@redhat.com>
++
++	Backported from master:
++	2022-11-05  Jonathan Wakely  <jwakely@redhat.com>
++
++	PR c/41041
++	* doc/cppopts.texi: Document -fwide-exec-charset defaults
++	correctly.
++
 +2022-10-25  Stefan Schulze Frielinghaus  <stefansf@linux.ibm.com>
 +
 +	Backported from master:
@@ -29046,6 +29062,24 @@ index 33f876ab706..b24b5f4444e 100644
  
  @item __GXX_WEAK__
  This macro is defined when compiling a C++ source file.  It has the
+diff --git a/gcc/doc/cppopts.texi b/gcc/doc/cppopts.texi
+index 7f1849d841f..b02c26638ea 100644
+--- a/gcc/doc/cppopts.texi
++++ b/gcc/doc/cppopts.texi
+@@ -314,9 +314,10 @@ supported by the system's @code{iconv} library routine.
+ @opindex fwide-exec-charset
+ @cindex character set, wide execution
+ Set the wide execution character set, used for wide string and
+-character constants.  The default is UTF-32 or UTF-16, whichever
+-corresponds to the width of @code{wchar_t}.  As with
+-@option{-fexec-charset}, @var{charset} can be any encoding supported
++character constants.  The default is one of UTF-32BE, UTF-32LE, UTF-16BE,
++or UTF-16LE, whichever corresponds to the width of @code{wchar_t} and the
++big-endian or little-endian byte order being used for code generation.  As
++with @option{-fexec-charset}, @var{charset} can be any encoding supported
+ by the system's @code{iconv} library routine; however, you will have
+ problems with encodings that do not fit exactly in @code{wchar_t}.
+ 
 diff --git a/gcc/doc/extend.texi b/gcc/doc/extend.texi
 index 9c734595950..8184f59e820 100644
 --- a/gcc/doc/extend.texi
