@@ -102,7 +102,12 @@ François-Xavier Coudert (1):
 Fritz Reese (1):
       fortran: Fix conv of UNION constructors [PR105310]
 
-GCC Administrator (572):
+GCC Administrator (577):
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -1363,7 +1368,7 @@ Philippe Blain (1):
 Piotr Kubaj (1):
       gcc/configure: Check for powerpc64le*-*-freebsd*
 
-Richard Biener (67):
+Richard Biener (68):
       Increment BASE-VER after release
       testsuite/100176 - fix struct-layout-1_generate.c compile
       middle-end/98726 - fix VECTOR_CST element access
@@ -1431,6 +1436,7 @@ Richard Biener (67):
       middle-end/106331 - fix mem attributes for string op arguments
       tree-optimization/106513 - fix mistake in bswap symbolic number shifts
       lto/106540 - fix LTO tree input wrt dwarf2out_register_external_die
+      tree-optimization/107485 - fix non-call exception ICE with inlining
 
 Richard Earnshaw (13):
       arm: fix UB due to missing mode check [PR100311]
@@ -58406,10 +58412,25 @@ index 90e335ac74d..3917d00cc9c 100644
  
      case LT_EXPR:
 diff --git a/gcc/tree-inline.c b/gcc/tree-inline.c
-index efde5d15872..c20c25ceb50 100644
+index efde5d15872..658b09c07d2 100644
 --- a/gcc/tree-inline.c
 +++ b/gcc/tree-inline.c
-@@ -2101,27 +2101,35 @@ copy_bb (copy_body_data *id, basic_block bb,
+@@ -1979,11 +1979,10 @@ remap_gimple_stmt (gimple *stmt, copy_body_data *id)
+ 	     || gimple_assign_rhs_code (ass) == VEC_COND_EXPR)
+ 	    && gimple_could_trap_p (ass))
+ 	  {
+-	    gassign *cmp
+-	      = gimple_build_assign (make_ssa_name (boolean_type_node),
+-				     gimple_assign_rhs1 (ass));
++	    tree def = make_ssa_name (TREE_TYPE (gimple_assign_rhs1 (ass)));
++	    gassign *cmp = gimple_build_assign (def, gimple_assign_rhs1 (ass));
+ 	    gimple_seq_add_stmt (&stmts, cmp);
+-	    gimple_assign_set_rhs1 (ass, gimple_assign_lhs (cmp));
++	    gimple_assign_set_rhs1 (ass, def);
+ 	  }
+     }
+ 
+@@ -2101,27 +2100,35 @@ copy_bb (copy_body_data *id, basic_block bb,
  	      tree p;
  	      gcall *new_call;
  	      vec<tree> argarray;
@@ -58456,7 +58477,7 @@ index efde5d15872..c20c25ceb50 100644
  
  	      new_call = gimple_build_call_vec (gimple_call_fn (call_stmt),
  						argarray);
-@@ -2132,6 +2140,7 @@ copy_bb (copy_body_data *id, basic_block bb,
+@@ -2132,6 +2139,7 @@ copy_bb (copy_body_data *id, basic_block bb,
  		 GF_CALL_VA_ARG_PACK.  */
  	      gimple_call_copy_flags (new_call, call_stmt);
  	      gimple_call_set_va_arg_pack (new_call, false);
