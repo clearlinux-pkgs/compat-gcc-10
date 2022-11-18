@@ -102,7 +102,9 @@ François-Xavier Coudert (1):
 Fritz Reese (1):
       fortran: Fix conv of UNION constructors [PR105310]
 
-GCC Administrator (578):
+GCC Administrator (580):
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -1209,7 +1211,7 @@ Lewis Hyatt (1):
 Maciej W. Rozycki (1):
       RISC-V: Add target machine headers as a dependency for riscv-sr.o
 
-Marek Polacek (14):
+Marek Polacek (15):
       c++: ICE when late parsing noexcept/NSDMI [PR98333]
       c++: ICE with delayed noexcept and attribute used [PR97966]
       c++: Fix bogus -Wvolatile warning in C++20 [PR98947]
@@ -1224,6 +1226,7 @@ Marek Polacek (14):
       c++: Use FOR_EACH_VEC_ELT instead of range-based for loop.
       c++: Fix noexcept with unevaluated operand [PR101087]
       rtl: ICE with thread_local and inline asm  [PR104777]
+      c++: constinit on pointer to function [PR104066]
 
 Marius Hillenbrand (1):
       IBM Z: Fix vector intrinsics vec_double and vec_floate
@@ -26369,7 +26372,7 @@ index 9f9f6b658ad..0e11f060c53 100644
      return comp_ptr_ttypes (TREE_TYPE (type), TREE_TYPE (expr_type));
    else if (TYPE_PTRMEM_P (type) && TYPE_PTRMEM_P (expr_type))
 diff --git a/gcc/cp/decl.c b/gcc/cp/decl.c
-index 4293ee6238f..38003a5a70f 100644
+index 4293ee6238f..6af7a97a7b9 100644
 --- a/gcc/cp/decl.c
 +++ b/gcc/cp/decl.c
 @@ -5447,7 +5447,7 @@ start_decl (const cp_declarator *declarator,
@@ -26497,6 +26500,15 @@ index 4293ee6238f..38003a5a70f 100644
        release_tree_vector (cleanups);
      }
  
+@@ -12222,7 +12275,7 @@ grokdeclarator (const cp_declarator *declarator,
+ 			  "an array", name);
+ 		return error_mark_node;
+ 	      }
+-	    if (constinit_p)
++	    if (constinit_p && funcdecl_p)
+ 	      {
+ 		error_at (declspecs->locations[ds_constinit],
+ 			  "%<constinit%> on function return type is not "
 diff --git a/gcc/cp/decl2.c b/gcc/cp/decl2.c
 index bf377963d8f..7a4e05807e6 100644
 --- a/gcc/cp/decl2.c
@@ -43643,6 +43655,24 @@ index 00000000000..cb0d1bed0b1
 +constexpr auto a = &S::foo;
 +constexpr auto b = (s.*a) ();
 +constexpr auto c = (s.*&S::foo) ();
+diff --git a/gcc/testsuite/g++.dg/cpp2a/constinit18.C b/gcc/testsuite/g++.dg/cpp2a/constinit18.C
+new file mode 100644
+index 00000000000..51b4f0273be
+--- /dev/null
++++ b/gcc/testsuite/g++.dg/cpp2a/constinit18.C
+@@ -0,0 +1,12 @@
++// PR c++/104066
++// { dg-do compile { target c++20 } }
++
++constinit void (*p)() = nullptr;
++constinit void (*pp)() = nullptr;
++void fn();
++constinit void (&r)() = fn;
++
++extern constinit long (* const syscall_reexported) (long, ...);
++
++constinit void bad (); // { dg-error ".constinit. on function return type is not allowed" }
++constinit void bad () { } // { dg-error ".constinit. on function return type is not allowed" }
 diff --git a/gcc/testsuite/g++.dg/cpp2a/desig18.C b/gcc/testsuite/g++.dg/cpp2a/desig18.C
 new file mode 100644
 index 00000000000..4851579b7c7
