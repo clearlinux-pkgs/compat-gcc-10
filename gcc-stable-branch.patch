@@ -102,7 +102,9 @@ François-Xavier Coudert (1):
 Fritz Reese (1):
       fortran: Fix conv of UNION constructors [PR105310]
 
-GCC Administrator (580):
+GCC Administrator (582):
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -1531,13 +1533,14 @@ Tamar Christina (2):
 Thomas Koenig (1):
       Do not replace variable op variable in I/O implied DO loop replacement.
 
-Thomas Schwinge (6):
+Thomas Schwinge (7):
       Add 'libgomp.oacc-c-c++-common/static-variable-1.c' [PR84991, PR84992, PR90779]
       Restore 'gcc.dg/pr78213.c' testing
       libstdc++: Avoid illegal argument to verbose in dg-test callback, continued
       Fix up 'gcc.dg/pr78213.c' for '--enable-checking=release' etc.
       Fix 'OMP_CLAUSE_TILE' operands handling in 'gcc/tree.c:walk_tree_1'
       nvptx: Define (dummy) 'TARGET_PTX_6_0'
+      nvptx: In 'STARTFILE_SPEC', fix 'crt0.o' for '-mmainkernel'
 
 Tim Adye (1):
       libstdc++: Optimize std::any_cast by replacing indirect call
@@ -5626,10 +5629,18 @@ index 0719d810258..da772b97257 100644
 -10.3.0
 +10.4.1
 diff --git a/gcc/ChangeLog b/gcc/ChangeLog
-index 3b1384e707f..958ad90871b 100644
+index 3b1384e707f..8ec025af871 100644
 --- a/gcc/ChangeLog
 +++ b/gcc/ChangeLog
-@@ -1,3 +1,3271 @@
+@@ -1,3 +1,3279 @@
++2022-11-19  Thomas Schwinge  <thomas@codesourcery.com>
++
++	Backported from master:
++	2022-11-19  Thomas Schwinge  <thomas@codesourcery.com>
++
++	* config/nvptx/nvptx.h (STARTFILE_SPEC): Fix 'crt0.o' for
++	'-mmainkernel'.
++
 +2022-11-14  Richard Biener  <rguenther@suse.de>
 +
 +	PR tree-optimization/107485
@@ -16725,9 +16736,18 @@ index e3e84dfd4e4..0b67d544e48 100644
  	  rtx tmp = gen_reg_rtx (BImode);
  	  emit_insn_before (gen_movbi (tmp, const0_rtx),
 diff --git a/gcc/config/nvptx/nvptx.h b/gcc/config/nvptx/nvptx.h
-index 6ebcc760771..ca1aa11d852 100644
+index 6ebcc760771..95ef0422a35 100644
 --- a/gcc/config/nvptx/nvptx.h
 +++ b/gcc/config/nvptx/nvptx.h
+@@ -27,7 +27,7 @@
+ 
+ /* Run-time Target.  */
+ 
+-#define STARTFILE_SPEC "%{mmainkernel:crt0.o}"
++#define STARTFILE_SPEC "%{mmainkernel:crt0.o%s}"
+ 
+ #define ASM_SPEC "%{misa=*:-m %*}"
+ 
 @@ -95,6 +95,9 @@
  
  #define TARGET_SM35 (ptx_isa_option >= PTX_ISA_SM35)
@@ -24408,10 +24428,19 @@ index 38820bc170f..2747f8f1b4c 100644
    gcov_write_unsigned (end_column);
    gcov_write_length (offset);
 diff --git a/gcc/cp/ChangeLog b/gcc/cp/ChangeLog
-index b576f9a3678..e524d767550 100644
+index b576f9a3678..688c4e14f03 100644
 --- a/gcc/cp/ChangeLog
 +++ b/gcc/cp/ChangeLog
-@@ -1,3 +1,809 @@
+@@ -1,3 +1,818 @@
++2022-11-18  Marek Polacek  <polacek@redhat.com>
++
++	Backported from master:
++	2022-11-18  Marek Polacek  <polacek@redhat.com>
++
++	PR c++/104066
++	* decl.c (grokdeclarator): Check funcdecl_p before complaining
++	about constinit.
++
 +2022-06-28  Release Manager
 +
 +	* GCC 10.4.0 released.
@@ -37376,10 +37405,18 @@ index f5a6d507e91..6b2c3e17346 100644
  DEFHOOKPOD
  (have_tls,
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index 2913065bf31..71d8bbd3216 100644
+index 2913065bf31..e13ba84e410 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,3587 @@
+@@ -1,3 +1,3595 @@
++2022-11-18  Marek Polacek  <polacek@redhat.com>
++
++	Backported from master:
++	2022-11-18  Marek Polacek  <polacek@redhat.com>
++
++	PR c++/104066
++	* g++.dg/cpp2a/constinit18.C: New test.
++
 +2022-11-08  H.J. Lu  <hjl.tools@gmail.com>
 +
 +	Backported from master:
