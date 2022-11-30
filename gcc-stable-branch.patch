@@ -102,7 +102,10 @@ François-Xavier Coudert (1):
 Fritz Reese (1):
       fortran: Fix conv of UNION constructors [PR105310]
 
-GCC Administrator (588):
+GCC Administrator (591):
+      Daily bump.
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -1275,6 +1278,9 @@ Martin Sebor (2):
 
 Martin Storsjö (1):
       mh-mingw: Set __USE_MINGW_ACCESS in missed C++ flags variables
+
+Max Filippov (1):
+      gcc: fix PR rtl-optimization/107482
 
 Michael Meissner (5):
       Backport fix for PR target/98952
@@ -5636,10 +5642,19 @@ index 0719d810258..da772b97257 100644
 -10.3.0
 +10.4.1
 diff --git a/gcc/ChangeLog b/gcc/ChangeLog
-index 3b1384e707f..8ec025af871 100644
+index 3b1384e707f..2772999896b 100644
 --- a/gcc/ChangeLog
 +++ b/gcc/ChangeLog
-@@ -1,3 +1,3279 @@
+@@ -1,3 +1,3288 @@
++2022-11-29  Max Filippov  <jcmvbkbc@gmail.com>
++
++	Backported from master:
++	2022-11-08  Max Filippov  <jcmvbkbc@gmail.com>
++
++	PR rtl-optimization/107482
++	* ira-color.c (assign_hard_reg): Only call
++	update_costs_from_copies when retry_p is false.
++
 +2022-11-19  Thomas Schwinge  <thomas@codesourcery.com>
 +
 +	Backported from master:
@@ -34946,6 +34961,21 @@ index 55481931668..dd4e3531281 100644
  }
  
  } // anon namespace
+diff --git a/gcc/ira-color.c b/gcc/ira-color.c
+index b0fc159a849..c02af1f7181 100644
+--- a/gcc/ira-color.c
++++ b/gcc/ira-color.c
+@@ -1956,8 +1956,8 @@ assign_hard_reg (ira_allocno_t a, bool retry_p)
+     restore_costs_from_copies (a);
+   ALLOCNO_HARD_REGNO (a) = best_hard_regno;
+   ALLOCNO_ASSIGNED_P (a) = true;
+-  if (best_hard_regno >= 0)
+-    update_costs_from_copies (a, true, ! retry_p);
++  if (best_hard_regno >= 0 && !retry_p)
++    update_costs_from_copies (a, true, true);
+   ira_assert (ALLOCNO_CLASS (a) == aclass);
+   /* We don't need updated costs anymore.  */
+   ira_free_allocno_updated_costs (a);
 diff --git a/gcc/jit/ChangeLog b/gcc/jit/ChangeLog
 index a8bc5cea3e6..bb6aea17f87 100644
 --- a/gcc/jit/ChangeLog
