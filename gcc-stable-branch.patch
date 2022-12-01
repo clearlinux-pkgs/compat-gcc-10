@@ -102,7 +102,8 @@ François-Xavier Coudert (1):
 Fritz Reese (1):
       fortran: Fix conv of UNION constructors [PR105310]
 
-GCC Administrator (591):
+GCC Administrator (592):
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -791,7 +792,7 @@ Harald Anlauf (73):
 Hongyu Wang (1):
       AVX512F: Add missing macro for mask(z?)_scalf_s[sd] [PR 105339]
 
-Iain Buclaw (25):
+Iain Buclaw (26):
       d: Fix ICE in when formating a string with '%' or '`' characters (PR98457)
       d: Fix ICE in gimplify_var_or_parm_decl, at gimplify.c:2755 (PR100882)
       d: Respect explicit align(N) type alignment (PR100935)
@@ -817,6 +818,7 @@ Iain Buclaw (25):
       tilegx: Fix infinite loop in gen-mul-tables generator
       d: Fix error: aggregate value used where floating point was expected
       d: Update DIP links in gdc documentation to point at upstream repository
+      d: Fix ICE on named continue label in an unrolled loop [PR107592]
 
 Iain Sandoe (36):
       coroutines: Fix a typo in rewriting the function.
@@ -1043,12 +1045,13 @@ Jason Merrill (44):
 Jeff Law (1):
       [committed] Fix more problems with new linker warnings
 
-John David Anglin (5):
+John David Anglin (6):
       Add support for 32-bit hppa targets in muldi3 expander
       Fix TARGET_SOFT_FLOAT patterns in pa.md
       Consistently use "rG" constraint for copy instruction in move patterns
       Don't use 'G' constraint in integer move patterns
       Fix warnings building linux-atomic.c and fptr.c on hppa64-linux
+      Fix addvdi3 and subvdi3 patterns
 
 Jonathan Wakely (143):
       libstdc++: Fix Doxygen warning about ambiguous file name
@@ -1605,9 +1608,10 @@ konglin1 (2):
       i386: Fix _mm512_fpclass_ps_mask in O0 [PR 101471]
       i386: Fix wrong optimization for consecutive masked scatters [PR 101472]
 
-liuhongt (2):
+liuhongt (3):
       ICE: QImode(not SImode) operand should be passed to gen_vec_initv16qiqi in ashlv16qi3.
       Fix incorrect optimization by cprop_hardreg.
+      Fix unrecognizable insn due to illegal immediate_operand (const_int 255) of QImode.
 
 diff --git a/ChangeLog b/ChangeLog
 index 4e6f61ddbe3..802689249e9 100644
@@ -5642,10 +5646,17 @@ index 0719d810258..da772b97257 100644
 -10.3.0
 +10.4.1
 diff --git a/gcc/ChangeLog b/gcc/ChangeLog
-index 3b1384e707f..2772999896b 100644
+index 3b1384e707f..61d8fb32bd2 100644
 --- a/gcc/ChangeLog
 +++ b/gcc/ChangeLog
-@@ -1,3 +1,3288 @@
+@@ -1,3 +1,3295 @@
++2022-11-30  John David Anglin  <danglin@gcc.gnu.org>
++
++	* config/pa/pa.md (addvdi3): Force operand 2 to a register.
++	Remove "addi,tsv,*" instruction from unamed pattern.
++	(subvdi3): Force operand 1 to a register.
++	Remove "subi,tsv" instruction from from unamed pattern.
++
 +2022-11-29  Max Filippov  <jcmvbkbc@gmail.com>
 +
 +	Backported from master:
@@ -15879,7 +15890,7 @@ index 6f6a8328ef1..c24cbd5de28 100644
    gcc_unreachable ();
  }
 diff --git a/gcc/config/i386/i386-expand.c b/gcc/config/i386/i386-expand.c
-index 47d52550e5e..6075532b8c9 100644
+index 47d52550e5e..15ea243503a 100644
 --- a/gcc/config/i386/i386-expand.c
 +++ b/gcc/config/i386/i386-expand.c
 @@ -1140,6 +1140,9 @@ ix86_split_idivmod (machine_mode mode, rtx operands[],
@@ -15929,6 +15940,15 @@ index 47d52550e5e..6075532b8c9 100644
    if (vec_len > 1)
      call = gen_rtx_PARALLEL (VOIDmode, gen_rtvec_v (vec_len, vec));
    rtx_insn *call_insn = emit_call_insn (call);
+@@ -10938,7 +10955,7 @@ ix86_expand_vec_set_builtin (tree exp)
+   op1 = expand_expr (arg1, NULL_RTX, mode1, EXPAND_NORMAL);
+   elt = get_element_number (TREE_TYPE (arg0), arg2);
+ 
+-  if (GET_MODE (op1) != mode1 && GET_MODE (op1) != VOIDmode)
++  if (GET_MODE (op1) != mode1)
+     op1 = convert_modes (mode1, GET_MODE (op1), op1, true);
+ 
+   op0 = force_reg (tmode, op0);
 @@ -11929,6 +11946,9 @@ rdseed_step:
        return target;
  
@@ -16824,7 +16844,7 @@ index 089cdf04f2e..34062027312 100644
    [(set (match_dup 0)
  	(unspec_volatile:BLK [(match_dup 0)] UNSPECV_MEMBAR))]
 diff --git a/gcc/config/pa/pa.md b/gcc/config/pa/pa.md
-index 3a82fac85e3..1803c66cd21 100644
+index 3a82fac85e3..770befc908b 100644
 --- a/gcc/config/pa/pa.md
 +++ b/gcc/config/pa/pa.md
 @@ -1383,7 +1383,7 @@
@@ -16969,7 +16989,77 @@ index 3a82fac85e3..1803c66cd21 100644
  (define_insn ""
    [(set (match_operand:SF 0 "indexed_memory_operand" "=R")
  	(match_operand:SF 1 "register_operand" "f"))]
-@@ -5374,32 +5455,38 @@
+@@ -4990,23 +5071,25 @@
+ 						    (match_dup 2))))
+ 		       (const_int 0))])]
+   ""
+-  "")
++  "
++{
++  if (TARGET_64BIT)
++    operands[2] = force_reg (DImode, operands[2]);
++}")
+ 
+ (define_insn ""
+-  [(set (match_operand:DI 0 "register_operand" "=r,r")
+-	(plus:DI (match_operand:DI 1 "reg_or_0_operand" "%rM,rM")
+-		 (match_operand:DI 2 "arith11_operand" "r,I")))
++  [(set (match_operand:DI 0 "register_operand" "=r")
++	(plus:DI (match_operand:DI 1 "reg_or_0_operand" "%rM")
++		 (match_operand:DI 2 "register_operand" "r")))
+    (trap_if (ne (plus:TI (sign_extend:TI (match_dup 1))
+ 			 (sign_extend:TI (match_dup 2)))
+ 		(sign_extend:TI (plus:DI (match_dup 1)
+ 					 (match_dup 2))))
+ 	    (const_int 0))]
+   "TARGET_64BIT"
+-  "@
+-  add,tsv,* %2,%1,%0
+-  addi,tsv,* %2,%1,%0"
+-  [(set_attr "type" "binary,binary")
+-   (set_attr "length" "4,4")])
++  "add,tsv,* %2,%1,%0"
++  [(set_attr "type" "binary")
++   (set_attr "length" "4")])
+ 
+ (define_insn ""
+   [(set (match_operand:DI 0 "register_operand" "=r")
+@@ -5181,23 +5264,25 @@
+ 						     (match_dup 2))))
+ 		       (const_int 0))])]
+   ""
+-  "")
++  "
++{
++  if (TARGET_64BIT)
++    operands[1] = force_reg (DImode, operands[1]);
++}")
+ 
+ (define_insn ""
+-  [(set (match_operand:DI 0 "register_operand" "=r,r")
+-	(minus:DI (match_operand:DI 1 "arith11_operand" "r,I")
+-		  (match_operand:DI 2 "reg_or_0_operand" "rM,rM")))
++  [(set (match_operand:DI 0 "register_operand" "=r")
++	(minus:DI (match_operand:DI 1 "register_operand" "r")
++		  (match_operand:DI 2 "reg_or_0_operand" "rM")))
+    (trap_if (ne (minus:TI (sign_extend:TI (match_dup 1))
+ 			  (sign_extend:TI (match_dup 2)))
+ 		(sign_extend:TI (minus:DI (match_dup 1)
+ 					  (match_dup 2))))
+ 	    (const_int 0))]
+   "TARGET_64BIT"
+-  "@
+-  {subo|sub,tsv} %1,%2,%0
+-  {subio|subi,tsv} %1,%2,%0"
+-  [(set_attr "type" "binary,binary")
+-   (set_attr "length" "4,4")])
++  "sub,tsv,* %1,%2,%0"
++  [(set_attr "type" "binary")
++   (set_attr "length" "4")])
+ 
+ (define_insn ""
+   [(set (match_operand:DI 0 "register_operand" "=r,&r")
+@@ -5374,32 +5459,38 @@
    [(set (match_operand:DI 0 "register_operand" "")
          (mult:DI (match_operand:DI 1 "register_operand" "")
  		 (match_operand:DI 2 "register_operand" "")))]
@@ -17028,7 +17118,7 @@ index 3a82fac85e3..1803c66cd21 100644
  
    /* Emit multiplies for the cross products.  */
    emit_insn (gen_umulsidi3 (cross_product1, op2r, op1l));
-@@ -5408,13 +5495,35 @@
+@@ -5408,13 +5499,35 @@
    /* Emit a multiply for the low sub-word.  */
    emit_insn (gen_umulsidi3 (low_product, copy_rtx (op2r), copy_rtx (op1r)));
  
@@ -27848,10 +27938,21 @@ index 53e9603868d..5ecedef0bb4 100644
        return DEBUG_IMPLICIT_PTR_DECL (x)
  	     == DEBUG_IMPLICIT_PTR_DECL (y);
 diff --git a/gcc/d/ChangeLog b/gcc/d/ChangeLog
-index 8bc729ae32d..84ea6930951 100644
+index 8bc729ae32d..912c7f54114 100644
 --- a/gcc/d/ChangeLog
 +++ b/gcc/d/ChangeLog
-@@ -1,3 +1,213 @@
+@@ -1,3 +1,224 @@
++2022-11-30  Iain Buclaw  <ibuclaw@gdcproject.org>
++
++	Backported from master:
++	2022-11-30  Iain Buclaw  <ibuclaw@gdcproject.org>
++
++	PR d/107592
++	* toir.cc (IRVisitor::push_unrolled_continue_label): New method.
++	(IRVisitor::pop_unrolled_continue_label): New method.
++	(IRVisitor::visit (UnrolledLoopStatement *)): Use them instead of
++	push_continue_label and pop_continue_label.
++
 +2022-08-16  Iain Buclaw  <ibuclaw@gdcproject.org>
 +
 +	Backported from master:
@@ -29043,6 +29144,51 @@ index 2ce560f3cae..45e76727764 100644
  @item field
  List all non-mutable fields which occupy an object instance.
  @item import
+diff --git a/gcc/d/toir.cc b/gcc/d/toir.cc
+index 074cde0e0da..559f79da6c2 100644
+--- a/gcc/d/toir.cc
++++ b/gcc/d/toir.cc
+@@ -540,6 +540,28 @@ public:
+     this->do_label (label);
+   }
+ 
++  /* Generate and set a new continue label for the current unrolled loop.  */
++
++  void push_unrolled_continue_label (UnrolledLoopStatement *s)
++  {
++    this->push_continue_label (s);
++  }
++
++  /* Finish with the continue label for the unrolled loop.  */
++
++  void pop_unrolled_continue_label (UnrolledLoopStatement *s)
++  {
++    Statement *stmt = s->getRelatedLabeled ();
++    d_label_entry *ent = d_function_chain->labels->get (stmt);
++    gcc_assert (ent != NULL && ent->bc_label == true);
++
++    this->pop_continue_label (TREE_VEC_ELT (ent->label, bc_continue));
++
++    /* Remove the continue label from the label htab, as a new one must be
++       inserted at the end of every unrolled loop.  */
++    ent->label = TREE_VEC_ELT (ent->label, bc_break);
++  }
++
+   /* Visitor interfaces.  */
+ 
+ 
+@@ -1076,9 +1098,9 @@ public:
+ 
+ 	if (statement != NULL)
+ 	  {
+-	    tree lcontinue = this->push_continue_label (statement);
++	    this->push_unrolled_continue_label (s);
+ 	    this->build_stmt (statement);
+-	    this->pop_continue_label (lcontinue);
++	    this->pop_unrolled_continue_label (s);
+ 	  }
+       }
+ 
 diff --git a/gcc/d/typeinfo.cc b/gcc/d/typeinfo.cc
 index 6aa4f64a713..c61bf621643 100644
 --- a/gcc/d/typeinfo.cc
@@ -37466,10 +37612,18 @@ index f5a6d507e91..6b2c3e17346 100644
  DEFHOOKPOD
  (have_tls,
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index 2913065bf31..a231fedd48b 100644
+index 2913065bf31..8becfa9a7df 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,3603 @@
+@@ -1,3 +1,3611 @@
++2022-11-30  Iain Buclaw  <ibuclaw@gdcproject.org>
++
++	Backported from master:
++	2022-11-30  Iain Buclaw  <ibuclaw@gdcproject.org>
++
++	PR d/107592
++	* gdc.dg/pr107592.d: New test.
++
 +2022-11-25  Harald Anlauf  <anlauf@gmx.de>
 +
 +	Backported from master:
@@ -51342,6 +51496,20 @@ index 00000000000..80badc11682
 +      s->v = __builtin_shuffle(tmp.v, mask2->v);
 +  }
 +}
+diff --git a/gcc/testsuite/gcc.target/i386/pr107863.c b/gcc/testsuite/gcc.target/i386/pr107863.c
+new file mode 100644
+index 00000000000..99fd85d9765
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/i386/pr107863.c
+@@ -0,0 +1,8 @@
++/* { dg-do compile } */
++/* { dg-options "-mavx2 -O" } */
++
++typedef char v16qi __attribute__((vector_size(16)));
++
++v16qi foo(v16qi a){
++  return __builtin_ia32_vec_set_v16qi (a, -1, 2);
++}
 diff --git a/gcc/testsuite/gcc.target/i386/pr71245-1.c b/gcc/testsuite/gcc.target/i386/pr71245-1.c
 deleted file mode 100644
 index be0b7602a8c..00000000000
@@ -53088,6 +53256,25 @@ index 00000000000..4c6f0ef3a3a
 +{
 +    v = cast(__vector(V))a;
 +}
+diff --git a/gcc/testsuite/gdc.dg/pr107592.d b/gcc/testsuite/gdc.dg/pr107592.d
+new file mode 100644
+index 00000000000..59f34477356
+--- /dev/null
++++ b/gcc/testsuite/gdc.dg/pr107592.d
+@@ -0,0 +1,13 @@
++// https://gcc.gnu.org/bugzilla/show_bug.cgi?id=107592
++// { dg-do compile }
++
++void test107592(Things...)(Things things)
++{
++    label:
++    foreach (thing; things)
++    {
++        continue label;
++    }
++}
++
++alias a107592 = test107592!(string);
 diff --git a/gcc/testsuite/gdc.dg/pr96435.d b/gcc/testsuite/gdc.dg/pr96435.d
 new file mode 100644
 index 00000000000..c6d8785ec5b
