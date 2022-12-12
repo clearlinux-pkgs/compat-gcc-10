@@ -102,7 +102,11 @@ François-Xavier Coudert (1):
 Fritz Reese (1):
       fortran: Fix conv of UNION constructors [PR105310]
 
-GCC Administrator (599):
+GCC Administrator (603):
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -799,7 +803,7 @@ Harald Anlauf (73):
 Hongyu Wang (1):
       AVX512F: Add missing macro for mask(z?)_scalf_s[sd] [PR 105339]
 
-Iain Buclaw (26):
+Iain Buclaw (27):
       d: Fix ICE in when formating a string with '%' or '`' characters (PR98457)
       d: Fix ICE in gimplify_var_or_parm_decl, at gimplify.c:2755 (PR100882)
       d: Respect explicit align(N) type alignment (PR100935)
@@ -826,6 +830,7 @@ Iain Buclaw (26):
       d: Fix error: aggregate value used where floating point was expected
       d: Update DIP links in gdc documentation to point at upstream repository
       d: Fix ICE on named continue label in an unrolled loop [PR107592]
+      d: Fix internal compiler error: in visit, at d/imports.cc:72 (PR108050)
 
 Iain Sandoe (36):
       coroutines: Fix a typo in rewriting the function.
@@ -27951,10 +27956,20 @@ index 53e9603868d..5ecedef0bb4 100644
        return DEBUG_IMPLICIT_PTR_DECL (x)
  	     == DEBUG_IMPLICIT_PTR_DECL (y);
 diff --git a/gcc/d/ChangeLog b/gcc/d/ChangeLog
-index 8bc729ae32d..912c7f54114 100644
+index 8bc729ae32d..2174a569bf8 100644
 --- a/gcc/d/ChangeLog
 +++ b/gcc/d/ChangeLog
-@@ -1,3 +1,224 @@
+@@ -1,3 +1,234 @@
++2022-12-11  Iain Buclaw  <ibuclaw@gdcproject.org>
++
++	Backported from master:
++	2022-12-11  Iain Buclaw  <ibuclaw@gdcproject.org>
++
++	PR d/108050
++	* decl.cc (DeclVisitor::visit (Import *)): Handle build_import_decl
++	returning a TREE_LIST.
++	* imports.cc (ImportVisitor::visit (OverloadSet *)): New override.
++
 +2022-11-30  Iain Buclaw  <ibuclaw@gdcproject.org>
 +
 +	Backported from master:
@@ -28709,10 +28724,29 @@ index 4d039adb0fa..7989033366e 100644
  extern void create_typeinfo (Type *, Module *);
  extern void create_tinfo_types (Module *);
 diff --git a/gcc/d/decl.cc b/gcc/d/decl.cc
-index f342688ba91..94f941f65a3 100644
+index f342688ba91..b9078b235c7 100644
 --- a/gcc/d/decl.cc
 +++ b/gcc/d/decl.cc
-@@ -1253,6 +1253,9 @@ get_symbol_decl (Declaration *decl)
+@@ -181,8 +181,16 @@ public:
+ 	    tree name = (alias != NULL)
+ 	      ? get_identifier (alias->toChars ()) : NULL_TREE;
+ 
+-	    debug_hooks->imported_module_or_decl (decl, name, context,
+-						  false, false);
++	    if (TREE_CODE (decl) != TREE_LIST)
++	      debug_hooks->imported_module_or_decl (decl, name, context,
++						    false, false);
++	    else
++	      {
++		/* Overload sets return a list of imported decls.  */
++		for (; decl != NULL_TREE; decl = TREE_CHAIN (decl))
++		  debug_hooks->imported_module_or_decl (TREE_VALUE (decl), name,
++							context, false, false);
++	      }
+ 	  }
+       }
+     else
+@@ -1253,6 +1261,9 @@ get_symbol_decl (Declaration *decl)
  	      DECL_VINDEX (decl->csym) = size_int (fd->vtblIndex);
  	      DECL_VIRTUAL_P (decl->csym) = 1;
  	    }
@@ -28722,7 +28756,7 @@ index f342688ba91..94f941f65a3 100644
  	}
        else if (fd->isMain () || fd->isCMain ())
  	{
-@@ -1585,8 +1588,9 @@ d_finish_decl (tree decl)
+@@ -1585,8 +1596,9 @@ d_finish_decl (tree decl)
    if (flag_checking && DECL_INITIAL (decl))
      {
        /* Initializer must never be bigger than symbol size.  */
@@ -29157,6 +29191,31 @@ index 2ce560f3cae..45e76727764 100644
  @item field
  List all non-mutable fields which occupy an object instance.
  @item import
+diff --git a/gcc/d/imports.cc b/gcc/d/imports.cc
+index 2e3eb7408b7..e72f1ea00ac 100644
+--- a/gcc/d/imports.cc
++++ b/gcc/d/imports.cc
+@@ -157,6 +157,20 @@ public:
+       }
+   }
+ 
++  /* Build IMPORTED_DECLs for all overloads in a set.  */
++  void visit (OverloadSet *d)
++  {
++    vec<tree, va_gc> *tset = NULL;
++
++    vec_alloc (tset, d->a.dim);
++
++    for (size_t i = 0; i < d->a.dim; i++)
++      vec_safe_push (tset, build_import_decl (d->a[i]));
++
++    d->isym = build_tree_list_vec (tset);
++    tset->truncate (0);
++  }
++
+   /* Function aliases are the same as alias symbols.  */
+   void visit (FuncAliasDeclaration *d)
+   {
 diff --git a/gcc/d/toir.cc b/gcc/d/toir.cc
 index 074cde0e0da..559f79da6c2 100644
 --- a/gcc/d/toir.cc
@@ -37625,10 +37684,21 @@ index f5a6d507e91..6b2c3e17346 100644
  DEFHOOKPOD
  (have_tls,
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index 2913065bf31..5e106d555c0 100644
+index 2913065bf31..559b868795c 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,3615 @@
+@@ -1,3 +1,3626 @@
++2022-12-11  Iain Buclaw  <ibuclaw@gdcproject.org>
++
++	Backported from master:
++	2022-12-11  Iain Buclaw  <ibuclaw@gdcproject.org>
++
++	PR d/108050
++	* gdc.dg/imports/pr108050/mod1.d: New.
++	* gdc.dg/imports/pr108050/mod2.d: New.
++	* gdc.dg/imports/pr108050/package.d: New.
++	* gdc.dg/pr108050.d: New test.
++
 +2022-12-01  liuhongt  <hongtao.liu@intel.com>
 +
 +	* gcc.target/i386/pr107863.c: New test.
@@ -52911,6 +52981,30 @@ index 00000000000..8a9cca7e225
 +// { dg-options "-Wpadded" }
 +
 +class EmptyClass { }
+diff --git a/gcc/testsuite/gdc.dg/imports/pr108050/mod1.d b/gcc/testsuite/gdc.dg/imports/pr108050/mod1.d
+new file mode 100644
+index 00000000000..f27a13dc051
+--- /dev/null
++++ b/gcc/testsuite/gdc.dg/imports/pr108050/mod1.d
+@@ -0,0 +1,2 @@
++module imports.pr108050.mod1;
++string[] split() { return null; }
+diff --git a/gcc/testsuite/gdc.dg/imports/pr108050/mod2.d b/gcc/testsuite/gdc.dg/imports/pr108050/mod2.d
+new file mode 100644
+index 00000000000..29d8aa8f53e
+--- /dev/null
++++ b/gcc/testsuite/gdc.dg/imports/pr108050/mod2.d
+@@ -0,0 +1,2 @@
++module imports.pr108050.mod2;
++string[] split() { return null; }
+diff --git a/gcc/testsuite/gdc.dg/imports/pr108050/package.d b/gcc/testsuite/gdc.dg/imports/pr108050/package.d
+new file mode 100644
+index 00000000000..b8b03b832af
+--- /dev/null
++++ b/gcc/testsuite/gdc.dg/imports/pr108050/package.d
+@@ -0,0 +1,2 @@
++module imports.pr108050;
++public import imports.pr108050.mod1, imports.pr108050.mod2;
 diff --git a/gcc/testsuite/gdc.dg/pr100882a.d b/gcc/testsuite/gdc.dg/pr100882a.d
 new file mode 100644
 index 00000000000..d94baff97ac
@@ -53292,6 +53386,16 @@ index 00000000000..59f34477356
 +}
 +
 +alias a107592 = test107592!(string);
+diff --git a/gcc/testsuite/gdc.dg/pr108050.d b/gcc/testsuite/gdc.dg/pr108050.d
+new file mode 100644
+index 00000000000..69134e73137
+--- /dev/null
++++ b/gcc/testsuite/gdc.dg/pr108050.d
+@@ -0,0 +1,4 @@
++// { dg-do compile }
++// { dg-additional-sources "imports/pr108050/package.d imports/pr108050/mod1.d imports/pr108050/mod2.d" }
++// { dg-options "-g" }
++import imports.pr108050 : split;
 diff --git a/gcc/testsuite/gdc.dg/pr96435.d b/gcc/testsuite/gdc.dg/pr96435.d
 new file mode 100644
 index 00000000000..c6d8785ec5b
