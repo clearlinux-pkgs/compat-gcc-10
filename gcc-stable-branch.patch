@@ -102,7 +102,8 @@ François-Xavier Coudert (1):
 Fritz Reese (1):
       fortran: Fix conv of UNION constructors [PR105310]
 
-GCC Administrator (605):
+GCC Administrator (606):
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -1518,8 +1519,9 @@ Sebastian Huber (3):
       RTEMS: Do not define _GNU_SOURCE by default
       RTEMS: Add -mvrsave multilibs
 
-Sebastian Pop (1):
+Sebastian Pop (2):
       add barriers to ool __sync builtins
+      AArch64: Add UNSPECV_PATCHABLE_AREA [PR98776]
 
 Segher Boessenkool (10):
       rs6000: Fix cpu selection w/ isel (PR100108)
@@ -11584,7 +11586,7 @@ index 9c290292479..197f88d5be2 100644
  /* ARMv8-A big.LITTLE implementations.  */
  
 diff --git a/gcc/config/aarch64/aarch64-protos.h b/gcc/config/aarch64/aarch64-protos.h
-index bebd1b36228..61e2ad54f88 100644
+index bebd1b36228..ef24c48fc14 100644
 --- a/gcc/config/aarch64/aarch64-protos.h
 +++ b/gcc/config/aarch64/aarch64-protos.h
 @@ -787,7 +787,7 @@ bool aarch64_high_bits_all_ones_p (HOST_WIDE_INT);
@@ -11596,6 +11598,13 @@ index bebd1b36228..61e2ad54f88 100644
  };
  
  rtx aarch64_atomic_ool_func(machine_mode mode, rtx model_rtx,
+@@ -805,4 +805,6 @@ const char *aarch64_indirect_call_asm (rtx);
+ extern bool aarch64_harden_sls_retbr_p (void);
+ extern bool aarch64_harden_sls_blr_p (void);
+ 
++extern void aarch64_output_patchable_area (unsigned int, bool);
++
+ #endif /* GCC_AARCH64_PROTOS_H */
 diff --git a/gcc/config/aarch64/aarch64-simd.md b/gcc/config/aarch64/aarch64-simd.md
 index 6049adc3f3b..e16bc784bb4 100644
 --- a/gcc/config/aarch64/aarch64-simd.md
@@ -11963,7 +11972,7 @@ index 7fda2294b8a..d116b0e5e97 100644
 +	"cortexa34,cortexa35,cortexa53,cortexa57,cortexa72,cortexa73,thunderx,thunderxt88p1,thunderxt88,octeontx,octeontxt81,octeontxt83,thunderxt81,thunderxt83,emag,xgene1,falkor,qdf24xx,exynosm1,phecda,thunderx2t99p1,vulcan,thunderx2t99,cortexa55,cortexa75,cortexa76,cortexa76ae,cortexa77,cortexa65,cortexa65ae,ares,neoversen1,neoversee1,octeontx2,octeontx2t98,octeontx2t96,octeontx2t93,octeontx2f95,octeontx2f95n,octeontx2f95mm,a64fx,tsv110,thunderx3t110,zeus,neoversev1,neoverse512tvb,saphira,neoversen2,neoversev2,cortexa57cortexa53,cortexa72cortexa53,cortexa73cortexa35,cortexa73cortexa53,cortexa75cortexa55,cortexa76cortexa55"
  	(const (symbol_ref "((enum attr_tune) aarch64_tune)")))
 diff --git a/gcc/config/aarch64/aarch64.c b/gcc/config/aarch64/aarch64.c
-index 9b400c49ac6..67c2f1123b4 100644
+index 9b400c49ac6..dd9a3832b5a 100644
 --- a/gcc/config/aarch64/aarch64.c
 +++ b/gcc/config/aarch64/aarch64.c
 @@ -3123,7 +3123,7 @@ aarch64_load_symref_appropriately (rtx dest, rtx imm,
@@ -12125,7 +12134,79 @@ index 9b400c49ac6..67c2f1123b4 100644
  	result = TYPE_ALIGN (TREE_TYPE (type));
        return result;
      }
-@@ -19558,14 +19617,14 @@ aarch64_emit_unlikely_jump (rtx insn)
+@@ -19439,30 +19498,56 @@ aarch64_declare_function_name (FILE *stream, const char* name,
+   cfun->machine->label_is_assembled = true;
+ }
+ 
+-/* Implement PRINT_PATCHABLE_FUNCTION_ENTRY.  Check if the patch area is after
+-   the function label and emit a BTI if necessary.  */
++/* Implement PRINT_PATCHABLE_FUNCTION_ENTRY.  */
+ 
+ void
+ aarch64_print_patchable_function_entry (FILE *file,
+ 					unsigned HOST_WIDE_INT patch_area_size,
+ 					bool record_p)
+ {
+-  if (cfun->machine->label_is_assembled
+-      && aarch64_bti_enabled ()
+-      && !cgraph_node::get (cfun->decl)->only_called_directly_p ())
++  if (!cfun->machine->label_is_assembled)
++    {
++      /* Emit the patching area before the entry label, if any.  */
++      default_print_patchable_function_entry (file, patch_area_size,
++					      record_p);
++      return;
++    }
++
++  rtx pa = gen_patchable_area (GEN_INT (patch_area_size),
++			       GEN_INT (record_p));
++  basic_block bb = ENTRY_BLOCK_PTR_FOR_FN (cfun)->next_bb;
++
++  if (!aarch64_bti_enabled ()
++      || cgraph_node::get (cfun->decl)->only_called_directly_p ())
++    {
++      /* Emit the patchable_area at the beginning of the function.  */
++      rtx_insn *insn = emit_insn_before (pa, BB_HEAD (bb));
++      INSN_ADDRESSES_NEW (insn, -1);
++      return;
++    }
++
++  rtx_insn *insn = next_real_nondebug_insn (get_insns ());
++  if (!insn
++      || !INSN_P (insn)
++      || GET_CODE (PATTERN (insn)) != UNSPEC_VOLATILE
++      || XINT (PATTERN (insn), 1) != UNSPECV_BTI_C)
+     {
+-      /* Remove the BTI that follows the patch area and insert a new BTI
+-	 before the patch area right after the function label.  */
+-      rtx_insn *insn = next_real_nondebug_insn (get_insns ());
+-      if (insn
+-	  && INSN_P (insn)
+-	  && GET_CODE (PATTERN (insn)) == UNSPEC_VOLATILE
+-	  && XINT (PATTERN (insn), 1) == UNSPECV_BTI_C)
+-	delete_insn (insn);
+-      asm_fprintf (file, "\thint\t34 // bti c\n");
++      /* Emit a BTI_C.  */
++      insn = emit_insn_before (gen_bti_c (), BB_HEAD (bb));
+     }
+ 
+-  default_print_patchable_function_entry (file, patch_area_size, record_p);
++  /* Emit the patchable_area after BTI_C.  */
++  insn = emit_insn_after (pa, insn);
++  INSN_ADDRESSES_NEW (insn, -1);
++}
++
++/* Output patchable area.  */
++
++void
++aarch64_output_patchable_area (unsigned int patch_area_size, bool record_p)
++{
++  default_print_patchable_function_entry (asm_out_file, patch_area_size,
++					  record_p);
+ }
+ 
+ /* Implement ASM_OUTPUT_DEF_FROM_DECLS.  Output .variant_pcs for aliases.  */
+@@ -19558,14 +19643,14 @@ aarch64_emit_unlikely_jump (rtx insn)
    add_reg_br_prob_note (jump, profile_probability::very_unlikely ());
  }
  
@@ -12142,7 +12223,7 @@ index 9b400c49ac6..67c2f1123b4 100644
    int mode_idx, model_idx;
  
    switch (mode)
-@@ -19605,6 +19664,11 @@ aarch64_atomic_ool_func(machine_mode mode, rtx model_rtx,
+@@ -19605,6 +19690,11 @@ aarch64_atomic_ool_func(machine_mode mode, rtx model_rtx,
      case MEMMODEL_SEQ_CST:
        model_idx = 3;
        break;
@@ -12154,7 +12235,7 @@ index 9b400c49ac6..67c2f1123b4 100644
      default:
        gcc_unreachable ();
      }
-@@ -19617,7 +19681,8 @@ aarch64_atomic_ool_func(machine_mode mode, rtx model_rtx,
+@@ -19617,7 +19707,8 @@ aarch64_atomic_ool_func(machine_mode mode, rtx model_rtx,
    { "__aarch64_" #B #N "_relax", \
      "__aarch64_" #B #N "_acq", \
      "__aarch64_" #B #N "_rel", \
@@ -12186,10 +12267,18 @@ index 51148846345..9be4ec3d280 100644
  #define AARCH64_ISA_RNG		   (aarch64_isa_flags & AARCH64_FL_RNG)
  #define AARCH64_ISA_V8_5	   (aarch64_isa_flags & AARCH64_FL_V8_5)
 diff --git a/gcc/config/aarch64/aarch64.md b/gcc/config/aarch64/aarch64.md
-index 58445dea941..552aed3ce89 100644
+index 58445dea941..96e72bc6c06 100644
 --- a/gcc/config/aarch64/aarch64.md
 +++ b/gcc/config/aarch64/aarch64.md
-@@ -1229,10 +1229,19 @@
+@@ -282,6 +282,7 @@
+     UNSPEC_TAG_SPACE		; Translate address to MTE tag address space.
+     UNSPEC_LD1RO
+     UNSPEC_SALT_ADDR
++    UNSPECV_PATCHABLE_AREA
+ ])
+ 
+ (define_c_enum "unspecv" [
+@@ -1229,10 +1230,19 @@
      if (GET_CODE (operands[0]) == MEM && operands[1] != const0_rtx)
        operands[1] = force_reg (<MODE>mode, operands[1]);
  
@@ -12213,6 +12302,26 @@ index 58445dea941..552aed3ce89 100644
       {
         aarch64_expand_mov_immediate (operands[0], operands[1]);
         DONE;
+@@ -7597,6 +7607,19 @@
+   [(set_attr "type" "memtag")]
+ )
+ 
++(define_insn "patchable_area"
++  [(unspec_volatile [(match_operand 0 "const_int_operand")
++		     (match_operand 1 "const_int_operand")]
++		    UNSPECV_PATCHABLE_AREA)]
++  ""
++{
++  aarch64_output_patchable_area (INTVAL (operands[0]),
++			         INTVAL (operands[1]) != 0);
++  return "";
++}
++  [(set (attr "length") (symbol_ref "INTVAL (operands[0])"))]
++)
++
+ ;; AdvSIMD Stuff
+ (include "aarch64-simd.md")
+ 
 diff --git a/gcc/config/aarch64/constraints.md b/gcc/config/aarch64/constraints.md
 index 8cc6f508881..98c1f41c490 100644
 --- a/gcc/config/aarch64/constraints.md
@@ -49258,6 +49367,43 @@ index 00000000000..ae48b497dc0
 +  s.a -= s.a / 2;
 +  *o = s;
 +}
+diff --git a/gcc/testsuite/gcc.target/aarch64/pr92424-2.c b/gcc/testsuite/gcc.target/aarch64/pr92424-2.c
+index 0e75657a153..86bb92e6f32 100644
+--- a/gcc/testsuite/gcc.target/aarch64/pr92424-2.c
++++ b/gcc/testsuite/gcc.target/aarch64/pr92424-2.c
+@@ -9,4 +9,4 @@ __attribute__ ((target("branch-protection=bti"),
+ f10_bti ()
+ {
+ }
+-/* { dg-final { scan-assembler "f10_bti:\n\thint\t34 // bti c\n.*\.LPFE1:\n\tnop\n.*\tret\n" } } */
++/* { dg-final { scan-assembler "hint\t34 // bti c\n.*\.LPFE1:\n\tnop\n.*\tret\n" } } */
+diff --git a/gcc/testsuite/gcc.target/aarch64/pr92424-3.c b/gcc/testsuite/gcc.target/aarch64/pr92424-3.c
+index 0a1f74d4096..daac2faf18e 100644
+--- a/gcc/testsuite/gcc.target/aarch64/pr92424-3.c
++++ b/gcc/testsuite/gcc.target/aarch64/pr92424-3.c
+@@ -9,4 +9,4 @@ __attribute__ ((target("branch-protection=bti+pac-ret+leaf"),
+ f10_pac ()
+ {
+ }
+-/* { dg-final { scan-assembler "f10_pac:\n\thint\t34 // bti c\n.*\.LPFE1:\n\tnop\n.*\thint\t25 // paciasp\n.*\thint\t29 // autiasp\n.*\tret\n" } } */
++/* { dg-final { scan-assembler "hint\t34 // bti c\n.*\.LPFE1:\n\tnop\n.*\thint\t25 // paciasp\n.*\thint\t29 // autiasp\n.*\tret\n" } } */
+diff --git a/gcc/testsuite/gcc.target/aarch64/pr98776.c b/gcc/testsuite/gcc.target/aarch64/pr98776.c
+new file mode 100644
+index 00000000000..d193df8e66d
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/aarch64/pr98776.c
+@@ -0,0 +1,11 @@
++/* { dg-do "compile" } */
++/* { dg-options "-O1 -fpatchable-function-entry=1 -fasynchronous-unwind-tables" } */
++
++/* Test the placement of the .LPFE1 label.  */
++
++void
++foo (void)
++{
++}
++
++/* { dg-final { scan-assembler "\t\.cfi_startproc\n.*\.LPFE1:\n\tnop\n\tret\n" } } */
 diff --git a/gcc/testsuite/gcc.target/aarch64/pr99767.c b/gcc/testsuite/gcc.target/aarch64/pr99767.c
 new file mode 100644
 index 00000000000..5bbfcbdcd69
