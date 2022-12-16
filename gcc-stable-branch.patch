@@ -1321,7 +1321,7 @@ Pascal Obry (1):
 Pat Haugen (1):
       Fix register count when not splitting Complex IEEE 128-bit args.
 
-Patrick Palka (42):
+Patrick Palka (43):
       c++: Fix deduction with reference NTTP [PR83476]
       c++: Fix tsubsting CLASS_PLACEHOLDER_TEMPLATE [PR95434]
       c++: ICE in dependent_type_p with constrained auto [PR97052]
@@ -1364,6 +1364,7 @@ Patrick Palka (42):
       libstdc++: Implement P2325 changes to default-constructibility of views
       libstdc++: invalid default init in _CachedPosition [PR101231]
       libstdc++: Fix backward compatibility of P2325R3 backport [PR106320]
+      c++: quadratic constexpr behavior for left-assoc logical exprs [PR102780]
 
 Paul A. Clarke (1):
       rs6000: __Uglify non-uglified local variables in headers
@@ -25754,7 +25755,7 @@ index c0101130ba3..a22e5769dca 100644
        expr = build_nop (ptr_target_type, expr);
        goto indout;
 diff --git a/gcc/cp/constexpr.c b/gcc/cp/constexpr.c
-index ad3853940ff..40066a3330f 100644
+index ad3853940ff..369920eda90 100644
 --- a/gcc/cp/constexpr.c
 +++ b/gcc/cp/constexpr.c
 @@ -898,7 +898,7 @@ register_constexpr_fundef (tree fun, tree body)
@@ -26168,7 +26169,31 @@ index ad3853940ff..40066a3330f 100644
  	      return false;
  	    }
  	  else if (!check_for_uninitialized_const_var
-@@ -8402,8 +8576,8 @@ potential_constant_expression_1 (tree t, bool want_rval, bool strict, bool now,
+@@ -8251,13 +8425,18 @@ potential_constant_expression_1 (tree t, bool want_rval, bool strict, bool now,
+       tmp = boolean_false_node;
+     truth:
+       {
+-	tree op = TREE_OPERAND (t, 0);
+-	if (!RECUR (op, rval))
++	tree op0 = TREE_OPERAND (t, 0);
++	tree op1 = TREE_OPERAND (t, 1);
++	if (!RECUR (op0, rval))
+ 	  return false;
++	if (!(flags & tf_error) && RECUR (op1, rval))
++	  /* When quiet, try to avoid expensive trial evaluation by first
++	     checking potentiality of the second operand.  */
++	  return true;
+ 	if (!processing_template_decl)
+-	  op = cxx_eval_outermost_constant_expr (op, true);
+-	if (tree_int_cst_equal (op, tmp))
+-	  return RECUR (TREE_OPERAND (t, 1), rval);
++	  op0 = cxx_eval_outermost_constant_expr (op0, true);
++	if (tree_int_cst_equal (op0, tmp))
++	  return (flags & tf_error) ? RECUR (op1, rval) : false;
+ 	else
+ 	  return true;
+       }
+@@ -8402,8 +8581,8 @@ potential_constant_expression_1 (tree t, bool want_rval, bool strict, bool now,
      case GOTO_EXPR:
        {
  	tree *target = &TREE_OPERAND (t, 0);
@@ -26179,6 +26204,24 @@ index ad3853940ff..40066a3330f 100644
  	  {
  	    *jump_target = *target;
  	    return true;
+@@ -8437,6 +8616,17 @@ bool
+ potential_constant_expression_1 (tree t, bool want_rval, bool strict, bool now,
+ 				 tsubst_flags_t flags)
+ {
++  if (flags & tf_error)
++    {
++      /* Check potentiality quietly first, as that could be performed more
++	 efficiently in some cases (currently only for TRUTH_*_EXPR).  If
++	 that fails, replay the check noisily to give errors.  */
++      flags &= ~tf_error;
++      if (potential_constant_expression_1 (t, want_rval, strict, now, flags))
++	return true;
++      flags |= tf_error;
++    }
++
+   tree target = NULL_TREE;
+   return potential_constant_expression_1 (t, want_rval, strict, now,
+ 					  flags, &target);
 diff --git a/gcc/cp/constraint.cc b/gcc/cp/constraint.cc
 index 5f6488e514f..f28239a35d6 100644
 --- a/gcc/cp/constraint.cc
@@ -43557,6 +43600,41 @@ index 00000000000..19a24c8ed22
 +  qux ();
 +  corge ();
 +}
+diff --git a/gcc/testsuite/g++.dg/cpp1z/fold13.C b/gcc/testsuite/g++.dg/cpp1z/fold13.C
+new file mode 100644
+index 00000000000..9d7554f8999
+--- /dev/null
++++ b/gcc/testsuite/g++.dg/cpp1z/fold13.C
+@@ -0,0 +1,29 @@
++// { dg-do compile { target c++17 } }
++// Verify constexpr evaluation of a large left fold logical expression
++// isn't quadratic in the size of the expanded expression.
++
++template<int> struct S { static constexpr bool value = true; };
++
++template<class T, T...> struct integer_sequence { };
++
++template<class T, T N>
++using make_integer_sequence
++#if __has_builtin(__make_integer_seq)
++  = __make_integer_seq<integer_sequence, T, N>;
++#else
++  = integer_sequence<T, __integer_pack(N)...>;
++#endif
++
++template<int... Is>
++constexpr bool f_impl(integer_sequence<int, Is...>) {
++  return (... && S<Is>::value);
++}
++
++static_assert(f_impl(make_integer_sequence<int, 1024>()));
++
++template<int... Is>
++constexpr bool g_impl(integer_sequence<int, Is...>) {
++  return (... || !S<Is>::value);
++}
++
++static_assert(!g_impl(make_integer_sequence<int, 1024>()));
 diff --git a/gcc/testsuite/g++.dg/cpp1z/inline-var9.C b/gcc/testsuite/g++.dg/cpp1z/inline-var9.C
 new file mode 100644
 index 00000000000..43c9748877b
