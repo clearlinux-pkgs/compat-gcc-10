@@ -102,7 +102,10 @@ François-Xavier Coudert (1):
 Fritz Reese (1):
       fortran: Fix conv of UNION constructors [PR105310]
 
-GCC Administrator (607):
+GCC Administrator (610):
+      Daily bump.
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -1369,7 +1372,7 @@ Patrick Palka (43):
 Paul A. Clarke (1):
       rs6000: __Uglify non-uglified local variables in headers
 
-Paul Thomas (11):
+Paul Thomas (12):
       Fortran: Fix for class defined operators [PR99125].
       Fortran: Allow pointer deferred length associate selectors. [PR93794]
       Fortran: Fix ICE due to elemental procedure pointers [PR93924/5].
@@ -1381,6 +1384,7 @@ Paul Thomas (11):
       Fortran: Fix some select rank issues [PR97694 and 97723].
       Fortran: Fix for class functions as associated target [PR98565].
       Fortran: Correct missing structure constructor comps. [PR97612].
+      Fortran: ICE on recursive derived types with allocatable components [PR107872]
 
 Pavel I. Kryukov (1):
       libstdc++: Add self-merge check to std::forward_list::merge [PR103853]
@@ -24683,10 +24687,25 @@ index 38820bc170f..2747f8f1b4c 100644
    gcov_write_unsigned (end_column);
    gcov_write_length (offset);
 diff --git a/gcc/cp/ChangeLog b/gcc/cp/ChangeLog
-index b576f9a3678..688c4e14f03 100644
+index b576f9a3678..1c57627714a 100644
 --- a/gcc/cp/ChangeLog
 +++ b/gcc/cp/ChangeLog
-@@ -1,3 +1,818 @@
+@@ -1,3 +1,833 @@
++2022-12-16  Patrick Palka  <ppalka@redhat.com>
++
++	Backported from master:
++	2021-10-28  Patrick Palka  <ppalka@redhat.com>
++
++	PR c++/102780
++	PR c++/108138
++	* constexpr.c (potential_constant_expression_1) <case TRUTH_*_EXPR>:
++	When tf_error isn't set, preemptively check potentiality of the
++	second operand before performing trial evaluation of the first
++	operand.
++	(potential_constant_expression_1): When tf_error is set, first check
++	potentiality quietly and return true if successful, otherwise
++	proceed noisily to give errors.
++
 +2022-11-18  Marek Polacek  <polacek@redhat.com>
 +
 +	Backported from master:
@@ -30263,10 +30282,19 @@ index 6e635382fb4..9b65819463e 100644
  	    return build_zero_cst (TREE_TYPE (TREE_TYPE (arg)));
  	  return CONSTRUCTOR_ELT (arg, i)->value;
 diff --git a/gcc/fortran/ChangeLog b/gcc/fortran/ChangeLog
-index aa5932be872..545420f2fba 100644
+index aa5932be872..afc41fbe6a8 100644
 --- a/gcc/fortran/ChangeLog
 +++ b/gcc/fortran/ChangeLog
-@@ -1,3 +1,990 @@
+@@ -1,3 +1,999 @@
++2022-12-18  Paul Thomas  <pault@gcc.gnu.org>
++
++	Backported from master:
++	2022-12-09  Paul Thomas  <pault@gcc.gnu.org>
++
++	PR fortran/107872
++	* resolve.c (derived_inaccessible): Skip over allocatable components
++	to prevent an infinite loop.
++
 +2022-11-25  Harald Anlauf  <anlauf@gmx.de>
 +
 +	Backported from master:
@@ -32554,7 +32582,7 @@ index 8edc83a42c3..56b05795c27 100644
  
  
 diff --git a/gcc/fortran/resolve.c b/gcc/fortran/resolve.c
-index 7ca5f44f419..15c88b23927 100644
+index 7ca5f44f419..591d3b88227 100644
 --- a/gcc/fortran/resolve.c
 +++ b/gcc/fortran/resolve.c
 @@ -1436,6 +1436,43 @@ resolve_structure_cons (gfc_expr *expr, int init)
@@ -32643,7 +32671,17 @@ index 7ca5f44f419..15c88b23927 100644
        && CLASS_DATA (sym)->attr.dimension
        && (e->ts.type != BT_DERIVED || !e->ts.u.derived->attr.vtype))
      {
-@@ -9092,8 +9141,7 @@ resolve_assoc_var (gfc_symbol* sym, bool resolve_target)
+@@ -7391,7 +7440,8 @@ derived_inaccessible (gfc_symbol *sym)
+   for (c = sym->components; c; c = c->next)
+     {
+ 	/* Prevent an infinite loop through this function.  */
+-	if (c->ts.type == BT_DERIVED && c->attr.pointer
++	if (c->ts.type == BT_DERIVED
++	    && (c->attr.pointer || c->attr.allocatable)
+ 	    && sym == c->ts.u.derived)
+ 	  continue;
+ 
+@@ -9092,8 +9142,7 @@ resolve_assoc_var (gfc_symbol* sym, bool resolve_target)
        if (!sym->ts.u.cl)
  	sym->ts.u.cl = target->ts.u.cl;
  
@@ -32653,7 +32691,7 @@ index 7ca5f44f419..15c88b23927 100644
  	  && sym->ts.u.cl == target->ts.u.cl)
  	{
  	  sym->ts.u.cl = gfc_new_charlen (sym->ns, NULL);
-@@ -9112,8 +9160,11 @@ resolve_assoc_var (gfc_symbol* sym, bool resolve_target)
+@@ -9112,8 +9161,11 @@ resolve_assoc_var (gfc_symbol* sym, bool resolve_target)
  		|| sym->ts.u.cl->length->expr_type != EXPR_CONSTANT)
  		&& target->expr_type != EXPR_VARIABLE)
  	{
@@ -32667,7 +32705,7 @@ index 7ca5f44f419..15c88b23927 100644
  
  	  /* This is reset in trans-stmt.c after the assignment
  	     of the target expression to the associate name.  */
-@@ -9301,6 +9352,7 @@ resolve_select_type (gfc_code *code, gfc_namespace *old_ns)
+@@ -9301,6 +9353,7 @@ resolve_select_type (gfc_code *code, gfc_namespace *old_ns)
  
        /* Check F03:C815.  */
        if ((c->ts.type == BT_DERIVED || c->ts.type == BT_CLASS)
@@ -32675,7 +32713,7 @@ index 7ca5f44f419..15c88b23927 100644
  	  && !selector_type->attr.unlimited_polymorphic
  	  && !gfc_type_is_extensible (c->ts.u.derived))
  	{
-@@ -9311,7 +9363,8 @@ resolve_select_type (gfc_code *code, gfc_namespace *old_ns)
+@@ -9311,7 +9364,8 @@ resolve_select_type (gfc_code *code, gfc_namespace *old_ns)
  	}
  
        /* Check F03:C816.  */
@@ -32685,7 +32723,7 @@ index 7ca5f44f419..15c88b23927 100644
  	  && ((c->ts.type != BT_DERIVED && c->ts.type != BT_CLASS)
  	      || !gfc_type_is_extension_of (selector_type, c->ts.u.derived)))
  	{
-@@ -11733,8 +11786,9 @@ gfc_resolve_code (gfc_code *code, gfc_namespace *ns)
+@@ -11733,8 +11787,9 @@ gfc_resolve_code (gfc_code *code, gfc_namespace *ns)
  	      gfc_resolve_omp_do_blocks (code, ns);
  	      break;
  	    case EXEC_SELECT_TYPE:
@@ -32697,7 +32735,7 @@ index 7ca5f44f419..15c88b23927 100644
  	      break;
              case EXEC_DO_CONCURRENT:
  	      gfc_do_concurrent_flag = 1;
-@@ -13095,7 +13149,8 @@ resolve_fl_procedure (gfc_symbol *sym, int mp_flag)
+@@ -13095,7 +13150,8 @@ resolve_fl_procedure (gfc_symbol *sym, int mp_flag)
  
    /* An elemental function is required to return a scalar 12.7.1  */
    if (sym->attr.elemental && sym->attr.function
@@ -37851,10 +37889,27 @@ index f5a6d507e91..6b2c3e17346 100644
  DEFHOOKPOD
  (have_tls,
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index 2913065bf31..43d2839ebac 100644
+index 2913065bf31..e3701cfde8e 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,3633 @@
+@@ -1,3 +1,3650 @@
++2022-12-18  Paul Thomas  <pault@gcc.gnu.org>
++
++	Backported from master:
++	2022-12-09  Paul Thomas  <pault@gcc.gnu.org>
++
++	PR fortran/107872
++	* gfortran.dg/pr107872.f90: New test.
++
++2022-12-16  Patrick Palka  <ppalka@redhat.com>
++
++	Backported from master:
++	2021-10-28  Patrick Palka  <ppalka@redhat.com>
++
++	PR c++/102780
++	PR c++/108138
++	* g++.dg/cpp1z/fold13.C: New test.
++
 +2022-12-15  Sebastian Pop  <spop@amazon.com>
 +
 +	PR target/98776
@@ -57111,6 +57166,52 @@ index 00000000000..bbfe646beba
 +  type(t), parameter :: b(4) = reshape(a,[2]) ! { dg-error "Different shape" }
 +  type(t), parameter :: c(2) = pack(b,[.false.,.true.,.false.,.true.]) ! { dg-error "Different shape" }
 +  type(t), parameter :: d(4) = unpack(c,[.false.,.true.,.false.,.true.],a)
++end
+diff --git a/gcc/testsuite/gfortran.dg/pr107872.f90 b/gcc/testsuite/gfortran.dg/pr107872.f90
+new file mode 100644
+index 00000000000..09838479e92
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/pr107872.f90
+@@ -0,0 +1,40 @@
++! { dg-do run }
++!
++! Test the fix for PR107872, where an ICE occurred in
++! resolve.cc(derived_inaccessible) because derived types with
++! recursive allocatable components were not catered for.
++!
++module mod1
++  type t
++     integer :: data
++     type(t), allocatable :: next
++   contains
++     procedure, private :: write_t
++     generic :: write(formatted) => write_t
++  end type
++contains
++  recursive subroutine write_t(this, unit, iotype, v_list, iostat, iomsg)
++    class(t), intent(in) :: this
++    integer, intent(in) :: unit
++    character(*), intent(in) :: iotype
++    integer, intent(in) :: v_list(:)
++    integer, intent(out) :: iostat
++    character(*), intent(inout) :: iomsg
++    if (ALLOCATED(this%next)) &
++         write (unit, '(dt)') this%next
++    write (unit, '(i2)') this%data
++  end subroutine
++end module
++
++  use mod1
++  type(t) :: a
++  character (8) :: buffer
++  a%data = 1
++  allocate (a%next)
++  a%next%data = 2
++  allocate (a%next%next)
++  a%next%next%data = 3
++  write (buffer, '(dt)')a
++  deallocate (a%next)
++  if (trim (buffer) .ne. ' 3 2 1') stop 1
 +end
 diff --git a/gcc/testsuite/gfortran.dg/pr47614.f b/gcc/testsuite/gfortran.dg/pr47614.f
 index 500d210a2a4..d772eef257f 100644
