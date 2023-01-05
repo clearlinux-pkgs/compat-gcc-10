@@ -102,7 +102,17 @@ François-Xavier Coudert (1):
 Fritz Reese (1):
       fortran: Fix conv of UNION constructors [PR105310]
 
-GCC Administrator (617):
+GCC Administrator (627):
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -1232,7 +1242,7 @@ José Rui Faustino de Sousa (4):
       Fortran: Fix function attributes [PR100132]
       Fortran: Fix ICE and wrong code for assumed-rank arrays [PR100029, PR100040]
 
-Kewen Lin (11):
+Kewen Lin (12):
       ipa-fnsummary: Remove inconsistent bp_pack_value
       vect: Don't update inits for simd_lane_access DRs [PR102789]
       rs6000/doc: Rename future cpu with power10
@@ -1244,6 +1254,7 @@ Kewen Lin (11):
       rs6000: Adjust mov optabs for opaque modes [PR103353]
       rs6000/test: Fix empty TU in some cases of effective targets [PR106345]
       rs6000: Fix the condition with frame_pointer_needed_indeed [PR96072]
+      rs6000: Raise error for __vector_{quad,pair} uses without MMA enabled [PR106736]
 
 Kyrylo Tkachov (1):
       aarch64: Add support for -mcpu=neoverse-v2
@@ -19126,7 +19137,7 @@ index 163f08738c3..be5c2bee415 100644
  
  #endif /* _MM_MALLOC_H_INCLUDED */
 diff --git a/gcc/config/rs6000/mma.md b/gcc/config/rs6000/mma.md
-index d9757160845..c6e07e5dd78 100644
+index d9757160845..cea5d972663 100644
 --- a/gcc/config/rs6000/mma.md
 +++ b/gcc/config/rs6000/mma.md
 @@ -36,7 +36,8 @@
@@ -19150,7 +19161,7 @@ index d9757160845..c6e07e5dd78 100644
  ;; MMA instructions with 1 accumulator argument
  (define_int_iterator MMA_ACC		[UNSPEC_MMA_XXMFACC
  					 UNSPEC_MMA_XXMTACC])
-@@ -278,10 +283,25 @@
+@@ -278,10 +283,28 @@
  (define_expand "movpoi"
    [(set (match_operand:POI 0 "nonimmediate_operand")
  	(match_operand:POI 1 "input_operand"))]
@@ -19174,12 +19185,15 @@ index d9757160845..c6e07e5dd78 100644
 +	 expanding to RTL and have seen errors.  It would not cause further ICEs
 +	 as the compilation would stop soon after expanding.  */
 +    }
++  else if (rs6000_opaque_type_invalid_use_p (currently_expanding_gimple_stmt))
++    ;
 +  else
-+    gcc_unreachable ();
++    /* Catch unexpected cases.  */
++    gcc_assert (false);
  })
  
  (define_insn_and_split "*movpoi"
-@@ -318,49 +338,74 @@
+@@ -318,49 +341,77 @@
  (define_expand "movpxi"
    [(set (match_operand:PXI 0 "nonimmediate_operand")
  	(match_operand:PXI 1 "input_operand"))]
@@ -19200,8 +19214,11 @@ index d9757160845..c6e07e5dd78 100644
 +	 some missing required conditions.  So do the same handlings for PXImode
 +	 as POImode here.  */
 +    }
++  else if (rs6000_opaque_type_invalid_use_p (currently_expanding_gimple_stmt))
++    ;
 +  else
-+    gcc_unreachable ();
++    /* Catch unexpected cases.  */
++    gcc_assert (false);
  })
  
  (define_insn_and_split "*movpxi"
@@ -19275,7 +19292,7 @@ index d9757160845..c6e07e5dd78 100644
    DONE;
  })
  
-@@ -380,8 +425,11 @@
+@@ -380,8 +431,11 @@
    DONE;
  })
  
@@ -19288,7 +19305,7 @@ index d9757160845..c6e07e5dd78 100644
  	(unspec:PXI [(match_operand:V16QI 1 "mma_assemble_input_operand" "mwa")
  		     (match_operand:V16QI 2 "mma_assemble_input_operand" "mwa")
  		     (match_operand:V16QI 3 "mma_assemble_input_operand" "mwa")
-@@ -413,14 +461,16 @@
+@@ -413,14 +467,16 @@
    "<acc> %A0"
    [(set_attr "type" "mma")])
  
@@ -21095,8 +21112,19 @@ index 3d5dc7d8aae..02f99ba5df7 100644
  		  else if (insn_entry[uid].contains_subreg)
  		    insn_entry[uid].special_handling = SH_SUBREG;
  		}
+diff --git a/gcc/config/rs6000/rs6000-protos.h b/gcc/config/rs6000/rs6000-protos.h
+index 5508484ba19..75e9e6d3bb5 100644
+--- a/gcc/config/rs6000/rs6000-protos.h
++++ b/gcc/config/rs6000/rs6000-protos.h
+@@ -309,4 +309,6 @@ extern bool rs6000_quadword_masked_address_p (const_rtx exp);
+ extern rtx rs6000_gen_lvx (enum machine_mode, rtx, rtx);
+ extern rtx rs6000_gen_stvx (enum machine_mode, rtx, rtx);
+ 
++extern gimple *currently_expanding_gimple_stmt;
++extern bool rs6000_opaque_type_invalid_use_p (gimple *);
+ #endif  /* rs6000-protos.h */
 diff --git a/gcc/config/rs6000/rs6000.c b/gcc/config/rs6000/rs6000.c
-index a6dc1156994..d6be8b7fb6b 100644
+index a6dc1156994..d2ac6c21069 100644
 --- a/gcc/config/rs6000/rs6000.c
 +++ b/gcc/config/rs6000/rs6000.c
 @@ -3815,6 +3815,15 @@ rs6000_option_override_internal (bool global_init_p)
@@ -21333,11 +21361,11 @@ index a6dc1156994..d6be8b7fb6b 100644
 +      /* Macho-O PIC code from here.  */
 +      if (GET_CODE (x) == CONST)
 +	x = XEXP (x, 0);
-+
+ 
 +      /* SYMBOL_REFs need to be wrapped in an UNSPEC_MACHOPIC_OFFSET.  */
 +      if (SYMBOL_REF_P (x))
 +	return false;
- 
++
 +      /* So this is OK if the wrapped object is const.  */
 +      if (GET_CODE (x) == UNSPEC
 +	  && XINT (x, 1) == UNSPEC_MACHOPIC_OFFSET)
@@ -21456,7 +21484,7 @@ index a6dc1156994..d6be8b7fb6b 100644
        /* The callee's options must be a subset of the caller's options, i.e.
  	 a vsx function may inline an altivec function, but a no-vsx function
  	 must not inline a vsx function.  However, for those options that the
-@@ -26756,28 +26888,6 @@ rs6000_invalid_conversion (const_tree fromtype, const_tree totype)
+@@ -26756,31 +26888,47 @@ rs6000_invalid_conversion (const_tree fromtype, const_tree totype)
        if (tomode == POImode)
  	return N_("invalid conversion to type %<__vector_pair%>");
      }
@@ -21465,13 +21493,36 @@ index a6dc1156994..d6be8b7fb6b 100644
 -      /* We really care about the modes of the base types.  */
 -      frommode = TYPE_MODE (TREE_TYPE (fromtype));
 -      tomode = TYPE_MODE (TREE_TYPE (totype));
--
+ 
 -      /* Do not allow conversions to/from PXImode and POImode pointer
 -	 types, except to/from void pointers.  */
 -      if (frommode != tomode
 -	  && frommode != VOIDmode
 -	  && tomode != VOIDmode)
--	{
++  /* Conversion allowed.  */
++  return NULL;
++}
++
++/* Now we have only two opaque types, they are __vector_quad and
++   __vector_pair built-in types.  They are target specific and
++   only available when MMA is supported.  With MMA supported, it
++   simply returns true, otherwise it checks if the given gimple
++   STMT is an assignment stmt and uses either of these two opaque
++   types unexpectedly, if yes, it would raise an error message
++   and returns true, otherwise it returns false.  */
++
++bool
++rs6000_opaque_type_invalid_use_p (gimple *stmt)
++{
++  if (TARGET_MMA)
++    return false;
++
++  if (stmt)
++    {
++      /* The usage of MMA opaque types is very limited for now,
++	 to check with gassign is enough so far.  */
++      if (gassign *ga = dyn_cast<gassign *> (stmt))
+ 	{
 -	  if (frommode == PXImode)
 -	    return N_("invalid conversion from type %<* __vector_quad%>");
 -	  if (tomode == PXImode)
@@ -21480,11 +21531,27 @@ index a6dc1156994..d6be8b7fb6b 100644
 -	    return N_("invalid conversion from type %<* __vector_pair%>");
 -	  if (tomode == POImode)
 -	    return N_("invalid conversion to type %<* __vector_pair%>");
--	}
--    }
++	  tree lhs = gimple_assign_lhs (ga);
++	  tree type = TREE_TYPE (lhs);
++	  if (type == vector_quad_type_node)
++	    {
++	      error ("type %<__vector_quad%> requires the %qs option", "-mmma");
++	      return true;
++	    }
++	  else if (type == vector_pair_type_node)
++	    {
++	      error ("type %<__vector_pair%> requires the %qs option", "-mmma");
++	      return true;
++	    }
+ 	}
+     }
  
-   /* Conversion allowed.  */
-   return NULL;
+-  /* Conversion allowed.  */
+-  return NULL;
++  return false;
+ }
+ 
+ struct gcc_target targetm = TARGET_INITIALIZER;
 diff --git a/gcc/config/rs6000/rs6000.h b/gcc/config/rs6000/rs6000.h
 index efd989c5d29..bb297a0a14d 100644
 --- a/gcc/config/rs6000/rs6000.h
@@ -53248,6 +53315,128 @@ index 00000000000..61ce8cf4733
 +  b &= v < b;
 +  return (V){foo (b, w)[3], (V){}[3]};
 +}
+diff --git a/gcc/testsuite/gcc.target/powerpc/pr106736-1.c b/gcc/testsuite/gcc.target/powerpc/pr106736-1.c
+new file mode 100644
+index 00000000000..65bd79d3dce
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/powerpc/pr106736-1.c
+@@ -0,0 +1,20 @@
++/* { dg-require-effective-target powerpc_p9modulo_ok } */
++/* If the default cpu type is power10 or later, type __vector_quad is
++   supported.  To keep the test point available all the time, this case
++   specifies -mdejagnu-cpu=power9 here.  */
++/* { dg-options "-mdejagnu-cpu=power9" } */
++
++/* Verify there is no ICE and don't check the error messages on unsupported
++   type since they could be fragile and are not test points of this case.  */
++
++/* { dg-excess-errors "pr106736-1" } */
++
++extern void bar (__vector_quad *);
++
++void
++foo (__vector_quad *a, __vector_quad *b)
++{
++  __vector_quad arr[2] = {*a, *b};
++  bar (&arr[0]);
++}
++
+diff --git a/gcc/testsuite/gcc.target/powerpc/pr106736-2.c b/gcc/testsuite/gcc.target/powerpc/pr106736-2.c
+new file mode 100644
+index 00000000000..12ad936fccc
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/powerpc/pr106736-2.c
+@@ -0,0 +1,17 @@
++/* { dg-require-effective-target powerpc_p9modulo_ok } */
++/* If the default cpu type is power10 or later, type __vector_pair is
++   supported.  To keep the test point available all the time, this case
++   specifies -mdejagnu-cpu=power9 here.  */
++/* { dg-options "-mdejagnu-cpu=power9" } */
++
++/* Verify there is no ICE and don't check the error messages on unsupported
++   type since they could be fragile and are not test points of this case.  */
++
++/* { dg-excess-errors "pr106736-2" } */
++
++void
++foo (__vector_pair *a, __vector_pair *b)
++{
++  *a = *b;
++}
++
+diff --git a/gcc/testsuite/gcc.target/powerpc/pr106736-3.c b/gcc/testsuite/gcc.target/powerpc/pr106736-3.c
+new file mode 100644
+index 00000000000..4fb368b8fb5
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/powerpc/pr106736-3.c
+@@ -0,0 +1,18 @@
++/* { dg-require-effective-target powerpc_p9modulo_ok } */
++/* If the default cpu type is power10 or later, type __vector_quad is
++   supported.  To keep the test point available all the time, this case
++   specifies -mdejagnu-cpu=power9 here.  */
++/* { dg-options "-mdejagnu-cpu=power9" } */
++
++/* Verify there is no ICE and don't check the error messages on unsupported
++   type since they could be fragile and are not test points of this case.  */
++
++/* { dg-excess-errors "pr106736-3" } */
++
++__vector_quad ga;
++void
++foo (__vector_quad *a)
++{
++  ga = *a;
++}
++
+diff --git a/gcc/testsuite/gcc.target/powerpc/pr106736-4.c b/gcc/testsuite/gcc.target/powerpc/pr106736-4.c
+new file mode 100644
+index 00000000000..4b366416b0a
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/powerpc/pr106736-4.c
+@@ -0,0 +1,19 @@
++/* { dg-require-effective-target powerpc_p9modulo_ok } */
++/* If the default cpu type is power10 or later, type __vector_quad is
++   supported.  To keep the test point available all the time, this case
++   specifies -mdejagnu-cpu=power9 here.  */
++/* { dg-options "-mdejagnu-cpu=power9" } */
++
++/* Verify there is no ICE and don't check the error messages on unsupported
++   type since they could be fragile and are not test points of this case.  */
++
++/* { dg-excess-errors "pr106736-4" } */
++
++__vector_quad ga;
++__vector_quad gb;
++void
++foo ()
++{
++  gb = ga;
++}
++
+diff --git a/gcc/testsuite/gcc.target/powerpc/pr106736-5.c b/gcc/testsuite/gcc.target/powerpc/pr106736-5.c
+new file mode 100644
+index 00000000000..d7370b81e81
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/powerpc/pr106736-5.c
+@@ -0,0 +1,18 @@
++/* { dg-require-effective-target powerpc_p9modulo_ok } */
++/* If the default cpu type is power10 or later, type __vector_pair is
++   supported.  To keep the test point available all the time, this case
++   specifies -mdejagnu-cpu=power9 here.  */
++/* { dg-options "-mdejagnu-cpu=power9" } */
++
++/* Verify there is no ICE and don't check the error messages on unsupported
++   type since they could be fragile and are not test points of this case.  */
++
++/* { dg-excess-errors "pr106736-5" } */
++
++__vector_pair ga;
++void
++foo (__vector_pair *a)
++{
++  *a = ga;
++}
++
 diff --git a/gcc/testsuite/gcc.target/powerpc/pr87496-2.c b/gcc/testsuite/gcc.target/powerpc/pr87496-2.c
 index 26c07ebb900..f9dc6426418 100644
 --- a/gcc/testsuite/gcc.target/powerpc/pr87496-2.c
