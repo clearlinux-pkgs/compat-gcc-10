@@ -105,7 +105,22 @@ François-Xavier Coudert (1):
 Fritz Reese (1):
       fortran: Fix conv of UNION constructors [PR105310]
 
-GCC Administrator (631):
+GCC Administrator (646):
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -1571,8 +1586,9 @@ Segher Boessenkool (10):
       rs6000: Add effective target has_arch_ppc64
       rs6000: Make the has_arch target selectors actually work
 
-Sergei Trofimovich (1):
+Sergei Trofimovich (2):
       gcc/config/t-i386: add build dependencies on i386-builtin-types.inc
+      driver: fix environ corruption after putenv() [PR106624]
 
 Simon Wright (1):
       Darwin: Truncate kernel-provided version to OS major for Darwin >= 20.
@@ -33972,7 +33988,7 @@ index d616f5f64f4..ca7d48cdd98 100644
    else
      fn_decl = NULL_TREE;
 diff --git a/gcc/gcc.c b/gcc/gcc.c
-index 9f790db0daf..ed7099c2a6d 100644
+index 9f790db0daf..6517d9935dc 100644
 --- a/gcc/gcc.c
 +++ b/gcc/gcc.c
 @@ -27,6 +27,7 @@ CC recognizes how to compile each input file by suffixes in the file names.
@@ -34041,7 +34057,7 @@ index 9f790db0daf..ed7099c2a6d 100644
 -    }
 +  jobserver_info jinfo;
 +  if (!jinfo.is_active && !jinfo.skipped_makeflags.empty ())
-+    xputenv (jinfo.skipped_makeflags.c_str ());
++    xputenv (xstrdup (jinfo.skipped_makeflags.c_str ()));
  }
  
  /* Determine what the exit code of the driver should be.  */
