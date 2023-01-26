@@ -106,7 +106,8 @@ François-Xavier Coudert (1):
 Fritz Reese (1):
       fortran: Fix conv of UNION constructors [PR105310]
 
-GCC Administrator (647):
+GCC Administrator (648):
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -1459,7 +1460,7 @@ Philippe Blain (1):
 Piotr Kubaj (1):
       gcc/configure: Check for powerpc64le*-*-freebsd*
 
-Richard Biener (68):
+Richard Biener (73):
       Increment BASE-VER after release
       testsuite/100176 - fix struct-layout-1_generate.c compile
       middle-end/98726 - fix VECTOR_CST element access
@@ -1528,6 +1529,11 @@ Richard Biener (68):
       tree-optimization/106513 - fix mistake in bswap symbolic number shifts
       lto/106540 - fix LTO tree input wrt dwarf2out_register_external_die
       tree-optimization/107485 - fix non-call exception ICE with inlining
+      tree-optimization/106934 - avoid BIT_FIELD_REF of bitfields
+      tree-optimization/107107 - tail-merging VN wrong-code
+      tree-optimization/107323 - loop distribution partition ordering issue
+      tree-optimization/107554 - fix ICE in stlen optimization
+      restrict gcc.dg/pr107554.c to 64bit platforms
 
 Richard Earnshaw (13):
       arm: fix UB due to missing mode check [PR100311]
@@ -5717,10 +5723,25 @@ index 0719d810258..da772b97257 100644
 -10.3.0
 +10.4.1
 diff --git a/gcc/ChangeLog b/gcc/ChangeLog
-index 3b1384e707f..ef3629c0281 100644
+index 3b1384e707f..17dd3824c2f 100644
 --- a/gcc/ChangeLog
 +++ b/gcc/ChangeLog
-@@ -1,3 +1,3355 @@
+@@ -1,3 +1,3370 @@
++2023-01-25  Christophe Lyon  <christophe.lyon@arm.com>
++
++	Backported from master:
++	2023-01-12  Christophe Lyon  <christophe.lyon@arm.com>
++		    Richard Sandiford  <richard.sandiford@arm.com>
++
++	* config/aarch64/aarch64.c (aarch64_function_arg_alignment): Fix
++	comment.
++	(aarch64_layout_arg): Factorize warning conditions.
++	(aarch64_function_arg_boundary): Fix typo.
++	* function.c (currently_expanding_function_start): New variable.
++	(expand_function_start): Handle
++	currently_expanding_function_start.
++	* function.h (currently_expanding_function_start): Declare.
++
 +2023-01-24  Sergei Trofimovich  <siarheit@google.com>
 +
 +	Backported from master:
@@ -38414,10 +38435,33 @@ index f5a6d507e91..6b2c3e17346 100644
  DEFHOOKPOD
  (have_tls,
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index 2913065bf31..f4121e18043 100644
+index 2913065bf31..0085d514707 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,3692 @@
+@@ -1,3 +1,3715 @@
++2023-01-25  Christophe Lyon  <christophe.lyon@arm.com>
++
++	Backported from master:
++	2023-01-12  Christophe Lyon  <christophe.lyon@arm.com>
++		    Richard Sandiford  <richard.sandiford@arm.com>
++
++	* gcc.target/aarch64/bitfield-abi-warning-align16-O2.c: New test.
++	* gcc.target/aarch64/bitfield-abi-warning-align16-O2-extra.c: New
++	test.
++	* gcc.target/aarch64/bitfield-abi-warning-align32-O2.c: New test.
++	* gcc.target/aarch64/bitfield-abi-warning-align32-O2-extra.c: New
++	test.
++	* gcc.target/aarch64/bitfield-abi-warning-align8-O2.c: New test.
++	* gcc.target/aarch64/bitfield-abi-warning.h: New test.
++	* g++.target/aarch64/bitfield-abi-warning-align16-O2.C: New test.
++	* g++.target/aarch64/bitfield-abi-warning-align16-O2-extra.C: New
++	test.
++	* g++.target/aarch64/bitfield-abi-warning-align32-O2.C: New test.
++	* g++.target/aarch64/bitfield-abi-warning-align32-O2-extra.C: New
++	test.
++	* g++.target/aarch64/bitfield-abi-warning-align8-O2.C: New test.
++	* g++.target/aarch64/bitfield-abi-warning.h: New test.
++
 +2023-01-08  Harald Anlauf  <anlauf@gmx.de>
 +
 +	Backported from master:
@@ -49341,6 +49385,55 @@ index 00000000000..bd8bd4cd56c
 +{
 +  g *= (__int128) bar (1, 1);
 +}
+diff --git a/gcc/testsuite/gcc.dg/pr107107.c b/gcc/testsuite/gcc.dg/pr107107.c
+new file mode 100644
+index 00000000000..5ad6a63159e
+--- /dev/null
++++ b/gcc/testsuite/gcc.dg/pr107107.c
+@@ -0,0 +1,25 @@
++/* { dg-do run } */
++/* { dg-options "-O2 -ftree-tail-merge" } */
++
++static inline void set_longish(int is_long_long, void *p, long x)
++{
++  if (is_long_long)
++    *(long long*)p = x;
++  else
++    *(long*)p = x;
++}
++static long test(long long *p, int index, int mode)
++{
++  *p = 1;
++  set_longish(mode, p+index, 2);
++  return *p;
++}
++long (*volatile vtest)(long long*, int, int) = test;
++int main(void)
++{
++  long long x;
++  long result = vtest(&x, 0, 1);
++  if (result != 2 || x != 2)
++    __builtin_abort ();
++  return 0;
++}
+diff --git a/gcc/testsuite/gcc.dg/pr107554.c b/gcc/testsuite/gcc.dg/pr107554.c
+new file mode 100644
+index 00000000000..61ef2bcd90a
+--- /dev/null
++++ b/gcc/testsuite/gcc.dg/pr107554.c
+@@ -0,0 +1,12 @@
++/* { dg-do compile { target lp64 } } */
++/* { dg-options "-O -foptimize-strlen" } */
++
++#define ELEMS 0x40000000
++
++int a[ELEMS];
++int b[ELEMS];
++
++int main()
++{
++  __builtin_memcpy(a, b, ELEMS*sizeof(int));
++}
 diff --git a/gcc/testsuite/gcc.dg/pr78213.c b/gcc/testsuite/gcc.dg/pr78213.c
 index ebc2cce78f4..04bf0381f76 100644
 --- a/gcc/testsuite/gcc.dg/pr78213.c
@@ -50651,6 +50744,40 @@ index 00000000000..77bcb4a6739
 +        if (val.U.var_2._s1._1 != 0x02020202 )
 +	  __builtin_abort ();
 +	return 0;
++}
+diff --git a/gcc/testsuite/gcc.dg/tree-ssa/pr107323.c b/gcc/testsuite/gcc.dg/tree-ssa/pr107323.c
+new file mode 100644
+index 00000000000..1204b6e36d5
+--- /dev/null
++++ b/gcc/testsuite/gcc.dg/tree-ssa/pr107323.c
+@@ -0,0 +1,28 @@
++/* { dg-do run } */
++/* { dg-options "-O2 -fno-tree-vectorize" } */
++
++int A[4];
++int B[4];
++
++static const char *__attribute__((noipa)) foo()
++{
++  return "1";
++}
++
++int main()
++{
++  const char *s = foo();
++
++  A[0] = 1000;
++  for(int i = 1; i < 4; ++i) {
++      B[i] = 0;
++      A[i] = 0;
++      if(s[0])
++	B[i] = 1;
++      A[i] = A[i - 1];
++  }
++
++  if (A[3] != 1000)
++    __builtin_abort ();
++  return 0;
 +}
 diff --git a/gcc/testsuite/gcc.dg/tree-ssa/ssa-fre-93.c b/gcc/testsuite/gcc.dg/tree-ssa/ssa-fre-93.c
 new file mode 100644
@@ -59032,6 +59159,19 @@ index 00000000000..4b0f86a75a6
 +  type(t), parameter :: b(4) = reshape(a, [2])                          ! { dg-error "Different shape" }
 +  type(t), parameter :: c(2) = pack(b, [.false.,.true.,.false.,.true.]) ! { dg-error "Different shape" }
 +end
+diff --git a/gcc/testsuite/gfortran.dg/pr106934.f90 b/gcc/testsuite/gfortran.dg/pr106934.f90
+new file mode 100644
+index 00000000000..ac58a3e82e3
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/pr106934.f90
+@@ -0,0 +1,7 @@
++! { dg-do compile }
++! { dg-options "-O" }
++subroutine s
++   logical(1) :: a = .true.
++   logical(2) :: b
++   a = transfer(b, a)
++end
 diff --git a/gcc/testsuite/gfortran.dg/pr106985.f90 b/gcc/testsuite/gfortran.dg/pr106985.f90
 new file mode 100644
 index 00000000000..f4ed92577a3
@@ -61272,7 +61412,7 @@ index efde5d15872..658b09c07d2 100644
  	      gimple_set_location (new_call, gimple_location (stmt));
  	      gimple_call_set_lhs (new_call, gimple_call_lhs (call_stmt));
 diff --git a/gcc/tree-loop-distribution.c b/gcc/tree-loop-distribution.c
-index 888af48946f..3a5f03b3e54 100644
+index 888af48946f..4ef37780f8c 100644
 --- a/gcc/tree-loop-distribution.c
 +++ b/gcc/tree-loop-distribution.c
 @@ -115,6 +115,7 @@ along with GCC; see the file COPYING3.  If not see
@@ -61316,7 +61456,110 @@ index 888af48946f..3a5f03b3e54 100644
        return;
      }
  
-@@ -3151,11 +3164,19 @@ loop_distribution::distribute_loop (class loop *loop, vec<gimple *> stmts,
+@@ -2145,8 +2158,6 @@ struct pg_edge_callback_data
+   bitmap sccs_to_merge;
+   /* Array constains component information for all vertices.  */
+   int *vertices_component;
+-  /* Array constains postorder information for all vertices.  */
+-  int *vertices_post;
+   /* Vector to record all data dependence relations which are needed
+      to break strong connected components by runtime alias checks.  */
+   vec<ddr_p> *alias_ddrs;
+@@ -2395,6 +2406,33 @@ pg_collect_alias_ddrs (struct graph *g, struct graph_edge *e, void *data)
+     cbdata->alias_ddrs->safe_splice (edata->alias_ddrs);
+ }
+ 
++/* Callback function for traversing edge E.  DATA is private
++   callback data.  */
++
++static void
++pg_unmark_merged_alias_ddrs (struct graph *, struct graph_edge *e, void *data)
++{
++  int i, j, component;
++  struct pg_edge_callback_data *cbdata;
++  struct pg_edata *edata = (struct pg_edata *) e->data;
++
++  if (edata == NULL || edata->alias_ddrs.length () == 0)
++    return;
++
++  cbdata = (struct pg_edge_callback_data *) data;
++  i = e->src;
++  j = e->dest;
++  component = cbdata->vertices_component[i];
++  /* Make sure to not skip vertices inside SCCs we are going to merge.  */
++  if (component == cbdata->vertices_component[j]
++      && bitmap_bit_p (cbdata->sccs_to_merge, component))
++    {
++      edata->alias_ddrs.release ();
++      delete edata;
++      e->data = NULL;
++    }
++}
++
+ /* This is the main function breaking strong conected components in
+    PARTITIONS giving reduced depdendence graph RDG.  Store data dependence
+    relations for runtime alias check in ALIAS_DDRS.  */
+@@ -2454,7 +2492,6 @@ loop_distribution::break_alias_scc_partitions (struct graph *rdg,
+       cbdata.sccs_to_merge = sccs_to_merge;
+       cbdata.alias_ddrs = alias_ddrs;
+       cbdata.vertices_component = XNEWVEC (int, pg->n_vertices);
+-      cbdata.vertices_post = XNEWVEC (int, pg->n_vertices);
+       /* Record the component information which will be corrupted by next
+ 	 graph scc finding call.  */
+       for (i = 0; i < pg->n_vertices; ++i)
+@@ -2463,17 +2500,18 @@ loop_distribution::break_alias_scc_partitions (struct graph *rdg,
+       /* Collect data dependences for runtime alias checks to break SCCs.  */
+       if (bitmap_count_bits (sccs_to_merge) != (unsigned) num_sccs)
+ 	{
+-	  /* Record the postorder information which will be corrupted by next
+-	     graph SCC finding call.  */
+-	  for (i = 0; i < pg->n_vertices; ++i)
+-	    cbdata.vertices_post[i] = pg->vertices[i].post;
++	  /* For SCCs we want to merge clear all alias_ddrs for edges
++	     inside the component.  */
++	  for_each_edge (pg, pg_unmark_merged_alias_ddrs, &cbdata);
+ 
+ 	  /* Run SCC finding algorithm again, with alias dependence edges
+ 	     skipped.  This is to topologically sort partitions according to
+ 	     compilation time known dependence.  Note the topological order
+ 	     is stored in the form of pg's post order number.  */
+ 	  num_sccs_no_alias = graphds_scc (pg, NULL, pg_skip_alias_edge);
+-	  gcc_assert (partitions->length () == (unsigned) num_sccs_no_alias);
++	  /* We cannot assert partitions->length () == num_sccs_no_alias
++	     since we are not ignoring alias edges in cycles we are
++	     going to merge.  That's required to compute correct postorder.  */
+ 	  /* With topological order, we can construct two subgraphs L and R.
+ 	     L contains edge <x, y> where x < y in terms of post order, while
+ 	     R contains edge <x, y> where x > y.  Edges for compilation time
+@@ -2508,16 +2546,14 @@ loop_distribution::break_alias_scc_partitions (struct graph *rdg,
+ 	      first->type = PTYPE_SEQUENTIAL;
+ 	    }
+ 	}
+-      /* Restore the postorder information if it's corrupted in finding SCC
+-	 with alias dependence edges skipped.  If reduction partition's SCC is
+-	 broken by runtime alias checks, we force a negative post order to it
+-	 making sure it will be scheduled in the last.  */
++      /* If reduction partition's SCC is broken by runtime alias checks,
++	 we force a negative post order to it making sure it will be scheduled
++	 in the last.  */
+       if (num_sccs_no_alias > 0)
+ 	{
+ 	  j = -1;
+ 	  for (i = 0; i < pg->n_vertices; ++i)
+ 	    {
+-	      pg->vertices[i].post = cbdata.vertices_post[i];
+ 	      struct pg_vdata *data = (struct pg_vdata *)pg->vertices[i].data;
+ 	      if (data->partition && partition_reduction_p (data->partition))
+ 		{
+@@ -2530,7 +2566,6 @@ loop_distribution::break_alias_scc_partitions (struct graph *rdg,
+ 	}
+ 
+       free (cbdata.vertices_component);
+-      free (cbdata.vertices_post);
+     }
+ 
+   sort_partitions_by_post_order (pg, partitions);
+@@ -3151,11 +3186,19 @@ loop_distribution::distribute_loop (class loop *loop, vec<gimple *> stmts,
  void loop_distribution::bb_top_order_init (void)
  {
    int rpo_num;
@@ -61338,7 +61581,7 @@ index 888af48946f..3a5f03b3e54 100644
    for (int i = 0; i < rpo_num; i++)
      bb_top_order_index[rpo[i]] = i;
  
-@@ -3181,6 +3202,16 @@ find_seed_stmts_for_distribution (class loop *loop, vec<gimple *> *work_list)
+@@ -3181,6 +3224,16 @@ find_seed_stmts_for_distribution (class loop *loop, vec<gimple *> *work_list)
    /* Initialize the worklist with stmts we seed the partitions with.  */
    for (unsigned i = 0; i < loop->num_nodes; ++i)
      {
@@ -61999,7 +62242,7 @@ index af8df8563bc..3a4d7e046c5 100644
  	    }
  	}
 diff --git a/gcc/tree-ssa-sccvn.c b/gcc/tree-ssa-sccvn.c
-index 926b4a976ae..18263bd8c9a 100644
+index 926b4a976ae..2f6f5074b07 100644
 --- a/gcc/tree-ssa-sccvn.c
 +++ b/gcc/tree-ssa-sccvn.c
 @@ -492,7 +492,7 @@ vuse_ssa_val (tree x)
@@ -62418,7 +62661,38 @@ index 926b4a976ae..18263bd8c9a 100644
  
    return NULL_TREE;
  }
-@@ -6190,7 +6260,7 @@ eliminate_dom_walker::eliminate_stmt (basic_block b, gimple_stmt_iterator *gsi)
+@@ -5043,19 +5113,6 @@ visit_reference_op_store (tree lhs, tree op, gimple *stmt)
+ 
+   if (!resultsame)
+     {
+-      /* Only perform the following when being called from PRE
+-	 which embeds tail merging.  */
+-      if (default_vn_walk_kind == VN_WALK)
+-	{
+-	  assign = build2 (MODIFY_EXPR, TREE_TYPE (lhs), lhs, op);
+-	  vn_reference_lookup (assign, vuse, VN_NOWALK, &vnresult, false);
+-	  if (vnresult)
+-	    {
+-	      VN_INFO (vdef)->visited = true;
+-	      return set_ssa_val_to (vdef, vnresult->result_vdef);
+-	    }
+-	}
+-
+       if (dump_file && (dump_flags & TDF_DETAILS))
+ 	{
+ 	  fprintf (dump_file, "No store match\n");
+@@ -5080,7 +5137,9 @@ visit_reference_op_store (tree lhs, tree op, gimple *stmt)
+       if (default_vn_walk_kind == VN_WALK)
+ 	{
+ 	  assign = build2 (MODIFY_EXPR, TREE_TYPE (lhs), lhs, op);
+-	  vn_reference_insert (assign, lhs, vuse, vdef);
++	  vn_reference_lookup (assign, vuse, VN_NOWALK, &vnresult, false);
++	  if (!vnresult)
++	    vn_reference_insert (assign, lhs, vuse, vdef);
+ 	}
+     }
+   else
+@@ -6190,7 +6249,7 @@ eliminate_dom_walker::eliminate_stmt (basic_block b, gimple_stmt_iterator *gsi)
  	   at the definition are also available at uses.  */
  	sprime = eliminate_avail (gimple_bb (SSA_NAME_DEF_STMT (use)), use);
        if (sprime && sprime != use
@@ -62427,7 +62701,7 @@ index 926b4a976ae..18263bd8c9a 100644
  	  /* We substitute into debug stmts to avoid excessive
  	     debug temporaries created by removed stmts, but we need
  	     to avoid doing so for inserted sprimes as we never want
-@@ -6758,7 +6828,7 @@ rpo_elim::eliminate_avail (basic_block bb, tree op)
+@@ -6758,7 +6817,7 @@ rpo_elim::eliminate_avail (basic_block bb, tree op)
  	     may also be able to "pre-compute" (bits of) the next immediate
  	     (non-)dominator during the RPO walk when marking edges as
  	     executable.  */
@@ -62436,7 +62710,7 @@ index 926b4a976ae..18263bd8c9a 100644
  	    {
  	      tree leader = ssa_name (av->leader);
  	      /* Prevent eliminations that break loop-closed SSA.  */
-@@ -7351,11 +7421,9 @@ do_rpo_vn (function *fn, edge entry, bitmap exit_bbs,
+@@ -7351,11 +7410,9 @@ do_rpo_vn (function *fn, edge entry, bitmap exit_bbs,
      e->flags &= ~EDGE_DFS_BACK;
  
    int *rpo = XNEWVEC (int, n_basic_blocks_for_fn (fn) - NUM_FIXED_BLOCKS);
@@ -62450,7 +62724,7 @@ index 926b4a976ae..18263bd8c9a 100644
  
    if (!do_region)
      BITMAP_FREE (exit_bbs);
-@@ -7433,12 +7501,20 @@ do_rpo_vn (function *fn, edge entry, bitmap exit_bbs,
+@@ -7433,12 +7490,20 @@ do_rpo_vn (function *fn, edge entry, bitmap exit_bbs,
    vn_valueize = rpo_vn_valueize;
  
    /* Initialize the unwind state and edge/BB executable state.  */
@@ -62472,7 +62746,7 @@ index 926b4a976ae..18263bd8c9a 100644
        bb->flags &= ~BB_EXECUTABLE;
        bool has_backedges = false;
        edge e;
-@@ -7450,51 +7526,12 @@ do_rpo_vn (function *fn, edge entry, bitmap exit_bbs,
+@@ -7450,51 +7515,12 @@ do_rpo_vn (function *fn, edge entry, bitmap exit_bbs,
  	  e->flags &= ~EDGE_EXECUTABLE;
  	  if (iterate || e == entry || (skip_entry_phis && bb == entry->dest))
  	    continue;
@@ -62524,6 +62798,19 @@ index 926b4a976ae..18263bd8c9a 100644
    /* As heuristic to improve compile-time we handle only the N innermost
       loops and the outermost one optimistically.  */
    if (iterate)
+diff --git a/gcc/tree-ssa-strlen.c b/gcc/tree-ssa-strlen.c
+index b0874da5d1e..cc744adb3a5 100644
+--- a/gcc/tree-ssa-strlen.c
++++ b/gcc/tree-ssa-strlen.c
+@@ -4783,7 +4783,7 @@ count_nonzero_bytes (tree exp, unsigned HOST_WIDE_INT offset,
+ 
+   /* Compute the number of leading nonzero bytes in the representation
+      and update the minimum and maximum.  */
+-  unsigned n = prep ? strnlen (prep, nbytes) : nbytes;
++  unsigned HOST_WIDE_INT n = prep ? strnlen (prep, nbytes) : nbytes;
+ 
+   if (n < lenrange[0])
+     lenrange[0] = n;
 diff --git a/gcc/tree-ssa-structalias.c b/gcc/tree-ssa-structalias.c
 index 40171d53d0a..5bf4738b526 100644
 --- a/gcc/tree-ssa-structalias.c
@@ -62571,6 +62858,30 @@ index 40171d53d0a..5bf4738b526 100644
  	continue;
  
        fn = DECL_STRUCT_FUNCTION (node->decl);
+diff --git a/gcc/tree-ssa.c b/gcc/tree-ssa.c
+index 4f4ab2b8992..e15cc54567a 100644
+--- a/gcc/tree-ssa.c
++++ b/gcc/tree-ssa.c
+@@ -1409,6 +1409,8 @@ maybe_rewrite_mem_ref_base (tree *tp, bitmap suitable_for_renaming)
+ 	       && (! INTEGRAL_TYPE_P (TREE_TYPE (*tp)) 
+ 		   || (wi::to_offset (TYPE_SIZE (TREE_TYPE (*tp)))
+ 		       == TYPE_PRECISION (TREE_TYPE (*tp))))
++	       && (! INTEGRAL_TYPE_P (TREE_TYPE (sym))
++		   || type_has_mode_precision_p (TREE_TYPE (sym)))
+ 	       && wi::umod_trunc (wi::to_offset (TYPE_SIZE (TREE_TYPE (*tp))),
+ 				  BITS_PER_UNIT) == 0)
+ 	{
+@@ -1481,6 +1483,10 @@ non_rewritable_mem_ref_base (tree ref)
+ 	  && (! INTEGRAL_TYPE_P (TREE_TYPE (base))
+ 	      || (wi::to_offset (TYPE_SIZE (TREE_TYPE (base)))
+ 		  == TYPE_PRECISION (TREE_TYPE (base))))
++	  /* ???  Likewise for extracts from bitfields, we'd have
++	     to pun the base object to a size precision mode first.  */
++	  && (! INTEGRAL_TYPE_P (TREE_TYPE (decl))
++	      || type_has_mode_precision_p (TREE_TYPE (decl)))
+ 	  && wi::umod_trunc (wi::to_offset (TYPE_SIZE (TREE_TYPE (base))),
+ 			     BITS_PER_UNIT) == 0)
+ 	return NULL_TREE;
 diff --git a/gcc/tree-switch-conversion.c b/gcc/tree-switch-conversion.c
 index 2bc098d0172..e66b128d99a 100644
 --- a/gcc/tree-switch-conversion.c
