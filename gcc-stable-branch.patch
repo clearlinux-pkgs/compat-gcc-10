@@ -106,7 +106,8 @@ François-Xavier Coudert (1):
 Fritz Reese (1):
       fortran: Fix conv of UNION constructors [PR105310]
 
-GCC Administrator (648):
+GCC Administrator (649):
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -5723,10 +5724,53 @@ index 0719d810258..da772b97257 100644
 -10.3.0
 +10.4.1
 diff --git a/gcc/ChangeLog b/gcc/ChangeLog
-index 3b1384e707f..17dd3824c2f 100644
+index 3b1384e707f..f328681a31e 100644
 --- a/gcc/ChangeLog
 +++ b/gcc/ChangeLog
-@@ -1,3 +1,3370 @@
+@@ -1,3 +1,3413 @@
++2023-01-26  Richard Biener  <rguenther@suse.de>
++
++	Backported from master:
++	2022-11-11  Richard Biener  <rguenther@suse.de>
++		    Nikita Voronov  <nik_1357@mail.ru>
++
++	PR tree-optimization/107554
++	* tree-ssa-strlen.c (strlen_pass::count_nonzero_bytes):
++	Use unsigned HOST_WIDE_INT type for the strlen.
++
++2023-01-26  Richard Biener  <rguenther@suse.de>
++
++	Backported from master:
++	2022-10-21  Richard Biener  <rguenther@suse.de>
++
++	PR tree-optimization/107323
++	* tree-loop-distribution.c (pg_unmark_merged_alias_ddrs):
++	New function.
++	(loop_distribution::break_alias_scc_partitions): Revert
++	postorder save/restore from the PR94125 fix.  Instead
++	make sure to not ignore edges from SCCs we are going to
++	merge.
++
++2023-01-26  Richard Biener  <rguenther@suse.de>
++
++	Backported from master:
++	2022-10-06  Richard Biener  <rguenther@suse.de>
++
++	PR tree-optimization/107107
++	* tree-ssa-sccvn.c (visit_reference_op_store): Do not
++	affect value-numbering when doing the tail merging
++	MODIFY_EXPR lookup.
++
++2023-01-26  Richard Biener  <rguenther@suse.de>
++
++	Backported from master:
++	2022-09-14  Richard Biener  <rguenther@suse.de>
++
++	PR tree-optimization/106934
++	* tree-ssa.c (non_rewritable_mem_ref_base): Avoid BIT_FIELD_REFs
++	of bitfields.
++	(maybe_rewrite_mem_ref_base): Likewise.
++
 +2023-01-25  Christophe Lyon  <christophe.lyon@arm.com>
 +
 +	Backported from master:
@@ -38435,10 +38479,50 @@ index f5a6d507e91..6b2c3e17346 100644
  DEFHOOKPOD
  (have_tls,
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index 2913065bf31..0085d514707 100644
+index 2913065bf31..ba1cfacc64a 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,3715 @@
+@@ -1,3 +1,3755 @@
++2023-01-26  Richard Biener  <rguenther@suse.de>
++
++	Backported from master:
++	2022-11-14  Richard Biener  <rguenther@suse.de>
++
++	* gcc.dg/pr107554.c: Restrict to lp64.
++
++2023-01-26  Richard Biener  <rguenther@suse.de>
++
++	Backported from master:
++	2022-11-11  Richard Biener  <rguenther@suse.de>
++		    Nikita Voronov  <nik_1357@mail.ru>
++
++	PR tree-optimization/107554
++	* gcc.dg/pr107554.c: New testcase.
++
++2023-01-26  Richard Biener  <rguenther@suse.de>
++
++	Backported from master:
++	2022-10-21  Richard Biener  <rguenther@suse.de>
++
++	PR tree-optimization/107323
++	* gcc.dg/tree-ssa/pr107323.c: New testcase.
++
++2023-01-26  Richard Biener  <rguenther@suse.de>
++
++	Backported from master:
++	2022-10-06  Richard Biener  <rguenther@suse.de>
++
++	PR tree-optimization/107107
++	* gcc.dg/pr107107.c: New testcase.
++
++2023-01-26  Richard Biener  <rguenther@suse.de>
++
++	Backported from master:
++	2022-09-14  Richard Biener  <rguenther@suse.de>
++
++	PR tree-optimization/106934
++	* gfortran.dg/pr106934.f90: New testcase.
++
 +2023-01-25  Christophe Lyon  <christophe.lyon@arm.com>
 +
 +	Backported from master:
