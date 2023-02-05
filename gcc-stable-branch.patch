@@ -3,7 +3,7 @@ Alan Modra (3):
       [POWER10] __morestack calls from pcrel code
       [RS6000] altivec style lvx/stvx addresses vs power10
 
-Alex Coplan (9):
+Alex Coplan (10):
       aarch64: Fix SVE ACLE builtins with LTO [PR99216]
       arm: Fix PCS for SFmode -> SImode libcalls [PR99748]
       arm: Various MVE vec_duplicate fixes [PR99647]
@@ -13,6 +13,7 @@ Alex Coplan (9):
       arm: Fix wrong code with MVE V2DImode loads and stores [PR99960]
       arm: Avoid emitting bogus CFA adjusts for CMSE nonsecure calls [PR99725]
       arm: Fix ICE with CMSE nonsecure calls on Armv8.1-M [PR100333]
+      varasm: Fix type confusion bug
 
 Alexandre Oliva (1):
       ppc: testsuite: require target effectively [PR104253]
@@ -106,7 +107,16 @@ François-Xavier Coudert (1):
 Fritz Reese (1):
       fortran: Fix conv of UNION constructors [PR105310]
 
-GCC Administrator (649):
+GCC Administrator (658):
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -775,7 +785,7 @@ H.J. Lu (7):
 Hafiz Abid Qadeer (1):
       [OpenACC] Fix an ICE where a loop with GT condition is collapsed.
 
-Harald Anlauf (74):
+Harald Anlauf (81):
       PR fortran/63797 - Bogus ambiguous reference to 'sqrt'
       PR fortran/100154 - ICE in gfc_conv_procedure_call, at fortran/trans-expr.c:6131
       PR fortran/100274 - ICE in gfc_conv_procedure_call, at fortran/trans-expr.c:6131
@@ -850,6 +860,13 @@ Harald Anlauf (74):
       Fortran: BOZ literal constants are not compatible to any type [PR103413]
       Fortran: reject NULL actual argument without explicit interface [PR107576]
       Fortran: incorrect array bounds when bound intrinsic used in decl [PR108131]
+      Fortran: diagnose USE associated symbols in COMMON blocks [PR108453]
+      Fortran: fix ICE in check_charlen_present [PR108420]
+      Fortran: fix ICE in get_expr_storage_size [PR108421]
+      Fortran: fix NULL pointer dereference in gfc_check_dependency [PR108502]
+      Fortran: avoid ICE on invalid array subscript triplets [PR108501]
+      Fortran: error recovery for bad initializers of implied-shape arrays [PR106209]
+      Fortran: ICE in transformational_result [PR108529]
 
 Hongyu Wang (1):
       AVX512F: Add missing macro for mask(z?)_scalf_s[sd] [PR 105339]
@@ -5724,10 +5741,18 @@ index 0719d810258..da772b97257 100644
 -10.3.0
 +10.4.1
 diff --git a/gcc/ChangeLog b/gcc/ChangeLog
-index 3b1384e707f..f328681a31e 100644
+index 3b1384e707f..4ea86423493 100644
 --- a/gcc/ChangeLog
 +++ b/gcc/ChangeLog
-@@ -1,3 +1,3413 @@
+@@ -1,3 +1,3421 @@
++2023-02-03  Alex Coplan  <alex.coplan@arm.com>
++
++	Backported from master:
++	2022-12-01  Alex Coplan  <alex.coplan@arm.com>
++
++	* varasm.c (assemble_variable): Fix type confusion bug when
++	checking for ".vtable_map_vars" section.
++
 +2023-01-26  Richard Biener  <rguenther@suse.de>
 +
 +	Backported from master:
@@ -32050,7 +32075,7 @@ index f017fbe3be7..51bd6d18317 100644
      {
        gfc_symtree *st;
 diff --git a/gcc/fortran/decl.c b/gcc/fortran/decl.c
-index 9273976aa9a..e7b745b0cdb 100644
+index 9273976aa9a..8ddcbd7b29b 100644
 --- a/gcc/fortran/decl.c
 +++ b/gcc/fortran/decl.c
 @@ -896,9 +896,6 @@ match_clist_expr (gfc_expr **result, gfc_typespec *ts, gfc_array_spec *as)
@@ -32091,7 +32116,31 @@ index 9273976aa9a..e7b745b0cdb 100644
        /* If sym is implied-shape, set its upper bounds from init.  */
        if (sym->attr.flavor == FL_PARAMETER && sym->attr.dimension
  	  && sym->as->type == AS_IMPLIED_SHAPE)
-@@ -2078,6 +2089,24 @@ add_init_expr_to_sym (const char *name, gfc_expr **initp, locus *var_locus)
+@@ -2036,10 +2047,21 @@ add_init_expr_to_sym (const char *name, gfc_expr **initp, locus *var_locus)
+ 	  /* The shape may be NULL for EXPR_ARRAY, set it.  */
+ 	  if (init->shape == NULL)
+ 	    {
+-	      gcc_assert (init->expr_type == EXPR_ARRAY);
++	      if (init->expr_type != EXPR_ARRAY)
++		{
++		  gfc_error ("Bad shape of initializer at %L", &init->where);
++		  return false;
++		}
++
+ 	      init->shape = gfc_get_shape (1);
+ 	      if (!gfc_array_size (init, &init->shape[0]))
+-		  gfc_internal_error ("gfc_array_size failed");
++		{
++		  gfc_error ("Cannot determine shape of initializer at %L",
++			     &init->where);
++		  free (init->shape);
++		  init->shape = NULL;
++		  return false;
++		}
+ 	    }
+ 
+ 	  for (dim = 0; dim < sym->as->rank; ++dim)
+@@ -2078,6 +2100,24 @@ add_init_expr_to_sym (const char *name, gfc_expr **initp, locus *var_locus)
  	  sym->as->type = AS_EXPLICIT;
  	}
  
@@ -32116,7 +32165,7 @@ index 9273976aa9a..e7b745b0cdb 100644
        /* Need to check if the expression we initialized this
  	 to was one of the iso_c_binding named constants.  If so,
  	 and we're a parameter (constant), let it be iso_c.
-@@ -2105,12 +2134,16 @@ add_init_expr_to_sym (const char *name, gfc_expr **initp, locus *var_locus)
+@@ -2105,12 +2145,16 @@ add_init_expr_to_sym (const char *name, gfc_expr **initp, locus *var_locus)
  	  gfc_expr *array;
  	  int n;
  	  if (sym->attr.flavor == FL_PARAMETER
@@ -32136,7 +32185,7 @@ index 9273976aa9a..e7b745b0cdb 100644
  	      for (n = 0; n < (int)mpz_get_si (size); n++)
  		gfc_constructor_append_expr (&array->value.constructor,
  					     n == 0
-@@ -2652,6 +2685,18 @@ variable_decl (int elem)
+@@ -2652,6 +2696,18 @@ variable_decl (int elem)
  		  else
  		    gfc_free_expr (n);
  		}
@@ -32155,7 +32204,7 @@ index 9273976aa9a..e7b745b0cdb 100644
  	    }
  	}
      }
-@@ -6136,6 +6181,14 @@ gfc_match_data_decl (void)
+@@ -6136,6 +6192,14 @@ gfc_match_data_decl (void)
        goto cleanup;
      }
  
@@ -32170,6 +32219,22 @@ index 9273976aa9a..e7b745b0cdb 100644
    if (current_ts.type == BT_CLASS
  	&& current_ts.u.derived->attr.unlimited_polymorphic)
      goto ok;
+diff --git a/gcc/fortran/dependency.c b/gcc/fortran/dependency.c
+index 7edd5d9010d..e304b607ca5 100644
+--- a/gcc/fortran/dependency.c
++++ b/gcc/fortran/dependency.c
+@@ -1291,6 +1291,11 @@ gfc_check_dependency (gfc_expr *expr1, gfc_expr *expr2, bool identical)
+   if (expr1->expr_type != EXPR_VARIABLE)
+     gfc_internal_error ("gfc_check_dependency: expecting an EXPR_VARIABLE");
+ 
++  /* Prevent NULL pointer dereference while recursively analyzing invalid
++     expressions.  */
++  if (expr2 == NULL)
++    return 0;
++
+   switch (expr2->expr_type)
+     {
+     case EXPR_OP:
 diff --git a/gcc/fortran/expr.c b/gcc/fortran/expr.c
 index f946145eb1b..b65fc764fb8 100644
 --- a/gcc/fortran/expr.c
@@ -32503,7 +32568,7 @@ index e4bb8b8591f..2a669a37708 100644
  
  gfc_expr *gfc_get_expr (void);
 diff --git a/gcc/fortran/interface.c b/gcc/fortran/interface.c
-index 70219a537b9..19ba7fd65dc 100644
+index 70219a537b9..bf4cdfebcb9 100644
 --- a/gcc/fortran/interface.c
 +++ b/gcc/fortran/interface.c
 @@ -2326,6 +2326,7 @@ compare_parameter (gfc_symbol *formal, gfc_expr *actual,
@@ -32576,7 +32641,84 @@ index 70219a537b9..19ba7fd65dc 100644
  	return 0;
  
        elements *= mpz_get_si (sym->as->upper[i]->value.integer)
-@@ -3248,10 +3257,13 @@ gfc_compare_actual_formal (gfc_actual_arglist **ap, gfc_formal_arglist *formal,
+@@ -2801,7 +2810,8 @@ get_expr_storage_size (gfc_expr *e)
+   if (e->ts.type == BT_CHARACTER)
+     {
+       if (e->ts.u.cl && e->ts.u.cl->length
+-          && e->ts.u.cl->length->expr_type == EXPR_CONSTANT)
++	  && e->ts.u.cl->length->expr_type == EXPR_CONSTANT
++	  && e->ts.u.cl->length->ts.type == BT_INTEGER)
+ 	strlen = mpz_get_si (e->ts.u.cl->length->value.integer);
+       else if (e->expr_type == EXPR_CONSTANT
+ 	       && (e->ts.u.cl == NULL || e->ts.u.cl->length == NULL))
+@@ -2852,7 +2862,8 @@ get_expr_storage_size (gfc_expr *e)
+ 
+ 	    if (ref->u.ar.stride[i])
+ 	      {
+-		if (ref->u.ar.stride[i]->expr_type == EXPR_CONSTANT)
++		if (ref->u.ar.stride[i]->expr_type == EXPR_CONSTANT
++		    && ref->u.ar.stride[i]->ts.type == BT_INTEGER)
+ 		  stride = mpz_get_si (ref->u.ar.stride[i]->value.integer);
+ 		else
+ 		  return 0;
+@@ -2860,26 +2871,30 @@ get_expr_storage_size (gfc_expr *e)
+ 
+ 	    if (ref->u.ar.start[i])
+ 	      {
+-		if (ref->u.ar.start[i]->expr_type == EXPR_CONSTANT)
++		if (ref->u.ar.start[i]->expr_type == EXPR_CONSTANT
++		    && ref->u.ar.start[i]->ts.type == BT_INTEGER)
+ 		  start = mpz_get_si (ref->u.ar.start[i]->value.integer);
+ 		else
+ 		  return 0;
+ 	      }
+ 	    else if (ref->u.ar.as->lower[i]
+-		     && ref->u.ar.as->lower[i]->expr_type == EXPR_CONSTANT)
++		     && ref->u.ar.as->lower[i]->expr_type == EXPR_CONSTANT
++		     && ref->u.ar.as->lower[i]->ts.type == BT_INTEGER)
+ 	      start = mpz_get_si (ref->u.ar.as->lower[i]->value.integer);
+ 	    else
+ 	      return 0;
+ 
+ 	    if (ref->u.ar.end[i])
+ 	      {
+-		if (ref->u.ar.end[i]->expr_type == EXPR_CONSTANT)
++		if (ref->u.ar.end[i]->expr_type == EXPR_CONSTANT
++		    && ref->u.ar.end[i]->ts.type == BT_INTEGER)
+ 		  end = mpz_get_si (ref->u.ar.end[i]->value.integer);
+ 		else
+ 		  return 0;
+ 	      }
+ 	    else if (ref->u.ar.as->upper[i]
+-		     && ref->u.ar.as->upper[i]->expr_type == EXPR_CONSTANT)
++		     && ref->u.ar.as->upper[i]->expr_type == EXPR_CONSTANT
++		     && ref->u.ar.as->upper[i]->ts.type == BT_INTEGER)
+ 	      end = mpz_get_si (ref->u.ar.as->upper[i]->value.integer);
+ 	    else
+ 	      return 0;
+@@ -2920,7 +2935,9 @@ get_expr_storage_size (gfc_expr *e)
+ 		  || ref->u.ar.as->upper[i] == NULL
+ 		  || ref->u.ar.as->lower[i] == NULL
+ 		  || ref->u.ar.as->upper[i]->expr_type != EXPR_CONSTANT
+-		  || ref->u.ar.as->lower[i]->expr_type != EXPR_CONSTANT)
++		  || ref->u.ar.as->lower[i]->expr_type != EXPR_CONSTANT
++		  || ref->u.ar.as->upper[i]->ts.type != BT_INTEGER
++		  || ref->u.ar.as->lower[i]->ts.type != BT_INTEGER)
+ 		return 0;
+ 
+ 	      elements
+@@ -2942,7 +2959,9 @@ get_expr_storage_size (gfc_expr *e)
+ 	    {
+ 	      if (!as->upper[i] || !as->lower[i]
+ 		  || as->upper[i]->expr_type != EXPR_CONSTANT
+-		  || as->lower[i]->expr_type != EXPR_CONSTANT)
++		  || as->lower[i]->expr_type != EXPR_CONSTANT
++		  || as->upper[i]->ts.type != BT_INTEGER
++		  || as->lower[i]->ts.type != BT_INTEGER)
+ 		return 0;
+ 
+ 	      elements = elements
+@@ -3248,10 +3267,13 @@ gfc_compare_actual_formal (gfc_actual_arglist **ap, gfc_formal_arglist *formal,
  	  && f->sym->attr.flavor != FL_PROCEDURE)
  	{
  	  if (a->expr->ts.type == BT_CHARACTER && !f->sym->as && where)
@@ -32594,7 +32736,7 @@ index 70219a537b9..19ba7fd65dc 100644
            else if (where)
  	    {
  	      /* Emit a warning for -std=legacy and an error otherwise. */
-@@ -3956,6 +3968,14 @@ gfc_procedure_use (gfc_symbol *sym, gfc_actual_arglist **ap, locus *where)
+@@ -3956,6 +3978,14 @@ gfc_procedure_use (gfc_symbol *sym, gfc_actual_arglist **ap, locus *where)
  	      return false;
  	    }
  
@@ -32673,8 +32815,28 @@ index 2a387535d05..5d444edccd7 100644
  	{
  	  gfc_error ("Non-character non-Hollerith in FORMAT tag at %L",
  		     &e->where);
+diff --git a/gcc/fortran/iresolve.c b/gcc/fortran/iresolve.c
+index 67a1c3167d9..830d2fdffce 100644
+--- a/gcc/fortran/iresolve.c
++++ b/gcc/fortran/iresolve.c
+@@ -94,9 +94,12 @@ check_charlen_present (gfc_expr *source)
+   else if (source->expr_type == EXPR_ARRAY)
+     {
+       gfc_constructor *c = gfc_constructor_first (source->value.constructor);
+-      source->ts.u.cl->length
+-		= gfc_get_int_expr (gfc_charlen_int_kind, NULL,
+-				    c->expr->value.character.length);
++      if (c)
++	source->ts.u.cl->length
++	  = gfc_get_int_expr (gfc_charlen_int_kind, NULL,
++			      c->expr->value.character.length);
++      if (source->ts.u.cl->length == NULL)
++	gfc_internal_error ("check_charlen_present(): length not set");
+     }
+ }
+ 
 diff --git a/gcc/fortran/match.c b/gcc/fortran/match.c
-index e1e4c1caeb4..7d06e0eef30 100644
+index e1e4c1caeb4..cd27ff7b7ec 100644
 --- a/gcc/fortran/match.c
 +++ b/gcc/fortran/match.c
 @@ -1409,7 +1409,7 @@ gfc_match_pointer_assignment (void)
@@ -32686,7 +32848,24 @@ index e1e4c1caeb4..7d06e0eef30 100644
      {
        m = MATCH_NO;
        goto cleanup;
-@@ -6338,7 +6338,8 @@ select_type_set_tmp (gfc_typespec *ts)
+@@ -5297,6 +5297,16 @@ gfc_match_common (void)
+ 		goto cleanup;
+ 	    }
+ 
++	  /* F2018:R874:  common-block-object is variable-name [ (array-spec) ]
++	     F2018:C8121: A variable-name shall not be a name made accessible
++	     by use association.  */
++	  if (sym->attr.use_assoc)
++	    {
++	      gfc_error ("Symbol %qs at %C is USE associated from module %qs "
++			 "and cannot occur in COMMON", sym->name, sym->module);
++	      goto cleanup;
++	    }
++
+ 	  /* Deal with an optional array specification after the
+ 	     symbol name.  */
+ 	  m = gfc_match_array_spec (&as, true, true);
+@@ -6338,7 +6348,8 @@ select_type_set_tmp (gfc_typespec *ts)
        sym = tmp->n.sym;
        gfc_add_type (sym, ts, NULL);
  
@@ -33024,10 +33203,18 @@ index 7ca5f44f419..591d3b88227 100644
        gfc_error ("ELEMENTAL function %qs at %L must have a scalar "
  		 "result", sym->name, &sym->declared_at);
 diff --git a/gcc/fortran/simplify.c b/gcc/fortran/simplify.c
-index d28aa7a3c16..c1db8650b0d 100644
+index d28aa7a3c16..fe4fee897f0 100644
 --- a/gcc/fortran/simplify.c
 +++ b/gcc/fortran/simplify.c
-@@ -2077,6 +2077,9 @@ gfc_simplify_cshift (gfc_expr *array, gfc_expr *shift, gfc_expr *dim)
+@@ -676,6 +676,7 @@ simplify_transformation (gfc_expr *array, gfc_expr *dim, gfc_expr *mask,
+   size_zero = gfc_is_size_zero_array (array);
+ 
+   if (!(is_constant_array_expr (array) || size_zero)
++      || array->shape == NULL
+       || !gfc_is_constant_expr (dim))
+     return NULL;
+ 
+@@ -2077,6 +2078,9 @@ gfc_simplify_cshift (gfc_expr *array, gfc_expr *shift, gfc_expr *dim)
    else
      which = 0;
  
@@ -33037,7 +33224,7 @@ index d28aa7a3c16..c1db8650b0d 100644
    gfc_array_size (array, &size);
    arraysize = mpz_get_ui (size);
    mpz_clear (size);
-@@ -2537,6 +2540,9 @@ gfc_simplify_eoshift (gfc_expr *array, gfc_expr *shift, gfc_expr *boundary,
+@@ -2537,6 +2541,9 @@ gfc_simplify_eoshift (gfc_expr *array, gfc_expr *shift, gfc_expr *boundary,
    if (arraysize == 0)
      goto final;
  
@@ -33047,7 +33234,7 @@ index d28aa7a3c16..c1db8650b0d 100644
    arrayvec = XCNEWVEC (gfc_expr *, arraysize);
    array_ctor = gfc_constructor_first (array->value.constructor);
    for (i = 0; i < arraysize; i++)
-@@ -3054,6 +3060,10 @@ gfc_simplify_extends_type_of (gfc_expr *a, gfc_expr *mold)
+@@ -3054,6 +3061,10 @@ gfc_simplify_extends_type_of (gfc_expr *a, gfc_expr *mold)
    if (UNLIMITED_POLY (a) || UNLIMITED_POLY (mold))
      return NULL;
  
@@ -33058,7 +33245,7 @@ index d28aa7a3c16..c1db8650b0d 100644
    /* Return .false. if the dynamic type can never be an extension.  */
    if ((a->ts.type == BT_CLASS && mold->ts.type == BT_CLASS
         && !gfc_type_is_extension_of
-@@ -3464,17 +3474,15 @@ gfc_expr *
+@@ -3464,17 +3475,15 @@ gfc_expr *
  gfc_simplify_index (gfc_expr *x, gfc_expr *y, gfc_expr *b, gfc_expr *kind)
  {
    gfc_expr *result;
@@ -33080,7 +33267,7 @@ index d28aa7a3c16..c1db8650b0d 100644
  
    k = get_kind (BT_INTEGER, kind, "INDEX", gfc_default_integer_kind);
    if (k == -1)
-@@ -3491,111 +3499,40 @@ gfc_simplify_index (gfc_expr *x, gfc_expr *y, gfc_expr *b, gfc_expr *kind)
+@@ -3491,111 +3500,40 @@ gfc_simplify_index (gfc_expr *x, gfc_expr *y, gfc_expr *b, gfc_expr *kind)
        return result;
      }
  
@@ -33217,7 +33404,7 @@ index d28aa7a3c16..c1db8650b0d 100644
  	}
      }
  
-@@ -4231,6 +4168,12 @@ simplify_bound (gfc_expr *array, gfc_expr *dim, gfc_expr *kind, int upper)
+@@ -4231,6 +4169,12 @@ simplify_bound (gfc_expr *array, gfc_expr *dim, gfc_expr *kind, int upper)
  	     || (as->type == AS_ASSUMED_SHAPE && upper)))
      return NULL;
  
@@ -33230,7 +33417,7 @@ index d28aa7a3c16..c1db8650b0d 100644
    gcc_assert (!as
  	      || (as->type != AS_DEFERRED
  		  && array->expr_type == EXPR_VARIABLE
-@@ -5814,6 +5757,7 @@ gfc_simplify_findloc (gfc_expr *array, gfc_expr *value, gfc_expr *dim,
+@@ -5814,6 +5758,7 @@ gfc_simplify_findloc (gfc_expr *array, gfc_expr *value, gfc_expr *dim,
    bool back_val = false;
  
    if (!is_constant_array_expr (array)
@@ -33238,7 +33425,7 @@ index d28aa7a3c16..c1db8650b0d 100644
        || !gfc_is_constant_expr (dim))
      return NULL;
  
-@@ -6350,7 +6294,7 @@ gfc_simplify_pack (gfc_expr *array, gfc_expr *mask, gfc_expr *vector)
+@@ -6350,7 +6295,7 @@ gfc_simplify_pack (gfc_expr *array, gfc_expr *mask, gfc_expr *vector)
        /* Copy only those elements of ARRAY to RESULT whose
  	 MASK equals .TRUE..  */
        mask_ctor = gfc_constructor_first (mask->value.constructor);
@@ -33247,7 +33434,7 @@ index d28aa7a3c16..c1db8650b0d 100644
  	{
  	  if (mask_ctor->expr->value.logical)
  	    {
-@@ -6759,7 +6703,13 @@ gfc_simplify_reshape (gfc_expr *source, gfc_expr *shape_exp,
+@@ -6759,7 +6704,13 @@ gfc_simplify_reshape (gfc_expr *source, gfc_expr *shape_exp,
        gfc_extract_int (e, &shape[rank]);
  
        gcc_assert (rank >= 0 && rank < GFC_MAX_DIMENSIONS);
@@ -33262,7 +33449,7 @@ index d28aa7a3c16..c1db8650b0d 100644
  
        rank++;
      }
-@@ -7379,6 +7329,7 @@ simplify_size (gfc_expr *array, gfc_expr *dim, int k)
+@@ -7379,6 +7330,7 @@ simplify_size (gfc_expr *array, gfc_expr *dim, int k)
    mpz_t size;
    gfc_expr *return_value;
    int d;
@@ -33270,7 +33457,7 @@ index d28aa7a3c16..c1db8650b0d 100644
  
    /* For unary operations, the size of the result is given by the size
       of the operand.  For binary ones, it's the size of the first operand
-@@ -7435,6 +7386,11 @@ simplify_size (gfc_expr *array, gfc_expr *dim, int k)
+@@ -7435,6 +7387,11 @@ simplify_size (gfc_expr *array, gfc_expr *dim, int k)
        return simplified;
      }
  
@@ -33282,7 +33469,7 @@ index d28aa7a3c16..c1db8650b0d 100644
    if (dim == NULL)
      {
        if (!gfc_array_size (array, &size))
-@@ -8031,7 +7987,18 @@ gfc_simplify_transfer (gfc_expr *source, gfc_expr *mold, gfc_expr *size)
+@@ -8031,7 +7988,18 @@ gfc_simplify_transfer (gfc_expr *source, gfc_expr *mold, gfc_expr *size)
       set even for array expressions, in order to pass this information into
       gfc_target_interpret_expr.  */
    if (result->ts.type == BT_CHARACTER && gfc_is_constant_expr (mold_element))
@@ -33302,7 +33489,7 @@ index d28aa7a3c16..c1db8650b0d 100644
  
    /* Set the number of elements in the result, and determine its size.  */
  
-@@ -8071,6 +8038,9 @@ gfc_simplify_transpose (gfc_expr *matrix)
+@@ -8071,6 +8039,9 @@ gfc_simplify_transpose (gfc_expr *matrix)
  
    gcc_assert (matrix->rank == 2);
  
@@ -33312,7 +33499,7 @@ index d28aa7a3c16..c1db8650b0d 100644
    result = gfc_get_array_expr (matrix->ts.type, matrix->ts.kind,
  			       &matrix->where);
    result->rank = 2;
-@@ -8338,9 +8308,16 @@ gfc_simplify_unpack (gfc_expr *vector, gfc_expr *mask, gfc_expr *field)
+@@ -8338,9 +8309,16 @@ gfc_simplify_unpack (gfc_expr *vector, gfc_expr *mask, gfc_expr *field)
      {
        if (mask_ctor->expr->value.logical)
  	{
@@ -57522,6 +57709,26 @@ index 00000000000..adec014995f
 +      call y%s           ! { dg-error "must be a coarray" }
 +   end associate
 +end
+diff --git a/gcc/testsuite/gfortran.dg/common_27.f90 b/gcc/testsuite/gfortran.dg/common_27.f90
+new file mode 100644
+index 00000000000..dcde5de2bd2
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/common_27.f90
+@@ -0,0 +1,14 @@
++! { dg-do compile }
++! PR fortran/108453 - a use associated variable cannot occur in COMMON
++! Contributed by G.Steinmetz
++
++module m
++  type t
++  end type
++  real :: r
++end
++program p
++  use m, only: t, r
++  common t      ! { dg-error "USE associated from module" }
++  common /cm/ r ! { dg-error "USE associated from module" }
++end
 diff --git a/gcc/testsuite/gfortran.dg/dec_math_5.f90 b/gcc/testsuite/gfortran.dg/dec_math_5.f90
 new file mode 100644
 index 00000000000..dee2de4e06b
@@ -59212,6 +59419,21 @@ index 00000000000..89004bf9aa7
 +end
 +
 +! { dg-final { scan-tree-dump-not "_gfortran_stop_numeric" "original" } }
+diff --git a/gcc/testsuite/gfortran.dg/pr106209.f90 b/gcc/testsuite/gfortran.dg/pr106209.f90
+new file mode 100644
+index 00000000000..44f9233ec2f
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/pr106209.f90
+@@ -0,0 +1,9 @@
++! { dg-do compile }
++! PR fortran/106209 - ICE in add_init_expr_to_sym
++! Contributed by G.Steinmetz
++
++program p
++  integer, parameter :: a(:) = 0   ! { dg-error "of deferred shape" }
++  integer, parameter :: b(*) = a   ! { dg-error "Bad shape of initializer" }
++  integer, parameter :: c(*) = [a] ! { dg-error "Cannot determine shape" }
++end
 diff --git a/gcc/testsuite/gfortran.dg/pr106331.f90 b/gcc/testsuite/gfortran.dg/pr106331.f90
 new file mode 100644
 index 00000000000..3873863be48
@@ -59380,6 +59602,92 @@ index 00000000000..8bf36d361ba
 +end program test
 +
 +! { dg-final { scan-tree-dump-not "_gfortran_stop_numeric" "original" } }
+diff --git a/gcc/testsuite/gfortran.dg/pr108420.f90 b/gcc/testsuite/gfortran.dg/pr108420.f90
+new file mode 100644
+index 00000000000..985c0b3bf53
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/pr108420.f90
+@@ -0,0 +1,10 @@
++! { dg-do compile }
++! PR fortran/108420
++! Contributed by G.Steinmetz
++
++program p
++  character :: c = 'c'
++  logical   :: m = .true.
++  print *, merge(transfer('a', 'b', 0), c, .true.)
++  print *, merge(transfer('a', 'b', 0), c, m)
++end
+diff --git a/gcc/testsuite/gfortran.dg/pr108421.f90 b/gcc/testsuite/gfortran.dg/pr108421.f90
+new file mode 100644
+index 00000000000..89439bc7eec
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/pr108421.f90
+@@ -0,0 +1,11 @@
++! { dg-do compile }
++! PR fortran/108421
++! Contributed by G.Steinmetz
++
++program p
++  character(real(3)) :: c ! { dg-error "must be of INTEGER type" }
++  call s(c)
++end
++subroutine s(x)
++  character(*) :: x
++end
+diff --git a/gcc/testsuite/gfortran.dg/pr108501.f90 b/gcc/testsuite/gfortran.dg/pr108501.f90
+new file mode 100644
+index 00000000000..09ab8c9f34f
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/pr108501.f90
+@@ -0,0 +1,14 @@
++! { dg-do compile }
++! PR fortran/108501 - ICE in get_expr_storage_size
++! Contributed by G.Steinmetz
++
++program p
++  real, parameter :: n = 2
++  real :: a(1,(n),2) ! { dg-error "must be of INTEGER type" }
++  call s(a(:,:,1))
++end
++subroutine s(x)
++  real :: x(2)
++end
++
++! { dg-prune-output "must have constant shape" }
+diff --git a/gcc/testsuite/gfortran.dg/pr108502.f90 b/gcc/testsuite/gfortran.dg/pr108502.f90
+new file mode 100644
+index 00000000000..45f73849c57
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/pr108502.f90
+@@ -0,0 +1,12 @@
++! { dg-do compile }
++! { dg-options "-O2 -ffrontend-optimize" }
++! PR fortran/108502 - ICE in gfc_check_dependency
++! Contributed by G.Steinmetz
++
++integer function n()
++  integer :: a(1)
++  a = [1] / 0
++end
++program p
++  integer :: b = n() ! { dg-error "must be an intrinsic function" }
++end
+diff --git a/gcc/testsuite/gfortran.dg/pr108529.f90 b/gcc/testsuite/gfortran.dg/pr108529.f90
+new file mode 100644
+index 00000000000..34c9691fae1
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/pr108529.f90
+@@ -0,0 +1,9 @@
++! { dg-do compile }
++! PR fortran/108529 - ICE in transformational_result
++! Contributed by G.Steinmetz
++
++program p
++  integer, parameter :: a(*,*) = reshape([1, 2, 3, 4], [2, 2])
++  logical, parameter :: b(2,*) = a > 2     ! { dg-error "Assumed size" }
++  logical, parameter :: c(*)   = all(b, 1) ! { dg-error "Bad shape" }
++end
 diff --git a/gcc/testsuite/gfortran.dg/pr47614.f b/gcc/testsuite/gfortran.dg/pr47614.f
 index 500d210a2a4..d772eef257f 100644
 --- a/gcc/testsuite/gfortran.dg/pr47614.f
@@ -63680,9 +63988,18 @@ index fc861a0d8ce..8c965e68211 100644
        if (preserve)
  	preserve_value (v);
 diff --git a/gcc/varasm.c b/gcc/varasm.c
-index 814d29a02de..d65985d9748 100644
+index 814d29a02de..3ebcdc9aff8 100644
 --- a/gcc/varasm.c
 +++ b/gcc/varasm.c
+@@ -2322,7 +2322,7 @@ assemble_variable (tree decl, int top_level ATTRIBUTE_UNUSED,
+   else
+     {
+       /* Special-case handling of vtv comdat sections.  */
+-      if (sect->named.name
++      if (SECTION_STYLE (sect) == SECTION_NAMED
+ 	  && (strcmp (sect->named.name, ".vtable_map_vars") == 0))
+ 	handle_vtv_comdat_section (sect, decl);
+       else
 @@ -4455,7 +4455,10 @@ narrowing_initializer_constant_valid_p (tree value, tree endtype, tree *cache)
      {
        tree inner = TREE_OPERAND (op0, 0);
