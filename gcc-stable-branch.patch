@@ -107,7 +107,8 @@ François-Xavier Coudert (1):
 Fritz Reese (1):
       fortran: Fix conv of UNION constructors [PR105310]
 
-GCC Administrator (660):
+GCC Administrator (661):
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -5744,10 +5745,19 @@ index 0719d810258..da772b97257 100644
 -10.3.0
 +10.4.1
 diff --git a/gcc/ChangeLog b/gcc/ChangeLog
-index 3b1384e707f..4ea86423493 100644
+index 3b1384e707f..251c0bfc9e1 100644
 --- a/gcc/ChangeLog
 +++ b/gcc/ChangeLog
-@@ -1,3 +1,3421 @@
+@@ -1,3 +1,3430 @@
++2023-02-07  Richard Biener  <rguenther@suse.de>
++
++	Backported from master:
++	2022-09-02  Richard Biener  <rguenther@suse.de>
++
++	PR tree-optimization/106809
++	* tree-ssa-sccvn.c (dominaged_by_p_w_unex): Check we have
++	more than one successor before doing extra work.
++
 +2023-02-03  Alex Coplan  <alex.coplan@arm.com>
 +
 +	Backported from master:
@@ -38734,10 +38744,18 @@ index f5a6d507e91..6b2c3e17346 100644
  DEFHOOKPOD
  (have_tls,
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index 2913065bf31..63134537684 100644
+index 2913065bf31..ed25feb41d7 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,3812 @@
+@@ -1,3 +1,3820 @@
++2023-02-07  Richard Biener  <rguenther@suse.de>
++
++	Backported from master:
++	2022-09-02  Richard Biener  <rguenther@suse.de>
++
++	PR tree-optimization/106809
++	* gcc.dg/torture/pr106809.c: New testcase.
++
 +2023-02-05  Harald Anlauf  <anlauf@gmx.de>
 +
 +	Backported from master:
