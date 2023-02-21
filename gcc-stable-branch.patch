@@ -108,7 +108,8 @@ François-Xavier Coudert (1):
 Fritz Reese (1):
       fortran: Fix conv of UNION constructors [PR105310]
 
-GCC Administrator (673):
+GCC Administrator (674):
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -5769,10 +5770,19 @@ index 0719d810258..da772b97257 100644
 -10.3.0
 +10.4.1
 diff --git a/gcc/ChangeLog b/gcc/ChangeLog
-index 3b1384e707f..898a4ea9b73 100644
+index 3b1384e707f..2cccdb98975 100644
 --- a/gcc/ChangeLog
 +++ b/gcc/ChangeLog
-@@ -1,3 +1,3449 @@
+@@ -1,3 +1,3458 @@
++2023-02-20  Alex Coplan  <alex.coplan@arm.com>
++
++	Backported from master:
++	2023-02-06  Alex Coplan  <alex.coplan@arm.com>
++
++	PR target/104921
++	* config/aarch64/aarch64-simd.md (aarch64_bfmlal<bt>_lane<q>v4sf):
++	Use correct constraint for operand 3.
++
 +2023-02-13  Kewen Lin  <linkw@linux.ibm.com>
 +
 +	Backported from master:
@@ -38939,10 +38949,20 @@ index f5a6d507e91..6b2c3e17346 100644
  DEFHOOKPOD
  (have_tls,
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index 2913065bf31..c67e1882551 100644
+index 2913065bf31..199b360fef5 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,3865 @@
+@@ -1,3 +1,3875 @@
++2023-02-20  Alex Coplan  <alex.coplan@arm.com>
++
++	Backported from master:
++	2023-02-06  Alex Coplan  <alex.coplan@arm.com>
++
++	PR target/104921
++	* gcc.target/aarch64/pr104921-1.c: New test.
++	* gcc.target/aarch64/pr104921-2.c: New test.
++	* gcc.target/aarch64/pr104921.x: Include file for new tests.
++
 +2023-02-13  Kewen Lin  <linkw@linux.ibm.com>
 +
 +	Backported from master:
@@ -65421,10 +65441,29 @@ index 00000000000..6f3d7369f27
 +  exit(0);
 +}
 diff --git a/libgcc/ChangeLog b/libgcc/ChangeLog
-index 1f9de3d5091..a49027e43b6 100644
+index 1f9de3d5091..fa16074a85e 100644
 --- a/libgcc/ChangeLog
 +++ b/libgcc/ChangeLog
-@@ -1,3 +1,141 @@
+@@ -1,3 +1,160 @@
++2023-02-20  Nelson Chu  <nelson.chu@sifive.com>
++
++	Backported from master:
++	2021-12-06  Nelson Chu  <nelson.chu@sifive.com>
++
++	PR target/108339
++	* config/riscv/div.S: Add the hidden alias symbol for __udivdi3, and
++	then use HIDDEN_JUMPTARGET to target it since it is non-preemptible.
++	* config/riscv/riscv-asm.h: Added new macros HIDDEN_JUMPTARGET and
++	HIDDEN_DEF.
++
++2023-02-20  Jim Wilson  <jimw@sifive.com>
++
++	Backported from master:
++	2020-06-02  Jim Wilson  <jimw@sifive.com>
++
++	* config/riscv/div.S (__divdi3): For negative arguments, change bgez
++	to bgtz.
++
 +2022-06-28  Release Manager
 +
 +	* GCC 10.4.0 released.
