@@ -108,7 +108,9 @@ François-Xavier Coudert (1):
 Fritz Reese (1):
       fortran: Fix conv of UNION constructors [PR105310]
 
-GCC Administrator (685):
+GCC Administrator (687):
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -813,7 +815,7 @@ H.J. Lu (7):
 Hafiz Abid Qadeer (1):
       [OpenACC] Fix an ICE where a loop with GT condition is collapsed.
 
-Harald Anlauf (84):
+Harald Anlauf (87):
       PR fortran/63797 - Bogus ambiguous reference to 'sqrt'
       PR fortran/100154 - ICE in gfc_conv_procedure_call, at fortran/trans-expr.c:6131
       PR fortran/100274 - ICE in gfc_conv_procedure_call, at fortran/trans-expr.c:6131
@@ -898,6 +900,9 @@ Harald Anlauf (84):
       Fortran: fix ICE in compare_bound_int [PR108527]
       Fortran: error recovery on invalid array section [PR108609]
       Fortran: ASSOCIATE variables should not be TREE_STATIC [PR95107]
+      Fortran: improve checking of character length specification [PR96025]
+      Fortran: reject invalid CHARACTER length of derived type components [PR96024]
+      Fortran: fix corner case of IBITS intrinsic [PR108937]
 
 Hongyu Wang (1):
       AVX512F: Add missing macro for mask(z?)_scalf_s[sd] [PR 105339]
@@ -30808,10 +30813,40 @@ index 6e635382fb4..9b65819463e 100644
  	    return build_zero_cst (TREE_TYPE (TREE_TYPE (arg)));
  	  return CONSTRUCTOR_ELT (arg, i)->value;
 diff --git a/gcc/fortran/ChangeLog b/gcc/fortran/ChangeLog
-index aa5932be872..2f897d0388d 100644
+index aa5932be872..83e40200e41 100644
 --- a/gcc/fortran/ChangeLog
 +++ b/gcc/fortran/ChangeLog
-@@ -1,3 +1,1105 @@
+@@ -1,3 +1,1135 @@
++2023-03-05  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2023-02-27  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/108937
++	* trans-intrinsic.c (gfc_conv_intrinsic_ibits): Handle corner case
++	LEN argument of IBITS equal to BITSIZE(I).
++
++2023-03-05  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2023-02-22  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/96024
++	* resolve.c (resolve_component): The type of a CHARACTER length
++	expression must be INTEGER.
++
++2023-03-05  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2023-02-21  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/96025
++	* parse.c (check_function_result_typed): Improve type check of
++	specification expression for character length and return status.
++	(parse_spec): Use status from above.
++	* resolve.c (resolve_fntype): Prevent use of invalid specification
++	expression for character length.
++
 +2023-02-11  Harald Anlauf  <anlauf@gmx.de>
 +
 +	Backported from master:
@@ -33225,10 +33260,68 @@ index 3175999dd4a..41ef75a0e0c 100644
  	      || (allow_derived && gfc_peek_ascii_char () == '%'))
  	    {
 diff --git a/gcc/fortran/parse.c b/gcc/fortran/parse.c
-index 3e19d5fdfbe..6ddc5171e2f 100644
+index 3e19d5fdfbe..69c0f4350ad 100644
 --- a/gcc/fortran/parse.c
 +++ b/gcc/fortran/parse.c
-@@ -4440,6 +4440,9 @@ gfc_check_do_variable (gfc_symtree *st)
+@@ -3702,21 +3702,30 @@ match_deferred_characteristics (gfc_typespec * ts)
+    For return types specified in a FUNCTION prefix, the IMPLICIT rules of the
+    scope are not yet parsed so this has to be delayed up to parse_spec.  */
+ 
+-static void
++static bool
+ check_function_result_typed (void)
+ {
+   gfc_typespec ts;
+ 
+   gcc_assert (gfc_current_state () == COMP_FUNCTION);
+ 
+-  if (!gfc_current_ns->proc_name->result) return;
++  if (!gfc_current_ns->proc_name->result)
++    return true;
+ 
+   ts = gfc_current_ns->proc_name->result->ts;
+ 
+   /* Check type-parameters, at the moment only CHARACTER lengths possible.  */
+   /* TODO:  Extend when KIND type parameters are implemented.  */
+   if (ts.type == BT_CHARACTER && ts.u.cl && ts.u.cl->length)
+-    gfc_expr_check_typed (ts.u.cl->length, gfc_current_ns, true);
++    {
++      /* Reject invalid type of specification expression for length.  */
++      if (ts.u.cl->length->ts.type != BT_INTEGER)
++	  return false;
++
++      gfc_expr_check_typed (ts.u.cl->length, gfc_current_ns, true);
++    }
++
++  return true;
+ }
+ 
+ 
+@@ -3824,10 +3833,7 @@ loop:
+ 	}
+ 
+       if (verify_now)
+-	{
+-	  check_function_result_typed ();
+-	  function_result_typed = true;
+-	}
++	function_result_typed = check_function_result_typed ();
+     }
+ 
+   switch (st)
+@@ -3838,10 +3844,7 @@ loop:
+     case ST_IMPLICIT_NONE:
+     case ST_IMPLICIT:
+       if (!function_result_typed)
+-	{
+-	  check_function_result_typed ();
+-	  function_result_typed = true;
+-	}
++	function_result_typed = check_function_result_typed ();
+       goto declSt;
+ 
+     case ST_FORMAT:
+@@ -4440,6 +4443,9 @@ gfc_check_do_variable (gfc_symtree *st)
  {
    gfc_state_data *s;
  
@@ -33238,7 +33331,7 @@ index 3e19d5fdfbe..6ddc5171e2f 100644
    for (s=gfc_state_stack; s; s = s->previous)
      if (s->do_variable == st)
        {
-@@ -4675,6 +4678,24 @@ parse_associate (void)
+@@ -4675,6 +4681,24 @@ parse_associate (void)
  	 in case of association to a derived-type.  */
        sym->ts = a->target->ts;
  
@@ -33354,7 +33447,7 @@ index 8edc83a42c3..56b05795c27 100644
  
  
 diff --git a/gcc/fortran/resolve.c b/gcc/fortran/resolve.c
-index 7ca5f44f419..70c6f57279a 100644
+index 7ca5f44f419..288970deca0 100644
 --- a/gcc/fortran/resolve.c
 +++ b/gcc/fortran/resolve.c
 @@ -1436,6 +1436,43 @@ resolve_structure_cons (gfc_expr *expr, int init)
@@ -33581,6 +33674,37 @@ index 7ca5f44f419..70c6f57279a 100644
      {
        gfc_error ("ELEMENTAL function %qs at %L must have a scalar "
  		 "result", sym->name, &sym->declared_at);
+@@ -14588,6 +14643,19 @@ resolve_component (gfc_component *c, gfc_symbol *sym)
+                     c->ts.u.cl->length ? &c->ts.u.cl->length->where : &c->loc);
+          return false;
+        }
++
++     if (c->ts.u.cl->length && c->ts.u.cl->length->ts.type != BT_INTEGER)
++       {
++	 if (!c->ts.u.cl->length->error)
++	   {
++	     gfc_error ("Character length expression of component %qs at %L "
++			"must be of INTEGER type, found %s",
++			c->name, &c->ts.u.cl->length->where,
++			gfc_basic_typename (c->ts.u.cl->length->ts.type));
++	     c->ts.u.cl->length->error = 1;
++	   }
++	 return false;
++       }
+     }
+ 
+   if (c->ts.type == BT_CHARACTER && c->ts.deferred
+@@ -17084,7 +17152,9 @@ resolve_fntype (gfc_namespace *ns)
+ 	  }
+       }
+ 
+-  if (sym->ts.type == BT_CHARACTER)
++  if (sym->ts.type == BT_CHARACTER
++      && sym->ts.u.cl->length
++      && sym->ts.u.cl->length->ts.type == BT_INTEGER)
+     gfc_traverse_expr (sym->ts.u.cl->length, sym, flag_fn_result_spec, 0);
+ }
+ 
 diff --git a/gcc/fortran/simplify.c b/gcc/fortran/simplify.c
 index d28aa7a3c16..fe4fee897f0 100644
 --- a/gcc/fortran/simplify.c
@@ -34391,7 +34515,7 @@ index c2321a9ff5f..602df7debe6 100644
    realloc_flag = flag_realloc_lhs
  		 && gfc_is_reallocatable_lhs (expr1)
 diff --git a/gcc/fortran/trans-intrinsic.c b/gcc/fortran/trans-intrinsic.c
-index 29f8f932aa3..9a4aa08f889 100644
+index 29f8f932aa3..1d3ad31eb59 100644
 --- a/gcc/fortran/trans-intrinsic.c
 +++ b/gcc/fortran/trans-intrinsic.c
 @@ -4411,6 +4411,18 @@ rad2deg (int kind)
@@ -34512,7 +34636,33 @@ index 29f8f932aa3..9a4aa08f889 100644
    atan2d = build_call_expr_loc (input_location, atan2d, 2, args[0], args[1]);
  
    se->expr = fold_build2_loc (input_location, MULT_EXPR, type, atan2d,
-@@ -8451,7 +8455,8 @@ gfc_conv_intrinsic_transfer (gfc_se * se, gfc_expr * expr)
+@@ -6498,6 +6502,7 @@ gfc_conv_intrinsic_ibits (gfc_se * se, gfc_expr * expr)
+   tree type;
+   tree tmp;
+   tree mask;
++  tree num_bits, cond;
+ 
+   gfc_conv_intrinsic_function_args (se, expr, args, 3);
+   type = TREE_TYPE (args[0]);
+@@ -6538,8 +6543,17 @@ gfc_conv_intrinsic_ibits (gfc_se * se, gfc_expr * expr)
+ 			       "in intrinsic IBITS", tmp1, tmp2, nbits);
+     }
+ 
++  /* The Fortran standard allows (shift width) LEN <= BIT_SIZE(I), whereas
++     gcc requires a shift width < BIT_SIZE(I), so we have to catch this
++     special case.  See also gfc_conv_intrinsic_ishft ().  */
++  num_bits = build_int_cst (TREE_TYPE (args[2]), TYPE_PRECISION (type));
++
+   mask = build_int_cst (type, -1);
+   mask = fold_build2_loc (input_location, LSHIFT_EXPR, type, mask, args[2]);
++  cond = fold_build2_loc (input_location, GE_EXPR, logical_type_node, args[2],
++			  num_bits);
++  mask = fold_build3_loc (input_location, COND_EXPR, type, cond,
++			  build_int_cst (type, 0), mask);
+   mask = fold_build1_loc (input_location, BIT_NOT_EXPR, type, mask);
+ 
+   tmp = fold_build2_loc (input_location, RSHIFT_EXPR, type, args[0], args[1]);
+@@ -8451,7 +8465,8 @@ gfc_conv_intrinsic_transfer (gfc_se * se, gfc_expr * expr)
      {
      case BT_CHARACTER:
        tmp = size_of_string_in_bytes (arg->expr->ts.kind, argse.string_length);
@@ -34522,7 +34672,7 @@ index 29f8f932aa3..9a4aa08f889 100644
        break;
      case BT_CLASS:
        tmp = gfc_class_vtab_size_get (argse.expr);
-@@ -8553,7 +8558,13 @@ gfc_conv_intrinsic_transfer (gfc_se * se, gfc_expr * expr)
+@@ -8553,7 +8568,13 @@ gfc_conv_intrinsic_transfer (gfc_se * se, gfc_expr * expr)
  
    se->expr = info->descriptor;
    if (expr->ts.type == BT_CHARACTER)
@@ -34537,7 +34687,7 @@ index 29f8f932aa3..9a4aa08f889 100644
  
    return;
  
-@@ -8607,7 +8618,11 @@ scalar_transfer:
+@@ -8607,7 +8628,11 @@ scalar_transfer:
        gfc_add_expr_to_block (&se->post, tmp);
  
        se->expr = tmpdecl;
@@ -34550,7 +34700,7 @@ index 29f8f932aa3..9a4aa08f889 100644
      }
    else
      {
-@@ -8822,7 +8837,8 @@ gfc_conv_associated (gfc_se *se, gfc_expr *expr)
+@@ -8822,7 +8847,8 @@ gfc_conv_associated (gfc_se *se, gfc_expr *expr)
    else
      {
        /* An optional target.  */
@@ -34560,7 +34710,7 @@ index 29f8f932aa3..9a4aa08f889 100644
  	gfc_add_data_component (arg2->expr);
  
        if (scalar)
-@@ -8843,6 +8859,11 @@ gfc_conv_associated (gfc_se *se, gfc_expr *expr)
+@@ -8843,6 +8869,11 @@ gfc_conv_associated (gfc_se *se, gfc_expr *expr)
  	      && arg2->expr->symtree->n.sym->attr.dummy)
  	    arg2se.expr = build_fold_indirect_ref_loc (input_location,
  						       arg2se.expr);
@@ -39046,10 +39196,34 @@ index f5a6d507e91..6b2c3e17346 100644
  DEFHOOKPOD
  (have_tls,
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index 2913065bf31..abce3ce517e 100644
+index 2913065bf31..c3989954224 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,3884 @@
+@@ -1,3 +1,3908 @@
++2023-03-05  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2023-02-27  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/108937
++	* gfortran.dg/ibits_2.f90: New test.
++
++2023-03-05  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2023-02-22  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/96024
++	* gfortran.dg/pr96024.f90: New test.
++
++2023-03-05  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2023-02-21  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/96025
++	* gfortran.dg/pr96025.f90: New test.
++
 +2023-03-03  Iain Buclaw  <ibuclaw@gdcproject.org>
 +
 +	Backported from master:
@@ -58890,6 +59064,44 @@ index eaa7ae770d6..9385569960f 100644
  if { [istarget "powerpc-ibm-aix*"] } {
      set torture_execute_xfail "powerpc-ibm-aix*"
      return
+diff --git a/gcc/testsuite/gfortran.dg/ibits_2.f90 b/gcc/testsuite/gfortran.dg/ibits_2.f90
+new file mode 100644
+index 00000000000..2af5542d764
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/ibits_2.f90
+@@ -0,0 +1,32 @@
++! { dg-do run }
++! { dg-additional-options "-fcheck=bits" }
++! PR fortran/108937 - Intrinsic IBITS(I,POS,LEN) fails when LEN equals
++!                     to BIT_SIZE(I)
++! Contributed by saitofuyuki@jamstec.go.jp
++
++program test_bits
++  implicit none
++  integer, parameter :: KT = kind (1)
++  integer, parameter :: lbits = bit_size (0_KT)
++  integer(kind=KT) :: x, y0, y1
++  integer(kind=KT) :: p, l
++
++  x = -1
++  p = 0
++  do l = 0, lbits
++     y0 = ibits  (x, p, l)
++     y1 = ibits_1(x, p, l)
++     if (y0 /= y1) then
++        print *, l, y0, y1
++        stop 1+l
++     end if
++  end do
++contains
++  elemental integer(kind=KT) function ibits_1(I, POS, LEN) result(n)
++    !! IBITS(I, POS, LEN) = (I >> POS) & ~((~0) << LEN)
++    implicit none
++    integer(kind=KT),intent(in) :: I
++    integer,         intent(in) :: POS, LEN
++    n = IAND (ISHFT(I, - POS), NOT(ISHFT(-1_KT, LEN)))
++  end function ibits_1
++end program test_bits
 diff --git a/gcc/testsuite/gfortran.dg/illegal_boz_arg_2.f90 b/gcc/testsuite/gfortran.dg/illegal_boz_arg_2.f90
 new file mode 100644
 index 00000000000..3e5f6b6d1d4
@@ -60669,6 +60881,40 @@ index 00000000000..d40fd9a5508
 +  integer, pointer :: z
 +  nullify (z%kind)  ! { dg-error "in variable definition context" }
 +  z%kind => NULL()  ! { dg-error "constant expression" }
++end
+diff --git a/gcc/testsuite/gfortran.dg/pr96024.f90 b/gcc/testsuite/gfortran.dg/pr96024.f90
+new file mode 100644
+index 00000000000..2c914a997f2
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/pr96024.f90
+@@ -0,0 +1,11 @@
++! { dg-do compile }
++! PR fortran/96024 - ICE in mio_name_expr_t
++! Contributed by G.Steinmetz
++
++module m
++  implicit none
++  type t
++     character(char(1)) :: a ! { dg-error "must be of INTEGER type" }
++  end type
++  type(t) :: z = t('a')
++end
+diff --git a/gcc/testsuite/gfortran.dg/pr96025.f90 b/gcc/testsuite/gfortran.dg/pr96025.f90
+new file mode 100644
+index 00000000000..ce292bd9664
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/pr96025.f90
+@@ -0,0 +1,11 @@
++! { dg-do compile }
++! PR fortran/96025 - ICE in expr_check_typed_help
++! Contributed by G.Steinmetz
++
++program p
++  print *, f()
++contains
++  character(char(1)) function f() ! { dg-error "must be of INTEGER type" }
++    f = 'f'
++  end
 +end
 diff --git a/gcc/testsuite/gfortran.dg/pr98411.f90 b/gcc/testsuite/gfortran.dg/pr98411.f90
 new file mode 100644
