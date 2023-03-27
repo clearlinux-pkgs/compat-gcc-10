@@ -108,7 +108,14 @@ François-Xavier Coudert (1):
 Fritz Reese (1):
       fortran: Fix conv of UNION constructors [PR105310]
 
-GCC Administrator (701):
+GCC Administrator (708):
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -829,7 +836,7 @@ H.J. Lu (7):
 Hafiz Abid Qadeer (1):
       [OpenACC] Fix an ICE where a loop with GT condition is collapsed.
 
-Harald Anlauf (89):
+Harald Anlauf (91):
       PR fortran/63797 - Bogus ambiguous reference to 'sqrt'
       PR fortran/100154 - ICE in gfc_conv_procedure_call, at fortran/trans-expr.c:6131
       PR fortran/100274 - ICE in gfc_conv_procedure_call, at fortran/trans-expr.c:6131
@@ -919,6 +926,8 @@ Harald Anlauf (89):
       Fortran: fix corner case of IBITS intrinsic [PR108937]
       Fortran: fix ICE with bind(c) in block data [PR104332]
       Fortran: fix bounds check for copying of class expressions [PR106945]
+      Fortran: procedures with BIND(C) attribute require explicit interface [PR85877]
+      Fortran: simplification of NEAREST for large argument [PR109186]
 
 Hongyu Wang (1):
       AVX512F: Add missing macro for mask(z?)_scalf_s[sd] [PR 105339]
@@ -30830,10 +30839,28 @@ index 6e635382fb4..9b65819463e 100644
  	    return build_zero_cst (TREE_TYPE (TREE_TYPE (arg)));
  	  return CONSTRUCTOR_ELT (arg, i)->value;
 diff --git a/gcc/fortran/ChangeLog b/gcc/fortran/ChangeLog
-index aa5932be872..1eaa0fe7637 100644
+index aa5932be872..8b8ee9ab2ad 100644
 --- a/gcc/fortran/ChangeLog
 +++ b/gcc/fortran/ChangeLog
-@@ -1,3 +1,1153 @@
+@@ -1,3 +1,1171 @@
++2023-03-24  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2023-03-20  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/109186
++	* simplify.c (gfc_simplify_nearest): Fix off-by-one error in setting
++	up real kind-specific maximum exponent for mpfr.
++
++2023-03-24  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2023-03-19  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/85877
++	* resolve.c (resolve_fl_procedure): Check for an explicit interface
++	of procedures with the BIND(C) attribute (F2018:15.4.2.2).
++
 +2023-03-17  Harald Anlauf  <anlauf@gmx.de>
 +
 +	Backported from master:
@@ -33482,7 +33509,7 @@ index 8edc83a42c3..56b05795c27 100644
  
  
 diff --git a/gcc/fortran/resolve.c b/gcc/fortran/resolve.c
-index 7ca5f44f419..98e94044e02 100644
+index 7ca5f44f419..dc127abeb64 100644
 --- a/gcc/fortran/resolve.c
 +++ b/gcc/fortran/resolve.c
 @@ -1436,6 +1436,43 @@ resolve_structure_cons (gfc_expr *expr, int init)
@@ -33709,7 +33736,24 @@ index 7ca5f44f419..98e94044e02 100644
      {
        gfc_error ("ELEMENTAL function %qs at %L must have a scalar "
  		 "result", sym->name, &sym->declared_at);
-@@ -14588,6 +14643,19 @@ resolve_component (gfc_component *c, gfc_symbol *sym)
+@@ -13358,6 +13413,16 @@ check_formal:
+ 	    }
+ 	}
+     }
++
++  /* F2018:15.4.2.2 requires an explicit interface for procedures with the
++     BIND(C) attribute.  */
++  if (sym->attr.is_bind_c && sym->attr.if_source == IFSRC_UNKNOWN)
++    {
++      gfc_error ("Interface of %qs at %L must be explicit",
++		 sym->name, &sym->declared_at);
++      return false;
++    }
++
+   return true;
+ }
+ 
+@@ -14588,6 +14653,19 @@ resolve_component (gfc_component *c, gfc_symbol *sym)
                      c->ts.u.cl->length ? &c->ts.u.cl->length->where : &c->loc);
           return false;
         }
@@ -33729,7 +33773,7 @@ index 7ca5f44f419..98e94044e02 100644
      }
  
    if (c->ts.type == BT_CHARACTER && c->ts.deferred
-@@ -15598,8 +15666,8 @@ resolve_symbol (gfc_symbol *sym)
+@@ -15598,8 +15676,8 @@ resolve_symbol (gfc_symbol *sym)
  
        /* First, make sure the variable is declared at the
  	 module-level scope (J3/04-007, Section 15.3).	*/
@@ -33740,7 +33784,7 @@ index 7ca5f44f419..98e94044e02 100644
  	{
  	  gfc_error ("Variable %qs at %L cannot be BIND(C) because it "
  		     "is neither a COMMON block nor declared at the "
-@@ -17084,7 +17152,9 @@ resolve_fntype (gfc_namespace *ns)
+@@ -17084,7 +17162,9 @@ resolve_fntype (gfc_namespace *ns)
  	  }
        }
  
@@ -33752,7 +33796,7 @@ index 7ca5f44f419..98e94044e02 100644
  }
  
 diff --git a/gcc/fortran/simplify.c b/gcc/fortran/simplify.c
-index d28aa7a3c16..fe4fee897f0 100644
+index d28aa7a3c16..2cac5a4e168 100644
 --- a/gcc/fortran/simplify.c
 +++ b/gcc/fortran/simplify.c
 @@ -676,6 +676,7 @@ simplify_transformation (gfc_expr *array, gfc_expr *dim, gfc_expr *mask,
@@ -33974,6 +34018,15 @@ index d28aa7a3c16..fe4fee897f0 100644
        || !gfc_is_constant_expr (dim))
      return NULL;
  
+@@ -6013,7 +5958,7 @@ gfc_simplify_nearest (gfc_expr *x, gfc_expr *s)
+   kind = gfc_validate_kind (BT_REAL, x->ts.kind, 0);
+   mpfr_set_emin ((mpfr_exp_t) gfc_real_kinds[kind].min_exponent -
+ 		mpfr_get_prec(result->value.real) + 1);
+-  mpfr_set_emax ((mpfr_exp_t) gfc_real_kinds[kind].max_exponent - 1);
++  mpfr_set_emax ((mpfr_exp_t) gfc_real_kinds[kind].max_exponent);
+   mpfr_check_range (result->value.real, 0, MPFR_RNDU);
+ 
+   if (mpfr_sgn (s->value.real) > 0)
 @@ -6350,7 +6295,7 @@ gfc_simplify_pack (gfc_expr *array, gfc_expr *mask, gfc_expr *vector)
        /* Copy only those elements of ARRAY to RESULT whose
  	 MASK equals .TRUE..  */
@@ -39250,10 +39303,26 @@ index f5a6d507e91..6b2c3e17346 100644
  DEFHOOKPOD
  (have_tls,
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index 2913065bf31..1718a14d34c 100644
+index 2913065bf31..38fb279f0bc 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,3924 @@
+@@ -1,3 +1,3940 @@
++2023-03-24  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2023-03-20  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/109186
++	* gfortran.dg/nearest_6.f90: New test.
++
++2023-03-24  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2023-03-19  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/85877
++	* gfortran.dg/pr85877.f90: New test.
++
 +2023-03-17  Harald Anlauf  <anlauf@gmx.de>
 +
 +	Backported from master:
@@ -59514,6 +59583,38 @@ index f624b703cc9..d968ea0e5cd 100644
    call move_alloc (x%a, a)      ! { dg-error "cannot be INTENT.IN." }
    call move_alloc (x%ptr%a, a)  ! OK (6)
    call move_alloc (px%a, a)     ! OK (7)
+diff --git a/gcc/testsuite/gfortran.dg/nearest_6.f90 b/gcc/testsuite/gfortran.dg/nearest_6.f90
+new file mode 100644
+index 00000000000..00d1ebe618c
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/nearest_6.f90
+@@ -0,0 +1,26 @@
++! { dg-do run }
++! PR fortran/109186 - Verify that NEAREST produces same results at
++!                     compile-time and run-time for corner cases
++! Reported by John Harper
++
++program p
++  implicit none
++  integer,  parameter :: sp = selected_real_kind (6)
++  integer,  parameter :: dp = selected_real_kind (13)
++  real(sp), parameter :: x1 = huge (1._sp), t1 = tiny (1._sp)
++  real(dp), parameter :: x2 = huge (1._dp), t2 = tiny (1._dp)
++  real(sp), volatile  :: y1, z1
++  real(dp), volatile  :: y2, z2
++  y1 = x1
++  z1 = nearest (y1, -1._sp)
++  if (nearest (x1,  -1._sp) /= z1) stop 1
++  y2 = x2
++  z2 = nearest (y2, -1._dp)
++  if (nearest (x2,  -1._dp) /= z2) stop 2
++  y1 = t1
++  z1 = nearest (y1,  1._sp)
++  if (nearest (t1,   1._sp) /= z1) stop 3
++  y2 = t2
++  z2 = nearest (y2,  1._dp)
++  if (nearest (t2,   1._dp) /= z2) stop 4
++end
 diff --git a/gcc/testsuite/gfortran.dg/nint_p7.f90 b/gcc/testsuite/gfortran.dg/nint_p7.f90
 index 8f3552293c5..2239824a7fb 100644
 --- a/gcc/testsuite/gfortran.dg/nint_p7.f90
@@ -60969,6 +61070,37 @@ index 00000000000..3a147e22711
 +  integer, parameter :: l = lbound (karray,1)
 +  integer, parameter :: u = ubound (karray,1)
 +  if (l /= 3 .or. u /= 7 .or. i /= 5) stop 1
++end
+diff --git a/gcc/testsuite/gfortran.dg/pr85877.f90 b/gcc/testsuite/gfortran.dg/pr85877.f90
+new file mode 100644
+index 00000000000..d8f08cbd210
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/pr85877.f90
+@@ -0,0 +1,25 @@
++! { dg-do compile }
++! PR fortran/85877
++! A procedure with the bind(c) attribute shall have an explicit interface
++! Contributed by G. Steinmetz
++
++function f() bind(c)
++  f = 42.
++end
++
++subroutine p
++  bind(c) f     ! { dg-error "must be explicit" }
++  x = f()
++end
++
++function g() bind(c)
++  g = 42.
++end
++
++subroutine s
++  interface
++     function g() bind(c)
++     end function g
++  end interface
++  x = g()
 +end
 diff --git a/gcc/testsuite/gfortran.dg/pr93604.f90 b/gcc/testsuite/gfortran.dg/pr93604.f90
 index 2c695d37829..4040155120c 100644
