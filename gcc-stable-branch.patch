@@ -108,7 +108,30 @@ François-Xavier Coudert (1):
 Fritz Reese (1):
       fortran: Fix conv of UNION constructors [PR105310]
 
-GCC Administrator (708):
+GCC Administrator (731):
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -836,7 +859,7 @@ H.J. Lu (7):
 Hafiz Abid Qadeer (1):
       [OpenACC] Fix an ICE where a loop with GT condition is collapsed.
 
-Harald Anlauf (91):
+Harald Anlauf (92):
       PR fortran/63797 - Bogus ambiguous reference to 'sqrt'
       PR fortran/100154 - ICE in gfc_conv_procedure_call, at fortran/trans-expr.c:6131
       PR fortran/100274 - ICE in gfc_conv_procedure_call, at fortran/trans-expr.c:6131
@@ -928,6 +951,7 @@ Harald Anlauf (91):
       Fortran: fix bounds check for copying of class expressions [PR106945]
       Fortran: procedures with BIND(C) attribute require explicit interface [PR85877]
       Fortran: simplification of NEAREST for large argument [PR109186]
+      Fortran: fix compile-time simplification of SET_EXPONENT [PR109511]
 
 Hongyu Wang (1):
       AVX512F: Add missing macro for mask(z?)_scalf_s[sd] [PR 105339]
@@ -1352,7 +1376,7 @@ José Rui Faustino de Sousa (4):
       Fortran: Fix function attributes [PR100132]
       Fortran: Fix ICE and wrong code for assumed-rank arrays [PR100029, PR100040]
 
-Kewen Lin (14):
+Kewen Lin (15):
       ipa-fnsummary: Remove inconsistent bp_pack_value
       vect: Don't update inits for simd_lane_access DRs [PR102789]
       rs6000/doc: Rename future cpu with power10
@@ -1367,6 +1391,7 @@ Kewen Lin (14):
       rs6000: Raise error for __vector_{quad,pair} uses without MMA enabled [PR106736]
       rs6000: Teach rs6000_opaque_type_invalid_use_p about inline asm [PR108272]
       rs6000: Teach rs6000_opaque_type_invalid_use_p about gcall [PR108348]
+      rs6000: Fix vector parity support [PR108699]
 
 Kyrylo Tkachov (1):
       aarch64: Add support for -mcpu=neoverse-v2
@@ -1542,6 +1567,15 @@ Peter Bergner (15):
       rs6000: Update testsuite to use -mdejagnu-cpu= and -mdejagnu-tune= options
       rs6000: Allow conversions of MMA pointer types [PR106017]
       rs6000: Don't ICE when we disassemble an MMA variable [PR101322]
+
+Philipp Tomsich (7):
+      aarch64: enable Ampere-1 CPU
+      aarch64: fix off-by-one in reading cpuinfo
+      aarch64: update Ampere-1 core definition
+      aarch64: Add support for Ampere-1A (-mcpu=ampere1a) CPU
+      aarch64: update ampere1 vectorization cost
+      aarch64: disable LDP via tuning structure for -mcpu=ampere1
+      PR target/108589 - Check REG_P for AARCH64_FUSE_ADDSUB_2REG_CONST1
 
 Philippe Blain (1):
       libstdc++: Install libstdc++*-gdb.py more robustly [PR 99453]
@@ -5815,10 +5849,97 @@ index 0719d810258..da772b97257 100644
 -10.3.0
 +10.4.1
 diff --git a/gcc/ChangeLog b/gcc/ChangeLog
-index 3b1384e707f..5645182ec63 100644
+index 3b1384e707f..cb315e901a7 100644
 --- a/gcc/ChangeLog
 +++ b/gcc/ChangeLog
-@@ -1,3 +1,3466 @@
+@@ -1,3 +1,3553 @@
++2023-04-18  Philipp Tomsich  <philipp.tomsich@vrull.eu>
++
++	Backported from master:
++	2023-01-31  Philipp Tomsich  <philipp.tomsich@vrull.eu>
++
++	PR target/108589
++	* config/aarch64/aarch64.c (aarch_macro_fusion_pair_p): Check
++	REG_P on SET_DEST.
++
++2023-04-18  Philipp Tomsich  <philipp.tomsich@vrull.eu>
++
++	Backported from master:
++	2023-04-17  Philipp Tomsich  <philipp.tomsich@vrull.eu>
++		    Di Zhao  <di.zhao@amperecomputing.com>
++
++	* config/aarch64/aarch64-tuning-flags.def (AARCH64_EXTRA_TUNING_OPTION):
++	Add AARCH64_EXTRA_TUNE_NO_LDP_COMBINE.
++	* config/aarch64/aarch64.c (aarch64_operands_ok_for_ldpstp):
++	Check for the above tuning option when processing loads.
++
++2023-04-18  Philipp Tomsich  <philipp.tomsich@vrull.eu>
++
++	Backported from master:
++	2023-03-27  Philipp Tomsich  <philipp.tomsich@vrull.eu>
++		    Jiangning Liu  <jiangning.liu@amperecomputing.com>
++		    Manolis Tsamis  <manolis.tsamis@vrull.eu>
++
++	* config/aarch64/aarch64.c: Update vector costs for ampere1.
++
++2023-04-18  Philipp Tomsich  <philipp.tomsich@vrull.eu>
++
++	Backported from master:
++	2022-11-14  Philipp Tomsich  <philipp.tomsich@vrull.eu>
++
++	* config/aarch64/aarch64-cores.def (AARCH64_CORE): Add ampere1a.
++	* config/aarch64/aarch64-cost-tables.h: Add ampere1a_extra_costs.
++	* config/aarch64/aarch64-fusion-pairs.def (AARCH64_FUSION_PAIR):
++	Define a new fusion pair for A+B+1/A-B-1 (i.e., add/subtract two
++	registers and then +1/-1).
++	* config/aarch64/aarch64-tune.md: Regenerate.
++	* config/aarch64/aarch64.c (aarch_macro_fusion_pair_p): Implement
++	idiom-matcher for the new fusion pair.
++	* doc/invoke.texi: Add ampere1a.
++
++2023-04-18  Philipp Tomsich  <philipp.tomsich@vrull.eu>
++
++	Backported from master:
++	2022-10-06  Philipp Tomsich  <philipp.tomsich@vrull.eu>
++
++	* config/aarch64/aarch64-cores.def (AARCH64_CORE): Update
++	Ampere-1 core entry.
++
++2023-04-18  Philipp Tomsich  <philipp.tomsich@vrull.eu>
++
++	Backported from master:
++	2022-10-06  Philipp Tomsich  <philipp.tomsich@vrull.eu>
++
++	* config/aarch64/driver-aarch64.c (readline): Fix off-by-one.
++
++2023-04-18  Philipp Tomsich  <philipp.tomsich@vrull.eu>
++
++	Backported from master:
++	2021-11-03  Philipp Tomsich  <philipp.tomsich@vrull.eu>
++
++	* config/aarch64/aarch64-cores.def (AARCH64_CORE): New Ampere-1
++	core.
++	* config/aarch64/aarch64-tune.md: Regenerate.
++	* config/aarch64/aarch64-cost-tables.h: Add extra costs for
++	Ampere-1.
++	* config/aarch64/aarch64.c: Add tuning structures for Ampere-1.
++	* doc/invoke.texi: Add documentation for Ampere-1 core.
++
++2023-04-17  Kewen Lin  <linkw@linux.ibm.com>
++
++	Backported from master:
++	2023-04-04  Kewen Lin  <linkw@linux.ibm.com>
++
++	PR target/108699
++	* config/rs6000/altivec.md (*p9v_parity<mode>2): Rename to ...
++	(rs6000_vprtyb<mode>2): ... this.
++	* config/rs6000/rs6000-builtin.def (VPRTYBD): Replace parityv2di2 with
++	rs6000_vprtybv2di2.
++	(VPRTYBW): Replace parityv4si2 with rs6000_vprtybv4si2.
++	(VPRTYBQ): Replace parityv1ti2 with rs6000_vprtybv1ti2.
++	* config/rs6000/vector.md (parity<mode>2 with VEC_IP): Expand with
++	popcountv16qi2 and the corresponding rs6000_vprtyb<mode>2.
++
 +2023-02-24  Sebastian Huber  <sebastian.huber@embedded-brains.de>
 +
 +	Backported from master:
@@ -11873,10 +11994,21 @@ index fd08be47570..244b42c3c3c 100644
    /* Not for ACLE, but required to keep "float.h" correct if we switch
       target between implementations that do or do not support ARMv8.2-A
 diff --git a/gcc/config/aarch64/aarch64-cores.def b/gcc/config/aarch64/aarch64-cores.def
-index 9c290292479..197f88d5be2 100644
+index 9c290292479..d58076b33f7 100644
 --- a/gcc/config/aarch64/aarch64-cores.def
 +++ b/gcc/config/aarch64/aarch64-cores.def
-@@ -128,19 +128,21 @@ AARCH64_CORE("tsv110",  tsv110, tsv110, 8_2A,  AARCH64_FL_FOR_ARCH8_2 | AARCH64_
+@@ -68,7 +68,9 @@ AARCH64_CORE("octeontx83",    octeontxt83,   thunderx,  8A,  AARCH64_FL_FOR_ARCH
+ AARCH64_CORE("thunderxt81",   thunderxt81,   thunderx,  8A,  AARCH64_FL_FOR_ARCH8 | AARCH64_FL_CRC | AARCH64_FL_CRYPTO, thunderx,  0x43, 0x0a2, -1)
+ AARCH64_CORE("thunderxt83",   thunderxt83,   thunderx,  8A,  AARCH64_FL_FOR_ARCH8 | AARCH64_FL_CRC | AARCH64_FL_CRYPTO, thunderx,  0x43, 0x0a3, -1)
+ 
+-/* Ampere Computing cores. */
++/* Ampere Computing ('\xC0') cores. */
++AARCH64_CORE("ampere1", ampere1, cortexa57, 8_6A, AARCH64_FL_FOR_ARCH8_6 | AARCH64_FL_CRYPTO | AARCH64_FL_F16 | AARCH64_FL_RNG | AARCH64_FL_SHA3, ampere1, 0xC0, 0xac3, -1)
++AARCH64_CORE("ampere1a", ampere1a, cortexa57, 8_6A, AARCH64_FL_FOR_ARCH8_6 | AARCH64_FL_CRYPTO | AARCH64_FL_F16 | AARCH64_FL_RNG | AARCH64_FL_SHA3 | AARCH64_FL_MEMTAG, ampere1a, 0xC0, 0xac4, -1)
+ /* Do not swap around "emag" and "xgene1",
+    this order is required to handle variant correctly. */
+ AARCH64_CORE("emag",        emag,      xgene1,    8A,  AARCH64_FL_FOR_ARCH8 | AARCH64_FL_CRC | AARCH64_FL_CRYPTO, emag, 0x50, 0x000, 3)
+@@ -128,19 +130,21 @@ AARCH64_CORE("tsv110",  tsv110, tsv110, 8_2A,  AARCH64_FL_FOR_ARCH8_2 | AARCH64_
  /* ARMv8.3-A Architecture Processors.  */
  
  /* Marvell cores (TX3). */
@@ -11902,6 +12034,232 @@ index 9c290292479..197f88d5be2 100644
  
  /* ARMv8-A big.LITTLE implementations.  */
  
+diff --git a/gcc/config/aarch64/aarch64-cost-tables.h b/gcc/config/aarch64/aarch64-cost-tables.h
+index c6805717f6e..042d45821c2 100644
+--- a/gcc/config/aarch64/aarch64-cost-tables.h
++++ b/gcc/config/aarch64/aarch64-cost-tables.h
+@@ -644,4 +644,210 @@ const struct cpu_cost_table a64fx_extra_costs =
+   }
+ };
+ 
++const struct cpu_cost_table ampere1_extra_costs =
++{
++  /* ALU */
++  {
++    0,                 /* arith.  */
++    0,                 /* logical.  */
++    0,                 /* shift.  */
++    COSTS_N_INSNS (1), /* shift_reg.  */
++    0,                 /* arith_shift.  */
++    COSTS_N_INSNS (1), /* arith_shift_reg.  */
++    0,                 /* log_shift.  */
++    COSTS_N_INSNS (1), /* log_shift_reg.  */
++    0,                 /* extend.  */
++    COSTS_N_INSNS (1), /* extend_arith.  */
++    0,                 /* bfi.  */
++    0,                 /* bfx.  */
++    0,                 /* clz.  */
++    0,                 /* rev.  */
++    0,                 /* non_exec.  */
++    true               /* non_exec_costs_exec.  */
++  },
++  {
++    /* MULT SImode */
++    {
++      COSTS_N_INSNS (3),       /* simple.  */
++      COSTS_N_INSNS (3),       /* flag_setting.  */
++      COSTS_N_INSNS (3),       /* extend.  */
++      COSTS_N_INSNS (4),       /* add.  */
++      COSTS_N_INSNS (4),       /* extend_add.  */
++      COSTS_N_INSNS (18)       /* idiv.  */
++    },
++    /* MULT DImode */
++    {
++      COSTS_N_INSNS (3),       /* simple.  */
++      0,                       /* flag_setting (N/A).  */
++      COSTS_N_INSNS (3),       /* extend.  */
++      COSTS_N_INSNS (4),       /* add.  */
++      COSTS_N_INSNS (4),       /* extend_add.  */
++      COSTS_N_INSNS (34)       /* idiv.  */
++    }
++  },
++  /* LD/ST */
++  {
++    COSTS_N_INSNS (4),         /* load.  */
++    COSTS_N_INSNS (4),         /* load_sign_extend.  */
++    0,                         /* ldrd (n/a).  */
++    0,                         /* ldm_1st.  */
++    0,                         /* ldm_regs_per_insn_1st.  */
++    0,                         /* ldm_regs_per_insn_subsequent.  */
++    COSTS_N_INSNS (5),         /* loadf.  */
++    COSTS_N_INSNS (5),         /* loadd.  */
++    COSTS_N_INSNS (5),         /* load_unaligned.  */
++    0,                         /* store.  */
++    0,                         /* strd.  */
++    0,                         /* stm_1st.  */
++    0,                         /* stm_regs_per_insn_1st.  */
++    0,                         /* stm_regs_per_insn_subsequent.  */
++    COSTS_N_INSNS (2),         /* storef.  */
++    COSTS_N_INSNS (2),         /* stored.  */
++    COSTS_N_INSNS (2),         /* store_unaligned.  */
++    COSTS_N_INSNS (3),         /* loadv.  */
++    COSTS_N_INSNS (3)          /* storev.  */
++  },
++  {
++    /* FP SFmode */
++    {
++      COSTS_N_INSNS (25),      /* div.  */
++      COSTS_N_INSNS (4),       /* mult.  */
++      COSTS_N_INSNS (4),       /* mult_addsub.  */
++      COSTS_N_INSNS (4),       /* fma.  */
++      COSTS_N_INSNS (4),       /* addsub.  */
++      COSTS_N_INSNS (2),       /* fpconst.  */
++      COSTS_N_INSNS (4),       /* neg.  */
++      COSTS_N_INSNS (4),       /* compare.  */
++      COSTS_N_INSNS (4),       /* widen.  */
++      COSTS_N_INSNS (4),       /* narrow.  */
++      COSTS_N_INSNS (4),       /* toint.  */
++      COSTS_N_INSNS (4),       /* fromint.  */
++      COSTS_N_INSNS (4)        /* roundint.  */
++    },
++    /* FP DFmode */
++    {
++      COSTS_N_INSNS (34),      /* div.  */
++      COSTS_N_INSNS (5),       /* mult.  */
++      COSTS_N_INSNS (5),       /* mult_addsub.  */
++      COSTS_N_INSNS (5),       /* fma.  */
++      COSTS_N_INSNS (5),       /* addsub.  */
++      COSTS_N_INSNS (2),       /* fpconst.  */
++      COSTS_N_INSNS (5),       /* neg.  */
++      COSTS_N_INSNS (5),       /* compare.  */
++      COSTS_N_INSNS (5),       /* widen.  */
++      COSTS_N_INSNS (5),       /* narrow.  */
++      COSTS_N_INSNS (6),       /* toint.  */
++      COSTS_N_INSNS (6),       /* fromint.  */
++      COSTS_N_INSNS (5)        /* roundint.  */
++    }
++  },
++  /* Vector */
++  {
++    COSTS_N_INSNS (3),  /* alu.  */
++  }
++};
++
++const struct cpu_cost_table ampere1a_extra_costs =
++{
++  /* ALU */
++  {
++    0,                 /* arith.  */
++    0,                 /* logical.  */
++    0,                 /* shift.  */
++    COSTS_N_INSNS (1), /* shift_reg.  */
++    0,                 /* arith_shift.  */
++    COSTS_N_INSNS (1), /* arith_shift_reg.  */
++    0,                 /* log_shift.  */
++    COSTS_N_INSNS (1), /* log_shift_reg.  */
++    0,                 /* extend.  */
++    COSTS_N_INSNS (1), /* extend_arith.  */
++    0,                 /* bfi.  */
++    0,                 /* bfx.  */
++    0,                 /* clz.  */
++    0,                 /* rev.  */
++    0,                 /* non_exec.  */
++    true               /* non_exec_costs_exec.  */
++  },
++  {
++    /* MULT SImode */
++    {
++      COSTS_N_INSNS (3),       /* simple.  */
++      COSTS_N_INSNS (3),       /* flag_setting.  */
++      COSTS_N_INSNS (3),       /* extend.  */
++      COSTS_N_INSNS (4),       /* add.  */
++      COSTS_N_INSNS (4),       /* extend_add.  */
++      COSTS_N_INSNS (19)       /* idiv.  */
++    },
++    /* MULT DImode */
++    {
++      COSTS_N_INSNS (3),       /* simple.  */
++      0,                       /* flag_setting (N/A).  */
++      COSTS_N_INSNS (3),       /* extend.  */
++      COSTS_N_INSNS (4),       /* add.  */
++      COSTS_N_INSNS (4),       /* extend_add.  */
++      COSTS_N_INSNS (35)       /* idiv.  */
++    }
++  },
++  /* LD/ST */
++  {
++    COSTS_N_INSNS (4),         /* load.  */
++    COSTS_N_INSNS (4),         /* load_sign_extend.  */
++    0,                         /* ldrd (n/a).  */
++    0,                         /* ldm_1st.  */
++    0,                         /* ldm_regs_per_insn_1st.  */
++    0,                         /* ldm_regs_per_insn_subsequent.  */
++    COSTS_N_INSNS (5),         /* loadf.  */
++    COSTS_N_INSNS (5),         /* loadd.  */
++    COSTS_N_INSNS (5),         /* load_unaligned.  */
++    0,                         /* store.  */
++    0,                         /* strd.  */
++    0,                         /* stm_1st.  */
++    0,                         /* stm_regs_per_insn_1st.  */
++    0,                         /* stm_regs_per_insn_subsequent.  */
++    COSTS_N_INSNS (2),         /* storef.  */
++    COSTS_N_INSNS (2),         /* stored.  */
++    COSTS_N_INSNS (2),         /* store_unaligned.  */
++    COSTS_N_INSNS (3),         /* loadv.  */
++    COSTS_N_INSNS (3)          /* storev.  */
++  },
++  {
++    /* FP SFmode */
++    {
++      COSTS_N_INSNS (25),      /* div.  */
++      COSTS_N_INSNS (4),       /* mult.  */
++      COSTS_N_INSNS (4),       /* mult_addsub.  */
++      COSTS_N_INSNS (4),       /* fma.  */
++      COSTS_N_INSNS (4),       /* addsub.  */
++      COSTS_N_INSNS (2),       /* fpconst.  */
++      COSTS_N_INSNS (4),       /* neg.  */
++      COSTS_N_INSNS (4),       /* compare.  */
++      COSTS_N_INSNS (4),       /* widen.  */
++      COSTS_N_INSNS (4),       /* narrow.  */
++      COSTS_N_INSNS (4),       /* toint.  */
++      COSTS_N_INSNS (4),       /* fromint.  */
++      COSTS_N_INSNS (4)        /* roundint.  */
++    },
++    /* FP DFmode */
++    {
++      COSTS_N_INSNS (34),      /* div.  */
++      COSTS_N_INSNS (5),       /* mult.  */
++      COSTS_N_INSNS (5),       /* mult_addsub.  */
++      COSTS_N_INSNS (5),       /* fma.  */
++      COSTS_N_INSNS (5),       /* addsub.  */
++      COSTS_N_INSNS (2),       /* fpconst.  */
++      COSTS_N_INSNS (5),       /* neg.  */
++      COSTS_N_INSNS (5),       /* compare.  */
++      COSTS_N_INSNS (5),       /* widen.  */
++      COSTS_N_INSNS (5),       /* narrow.  */
++      COSTS_N_INSNS (6),       /* toint.  */
++      COSTS_N_INSNS (6),       /* fromint.  */
++      COSTS_N_INSNS (5)        /* roundint.  */
++    }
++  },
++  /* Vector */
++  {
++    COSTS_N_INSNS (3),  /* alu.  */
++  }
++};
++
+ #endif
+diff --git a/gcc/config/aarch64/aarch64-fusion-pairs.def b/gcc/config/aarch64/aarch64-fusion-pairs.def
+index 34d3a5765aa..39ca57d56cf 100644
+--- a/gcc/config/aarch64/aarch64-fusion-pairs.def
++++ b/gcc/config/aarch64/aarch64-fusion-pairs.def
+@@ -36,5 +36,6 @@ AARCH64_FUSION_PAIR ("cmp+branch", CMP_BRANCH)
+ AARCH64_FUSION_PAIR ("aes+aesmc", AES_AESMC)
+ AARCH64_FUSION_PAIR ("alu+branch", ALU_BRANCH)
+ AARCH64_FUSION_PAIR ("alu+cbz", ALU_CBZ)
++AARCH64_FUSION_PAIR ("addsub_2reg_const1", ADDSUB_2REG_CONST1)
+ 
+ #undef AARCH64_FUSION_PAIR
 diff --git a/gcc/config/aarch64/aarch64-protos.h b/gcc/config/aarch64/aarch64-protos.h
 index bebd1b36228..ef24c48fc14 100644
 --- a/gcc/config/aarch64/aarch64-protos.h
@@ -12287,7 +12645,7 @@ index d17a7770690..d77194892f3 100644
  
  ;; -------------------------------------------------------------------------
 diff --git a/gcc/config/aarch64/aarch64-tune.md b/gcc/config/aarch64/aarch64-tune.md
-index 7fda2294b8a..d116b0e5e97 100644
+index 7fda2294b8a..ffe2ee857fa 100644
 --- a/gcc/config/aarch64/aarch64-tune.md
 +++ b/gcc/config/aarch64/aarch64-tune.md
 @@ -1,5 +1,5 @@
@@ -12295,13 +12653,139 @@ index 7fda2294b8a..d116b0e5e97 100644
  ;; Generated automatically by gentune.sh from aarch64-cores.def
  (define_attr "tune"
 -	"cortexa34,cortexa35,cortexa53,cortexa57,cortexa72,cortexa73,thunderx,thunderxt88p1,thunderxt88,octeontx,octeontxt81,octeontxt83,thunderxt81,thunderxt83,emag,xgene1,falkor,qdf24xx,exynosm1,phecda,thunderx2t99p1,vulcan,thunderx2t99,cortexa55,cortexa75,cortexa76,cortexa76ae,cortexa77,cortexa65,cortexa65ae,ares,neoversen1,neoversee1,octeontx2,octeontx2t98,octeontx2t96,octeontx2t93,octeontx2f95,octeontx2f95n,octeontx2f95mm,a64fx,tsv110,thunderx3t110,zeus,neoversev1,saphira,neoversen2,cortexa57cortexa53,cortexa72cortexa53,cortexa73cortexa35,cortexa73cortexa53,cortexa75cortexa55,cortexa76cortexa55"
-+	"cortexa34,cortexa35,cortexa53,cortexa57,cortexa72,cortexa73,thunderx,thunderxt88p1,thunderxt88,octeontx,octeontxt81,octeontxt83,thunderxt81,thunderxt83,emag,xgene1,falkor,qdf24xx,exynosm1,phecda,thunderx2t99p1,vulcan,thunderx2t99,cortexa55,cortexa75,cortexa76,cortexa76ae,cortexa77,cortexa65,cortexa65ae,ares,neoversen1,neoversee1,octeontx2,octeontx2t98,octeontx2t96,octeontx2t93,octeontx2f95,octeontx2f95n,octeontx2f95mm,a64fx,tsv110,thunderx3t110,zeus,neoversev1,neoverse512tvb,saphira,neoversen2,neoversev2,cortexa57cortexa53,cortexa72cortexa53,cortexa73cortexa35,cortexa73cortexa53,cortexa75cortexa55,cortexa76cortexa55"
++	"cortexa34,cortexa35,cortexa53,cortexa57,cortexa72,cortexa73,thunderx,thunderxt88p1,thunderxt88,octeontx,octeontxt81,octeontxt83,thunderxt81,thunderxt83,ampere1,ampere1a,emag,xgene1,falkor,qdf24xx,exynosm1,phecda,thunderx2t99p1,vulcan,thunderx2t99,cortexa55,cortexa75,cortexa76,cortexa76ae,cortexa77,cortexa65,cortexa65ae,ares,neoversen1,neoversee1,octeontx2,octeontx2t98,octeontx2t96,octeontx2t93,octeontx2f95,octeontx2f95n,octeontx2f95mm,a64fx,tsv110,thunderx3t110,zeus,neoversev1,neoverse512tvb,saphira,neoversen2,neoversev2,cortexa57cortexa53,cortexa72cortexa53,cortexa73cortexa35,cortexa73cortexa53,cortexa75cortexa55,cortexa76cortexa55"
  	(const (symbol_ref "((enum attr_tune) aarch64_tune)")))
+diff --git a/gcc/config/aarch64/aarch64-tuning-flags.def b/gcc/config/aarch64/aarch64-tuning-flags.def
+index 7677ec0b0b4..9758bfaa65d 100644
+--- a/gcc/config/aarch64/aarch64-tuning-flags.def
++++ b/gcc/config/aarch64/aarch64-tuning-flags.def
+@@ -44,6 +44,9 @@ AARCH64_EXTRA_TUNING_OPTION ("cheap_shift_extend", CHEAP_SHIFT_EXTEND)
+ /* Disallow load/store pair instructions on Q-registers.  */
+ AARCH64_EXTRA_TUNING_OPTION ("no_ldp_stp_qregs", NO_LDP_STP_QREGS)
+ 
++/* Disallow load-pair instructions to be formed in combine/peephole.  */
++AARCH64_EXTRA_TUNING_OPTION ("no_ldp_combine", NO_LDP_COMBINE)
++
+ AARCH64_EXTRA_TUNING_OPTION ("rename_load_regs", RENAME_LOAD_REGS)
+ 
+ /* Prefer Advanced SIMD over SVE for auto-vectorization.  */
 diff --git a/gcc/config/aarch64/aarch64.c b/gcc/config/aarch64/aarch64.c
-index 9b400c49ac6..92c2f0dae6f 100644
+index 9b400c49ac6..e6bf5ae3808 100644
 --- a/gcc/config/aarch64/aarch64.c
 +++ b/gcc/config/aarch64/aarch64.c
-@@ -3123,7 +3123,7 @@ aarch64_load_symref_appropriately (rtx dest, rtx imm,
+@@ -781,6 +781,25 @@ static const struct cpu_vector_cost a64fx_vector_cost =
+   1 /* cond_not_taken_branch_cost  */
+ };
+ 
++/* Ampere-1 costs for vector insn classes.  */
++static const struct cpu_vector_cost ampere1_vector_cost =
++{
++  1, /* scalar_int_stmt_cost  */
++  3, /* scalar_fp_stmt_cost  */
++  4, /* scalar_load_cost  */
++  1, /* scalar_store_cost  */
++  1, /* int_stmt_cost  */
++  3, /* fp_stmt_cost  */
++  2, /* permute_cost  */
++  6, /* vec_to_scalar_cost  */
++  7, /* scalar_to_vec_cost  */
++  4, /* align_load_cost  */
++  4, /* unalign_load_cost  */
++  1, /* unalign_store_cost  */
++  1, /* store_cost  */
++  1, /* cond_taken_branch_cost  */
++  1 /* cond_not_taken_branch_cost  */
++};
+ 
+ /* Generic costs for branch instructions.  */
+ static const struct cpu_branch_cost generic_branch_cost =
+@@ -924,6 +943,17 @@ static const cpu_prefetch_tune a64fx_prefetch_tune =
+   -1			/* default_opt_level  */
+ };
+ 
++static const cpu_prefetch_tune ampere1_prefetch_tune =
++{
++  0,			/* num_slots  */
++  64,			/* l1_cache_size  */
++  64,			/* l1_cache_line_size  */
++  2048,			/* l2_cache_size  */
++  true,			/* prefetch_dynamic_strides */
++  -1,			/* minimum_stride */
++  -1			/* default_opt_level  */
++};
++
+ static const struct tune_params generic_tunings =
+ {
+   &cortexa57_extra_costs,
+@@ -1384,6 +1414,67 @@ static const struct tune_params neoversen1_tunings =
+   &generic_prefetch_tune
+ };
+ 
++static const struct tune_params ampere1_tunings =
++{
++  &ampere1_extra_costs,
++  &generic_addrcost_table,
++  &generic_regmove_cost,
++  &ampere1_vector_cost,
++  &generic_branch_cost,
++  &generic_approx_modes,
++  SVE_NOT_IMPLEMENTED, /* sve_width  */
++  4, /* memmov_cost  */
++  4, /* issue_rate  */
++  (AARCH64_FUSE_ADRP_ADD | AARCH64_FUSE_AES_AESMC |
++   AARCH64_FUSE_MOV_MOVK | AARCH64_FUSE_MOVK_MOVK |
++   AARCH64_FUSE_ALU_BRANCH /* adds, ands, bics, ccmp, ccmn */ |
++   AARCH64_FUSE_CMP_BRANCH),
++  /* fusible_ops  */
++  "32",		/* function_align.  */
++  "4",		/* jump_align.  */
++  "32:16",	/* loop_align.  */
++  2,	/* int_reassoc_width.  */
++  4,	/* fp_reassoc_width.  */
++  2,	/* vec_reassoc_width.  */
++  2,	/* min_div_recip_mul_sf.  */
++  2,	/* min_div_recip_mul_df.  */
++  0,	/* max_case_values.  */
++  tune_params::AUTOPREFETCHER_WEAK,	/* autoprefetcher_model.  */
++  (AARCH64_EXTRA_TUNE_NO_LDP_COMBINE),	/* tune_flags.  */
++  &ampere1_prefetch_tune
++};
++
++static const struct tune_params ampere1a_tunings =
++{
++  &ampere1a_extra_costs,
++  &generic_addrcost_table,
++  &generic_regmove_cost,
++  &ampere1_vector_cost,
++  &generic_branch_cost,
++  &generic_approx_modes,
++  SVE_NOT_IMPLEMENTED, /* sve_width  */
++  4, /* memmov_cost  */
++  4, /* issue_rate  */
++  (AARCH64_FUSE_ADRP_ADD | AARCH64_FUSE_AES_AESMC |
++   AARCH64_FUSE_MOV_MOVK | AARCH64_FUSE_MOVK_MOVK |
++   AARCH64_FUSE_ALU_BRANCH /* adds, ands, bics, ccmp, ccmn */ |
++   AARCH64_FUSE_CMP_BRANCH | AARCH64_FUSE_ALU_CBZ |
++   AARCH64_FUSE_ADDSUB_2REG_CONST1),
++  /* fusible_ops  */
++  "32",		/* function_align.  */
++  "4",		/* jump_align.  */
++  "32:16",	/* loop_align.  */
++  2,	/* int_reassoc_width.  */
++  4,	/* fp_reassoc_width.  */
++  2,	/* vec_reassoc_width.  */
++  2,	/* min_div_recip_mul_sf.  */
++  2,	/* min_div_recip_mul_df.  */
++  0,	/* max_case_values.  */
++  tune_params::AUTOPREFETCHER_WEAK,	/* autoprefetcher_model.  */
++  (AARCH64_EXTRA_TUNE_NO_LDP_COMBINE),	/* tune_flags.  */
++  &ampere1_prefetch_tune
++};
++
+ static const struct tune_params neoversev1_tunings =
+ {
+   &cortexa57_extra_costs,
+@@ -3123,7 +3214,7 @@ aarch64_load_symref_appropriately (rtx dest, rtx imm,
  	if (can_create_pseudo_p ())
  	  tmp_reg = gen_reg_rtx (mode);
  
@@ -12310,7 +12794,7 @@ index 9b400c49ac6..92c2f0dae6f 100644
  	emit_insn (gen_add_losym (dest, tmp_reg, imm));
  	return;
        }
-@@ -4322,7 +4322,7 @@ aarch64_mov128_immediate (rtx imm)
+@@ -4322,7 +4413,7 @@ aarch64_mov128_immediate (rtx imm)
  static unsigned int
  aarch64_add_offset_1_temporaries (HOST_WIDE_INT offset)
  {
@@ -12319,7 +12803,7 @@ index 9b400c49ac6..92c2f0dae6f 100644
  }
  
  /* A subroutine of aarch64_add_offset.  Set DEST to SRC + OFFSET for
-@@ -4752,6 +4752,56 @@ aarch64_expand_sve_ld1rq (rtx dest, rtx src)
+@@ -4752,6 +4843,56 @@ aarch64_expand_sve_ld1rq (rtx dest, rtx src)
    return true;
  }
  
@@ -12376,7 +12860,7 @@ index 9b400c49ac6..92c2f0dae6f 100644
  /* Return a register containing CONST_VECTOR SRC, given that SRC has an
     SVE data mode and isn't a legitimate constant.  Use TARGET for the
     result if convenient.
-@@ -4886,6 +4936,10 @@ aarch64_expand_sve_const_vector (rtx target, rtx src)
+@@ -4886,6 +5027,10 @@ aarch64_expand_sve_const_vector (rtx target, rtx src)
    if (GET_MODE_NUNITS (mode).is_constant ())
      return NULL_RTX;
  
@@ -12387,7 +12871,7 @@ index 9b400c49ac6..92c2f0dae6f 100644
    /* Expand each pattern individually.  */
    gcc_assert (npatterns > 1);
    rtx_vector_builder builder;
-@@ -5067,12 +5121,12 @@ aarch64_expand_sve_const_pred_trn (rtx target, rtx_vector_builder &builder,
+@@ -5067,12 +5212,12 @@ aarch64_expand_sve_const_pred_trn (rtx target, rtx_vector_builder &builder,
  	}
      }
  
@@ -12405,7 +12889,7 @@ index 9b400c49ac6..92c2f0dae6f 100644
    return target;
  }
  
-@@ -5860,9 +5914,9 @@ aarch64_vfp_is_call_candidate (cumulative_args_t pcum_v, machine_mode mode,
+@@ -5860,9 +6005,9 @@ aarch64_vfp_is_call_candidate (cumulative_args_t pcum_v, machine_mode mode,
  /* Given MODE and TYPE of a function argument, return the alignment in
     bits.  The idea is to suppress any stronger alignment requested by
     the user and opt for the natural alignment (specified in AAPCS64 \S
@@ -12418,7 +12902,7 @@ index 9b400c49ac6..92c2f0dae6f 100644
  
  static unsigned int
  aarch64_function_arg_alignment (machine_mode mode, const_tree type,
-@@ -5938,11 +5992,24 @@ aarch64_layout_arg (cumulative_args_t pcum_v, const function_arg_info &arg)
+@@ -5938,11 +6083,24 @@ aarch64_layout_arg (cumulative_args_t pcum_v, const function_arg_info &arg)
    if (pcum->aapcs_arg_processed)
      return;
  
@@ -12443,7 +12927,7 @@ index 9b400c49ac6..92c2f0dae6f 100644
        /* The PCS says that it is invalid to pass an SVE value to an
  	 unprototyped function.  There is no ABI-defined location we
  	 can return in this case, so we have no real choice but to raise
-@@ -6013,6 +6080,8 @@ aarch64_layout_arg (cumulative_args_t pcum_v, const function_arg_info &arg)
+@@ -6013,6 +6171,8 @@ aarch64_layout_arg (cumulative_args_t pcum_v, const function_arg_info &arg)
       and homogenous short-vector aggregates (HVA).  */
    if (allocate_nvrn)
      {
@@ -12452,7 +12936,7 @@ index 9b400c49ac6..92c2f0dae6f 100644
        if (!pcum->silent_p && !TARGET_FLOAT)
  	aarch64_err_no_fpadvsimd (mode);
  
-@@ -6071,7 +6140,7 @@ aarch64_layout_arg (cumulative_args_t pcum_v, const function_arg_info &arg)
+@@ -6071,7 +6231,7 @@ aarch64_layout_arg (cumulative_args_t pcum_v, const function_arg_info &arg)
  	  && (aarch64_function_arg_alignment (mode, type, &abi_break)
  	      == 16 * BITS_PER_UNIT))
  	{
@@ -12461,7 +12945,7 @@ index 9b400c49ac6..92c2f0dae6f 100644
  	    inform (input_location, "parameter passing for argument of type "
  		    "%qT changed in GCC 9.1", type);
  	  ++ncrn;
-@@ -6134,7 +6203,7 @@ on_stack:
+@@ -6134,7 +6294,7 @@ on_stack:
        int new_size = ROUND_UP (pcum->aapcs_stack_size, 16 / UNITS_PER_WORD);
        if (pcum->aapcs_stack_size != new_size)
  	{
@@ -12470,7 +12954,7 @@ index 9b400c49ac6..92c2f0dae6f 100644
  	    inform (input_location, "parameter passing for argument of type "
  		    "%qT changed in GCC 9.1", type);
  	  pcum->aapcs_stack_size = new_size;
-@@ -6254,7 +6323,7 @@ aarch64_function_arg_boundary (machine_mode mode, const_tree type)
+@@ -6254,7 +6414,7 @@ aarch64_function_arg_boundary (machine_mode mode, const_tree type)
    bool abi_break;
    unsigned int alignment = aarch64_function_arg_alignment (mode, type,
  							   &abi_break);
@@ -12479,7 +12963,7 @@ index 9b400c49ac6..92c2f0dae6f 100644
      inform (input_location, "parameter passing for argument of type "
  	    "%qT changed in GCC 9.1", type);
  
-@@ -16271,10 +16340,22 @@ aarch64_legitimate_constant_p (machine_mode mode, rtx x)
+@@ -16271,10 +16431,22 @@ aarch64_legitimate_constant_p (machine_mode mode, rtx x)
  {
    /* Support CSE and rematerialization of common constants.  */
    if (CONST_INT_P (x)
@@ -12504,7 +12988,7 @@ index 9b400c49ac6..92c2f0dae6f 100644
    /* Do not allow vector struct mode constants for Advanced SIMD.
       We could support 0 and -1 easily, but they need support in
       aarch64-simd.md.  */
-@@ -16282,14 +16363,6 @@ aarch64_legitimate_constant_p (machine_mode mode, rtx x)
+@@ -16282,14 +16454,6 @@ aarch64_legitimate_constant_p (machine_mode mode, rtx x)
    if (vec_flags == (VEC_ADVSIMD | VEC_STRUCT))
      return false;
  
@@ -12519,7 +13003,7 @@ index 9b400c49ac6..92c2f0dae6f 100644
    if (GET_CODE (x) == HIGH)
      x = XEXP (x, 0);
  
-@@ -18621,10 +18694,11 @@ aarch64_vectorize_preferred_vector_alignment (const_tree type)
+@@ -18621,10 +18785,11 @@ aarch64_vectorize_preferred_vector_alignment (const_tree type)
  {
    if (aarch64_sve_data_mode_p (TYPE_MODE (type)))
      {
@@ -12534,7 +13018,7 @@ index 9b400c49ac6..92c2f0dae6f 100644
  	result = TYPE_ALIGN (TREE_TYPE (type));
        return result;
      }
-@@ -19439,30 +19513,56 @@ aarch64_declare_function_name (FILE *stream, const char* name,
+@@ -19439,30 +19604,56 @@ aarch64_declare_function_name (FILE *stream, const char* name,
    cfun->machine->label_is_assembled = true;
  }
  
@@ -12551,23 +13035,13 @@ index 9b400c49ac6..92c2f0dae6f 100644
 -      && aarch64_bti_enabled ()
 -      && !cgraph_node::get (cfun->decl)->only_called_directly_p ())
 +  if (!cfun->machine->label_is_assembled)
-     {
--      /* Remove the BTI that follows the patch area and insert a new BTI
--	 before the patch area right after the function label.  */
--      rtx_insn *insn = next_real_nondebug_insn (get_insns ());
--      if (insn
--	  && INSN_P (insn)
--	  && GET_CODE (PATTERN (insn)) == UNSPEC_VOLATILE
--	  && XINT (PATTERN (insn), 1) == UNSPECV_BTI_C)
--	delete_insn (insn);
--      asm_fprintf (file, "\thint\t34 // bti c\n");
++    {
 +      /* Emit the patching area before the entry label, if any.  */
 +      default_print_patchable_function_entry (file, patch_area_size,
 +					      record_p);
 +      return;
-     }
- 
--  default_print_patchable_function_entry (file, patch_area_size, record_p);
++    }
++
 +  rtx pa = gen_patchable_area (GEN_INT (patch_area_size),
 +			       GEN_INT (record_p));
 +  basic_block bb = ENTRY_BLOCK_PTR_FOR_FN (cfun)->next_bb;
@@ -12586,11 +13060,21 @@ index 9b400c49ac6..92c2f0dae6f 100644
 +      || !INSN_P (insn)
 +      || GET_CODE (PATTERN (insn)) != UNSPEC_VOLATILE
 +      || XINT (PATTERN (insn), 1) != UNSPECV_BTI_C)
-+    {
+     {
+-      /* Remove the BTI that follows the patch area and insert a new BTI
+-	 before the patch area right after the function label.  */
+-      rtx_insn *insn = next_real_nondebug_insn (get_insns ());
+-      if (insn
+-	  && INSN_P (insn)
+-	  && GET_CODE (PATTERN (insn)) == UNSPEC_VOLATILE
+-	  && XINT (PATTERN (insn), 1) == UNSPECV_BTI_C)
+-	delete_insn (insn);
+-      asm_fprintf (file, "\thint\t34 // bti c\n");
 +      /* Emit a BTI_C.  */
 +      insn = emit_insn_before (gen_bti_c (), BB_HEAD (bb));
-+    }
-+
+     }
+ 
+-  default_print_patchable_function_entry (file, patch_area_size, record_p);
 +  /* Emit the patchable_area after BTI_C.  */
 +  insn = emit_insn_after (pa, insn);
 +  INSN_ADDRESSES_NEW (insn, -1);
@@ -12606,7 +13090,7 @@ index 9b400c49ac6..92c2f0dae6f 100644
  }
  
  /* Implement ASM_OUTPUT_DEF_FROM_DECLS.  Output .variant_pcs for aliases.  */
-@@ -19558,14 +19658,14 @@ aarch64_emit_unlikely_jump (rtx insn)
+@@ -19558,14 +19749,14 @@ aarch64_emit_unlikely_jump (rtx insn)
    add_reg_br_prob_note (jump, profile_probability::very_unlikely ());
  }
  
@@ -12623,7 +13107,7 @@ index 9b400c49ac6..92c2f0dae6f 100644
    int mode_idx, model_idx;
  
    switch (mode)
-@@ -19605,6 +19705,11 @@ aarch64_atomic_ool_func(machine_mode mode, rtx model_rtx,
+@@ -19605,6 +19796,11 @@ aarch64_atomic_ool_func(machine_mode mode, rtx model_rtx,
      case MEMMODEL_SEQ_CST:
        model_idx = 3;
        break;
@@ -12635,7 +13119,7 @@ index 9b400c49ac6..92c2f0dae6f 100644
      default:
        gcc_unreachable ();
      }
-@@ -19617,7 +19722,8 @@ aarch64_atomic_ool_func(machine_mode mode, rtx model_rtx,
+@@ -19617,7 +19813,8 @@ aarch64_atomic_ool_func(machine_mode mode, rtx model_rtx,
    { "__aarch64_" #B #N "_relax", \
      "__aarch64_" #B #N "_acq", \
      "__aarch64_" #B #N "_rel", \
@@ -12645,6 +13129,54 @@ index 9b400c49ac6..92c2f0dae6f 100644
  
  #define DEF4(B)  DEF0(B, 1), DEF0(B, 2), DEF0(B, 4), DEF0(B, 8), \
  		 { NULL, NULL, NULL, NULL }
+@@ -21935,6 +22132,34 @@ aarch_macro_fusion_pair_p (rtx_insn *prev, rtx_insn *curr)
+ 	}
+     }
+ 
++  /* Fuse A+B+1 and A-B-1 */
++  if (simple_sets_p
++      && aarch64_fusion_enabled_p (AARCH64_FUSE_ADDSUB_2REG_CONST1))
++    {
++      /* We're trying to match:
++	  prev == (set (r0) (plus (r0) (r1)))
++	  curr == (set (r0) (plus (r0) (const_int 1)))
++	or:
++	  prev == (set (r0) (minus (r0) (r1)))
++	  curr == (set (r0) (plus (r0) (const_int -1))) */
++
++      rtx prev_src = SET_SRC (prev_set);
++      rtx curr_src = SET_SRC (curr_set);
++
++      int polarity = 1;
++      if (GET_CODE (prev_src) == MINUS)
++	polarity = -1;
++
++      if (GET_CODE (curr_src) == PLUS
++	  && (GET_CODE (prev_src) == PLUS || GET_CODE (prev_src) == MINUS)
++	  && CONST_INT_P (XEXP (curr_src, 1))
++	  && INTVAL (XEXP (curr_src, 1)) == polarity
++	  && REG_P (XEXP (curr_src, 0))
++	  && REG_P (SET_DEST (prev_set))
++	  && REGNO (SET_DEST (prev_set)) == REGNO (XEXP (curr_src, 0)))
++	return true;
++    }
++
+   return false;
+ }
+ 
+@@ -22122,6 +22347,12 @@ aarch64_operands_ok_for_ldpstp (rtx *operands, bool load,
+   enum reg_class rclass_1, rclass_2;
+   rtx mem_1, mem_2, reg_1, reg_2, base_1, base_2, offset_1, offset_2;
+ 
++  /* Allow the tuning structure to disable LDP instruction formation
++     from combining instructions (e.g., in peephole2).  */
++  if (load && (aarch64_tune_params.extra_tuning_flags
++	       & AARCH64_EXTRA_TUNE_NO_LDP_COMBINE))
++    return false;
++
+   if (load)
+     {
+       mem_1 = operands[1];
 diff --git a/gcc/config/aarch64/aarch64.h b/gcc/config/aarch64/aarch64.h
 index 51148846345..9be4ec3d280 100644
 --- a/gcc/config/aarch64/aarch64.h
@@ -12735,6 +13267,22 @@ index 8cc6f508881..98c1f41c490 100644
         (match_test "aarch64_legitimate_address_p (V2DImode,
  						  XEXP (op, 0), 1)")))
  
+diff --git a/gcc/config/aarch64/driver-aarch64.c b/gcc/config/aarch64/driver-aarch64.c
+index d99834c9989..838d5648fcc 100644
+--- a/gcc/config/aarch64/driver-aarch64.c
++++ b/gcc/config/aarch64/driver-aarch64.c
+@@ -202,9 +202,9 @@ readline (FILE *f)
+ 	return std::string ();
+       /* If we're not at the end of the line then override the
+ 	 \0 added by fgets.  */
+-      last = strnlen (buf, size) - 1;
++      last = strnlen (buf, size);
+     }
+-  while (!feof (f) && buf[last] != '\n');
++  while (!feof (f) && last > 0 && buf[last - 1] != '\n');
+ 
+   std::string result (buf);
+   free (buf);
 diff --git a/gcc/config/aarch64/iterators.md b/gcc/config/aarch64/iterators.md
 index 0a7145281fa..20933b35079 100644
 --- a/gcc/config/aarch64/iterators.md
@@ -17802,6 +18350,25 @@ index b40e750dc13..c03d7c9b149 100644
  #define vec_double __builtin_vec_double
  #define vec_doublee __builtin_vec_doublee
  #define vec_doubleo __builtin_vec_doubleo
+diff --git a/gcc/config/rs6000/altivec.md b/gcc/config/rs6000/altivec.md
+index 844978544a0..b43b5edf027 100644
+--- a/gcc/config/rs6000/altivec.md
++++ b/gcc/config/rs6000/altivec.md
+@@ -3916,9 +3916,11 @@
+   [(set_attr "type" "vecsimple")])
+ 
+ ;; Vector parity
+-(define_insn "*p9v_parity<mode>2"
+-  [(set (match_operand:VParity 0 "register_operand" "=v")
+-        (parity:VParity (match_operand:VParity 1 "register_operand" "v")))]
++(define_insn "rs6000_vprtyb<mode>2"
++  [(set (match_operand:VEC_IP 0 "register_operand" "=v")
++        (unspec:VEC_IP
++          [(match_operand:VEC_IP 1 "register_operand" "v")]
++          UNSPEC_PARITY))]
+   "TARGET_P9_VECTOR"
+   "vprtyb<wd> %0,%1"
+   [(set_attr "type" "vecsimple")])
 diff --git a/gcc/config/rs6000/bmi2intrin.h b/gcc/config/rs6000/bmi2intrin.h
 index a167d27bd02..ec042f7a954 100644
 --- a/gcc/config/rs6000/bmi2intrin.h
@@ -21072,7 +21639,7 @@ index 956f7dd5b46..7161c10d5a8 100644
 +    return false;
 +})
 diff --git a/gcc/config/rs6000/rs6000-builtin.def b/gcc/config/rs6000/rs6000-builtin.def
-index 1766d325bfb..b3ae6fea640 100644
+index 1766d325bfb..36ba145ad3d 100644
 --- a/gcc/config/rs6000/rs6000-builtin.def
 +++ b/gcc/config/rs6000/rs6000-builtin.def
 @@ -467,6 +467,25 @@
@@ -21101,6 +21668,19 @@ index 1766d325bfb..b3ae6fea640 100644
  /* ISA 2.05 (power6) convenience macros. */
  /* For functions that depend on the CMPB instruction */
  #define BU_P6_2(ENUM, NAME, ATTR, ICODE)				\
+@@ -2608,9 +2627,9 @@ BU_P9V_AV_1 (VCTZB,		"vctzb",		CONST,  ctzv16qi2)
+ BU_P9V_AV_1 (VCTZH,		"vctzh",		CONST,  ctzv8hi2)
+ BU_P9V_AV_1 (VCTZW,		"vctzw",		CONST,  ctzv4si2)
+ BU_P9V_AV_1 (VCTZD,		"vctzd",		CONST,  ctzv2di2)
+-BU_P9V_AV_1 (VPRTYBD,		"vprtybd",		CONST,  parityv2di2)
+-BU_P9V_AV_1 (VPRTYBQ,		"vprtybq",		CONST,  parityv1ti2)
+-BU_P9V_AV_1 (VPRTYBW,		"vprtybw",		CONST,  parityv4si2)
++BU_P9V_AV_1 (VPRTYBD,		"vprtybd",		CONST,  rs6000_vprtybv2di2)
++BU_P9V_AV_1 (VPRTYBQ,		"vprtybq",		CONST,  rs6000_vprtybv1ti2)
++BU_P9V_AV_1 (VPRTYBW,		"vprtybw",		CONST,  rs6000_vprtybv4si2)
+ 
+ /* ISA 3.0 vector overloaded 1 argument functions.  */
+ BU_P9V_OVERLOAD_1 (VCTZ,	"vctz")
 @@ -2771,6 +2790,9 @@ BU_SPECIAL_X (RS6000_BUILTIN_CFSTRING, "__builtin_cfstring", RS6000_BTM_ALWAYS,
  BU_P10V_VSX_1 (XVCVBF16SPN,	    "xvcvbf16spn",	MISC, vsx_xvcvbf16spn)
  BU_P10V_VSX_1 (XVCVSPBF16,	    "xvcvspbf16",	MISC, vsx_xvcvspbf16)
@@ -22182,10 +22762,28 @@ index 9763a32ce93..9a78c70cde3 100644
        else
  	{
 diff --git a/gcc/config/rs6000/vector.md b/gcc/config/rs6000/vector.md
-index 662521e74fe..62c60956f4d 100644
+index 662521e74fe..68fa6552088 100644
 --- a/gcc/config/rs6000/vector.md
 +++ b/gcc/config/rs6000/vector.md
-@@ -1394,7 +1394,10 @@
+@@ -1161,7 +1161,16 @@
+ (define_expand "parity<mode>2"
+   [(set (match_operand:VEC_IP 0 "register_operand")
+ 	(parity:VEC_IP (match_operand:VEC_IP 1 "register_operand")))]
+-  "TARGET_P9_VECTOR")
++  "TARGET_P9_VECTOR"
++{
++  rtx op1 = gen_lowpart (V16QImode, operands[1]);
++  rtx res = gen_reg_rtx (V16QImode);
++  emit_insn (gen_popcountv16qi2 (res, op1));
++  emit_insn (gen_rs6000_vprtyb<mode>2 (operands[0],
++				       gen_lowpart (<MODE>mode, res)));
++
++  DONE;
++})
+ 
+ 
+ ;; Same size conversions
+@@ -1394,7 +1403,10 @@
   [(set (match_operand:VEC_N 0 "nonimmediate_operand")
         (match_operand:VEC_N 1 "any_operand"))]
   "VECTOR_MEM_VSX_P (<MODE>mode) && TARGET_ALLOW_MOVMISALIGN"
@@ -30198,7 +30796,7 @@ index 7d98ec4190a..83f97cb2ce5 100644
  Specify that stabs debugging
  information should be used instead of whatever format the host normally
 diff --git a/gcc/doc/invoke.texi b/gcc/doc/invoke.texi
-index eabeec944e7..4f399d3eeac 100644
+index eabeec944e7..39ed6fcfb94 100644
 --- a/gcc/doc/invoke.texi
 +++ b/gcc/doc/invoke.texi
 @@ -770,6 +770,7 @@ Objective-C and Objective-C++ Dialects}.
@@ -30259,7 +30857,17 @@ index eabeec944e7..4f399d3eeac 100644
  @samp{saphira}, @samp{phecda}, @samp{xgene1}, @samp{vulcan}, @samp{octeontx},
  @samp{octeontx81},  @samp{octeontx83},
  @samp{octeontx2}, @samp{octeontx2t98}, @samp{octeontx2t96}
-@@ -17015,6 +17019,15 @@ The values @samp{cortex-a57.cortex-a53}, @samp{cortex-a72.cortex-a53},
+@@ -17007,14 +17011,23 @@ performance of the code.  Permissible values for this option are:
+ @samp{thunderxt83}, @samp{thunderx2t99}, @samp{thunderx3t110}, @samp{zeus},
+ @samp{cortex-a57.cortex-a53}, @samp{cortex-a72.cortex-a53},
+ @samp{cortex-a73.cortex-a35}, @samp{cortex-a73.cortex-a53},
+-@samp{cortex-a75.cortex-a55}, @samp{cortex-a76.cortex-a55}
+-@samp{native}.
++@samp{cortex-a75.cortex-a55}, @samp{cortex-a76.cortex-a55},
++@samp{ampere1}, @samp{ampere1a}, @samp{native}.
+ 
+ The values @samp{cortex-a57.cortex-a53}, @samp{cortex-a72.cortex-a53},
+ @samp{cortex-a73.cortex-a35}, @samp{cortex-a73.cortex-a53},
  @samp{cortex-a75.cortex-a55}, @samp{cortex-a76.cortex-a55} specify that GCC
  should tune for a big.LITTLE system.
  
@@ -30839,10 +31447,20 @@ index 6e635382fb4..9b65819463e 100644
  	    return build_zero_cst (TREE_TYPE (TREE_TYPE (arg)));
  	  return CONSTRUCTOR_ELT (arg, i)->value;
 diff --git a/gcc/fortran/ChangeLog b/gcc/fortran/ChangeLog
-index aa5932be872..8b8ee9ab2ad 100644
+index aa5932be872..6714c3a9906 100644
 --- a/gcc/fortran/ChangeLog
 +++ b/gcc/fortran/ChangeLog
-@@ -1,3 +1,1171 @@
+@@ -1,3 +1,1181 @@
++2023-04-16  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2023-04-14  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/109511
++	* simplify.c (gfc_simplify_set_exponent): Fix implementation of
++	compile-time simplification of intrinsic SET_EXPONENT for argument
++	X < 1 and for I < 0.
++
 +2023-03-24  Harald Anlauf  <anlauf@gmx.de>
 +
 +	Backported from master:
@@ -33796,7 +34414,7 @@ index 7ca5f44f419..dc127abeb64 100644
  }
  
 diff --git a/gcc/fortran/simplify.c b/gcc/fortran/simplify.c
-index d28aa7a3c16..2cac5a4e168 100644
+index d28aa7a3c16..cb6f2404c0b 100644
 --- a/gcc/fortran/simplify.c
 +++ b/gcc/fortran/simplify.c
 @@ -676,6 +676,7 @@ simplify_transformation (gfc_expr *array, gfc_expr *dim, gfc_expr *mask,
@@ -34051,6 +34669,40 @@ index d28aa7a3c16..2cac5a4e168 100644
  
        rank++;
      }
+@@ -7245,7 +7196,7 @@ gfc_simplify_set_exponent (gfc_expr *x, gfc_expr *i)
+ {
+   gfc_expr *result;
+   mpfr_t exp, absv, log2, pow2, frac;
+-  unsigned long exp2;
++  long exp2;
+ 
+   if (x->expr_type != EXPR_CONSTANT || i->expr_type != EXPR_CONSTANT)
+     return NULL;
+@@ -7277,19 +7228,19 @@ gfc_simplify_set_exponent (gfc_expr *x, gfc_expr *i)
+   mpfr_abs (absv, x->value.real, GFC_RND_MODE);
+   mpfr_log2 (log2, absv, GFC_RND_MODE);
+ 
+-  mpfr_trunc (log2, log2);
++  mpfr_floor (log2, log2);
+   mpfr_add_ui (exp, log2, 1, GFC_RND_MODE);
+ 
+   /* Old exponent value, and fraction.  */
+   mpfr_ui_pow (pow2, 2, exp, GFC_RND_MODE);
+ 
+-  mpfr_div (frac, absv, pow2, GFC_RND_MODE);
++  mpfr_div (frac, x->value.real, pow2, GFC_RND_MODE);
+ 
+   /* New exponent.  */
+-  exp2 = (unsigned long) mpz_get_d (i->value.integer);
+-  mpfr_mul_2exp (result->value.real, frac, exp2, GFC_RND_MODE);
++  exp2 = mpz_get_si (i->value.integer);
++  mpfr_mul_2si (result->value.real, frac, exp2, GFC_RND_MODE);
+ 
+-  mpfr_clears (absv, log2, pow2, frac, NULL);
++  mpfr_clears (absv, log2, exp, pow2, frac, NULL);
+ 
+   return range_check (result, "SET_EXPONENT");
+ }
 @@ -7379,6 +7330,7 @@ simplify_size (gfc_expr *array, gfc_expr *dim, int k)
    mpz_t size;
    gfc_expr *return_value;
@@ -39303,10 +39955,52 @@ index f5a6d507e91..6b2c3e17346 100644
  DEFHOOKPOD
  (have_tls,
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index 2913065bf31..38fb279f0bc 100644
+index 2913065bf31..6d8ef488fbb 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,3940 @@
+@@ -1,3 +1,3982 @@
++2023-04-18  Philipp Tomsich  <philipp.tomsich@vrull.eu>
++
++	Backported from master:
++	2023-01-31  Philipp Tomsich  <philipp.tomsich@vrull.eu>
++
++	PR target/108589
++	* gcc.target/aarch64/pr108589.c: New test.
++
++2023-04-18  Philipp Tomsich  <philipp.tomsich@vrull.eu>
++
++	Backported from master:
++	2023-04-17  Philipp Tomsich  <philipp.tomsich@vrull.eu>
++		    Di Zhao  <di.zhao@amperecomputing.com>
++
++	* gcc.target/aarch64/ampere1-no_ldp_combine.c: New test.
++
++2023-04-18  Philipp Tomsich  <philipp.tomsich@vrull.eu>
++
++	Backported from master:
++	2022-10-06  Philipp Tomsich  <philipp.tomsich@vrull.eu>
++
++	* gcc.target/aarch64/cpunative/info_18: New test.
++	* gcc.target/aarch64/cpunative/native_cpu_18.c: New test.
++
++2023-04-17  Kewen Lin  <linkw@linux.ibm.com>
++
++	Backported from master:
++	2023-04-04  Kewen Lin  <linkw@linux.ibm.com>
++
++	PR target/108699
++	* gcc.target/powerpc/p9-vparity.c: Add scan-assembler-not for vpopcntb
++	to distinguish parity byte from parity.
++	* gcc.target/powerpc/pr108699.c: New test.
++
++2023-04-16  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2023-04-14  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/109511
++	* gfortran.dg/set_exponent_1.f90: New test.
++
 +2023-03-24  Harald Anlauf  <anlauf@gmx.de>
 +
 +	Backported from master:
@@ -51958,6 +52652,23 @@ index 00000000000..ae48b497dc0
 +  s.a -= s.a / 2;
 +  *o = s;
 +}
+diff --git a/gcc/testsuite/gcc.target/aarch64/ampere1-no_ldp_combine.c b/gcc/testsuite/gcc.target/aarch64/ampere1-no_ldp_combine.c
+new file mode 100644
+index 00000000000..bc871f4481d
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/aarch64/ampere1-no_ldp_combine.c
+@@ -0,0 +1,11 @@
++/* { dg-options "-O3 -mtune=ampere1" } */
++
++long
++foo (long a[])
++{
++  return a[0] + a[1];
++}
++
++/* We should see two ldrs instead of one ldp. */
++/* { dg-final { scan-assembler {\tldr\t} } } */
++/* { dg-final { scan-assembler-not {\tldp\t} } } */
 diff --git a/gcc/testsuite/gcc.target/aarch64/bitfield-abi-warning-align16-O2-extra.c b/gcc/testsuite/gcc.target/aarch64/bitfield-abi-warning-align16-O2-extra.c
 new file mode 100644
 index 00000000000..56f056daa27
@@ -52546,6 +53257,41 @@ index 00000000000..3940b714ef8
 +int g4p_stdarg (int x) { return f4p_stdarg (ARGS_STDARG(4p)); }
 +int g8p_stdarg (int x) { return f8p_stdarg (ARGS_STDARG(8p)); }
 +int g16p_stdarg(int x) { return f16p_stdarg (ARGS_STDARG(16p)); }
+diff --git a/gcc/testsuite/gcc.target/aarch64/cpunative/info_18 b/gcc/testsuite/gcc.target/aarch64/cpunative/info_18
+new file mode 100644
+index 00000000000..25061a4abe8
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/aarch64/cpunative/info_18
+@@ -0,0 +1,8 @@
++processor	: 0
++BogoMIPS	: 2000.00
++Features	: fp asimd evtstrm aes pmull sha1 sha2 crc32 atomics fphp asimdhp cpuid asimdrdm jscvt fcma lrcpc dcpop sha3 asimddp sha512 asimdfhm dit uscat ilrcpc flagm ssbs sb dcpodp flagm2 frint i8mm bf16 rng ecv
++CPU implementer	: 0xc0
++CPU architecture: 8
++CPU variant	: 0x0
++CPU part	: 0xac3
++CPU revision	: 0
+diff --git a/gcc/testsuite/gcc.target/aarch64/cpunative/native_cpu_18.c b/gcc/testsuite/gcc.target/aarch64/cpunative/native_cpu_18.c
+new file mode 100644
+index 00000000000..b5f0a3005f5
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/aarch64/cpunative/native_cpu_18.c
+@@ -0,0 +1,15 @@
++/* { dg-do compile { target { { aarch64*-*-linux*} && native } } } */
++/* { dg-set-compiler-env-var GCC_CPUINFO "$srcdir/gcc.target/aarch64/cpunative/info_18" } */
++/* { dg-additional-options "-mcpu=native" } */
++
++int main()
++{
++  return 0;
++}
++
++/* { dg-final { scan-assembler {\.arch armv8.6-a\+crc\+fp16\+aes\+sha3\+rng} } } */
++
++/* Test one where the boundary of buffer size would overwrite the last
++   character read when stitching the fgets-calls together.  With the
++   test data provided, this would truncate the 'sha512' into 'ha512'
++   (dropping the 'sha3' feature). */
 diff --git a/gcc/testsuite/gcc.target/aarch64/pr104921-1.c b/gcc/testsuite/gcc.target/aarch64/pr104921-1.c
 new file mode 100644
 index 00000000000..dcf6fe7d90d
@@ -52590,6 +53336,27 @@ index 00000000000..1e1a6f24e22
 +  register bfloat16x4_t b asm ("v16");
 +  asm volatile ("" : "=w"(b));
 +  return vbfmlalbq_lane_f32 (x, a, b, 0);
++}
+diff --git a/gcc/testsuite/gcc.target/aarch64/pr108589.c b/gcc/testsuite/gcc.target/aarch64/pr108589.c
+new file mode 100644
+index 00000000000..861727f7268
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/aarch64/pr108589.c
+@@ -0,0 +1,15 @@
++/* { dg-do compile } */
++/* { dg-require-effective-target lp64 } */
++/* { dg-options "-Os -O2 -mtune=ampere1a -fno-split-wide-types" } */
++
++int i;
++__int128 j;
++short s;
++
++void
++foo (void)
++{
++  j -= i;
++  int l = i - __builtin_sub_overflow_p (0, 61680, s);
++  j -= __builtin_mul_overflow_p (i, l, 0);
 +}
 diff --git a/gcc/testsuite/gcc.target/aarch64/pr92424-2.c b/gcc/testsuite/gcc.target/aarch64/pr92424-2.c
 index 0e75657a153..86bb92e6f32 100644
@@ -55390,6 +56157,15 @@ index 00000000000..af29e479f83
 +/* { dg-final { scan-assembler-times {\mstxvp\M} 3 } } */
 +/* { dg-final { scan-assembler-times {\mstxvpx\M} 1 } } */
 +/* { dg-final { scan-assembler-times {\mpstxvp\M} 1 } } */
+diff --git a/gcc/testsuite/gcc.target/powerpc/p9-vparity.c b/gcc/testsuite/gcc.target/powerpc/p9-vparity.c
+index bd6c83d1b3b..1ebf0fc420e 100644
+--- a/gcc/testsuite/gcc.target/powerpc/p9-vparity.c
++++ b/gcc/testsuite/gcc.target/powerpc/p9-vparity.c
+@@ -104,3 +104,4 @@ parity_ti_4u (__uint128_t a)
+ /* { dg-final { scan-assembler "vprtybd" } } */
+ /* { dg-final { scan-assembler "vprtybq" } } */
+ /* { dg-final { scan-assembler "vprtybw" } } */
++/* { dg-final { scan-assembler-not "vpopcntb" } } */
 diff --git a/gcc/testsuite/gcc.target/powerpc/pr100777.c b/gcc/testsuite/gcc.target/powerpc/pr100777.c
 new file mode 100644
 index 00000000000..15742f67d8c
@@ -56245,6 +57021,54 @@ index 00000000000..9aa8939e2f4
 +{
 +  __vector_pair v;
 +  bar (v);
++}
++
+diff --git a/gcc/testsuite/gcc.target/powerpc/pr108699.c b/gcc/testsuite/gcc.target/powerpc/pr108699.c
+new file mode 100644
+index 00000000000..f02bac130cc
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/powerpc/pr108699.c
+@@ -0,0 +1,42 @@
++/* { dg-run } */
++/* { dg-options "-O2 -ftree-vectorize -fno-vect-cost-model" } */
++
++#define N 16
++
++unsigned long long vals[N];
++unsigned int res[N];
++unsigned int expects[N] = {0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0};
++
++unsigned long long inputs[N]
++  = {0x0000000000000000ULL, 0x0000000000000001ULL, 0x8000000000000000ULL,
++     0x0000000000000002ULL, 0x4000000000000000ULL, 0x0000000100000000ULL,
++     0x0000000080000000ULL, 0xa5a5a5a5a5a5a5a5ULL, 0x5a5a5a5a5a5a5a5aULL,
++     0xcafecafe00000000ULL, 0x0000cafecafe0000ULL, 0x00000000cafecafeULL,
++     0x8070600000000000ULL, 0xffffffffffffffffULL};
++
++__attribute__ ((noipa)) void
++init ()
++{
++  for (int i = 0; i < N; i++)
++    vals[i] = inputs[i];
++}
++
++__attribute__ ((noipa)) void
++do_parity ()
++{
++  for (int i = 0; i < N; i++)
++    res[i] = __builtin_parityll (vals[i]);
++}
++
++int
++main (void)
++{
++  init ();
++  do_parity ();
++  for (int i = 0; i < N; i++)
++    if (res[i] != expects[i])
++      __builtin_abort();
++
++  return 0;
 +}
 +
 diff --git a/gcc/testsuite/gcc.target/powerpc/pr87496-2.c b/gcc/testsuite/gcc.target/powerpc/pr87496-2.c
@@ -61420,6 +62244,48 @@ index 00000000000..55aa9e1b9bf
 +   if (any ([cssel(x),cssel(y),cssel(z),cssel()] .ne. ['0','1','?','-'])) stop 1
 +
 +end program classstar_rank
+diff --git a/gcc/testsuite/gfortran.dg/set_exponent_1.f90 b/gcc/testsuite/gfortran.dg/set_exponent_1.f90
+new file mode 100644
+index 00000000000..4c063e8330b
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/set_exponent_1.f90
+@@ -0,0 +1,36 @@
++! { dg-do run }
++! PR fortran/109511
++! Check compile-time simplification of SET_EXPONENT against runtime
++
++program exponent
++  implicit none
++  integer :: i
++  i = 0
++  print *, i, set_exponent(1., 0), set_exponent(1., i)
++  if (set_exponent(1., 0) /= set_exponent(1., i)) stop 1
++  i = 1
++  print *, i, set_exponent(1., 1), set_exponent(1., i)
++  if (set_exponent(1., 1) /= set_exponent(1., i)) stop 2
++  i = 2
++  print *, i, set_exponent(-1.75, 2), set_exponent(-1.75, i)
++  if (set_exponent(-1.75, 2) /= set_exponent(-1.75, i)) stop 3
++  print *, i, set_exponent(0.1875, 2), set_exponent(0.1875, i)
++  if (set_exponent(0.1875, 2) /= set_exponent(0.1875, i)) stop 4
++  i = 3
++  print *, i, set_exponent(0.75, 3), set_exponent(0.75, i)
++  if (set_exponent(0.75, 3) /= set_exponent(0.75, i)) stop 5
++  i = 4
++  print *, i, set_exponent(-2.5, 4), set_exponent(-2.5, i)
++  if (set_exponent(-2.5, 4) /= set_exponent(-2.5, i)) stop 6
++  i = -1
++  print *, i, set_exponent(1., -1), set_exponent(1., i)
++  if (set_exponent(1., -1) /= set_exponent(1., i)) stop 7
++  i = -2
++  print *, i, set_exponent(1.125, -2), set_exponent(1.125, i)
++  if (set_exponent(1.125, -2) /= set_exponent(1.125, i)) stop 8
++  print *, i, set_exponent(-0.25, -2), set_exponent(-0.25, i)
++  if (set_exponent(-0.25, -2) /= set_exponent(-0.25, i)) stop 9
++  i = -3
++  print *, i, set_exponent(0.75, -3), set_exponent(0.75, i)
++  if (set_exponent(0.75, -3) /= set_exponent(0.75, i)) stop 10
++end program exponent
 diff --git a/gcc/testsuite/gfortran.dg/shape_10.f90 b/gcc/testsuite/gfortran.dg/shape_10.f90
 new file mode 100644
 index 00000000000..4943c21b1d2
