@@ -108,7 +108,9 @@ François-Xavier Coudert (1):
 Fritz Reese (1):
       fortran: Fix conv of UNION constructors [PR105310]
 
-GCC Administrator (735):
+GCC Administrator (737):
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -1167,7 +1169,7 @@ Jan Hubicka (2):
       Fix looping flag discovery in ipa-pure-const
       Fix ipa-cp wrt volatile loads
 
-Jason Merrill (49):
+Jason Merrill (50):
       c++: lambda pack init-capture within generic lambda
       c++: NRV in lambda in template [PR91217]
       c++: PMF template parm and noexcept [PR90664]
@@ -1217,6 +1219,7 @@ Jason Merrill (49):
       c++: constant, array, lambda, template [PR108975]
       c++: constexpr PMF conversion [PR105996]
       c-family: -Wsequence-point and COMPONENT_REF [PR107163]
+      testsuite: remove stray ';' [PR109608]
 
 Jeff Law (1):
       [committed] Fix more problems with new linker warnings
@@ -45447,7 +45450,7 @@ index afb4b37be5a..92f3bbdc0a6 100644
  constexpr D *pd1 = pa0;		   // { dg-error "ambiguous base|invalid conversion" }
 diff --git a/gcc/testsuite/g++.dg/cpp0x/constexpr-pmf3.C b/gcc/testsuite/g++.dg/cpp0x/constexpr-pmf3.C
 new file mode 100644
-index 00000000000..14daea312b7
+index 00000000000..279478e9dcc
 --- /dev/null
 +++ b/gcc/testsuite/g++.dg/cpp0x/constexpr-pmf3.C
 @@ -0,0 +1,13 @@
@@ -45462,7 +45465,7 @@ index 00000000000..14daea312b7
 +using APMF = void (A::*)();
 +using BPMF = void (B::*)();
 +
-+constexpr APMF foo () { return &A::CB; };
++constexpr APMF foo () { return &A::CB; }
 +static constexpr BPMF b = foo();
 diff --git a/gcc/testsuite/g++.dg/cpp0x/constexpr-volatile3.C b/gcc/testsuite/g++.dg/cpp0x/constexpr-volatile3.C
 new file mode 100644
