@@ -108,7 +108,12 @@ François-Xavier Coudert (1):
 Fritz Reese (1):
       fortran: Fix conv of UNION constructors [PR105310]
 
-GCC Administrator (738):
+GCC Administrator (743):
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -1237,7 +1242,7 @@ John David Anglin (7):
       Fix addvdi3 and subvdi3 patterns
       Skip guality tests on hppa-hpux.
 
-Jonathan Wakely (144):
+Jonathan Wakely (154):
       libstdc++: Fix Doxygen warning about ambiguous file name
       maintainer-scripts: Disable multilib when generating libstdc++ docs
       libstdc++: Fix doxygen markup for group close commands
@@ -1382,6 +1387,16 @@ Jonathan Wakely (144):
       doc: Document correct -fwide-exec-charset defaults [PR41041]
       libstdc++: Remove empty <author> elements in manual
       libstdc++: Fix std::filesystem errors with -fkeep-inline-functions [PR108636]
+      libstdc++: Fix unsafe use of dirent::d_name [PR107814]
+      libstdc++: Fix minor bugs in std::common_iterator
+      libstdc++: Fix std::common_iterator assignment [PR100823]
+      libstdc++: Fix name of <experimental/optional> in comment
+      libstdc++: Fix uses_allocator_construction_args for pair<T&&, U&&> [PR108952]
+      libstdc++: Fix GDB Xmethod for std::shared_ptr::use_count() [PR109064]
+      libstdc++: Fix dangling reference in filesystem::path::filename()
+      libstdc++: Reduce Doxygen output for PDF
+      libstdc++: Fix outdated docs about demangling exception messages
+      libstdc++: Throw instead of segfaulting in std::thread constructor [PR 67791]
 
 José Rui Faustino de Sousa (4):
       Fortran: Fix double function call with -fcheck=pointer [PR]
@@ -3072,9 +3087,6 @@ index ee1973371be..95dc49e5d48 100755
      @classmethod
 -    def is_changelog_filename(cls, path):
 -        return path.endswith('/ChangeLog') or path == 'ChangeLog'
--
--    @classmethod
--    def find_changelog_location(cls, name):
 +    def is_changelog_filename(cls, path, allow_suffix=False):
 +        basename = os.path.basename(path)
 +        if basename == 'ChangeLog':
@@ -3083,7 +3095,9 @@ index ee1973371be..95dc49e5d48 100755
 +            return True
 +        else:
 +            return False
-+
+ 
+-    @classmethod
+-    def find_changelog_location(cls, name):
 +    def find_changelog_location(self, name):
          if name.startswith('\t'):
              name = name[1:]
@@ -4271,7 +4285,7 @@ index ffd13682d5c..95ad961f2d3 100644
 +From: Martin Liska <mliska@suse.cz>
 +Date: Wed, 13 Jan 2021 11:45:37 +0100
 +Subject: [PATCH] Fix a changelog.
-+
+ 
 +---
 + gcc/ChangeLog-2020 | 1 +
 + 1 file changed, 1 insertion(+)
@@ -4529,7 +4543,7 @@ index ffd13682d5c..95ad961f2d3 100644
 +	* Makefile.in: Update.
 +
 +gcc/ChangeLog:
- 
++
 +	* ipa-icf.cc: Update.
 +---
 + Makefile.am     | 1 +
@@ -9918,7 +9932,7 @@ index 7ecf321c250..334324152f8 100644
 -
 -/* Return a colon-separated list of encodings contained in encoded Ada
 -   name.  */
--
+ 
 -static const char *
 -extract_encoding (const char *name)
 -{
@@ -9926,7 +9940,7 @@ index 7ecf321c250..334324152f8 100644
 -  get_encoding (name, encoding);
 -  return encoding;
 -}
- 
+-
 -/* Extract the Ada name from an encoded name.  */
 -
 -static const char *
@@ -10235,9 +10249,6 @@ index 10b6fd3bb4d..978909815de 100644
 -	 not full C99 targets.  */
 -      tree fallback_fndecl = mathfn_built_in_1
 -	(TREE_TYPE (arg), as_combined_fn (fallback_fn), 0);
--
--      exp = build_call_nofold_loc (EXPR_LOCATION (exp),
--				   fallback_fndecl, 1, arg);
 +	 not full C99 targets.
 +	 As scalar float conversions with same mode are useless in GIMPLE,
 +	 we can end up e.g. with _Float32 argument passed to float builtin,
@@ -10256,6 +10267,9 @@ index 10b6fd3bb4d..978909815de 100644
 +	  exp = build_call_nofold_loc (EXPR_LOCATION (exp),
 +				       fallback_fndecl, 1, arg);
  
+-      exp = build_call_nofold_loc (EXPR_LOCATION (exp),
+-				   fallback_fndecl, 1, arg);
+-
 -      target = expand_call (exp, NULL_RTX, target == const0_rtx);
 -      target = maybe_emit_group_store (target, TREE_TYPE (exp));
 -      return convert_to_mode (mode, target, 0);
@@ -10977,24 +10991,14 @@ index 395b810262a..24ae41bcac5 100644
 -  /* BB flag to track which nodes have post[] assigned to avoid
 -     zeroing post.  */
 -  auto_bb_flag post_assigned (fn);
--
+ 
 -  /* Push the first edge on to the stack.  */
 -  stack.quick_push (entry);
- 
--  while (!stack.is_empty ())
--    {
--      basic_block src;
--      basic_block dest;
 +  /* Lazily initialized per-BB data for the two DFS walks below.  */
 +  rpoamdbs_bb_data *bb_data
 +    = XNEWVEC (rpoamdbs_bb_data, last_basic_block_for_fn (fn));
  
--      /* Look at the edge on the top of the stack.  */
--      int idx = stack.length () - 1;
--      edge e = stack[idx];
--      src = e->src;
--      dest = e->dest;
--      e->flags &= ~EDGE_DFS_BACK;
+-  while (!stack.is_empty ())
 +  /* First DFS walk, loop discovery according to
 +      A New Algorithm for Identifying Loops in Decompilation
 +     by Tao Wei, Jian Mao, Wei Zou and You Chen of the Institute of
@@ -11003,10 +11007,7 @@ index 395b810262a..24ae41bcac5 100644
 +  auto_bb_flag is_header (fn);
 +  int depth = 1;
 +  unsigned n_sccs = 0;
- 
--      /* Check if the edge destination has been visited yet.  */
--      if (! bitmap_bit_p (exit_bbs, dest->index)
--	  && ! (dest->flags & visited))
++
 +  basic_block dest = entry->dest;
 +  edge_iterator ei;
 +  int pre_num = 0;
@@ -11021,7 +11022,20 @@ index 395b810262a..24ae41bcac5 100644
 +  dest->flags |= visited;
 +  ei = ei_start (dest->succs);
 +  while (!ei_end_p (ei))
-+    {
+     {
+-      basic_block src;
+-      basic_block dest;
+-
+-      /* Look at the edge on the top of the stack.  */
+-      int idx = stack.length () - 1;
+-      edge e = stack[idx];
+-      src = e->src;
+-      dest = e->dest;
+-      e->flags &= ~EDGE_DFS_BACK;
+-
+-      /* Check if the edge destination has been visited yet.  */
+-      if (! bitmap_bit_p (exit_bbs, dest->index)
+-	  && ! (dest->flags & visited))
 +      ei_edge (ei)->flags &= ~EDGE_DFS_BACK;
 +      if (bitmap_bit_p (exit_bbs, ei_edge (ei)->dest->index))
 +	;
@@ -11029,27 +11043,15 @@ index 395b810262a..24ae41bcac5 100644
  	{
 -	  /* Mark that we have visited the destination.  */
 -	  dest->flags |= visited;
--
--	  pre[dest->index] = pre_order_num++;
--
--	  if (EDGE_COUNT (dest->succs) > 0)
 +	  ei_stack.quick_push (ei);
 +	  dest = ei_edge (ei)->dest;
 +	  /* DFS recurse on DEST.  */
 +	  goto find_loops;
-+
-+ret_from_find_loops:
-+	  /* Return point of DFS recursion.  */
-+	  ei = ei_stack.pop ();
-+	  dest = ei_edge (ei)->src;
-+	  int header = bb_data[ei_edge (ei)->dest->index].scc;
-+	  tag_header (dest->index, header, bb_data);
-+	  depth = bb_data[dest->index].depth + 1;
-+	}
-+      else
-+	{
-+	  if (bb_data[ei_edge (ei)->dest->index].depth > 0) /* on the stack */
- 	    {
+ 
+-	  pre[dest->index] = pre_order_num++;
+-
+-	  if (EDGE_COUNT (dest->succs) > 0)
+-	    {
 -	      /* Since the DEST node has been visited for the first
 -		 time, check its successors.  */
 -	      /* Push the edge vector in reverse to match previous behavior.  */
@@ -11064,23 +11066,44 @@ index 395b810262a..24ae41bcac5 100644
 -		  if (loop_exit_edge_p (e1->src->loop_father, e1))
 -		    std::swap (e1, stack.last ());
 -		}
-+	      ei_edge (ei)->flags |= EDGE_DFS_BACK;
-+	      n_sccs++;
-+	      ei_edge (ei)->dest->flags |= is_header;
-+	      ::new (&bb_data[ei_edge (ei)->dest->index].scc_exits)
-+		auto_vec<int, 2> ();
-+	      tag_header (dest->index, ei_edge (ei)->dest->index, bb_data);
- 	    }
-+	  else if (bb_data[ei_edge (ei)->dest->index].scc == -1)
-+	    ;
- 	  else
- 	    {
+-	    }
+-	  else
+-	    {
 -	      /* There are no successors for the DEST node so assign
 -		 its reverse completion number.  */
 -	      post[dest->index] = rev_post_order_num;
 -	      dest->flags |= post_assigned;
 -	      rev_post_order[rev_post_order_num] = dest->index;
 -	      rev_post_order_num++;
+-	    }
++ret_from_find_loops:
++	  /* Return point of DFS recursion.  */
++	  ei = ei_stack.pop ();
++	  dest = ei_edge (ei)->src;
++	  int header = bb_data[ei_edge (ei)->dest->index].scc;
++	  tag_header (dest->index, header, bb_data);
++	  depth = bb_data[dest->index].depth + 1;
+ 	}
+       else
+ 	{
+-	  if (dest->flags & visited
+-	      && src != entry->src
+-	      && pre[src->index] >= pre[dest->index]
+-	      && !(dest->flags & post_assigned))
+-	    e->flags |= EDGE_DFS_BACK;
++	  if (bb_data[ei_edge (ei)->dest->index].depth > 0) /* on the stack */
++	    {
++	      ei_edge (ei)->flags |= EDGE_DFS_BACK;
++	      n_sccs++;
++	      ei_edge (ei)->dest->flags |= is_header;
++	      ::new (&bb_data[ei_edge (ei)->dest->index].scc_exits)
++		auto_vec<int, 2> ();
++	      tag_header (dest->index, ei_edge (ei)->dest->index, bb_data);
++	    }
++	  else if (bb_data[ei_edge (ei)->dest->index].scc == -1)
++	    ;
++	  else
++	    {
 +	      int header = bb_data[ei_edge (ei)->dest->index].scc;
 +	      if (bb_data[header].depth > 0)
 +		tag_header (dest->index, header, bb_data);
@@ -11098,15 +11121,8 @@ index 395b810262a..24ae41bcac5 100644
 +			}
 +		    }
 +		}
- 	    }
- 	}
--      else
--	{
--	  if (dest->flags & visited
--	      && src != entry->src
--	      && pre[src->index] >= pre[dest->index]
--	      && !(dest->flags & post_assigned))
--	    e->flags |= EDGE_DFS_BACK;
++	    }
++	}
 +      ei_next (&ei);
 +    }
 +  rev_post_order[rev_post_order_num++] = dest->index;
@@ -11115,7 +11131,8 @@ index 395b810262a..24ae41bcac5 100644
 +  if (!ei_stack.is_empty ())
 +    /* Return from DFS recursion.  */
 +    goto ret_from_find_loops;
-+
+ 
+-	  if (idx != 0 && stack[idx - 1]->src != src)
 +  /* Optimize for no SCCs found or !for_iteration.  */
 +  if (n_sccs == 0 || !for_iteration)
 +    {
@@ -11130,8 +11147,7 @@ index 395b810262a..24ae41bcac5 100644
 +
 +      return rev_post_order_num;
 +    }
- 
--	  if (idx != 0 && stack[idx - 1]->src != src)
++
 +  /* Next find SCC exits, clear the visited flag and compute an upper bound
 +     for the edge stack below.  */
 +  unsigned edge_count = 0;
@@ -11162,13 +11178,7 @@ index 395b810262a..24ae41bcac5 100644
 +	  int tem_dest_scc = dest_scc;
 +	  unsigned dest_scc_depth = 0;
 +	  while (tem_dest_scc != -1)
- 	    {
--	      /* There are no more successors for the SRC node
--		 so assign its reverse completion number.  */
--	      post[src->index] = rev_post_order_num;
--	      src->flags |= post_assigned;
--	      rev_post_order[rev_post_order_num] = src->index;
--	      rev_post_order_num++;
++	    {
 +	      dest_scc_depth++;
 +	      if ((tem_dest_scc = bb_data[tem_dest_scc].scc) == src_scc)
 +		break;
@@ -11180,7 +11190,13 @@ index 395b810262a..24ae41bcac5 100644
 +	  int tem_src_scc = src_scc;
 +	  unsigned src_scc_depth = 0;
 +	  while (tem_src_scc != -1)
-+	    {
+ 	    {
+-	      /* There are no more successors for the SRC node
+-		 so assign its reverse completion number.  */
+-	      post[src->index] = rev_post_order_num;
+-	      src->flags |= post_assigned;
+-	      rev_post_order[rev_post_order_num] = src->index;
+-	      rev_post_order_num++;
 +	      if (bb_data[tem_src_scc].scc == dest_scc)
 +		{
 +		  edge_count++;
@@ -11189,7 +11205,7 @@ index 395b810262a..24ae41bcac5 100644
 +		}
 +	      tem_src_scc = bb_data[tem_src_scc].scc;
 +	      src_scc_depth++;
-+	    }
+ 	    }
 +	  /* Else find the outermost SCC this edge exits (exits
 +	     from the inner SCCs are not important for the DFS
 +	     walk adjustment).  Do so by computing the common
@@ -11214,13 +11230,10 @@ index 395b810262a..24ae41bcac5 100644
 +		  dest_scc = bb_data[dest_scc].scc;
 +		}
 +	      bb_data[src_scc].scc_exits.safe_push (e->dest->index);
- 	    }
--
--	  stack.pop ();
- 	}
-     }
- 
--  XDELETEVEC (pre);
++	    }
++	}
++    }
++
 +  /* Now the second DFS walk to compute a RPO where the extent of SCCs
 +     is minimized thus SCC members are adjacent in the RPO array.
 +     This is done by performing a DFS walk computing RPO with first visiting
@@ -11234,7 +11247,8 @@ index 395b810262a..24ae41bcac5 100644
 +  int idx = rev_post_order_num;
 +  basic_block edest;
 +  dest = entry->dest;
-+
+ 
+-	  stack.pop ();
 +  /* DFS process DEST.  */
 +dfs_rpo:
 +  gcc_checking_assert ((dest->flags & visited) == 0);
@@ -11280,8 +11294,7 @@ index 395b810262a..24ae41bcac5 100644
 +	  dest = edest;
 +	  /* DFS recurse on DEST.  */
 +	  goto dfs_rpo;
- 
--  /* Clear the temporarily allocated flags.  */
++
 +ret_from_dfs_rpo:
 +	  /* Return point of DFS recursion.  */
 +	  dest = estack.last ().first;
@@ -11305,13 +11318,14 @@ index 395b810262a..24ae41bcac5 100644
 +	    if (!bitmap_bit_p (exit_bbs, EDGE_SUCC (dest, i)->dest->index))
 +	      estack.quick_push (std::make_pair (dest,
 +						 EDGE_SUCC (dest, i)->dest));
-+	}
-+    }
+ 	}
+     }
 +  rev_post_order[--idx] = dest->index;
 +  if (!estack.is_empty ())
 +    /* Return from DFS recursion.  */
 +    goto ret_from_dfs_rpo;
-+
+ 
+-  XDELETEVEC (pre);
 +  /* Each SCC extends are from the position of the header inside
 +     the RPO array up to RPO array index scc_end[header-index].  */
 +  if (toplevel_scc_extents)
@@ -11325,7 +11339,8 @@ index 395b810262a..24ae41bcac5 100644
 +	    i = bb_data[bb->index].scc_end;
 +	  }
 +      }
-+
+ 
+-  /* Clear the temporarily allocated flags.  */
 +  /* Clear the temporarily allocated flags and free memory.  */
    for (int i = 0; i < rev_post_order_num; ++i)
 -    BASIC_BLOCK_FOR_FN (fn, rev_post_order[i])->flags
@@ -13073,13 +13088,23 @@ index 9b400c49ac6..e6bf5ae3808 100644
 -      && aarch64_bti_enabled ()
 -      && !cgraph_node::get (cfun->decl)->only_called_directly_p ())
 +  if (!cfun->machine->label_is_assembled)
-+    {
+     {
+-      /* Remove the BTI that follows the patch area and insert a new BTI
+-	 before the patch area right after the function label.  */
+-      rtx_insn *insn = next_real_nondebug_insn (get_insns ());
+-      if (insn
+-	  && INSN_P (insn)
+-	  && GET_CODE (PATTERN (insn)) == UNSPEC_VOLATILE
+-	  && XINT (PATTERN (insn), 1) == UNSPECV_BTI_C)
+-	delete_insn (insn);
+-      asm_fprintf (file, "\thint\t34 // bti c\n");
 +      /* Emit the patching area before the entry label, if any.  */
 +      default_print_patchable_function_entry (file, patch_area_size,
 +					      record_p);
 +      return;
-+    }
-+
+     }
+ 
+-  default_print_patchable_function_entry (file, patch_area_size, record_p);
 +  rtx pa = gen_patchable_area (GEN_INT (patch_area_size),
 +			       GEN_INT (record_p));
 +  basic_block bb = ENTRY_BLOCK_PTR_FOR_FN (cfun)->next_bb;
@@ -13098,21 +13123,11 @@ index 9b400c49ac6..e6bf5ae3808 100644
 +      || !INSN_P (insn)
 +      || GET_CODE (PATTERN (insn)) != UNSPEC_VOLATILE
 +      || XINT (PATTERN (insn), 1) != UNSPECV_BTI_C)
-     {
--      /* Remove the BTI that follows the patch area and insert a new BTI
--	 before the patch area right after the function label.  */
--      rtx_insn *insn = next_real_nondebug_insn (get_insns ());
--      if (insn
--	  && INSN_P (insn)
--	  && GET_CODE (PATTERN (insn)) == UNSPEC_VOLATILE
--	  && XINT (PATTERN (insn), 1) == UNSPECV_BTI_C)
--	delete_insn (insn);
--      asm_fprintf (file, "\thint\t34 // bti c\n");
++    {
 +      /* Emit a BTI_C.  */
 +      insn = emit_insn_before (gen_bti_c (), BB_HEAD (bb));
-     }
- 
--  default_print_patchable_function_entry (file, patch_area_size, record_p);
++    }
++
 +  /* Emit the patchable_area after BTI_C.  */
 +  insn = emit_insn_after (pa, insn);
 +  INSN_ADDRESSES_NEW (insn, -1);
@@ -14401,34 +14416,34 @@ index 449219e90fc..a19006f5008 100644
    int (*)[__ARM_mve_type_float32x4_t]: __arm_vstrwq_scatter_base_p_f32(p0, p1, __ARM_mve_coerce(__p2, float32x4_t), p3));})
  
 -#define __arm_vstrwq_scatter_offset(p0,p1,p2) ({ __typeof(p1) __p1 = (p1); \
--  __typeof(p2) __p2 = (p2); \
++#define __arm_vstrwq_scatter_offset(p0,p1,p2) ({ __typeof(p0) __p0 = (p0); \
+   __typeof(p2) __p2 = (p2); \
 -  _Generic( (int (*)[__ARM_mve_typeid(p0)][__ARM_mve_typeid(__p2)])0, \
 -  int (*)[__ARM_mve_type_int32_t_ptr][__ARM_mve_type_int32x4_t]: __arm_vstrwq_scatter_offset_s32 (__ARM_mve_coerce(p0, int32_t *), __p1, __ARM_mve_coerce(__p2, int32x4_t)), \
 -  int (*)[__ARM_mve_type_uint32_t_ptr][__ARM_mve_type_uint32x4_t]: __arm_vstrwq_scatter_offset_u32 (__ARM_mve_coerce(p0, uint32_t *), __p1, __ARM_mve_coerce(__p2, uint32x4_t)), \
 -  int (*)[__ARM_mve_type_float32_t_ptr][__ARM_mve_type_float32x4_t]: __arm_vstrwq_scatter_offset_f32 (__ARM_mve_coerce(p0, float32_t *), __p1, __ARM_mve_coerce(__p2, float32x4_t)));})
--
--#define __arm_vstrwq_scatter_offset_p(p0,p1,p2,p3) ({ __typeof(p1) __p1 = (p1); \
-+#define __arm_vstrwq_scatter_offset(p0,p1,p2) ({ __typeof(p0) __p0 = (p0); \
-   __typeof(p2) __p2 = (p2); \
--  _Generic( (int (*)[__ARM_mve_typeid(p0)][__ARM_mve_typeid(__p2)])0, \
--  int (*)[__ARM_mve_type_int32_t_ptr][__ARM_mve_type_int32x4_t]: __arm_vstrwq_scatter_offset_p_s32 (__ARM_mve_coerce(p0, int32_t *), __p1, __ARM_mve_coerce(__p2, int32x4_t), p3), \
--  int (*)[__ARM_mve_type_uint32_t_ptr][__ARM_mve_type_uint32x4_t]: __arm_vstrwq_scatter_offset_p_u32 (__ARM_mve_coerce(p0, uint32_t *), __p1, __ARM_mve_coerce(__p2, uint32x4_t), p3), \
--  int (*)[__ARM_mve_type_float32_t_ptr][__ARM_mve_type_float32x4_t]: __arm_vstrwq_scatter_offset_p_f32 (__ARM_mve_coerce(p0, float32_t *), __p1, __ARM_mve_coerce(__p2, float32x4_t), p3));})
--
--#define __arm_vstrwq_scatter_offset_p(p0,p1,p2,p3) ({ __typeof(p1) __p1 = (p1); \
--  __typeof(p2) __p2 = (p2); \
--  _Generic( (int (*)[__ARM_mve_typeid(p0)][__ARM_mve_typeid(__p2)])0, \
--  int (*)[__ARM_mve_type_int32_t_ptr][__ARM_mve_type_int32x4_t]: __arm_vstrwq_scatter_offset_p_s32 (__ARM_mve_coerce(p0, int32_t *), __p1, __ARM_mve_coerce(__p2, int32x4_t), p3), \
--  int (*)[__ARM_mve_type_uint32_t_ptr][__ARM_mve_type_uint32x4_t]: __arm_vstrwq_scatter_offset_p_u32 (__ARM_mve_coerce(p0, uint32_t *), __p1, __ARM_mve_coerce(__p2, uint32x4_t), p3), \
--  int (*)[__ARM_mve_type_float32_t_ptr][__ARM_mve_type_float32x4_t]: __arm_vstrwq_scatter_offset_p_f32 (__ARM_mve_coerce(p0, float32_t *), __p1, __ARM_mve_coerce(__p2, float32x4_t), p3));})
 +  _Generic( (int (*)[__ARM_mve_typeid(__p0)][__ARM_mve_typeid(__p2)])0, \
 +  int (*)[__ARM_mve_type_int32_t_ptr][__ARM_mve_type_int32x4_t]: __arm_vstrwq_scatter_offset_s32 (__ARM_mve_coerce(__p0, int32_t *), p1, __ARM_mve_coerce(__p2, int32x4_t)), \
 +  int (*)[__ARM_mve_type_uint32_t_ptr][__ARM_mve_type_uint32x4_t]: __arm_vstrwq_scatter_offset_u32 (__ARM_mve_coerce(__p0, uint32_t *), p1, __ARM_mve_coerce(__p2, uint32x4_t)), \
 +  int (*)[__ARM_mve_type_float32_t_ptr][__ARM_mve_type_float32x4_t]: __arm_vstrwq_scatter_offset_f32 (__ARM_mve_coerce(__p0, float32_t *), p1, __ARM_mve_coerce(__p2, float32x4_t)));})
  
--#define __arm_vstrwq_scatter_offset(p0,p1,p2) ({ __typeof(p1) __p1 = (p1); \
+-#define __arm_vstrwq_scatter_offset_p(p0,p1,p2,p3) ({ __typeof(p1) __p1 = (p1); \
 +#define __arm_vstrwq_scatter_offset_p(p0,p1,p2,p3) ({ __typeof(p0) __p0 = (p0); \
    __typeof(p2) __p2 = (p2); \
+-  _Generic( (int (*)[__ARM_mve_typeid(p0)][__ARM_mve_typeid(__p2)])0, \
+-  int (*)[__ARM_mve_type_int32_t_ptr][__ARM_mve_type_int32x4_t]: __arm_vstrwq_scatter_offset_p_s32 (__ARM_mve_coerce(p0, int32_t *), __p1, __ARM_mve_coerce(__p2, int32x4_t), p3), \
+-  int (*)[__ARM_mve_type_uint32_t_ptr][__ARM_mve_type_uint32x4_t]: __arm_vstrwq_scatter_offset_p_u32 (__ARM_mve_coerce(p0, uint32_t *), __p1, __ARM_mve_coerce(__p2, uint32x4_t), p3), \
+-  int (*)[__ARM_mve_type_float32_t_ptr][__ARM_mve_type_float32x4_t]: __arm_vstrwq_scatter_offset_p_f32 (__ARM_mve_coerce(p0, float32_t *), __p1, __ARM_mve_coerce(__p2, float32x4_t), p3));})
+-
+-#define __arm_vstrwq_scatter_offset_p(p0,p1,p2,p3) ({ __typeof(p1) __p1 = (p1); \
+-  __typeof(p2) __p2 = (p2); \
+-  _Generic( (int (*)[__ARM_mve_typeid(p0)][__ARM_mve_typeid(__p2)])0, \
+-  int (*)[__ARM_mve_type_int32_t_ptr][__ARM_mve_type_int32x4_t]: __arm_vstrwq_scatter_offset_p_s32 (__ARM_mve_coerce(p0, int32_t *), __p1, __ARM_mve_coerce(__p2, int32x4_t), p3), \
+-  int (*)[__ARM_mve_type_uint32_t_ptr][__ARM_mve_type_uint32x4_t]: __arm_vstrwq_scatter_offset_p_u32 (__ARM_mve_coerce(p0, uint32_t *), __p1, __ARM_mve_coerce(__p2, uint32x4_t), p3), \
+-  int (*)[__ARM_mve_type_float32_t_ptr][__ARM_mve_type_float32x4_t]: __arm_vstrwq_scatter_offset_p_f32 (__ARM_mve_coerce(p0, float32_t *), __p1, __ARM_mve_coerce(__p2, float32x4_t), p3));})
+-
+-#define __arm_vstrwq_scatter_offset(p0,p1,p2) ({ __typeof(p1) __p1 = (p1); \
+-  __typeof(p2) __p2 = (p2); \
 -  _Generic( (int (*)[__ARM_mve_typeid(p0)][__ARM_mve_typeid(__p2)])0, \
 -  int (*)[__ARM_mve_type_int32_t_ptr][__ARM_mve_type_int32x4_t]: __arm_vstrwq_scatter_offset_s32 (__ARM_mve_coerce(p0, int32_t *), __p1, __ARM_mve_coerce(__p2, int32x4_t)), \
 -  int (*)[__ARM_mve_type_uint32_t_ptr][__ARM_mve_type_uint32x4_t]: __arm_vstrwq_scatter_offset_u32 (__ARM_mve_coerce(p0, uint32_t *), __p1, __ARM_mve_coerce(__p2, uint32x4_t)), \
@@ -14681,30 +14696,30 @@ index 449219e90fc..a19006f5008 100644
    int (*)[__ARM_mve_type_uint16_t_ptr][__ARM_mve_type_uint32x4_t][__ARM_mve_type_uint32x4_t]: __arm_vstrhq_scatter_shifted_offset_p_u32 (__ARM_mve_coerce(p0, uint16_t *), __ARM_mve_coerce(__p1, uint32x4_t), __ARM_mve_coerce(__p2, uint32x4_t), p3));})
  
 -#define __arm_vstrwq_scatter_offset(p0,p1,p2) ({ __typeof(p1) __p1 = (p1); \
--  __typeof(p2) __p2 = (p2); \
++#define __arm_vstrwq_scatter_offset(p0,p1,p2) ({ __typeof(p0) __p0 = (p0); \
+   __typeof(p2) __p2 = (p2); \
 -  _Generic( (int (*)[__ARM_mve_typeid(p0)][__ARM_mve_typeid(__p2)])0, \
 -  int (*)[__ARM_mve_type_int32_t_ptr][__ARM_mve_type_int32x4_t]: __arm_vstrwq_scatter_offset_s32 (__ARM_mve_coerce(p0, int32_t *), __p1, __ARM_mve_coerce(__p2, int32x4_t)), \
 -  int (*)[__ARM_mve_type_uint32_t_ptr][__ARM_mve_type_uint32x4_t]: __arm_vstrwq_scatter_offset_u32 (__ARM_mve_coerce(p0, uint32_t *), __p1, __ARM_mve_coerce(__p2, uint32x4_t)));})
--
++  _Generic( (int (*)[__ARM_mve_typeid(__p0)][__ARM_mve_typeid(__p2)])0, \
++  int (*)[__ARM_mve_type_int32_t_ptr][__ARM_mve_type_int32x4_t]: __arm_vstrwq_scatter_offset_s32 (__ARM_mve_coerce(__p0, int32_t *), p1, __ARM_mve_coerce(__p2, int32x4_t)), \
++  int (*)[__ARM_mve_type_uint32_t_ptr][__ARM_mve_type_uint32x4_t]: __arm_vstrwq_scatter_offset_u32 (__ARM_mve_coerce(__p0, uint32_t *), p1, __ARM_mve_coerce(__p2, uint32x4_t)));})
+ 
 -#define __arm_vstrwq_scatter_offset_p(p0,p1,p2,p3) ({ __typeof(p1) __p1 = (p1); \
--  __typeof(p2) __p2 = (p2); \
++#define __arm_vstrwq_scatter_offset_p(p0,p1,p2,p3) ({ __typeof(p0) __p0 = (p0); \
+   __typeof(p2) __p2 = (p2); \
 -  _Generic( (int (*)[__ARM_mve_typeid(p0)][__ARM_mve_typeid(__p2)])0, \
 -  int (*)[__ARM_mve_type_int32_t_ptr][__ARM_mve_type_int32x4_t]: __arm_vstrwq_scatter_offset_p_s32 (__ARM_mve_coerce(p0, int32_t *), __p1, __ARM_mve_coerce(__p2, int32x4_t), p3), \
 -  int (*)[__ARM_mve_type_uint32_t_ptr][__ARM_mve_type_uint32x4_t]: __arm_vstrwq_scatter_offset_p_u32 (__ARM_mve_coerce(p0, uint32_t *), __p1, __ARM_mve_coerce(__p2, uint32x4_t)));})
 -
 -#define __arm_vstrwq_scatter_offset_p(p0,p1,p2,p3) ({ __typeof(p1) __p1 = (p1); \
-+#define __arm_vstrwq_scatter_offset(p0,p1,p2) ({ __typeof(p0) __p0 = (p0); \
-   __typeof(p2) __p2 = (p2); \
+-  __typeof(p2) __p2 = (p2); \
 -  _Generic( (int (*)[__ARM_mve_typeid(p0)][__ARM_mve_typeid(__p2)])0, \
 -  int (*)[__ARM_mve_type_int32_t_ptr][__ARM_mve_type_int32x4_t]: __arm_vstrwq_scatter_offset_p_s32 (__ARM_mve_coerce(p0, int32_t *), __p1, __ARM_mve_coerce(__p2, int32x4_t), p3), \
 -  int (*)[__ARM_mve_type_uint32_t_ptr][__ARM_mve_type_uint32x4_t]: __arm_vstrwq_scatter_offset_p_u32 (__ARM_mve_coerce(p0, uint32_t *), __p1, __ARM_mve_coerce(__p2, uint32x4_t), p3));})
-+  _Generic( (int (*)[__ARM_mve_typeid(__p0)][__ARM_mve_typeid(__p2)])0, \
-+  int (*)[__ARM_mve_type_int32_t_ptr][__ARM_mve_type_int32x4_t]: __arm_vstrwq_scatter_offset_s32 (__ARM_mve_coerce(__p0, int32_t *), p1, __ARM_mve_coerce(__p2, int32x4_t)), \
-+  int (*)[__ARM_mve_type_uint32_t_ptr][__ARM_mve_type_uint32x4_t]: __arm_vstrwq_scatter_offset_u32 (__ARM_mve_coerce(__p0, uint32_t *), p1, __ARM_mve_coerce(__p2, uint32x4_t)));})
- 
+-
 -#define __arm_vstrwq_scatter_offset(p0,p1,p2) ({ __typeof(p1) __p1 = (p1); \
-+#define __arm_vstrwq_scatter_offset_p(p0,p1,p2,p3) ({ __typeof(p0) __p0 = (p0); \
-   __typeof(p2) __p2 = (p2); \
+-  __typeof(p2) __p2 = (p2); \
 -  _Generic( (int (*)[__ARM_mve_typeid(p0)][__ARM_mve_typeid(__p2)])0, \
 -  int (*)[__ARM_mve_type_int32_t_ptr][__ARM_mve_type_int32x4_t]: __arm_vstrwq_scatter_offset_s32 (__ARM_mve_coerce(p0, int32_t *), __p1, __ARM_mve_coerce(__p2, int32x4_t)), \
 -  int (*)[__ARM_mve_type_uint32_t_ptr][__ARM_mve_type_uint32x4_t]: __arm_vstrwq_scatter_offset_u32 (__ARM_mve_coerce(p0, uint32_t *), __p1, __ARM_mve_coerce(__p2, uint32x4_t)));})
@@ -14835,32 +14850,32 @@ index 449219e90fc..a19006f5008 100644
 -#define __arm_vmlsdavaxq_p(p0,p1,p2,p3) ({ __typeof(p0) __p0 = (p0); \
 -  __typeof(p1) __p1 = (p1); \
 +#define __arm_vmlsdavaxq_p(p0,p1,p2,p3) ({ __typeof(p1) __p1 = (p1); \
-+  __typeof(p2) __p2 = (p2); \
-+  _Generic( (int (*)[__ARM_mve_typeid(__p1)][__ARM_mve_typeid(__p2)])0, \
-+  int (*)[__ARM_mve_type_int8x16_t][__ARM_mve_type_int8x16_t]: __arm_vmlsdavaxq_p_s8 (p0, __ARM_mve_coerce(__p1, int8x16_t), __ARM_mve_coerce(__p2, int8x16_t), p3), \
-+  int (*)[__ARM_mve_type_int16x8_t][__ARM_mve_type_int16x8_t]: __arm_vmlsdavaxq_p_s16 (p0, __ARM_mve_coerce(__p1, int16x8_t), __ARM_mve_coerce(__p2, int16x8_t), p3), \
-+  int (*)[__ARM_mve_type_int32x4_t][__ARM_mve_type_int32x4_t]: __arm_vmlsdavaxq_p_s32 (p0, __ARM_mve_coerce(__p1, int32x4_t), __ARM_mve_coerce(__p2, int32x4_t), p3));})
-+
-+#define __arm_vmlsdavaq(p0,p1,p2) ({  __typeof(p1) __p1 = (p1); \
    __typeof(p2) __p2 = (p2); \
    _Generic( (int (*)[__ARM_mve_typeid(__p1)][__ARM_mve_typeid(__p2)])0, \
 -  int (*)[__ARM_mve_type_int8x16_t][__ARM_mve_type_int8x16_t]: __arm_vmlsdavaxq_p_s8 (__p0, __ARM_mve_coerce(__p1, int8x16_t), __ARM_mve_coerce(__p2, int8x16_t), p3), \
 -  int (*)[__ARM_mve_type_int16x8_t][__ARM_mve_type_int16x8_t]: __arm_vmlsdavaxq_p_s16 (__p0, __ARM_mve_coerce(__p1, int16x8_t), __ARM_mve_coerce(__p2, int16x8_t), p3), \
 -  int (*)[__ARM_mve_type_int32x4_t][__ARM_mve_type_int32x4_t]: __arm_vmlsdavaxq_p_s32 (__p0, __ARM_mve_coerce(__p1, int32x4_t), __ARM_mve_coerce(__p2, int32x4_t), p3));})
++  int (*)[__ARM_mve_type_int8x16_t][__ARM_mve_type_int8x16_t]: __arm_vmlsdavaxq_p_s8 (p0, __ARM_mve_coerce(__p1, int8x16_t), __ARM_mve_coerce(__p2, int8x16_t), p3), \
++  int (*)[__ARM_mve_type_int16x8_t][__ARM_mve_type_int16x8_t]: __arm_vmlsdavaxq_p_s16 (p0, __ARM_mve_coerce(__p1, int16x8_t), __ARM_mve_coerce(__p2, int16x8_t), p3), \
++  int (*)[__ARM_mve_type_int32x4_t][__ARM_mve_type_int32x4_t]: __arm_vmlsdavaxq_p_s32 (p0, __ARM_mve_coerce(__p1, int32x4_t), __ARM_mve_coerce(__p2, int32x4_t), p3));})
++
++#define __arm_vmlsdavaq(p0,p1,p2) ({  __typeof(p1) __p1 = (p1); \
++  __typeof(p2) __p2 = (p2); \
++  _Generic( (int (*)[__ARM_mve_typeid(__p1)][__ARM_mve_typeid(__p2)])0, \
 +  int (*)[__ARM_mve_type_int8x16_t][__ARM_mve_type_int8x16_t]: __arm_vmlsdavaq_s8(p0, __ARM_mve_coerce(__p1, int8x16_t), __ARM_mve_coerce(__p2, int8x16_t)), \
 +  int (*)[__ARM_mve_type_int16x8_t][__ARM_mve_type_int16x8_t]: __arm_vmlsdavaq_s16(p0, __ARM_mve_coerce(__p1, int16x8_t), __ARM_mve_coerce(__p2, int16x8_t)), \
 +  int (*)[__ARM_mve_type_int32x4_t][__ARM_mve_type_int32x4_t]: __arm_vmlsdavaq_s32(p0, __ARM_mve_coerce(__p1, int32x4_t), __ARM_mve_coerce(__p2, int32x4_t)));})
- 
--#define __arm_vmlsdavaq_p(p0,p1,p2,p3) ({ __typeof(p0) __p0 = (p0); \
++
 +#define __arm_vmlsdavaxq(p0,p1,p2) ({ __typeof(p2) __p2 = (p2); \
-   __typeof(p1) __p1 = (p1); \
++  __typeof(p1) __p1 = (p1); \
 +  _Generic( (int (*)[__ARM_mve_typeid(__p1)][__ARM_mve_typeid(__p2)])0, \
 +  int (*)[__ARM_mve_type_int8x16_t][__ARM_mve_type_int8x16_t]: __arm_vmlsdavaxq_s8(p0, __ARM_mve_coerce(__p1, int8x16_t), __ARM_mve_coerce(__p2, int8x16_t)), \
 +  int (*)[__ARM_mve_type_int16x8_t][__ARM_mve_type_int16x8_t]: __arm_vmlsdavaxq_s16(p0, __ARM_mve_coerce(__p1, int16x8_t), __ARM_mve_coerce(__p2, int16x8_t)), \
 +  int (*)[__ARM_mve_type_int32x4_t][__ARM_mve_type_int32x4_t]: __arm_vmlsdavaxq_s32(p0, __ARM_mve_coerce(__p1, int32x4_t), __ARM_mve_coerce(__p2, int32x4_t)));})
-+
+ 
+-#define __arm_vmlsdavaq_p(p0,p1,p2,p3) ({ __typeof(p0) __p0 = (p0); \
 +#define __arm_vmlsdavq_p(p0,p1,p2) ({ __typeof(p0) __p0 = (p0); \
-+  __typeof(p1) __p1 = (p1); \
+   __typeof(p1) __p1 = (p1); \
 +  _Generic( (int (*)[__ARM_mve_typeid(__p0)][__ARM_mve_typeid(__p1)])0, \
 +  int (*)[__ARM_mve_type_int8x16_t][__ARM_mve_type_int8x16_t]: __arm_vmlsdavq_p_s8 (__ARM_mve_coerce(__p0, int8x16_t), __ARM_mve_coerce(__p1, int8x16_t), p2), \
 +  int (*)[__ARM_mve_type_int16x8_t][__ARM_mve_type_int16x8_t]: __arm_vmlsdavq_p_s16 (__ARM_mve_coerce(__p0, int16x8_t), __ARM_mve_coerce(__p1, int16x8_t), p2), \
@@ -15073,21 +15088,25 @@ index 449219e90fc..a19006f5008 100644
 +  _Generic( (int (*)[__ARM_mve_typeid(__p0)][__ARM_mve_typeid(__p1)][__ARM_mve_typeid(__p2)])0, \
 +  int (*)[__ARM_mve_type_int_n][__ARM_mve_type_int32x4_t][__ARM_mve_type_int32x4_t]: __arm_vrmlaldavhaq_s32 (__ARM_mve_coerce(__p0, int64_t), __ARM_mve_coerce(__p1, int32x4_t), __ARM_mve_coerce(__p2, int32x4_t)), \
 +  int (*)[__ARM_mve_type_int_n][__ARM_mve_type_uint32x4_t][__ARM_mve_type_uint32x4_t]: __arm_vrmlaldavhaq_u32 (__ARM_mve_coerce(__p0, uint64_t), __ARM_mve_coerce(__p1, uint32x4_t), __ARM_mve_coerce(__p2, uint32x4_t)));})
-+
-+#define __arm_vrmlaldavhaq_p(p0,p1,p2,p3) ({ __typeof(p0) __p0 = (p0); \
-+  __typeof(p1) __p1 = (p1); \
-+  __typeof(p2) __p2 = (p2); \
-+  _Generic( (int (*)[__ARM_mve_typeid(__p0)][__ARM_mve_typeid(__p1)][__ARM_mve_typeid(__p2)])0, \
-+  int (*)[__ARM_mve_type_int_n][__ARM_mve_type_int32x4_t][__ARM_mve_type_int32x4_t]: __arm_vrmlaldavhaq_p_s32 (__ARM_mve_coerce(__p0, int64_t), __ARM_mve_coerce(__p1, int32x4_t), __ARM_mve_coerce(__p2, int32x4_t), p3), \
-+  int (*)[__ARM_mve_type_int_n][__ARM_mve_type_uint32x4_t][__ARM_mve_type_uint32x4_t]: __arm_vrmlaldavhaq_p_u32 (__ARM_mve_coerce(__p0, uint64_t), __ARM_mve_coerce(__p1, uint32x4_t), __ARM_mve_coerce(__p2, uint32x4_t), p3));})
  
 -#define __arm_vstrdq_scatter_offset_p(p0,p1,p2,p3) ({ __typeof(p1) __p1 = (p1); \
-+#define __arm_vstrbq_scatter_offset(p0,p1,p2) ({ __typeof(p0) __p0 = (p0); \
++#define __arm_vrmlaldavhaq_p(p0,p1,p2,p3) ({ __typeof(p0) __p0 = (p0); \
 +  __typeof(p1) __p1 = (p1); \
    __typeof(p2) __p2 = (p2); \
 -  _Generic( (int (*)[__ARM_mve_typeid(p0)][__ARM_mve_typeid(__p2)])0, \
 -  int (*)[__ARM_mve_type_int64_t_ptr][__ARM_mve_type_int64x2_t]: __arm_vstrdq_scatter_offset_p_s64 (__ARM_mve_coerce(p0, int64_t *), __p1, __ARM_mve_coerce(__p2, int64x2_t), p3), \
 -  int (*)[__ARM_mve_type_uint64_t_ptr][__ARM_mve_type_uint64x2_t]: __arm_vstrdq_scatter_offset_p_u64 (__ARM_mve_coerce(p0, uint64_t *), __p1, __ARM_mve_coerce(__p2, uint64x2_t), p3));})
++  _Generic( (int (*)[__ARM_mve_typeid(__p0)][__ARM_mve_typeid(__p1)][__ARM_mve_typeid(__p2)])0, \
++  int (*)[__ARM_mve_type_int_n][__ARM_mve_type_int32x4_t][__ARM_mve_type_int32x4_t]: __arm_vrmlaldavhaq_p_s32 (__ARM_mve_coerce(__p0, int64_t), __ARM_mve_coerce(__p1, int32x4_t), __ARM_mve_coerce(__p2, int32x4_t), p3), \
++  int (*)[__ARM_mve_type_int_n][__ARM_mve_type_uint32x4_t][__ARM_mve_type_uint32x4_t]: __arm_vrmlaldavhaq_p_u32 (__ARM_mve_coerce(__p0, uint64_t), __ARM_mve_coerce(__p1, uint32x4_t), __ARM_mve_coerce(__p2, uint32x4_t), p3));})
+ 
+-#define __arm_vstrdq_scatter_shifted_offset(p0,p1,p2) ({ __typeof(p1) __p1 = (p1); \
++#define __arm_vstrbq_scatter_offset(p0,p1,p2) ({ __typeof(p0) __p0 = (p0); \
++  __typeof(p1) __p1 = (p1); \
+   __typeof(p2) __p2 = (p2); \
+-  _Generic( (int (*)[__ARM_mve_typeid(p0)][__ARM_mve_typeid(__p2)])0, \
+-  int (*)[__ARM_mve_type_int64_t_ptr][__ARM_mve_type_int64x2_t]: __arm_vstrdq_scatter_shifted_offset_s64 (__ARM_mve_coerce(p0, int64_t *), __p1, __ARM_mve_coerce(__p2, int64x2_t)), \
+-  int (*)[__ARM_mve_type_uint64_t_ptr][__ARM_mve_type_uint64x2_t]: __arm_vstrdq_scatter_shifted_offset_u64 (__ARM_mve_coerce(p0, uint64_t *), __p1, __ARM_mve_coerce(__p2, uint64x2_t)));})
 +  _Generic( (int (*)[__ARM_mve_typeid(__p0)][__ARM_mve_typeid(__p1)][__ARM_mve_typeid(__p2)])0, \
 +  int (*)[__ARM_mve_type_int8_t_ptr][__ARM_mve_type_uint8x16_t][__ARM_mve_type_int8x16_t]: __arm_vstrbq_scatter_offset_s8 (__ARM_mve_coerce(__p0, int8_t *), __ARM_mve_coerce(__p1, uint8x16_t), __ARM_mve_coerce(__p2, int8x16_t)), \
 +  int (*)[__ARM_mve_type_int8_t_ptr][__ARM_mve_type_uint16x8_t][__ARM_mve_type_int16x8_t]: __arm_vstrbq_scatter_offset_s16 (__ARM_mve_coerce(__p0, int8_t *), __ARM_mve_coerce(__p1, uint16x8_t), __ARM_mve_coerce(__p2, int16x8_t)), \
@@ -15096,13 +15115,13 @@ index 449219e90fc..a19006f5008 100644
 +  int (*)[__ARM_mve_type_uint8_t_ptr][__ARM_mve_type_uint16x8_t][__ARM_mve_type_uint16x8_t]: __arm_vstrbq_scatter_offset_u16 (__ARM_mve_coerce(__p0, uint8_t *), __ARM_mve_coerce(__p1, uint16x8_t), __ARM_mve_coerce(__p2, uint16x8_t)), \
 +  int (*)[__ARM_mve_type_uint8_t_ptr][__ARM_mve_type_uint32x4_t][__ARM_mve_type_uint32x4_t]: __arm_vstrbq_scatter_offset_u32 (__ARM_mve_coerce(__p0, uint8_t *), __ARM_mve_coerce(__p1, uint32x4_t), __ARM_mve_coerce(__p2, uint32x4_t)));})
  
--#define __arm_vstrdq_scatter_shifted_offset(p0,p1,p2) ({ __typeof(p1) __p1 = (p1); \
+-#define __arm_vstrdq_scatter_shifted_offset_p(p0,p1,p2,p3) ({ __typeof(p1) __p1 = (p1); \
 +#define __arm_vstrbq_scatter_offset_p(p0,p1,p2,p3) ({ __typeof(p0) __p0 = (p0); \
 +  __typeof(p1) __p1 = (p1); \
    __typeof(p2) __p2 = (p2); \
 -  _Generic( (int (*)[__ARM_mve_typeid(p0)][__ARM_mve_typeid(__p2)])0, \
--  int (*)[__ARM_mve_type_int64_t_ptr][__ARM_mve_type_int64x2_t]: __arm_vstrdq_scatter_shifted_offset_s64 (__ARM_mve_coerce(p0, int64_t *), __p1, __ARM_mve_coerce(__p2, int64x2_t)), \
--  int (*)[__ARM_mve_type_uint64_t_ptr][__ARM_mve_type_uint64x2_t]: __arm_vstrdq_scatter_shifted_offset_u64 (__ARM_mve_coerce(p0, uint64_t *), __p1, __ARM_mve_coerce(__p2, uint64x2_t)));})
+-  int (*)[__ARM_mve_type_int64_t_ptr][__ARM_mve_type_int64x2_t]: __arm_vstrdq_scatter_shifted_offset_p_s64 (__ARM_mve_coerce(p0, int64_t *), __p1, __ARM_mve_coerce(__p2, int64x2_t), p3), \
+-  int (*)[__ARM_mve_type_uint64_t_ptr][__ARM_mve_type_uint64x2_t]: __arm_vstrdq_scatter_shifted_offset_p_u64 (__ARM_mve_coerce(p0, uint64_t *), __p1, __ARM_mve_coerce(__p2, uint64x2_t), p3));})
 +  _Generic( (int (*)[__ARM_mve_typeid(__p0)][__ARM_mve_typeid(__p1)][__ARM_mve_typeid(__p2)])0, \
 +  int (*)[__ARM_mve_type_int8_t_ptr][__ARM_mve_type_uint8x16_t][__ARM_mve_type_int8x16_t]: __arm_vstrbq_scatter_offset_p_s8 (__ARM_mve_coerce(__p0, int8_t *), __ARM_mve_coerce(__p1, uint8x16_t), __ARM_mve_coerce(__p2, int8x16_t), p3), \
 +  int (*)[__ARM_mve_type_int8_t_ptr][__ARM_mve_type_uint16x8_t][__ARM_mve_type_int16x8_t]: __arm_vstrbq_scatter_offset_p_s16 (__ARM_mve_coerce(__p0, int8_t *), __ARM_mve_coerce(__p1, uint16x8_t), __ARM_mve_coerce(__p2, int16x8_t), p3), \
@@ -15110,13 +15129,9 @@ index 449219e90fc..a19006f5008 100644
 +  int (*)[__ARM_mve_type_uint8_t_ptr][__ARM_mve_type_uint8x16_t][__ARM_mve_type_uint8x16_t]: __arm_vstrbq_scatter_offset_p_u8 (__ARM_mve_coerce(__p0, uint8_t *), __ARM_mve_coerce(__p1, uint8x16_t), __ARM_mve_coerce(__p2, uint8x16_t), p3), \
 +  int (*)[__ARM_mve_type_uint8_t_ptr][__ARM_mve_type_uint16x8_t][__ARM_mve_type_uint16x8_t]: __arm_vstrbq_scatter_offset_p_u16 (__ARM_mve_coerce(__p0, uint8_t *), __ARM_mve_coerce(__p1, uint16x8_t), __ARM_mve_coerce(__p2, uint16x8_t), p3), \
 +  int (*)[__ARM_mve_type_uint8_t_ptr][__ARM_mve_type_uint32x4_t][__ARM_mve_type_uint32x4_t]: __arm_vstrbq_scatter_offset_p_u32 (__ARM_mve_coerce(__p0, uint8_t *), __ARM_mve_coerce(__p1, uint32x4_t), __ARM_mve_coerce(__p2, uint32x4_t), p3));})
- 
--#define __arm_vstrdq_scatter_shifted_offset_p(p0,p1,p2,p3) ({ __typeof(p1) __p1 = (p1); \
++
 +#define __arm_vstrdq_scatter_offset_p(p0,p1,p2,p3) ({ __typeof(p0) __p0 = (p0); \
-   __typeof(p2) __p2 = (p2); \
--  _Generic( (int (*)[__ARM_mve_typeid(p0)][__ARM_mve_typeid(__p2)])0, \
--  int (*)[__ARM_mve_type_int64_t_ptr][__ARM_mve_type_int64x2_t]: __arm_vstrdq_scatter_shifted_offset_p_s64 (__ARM_mve_coerce(p0, int64_t *), __p1, __ARM_mve_coerce(__p2, int64x2_t), p3), \
--  int (*)[__ARM_mve_type_uint64_t_ptr][__ARM_mve_type_uint64x2_t]: __arm_vstrdq_scatter_shifted_offset_p_u64 (__ARM_mve_coerce(p0, uint64_t *), __p1, __ARM_mve_coerce(__p2, uint64x2_t), p3));})
++  __typeof(p2) __p2 = (p2); \
 +  _Generic( (int (*)[__ARM_mve_typeid(__p0)][__ARM_mve_typeid(__p2)])0, \
 +  int (*)[__ARM_mve_type_int64_t_ptr][__ARM_mve_type_int64x2_t]: __arm_vstrdq_scatter_offset_p_s64 (__ARM_mve_coerce(__p0, int64_t *), p1, __ARM_mve_coerce(__p2, int64x2_t), p3), \
 +  int (*)[__ARM_mve_type_uint64_t_ptr][__ARM_mve_type_uint64x2_t]: __arm_vstrdq_scatter_offset_p_u64 (__ARM_mve_coerce(__p0, uint64_t *), p1, __ARM_mve_coerce(__p2, uint64x2_t), p3));})
@@ -15182,25 +15197,25 @@ index 11c69443fb9..6d84cd47a9b 100644
 -      ops[0] = operands[0];
 -      ops[1] = operands[1];
 -      if (<MODE>mode == V2DFmode || <MODE>mode == V2DImode)
--	{
--	  if (which_alternative == 7)
++      if (<MODE>mode == V2DFmode || <MODE>mode == V2DImode || <MODE>mode == TImode)
+ 	{
+ 	  if (which_alternative == 7)
 -	    {
 -	      ops[1] = gen_rtx_REG (DImode, regno);
 -	      output_asm_insn ("vstr.64\t%P1, %E0",ops);
 -	    }
--	  else
++	    output_asm_insn ("vstrw.32\t%q1, %E0", operands);
+ 	  else
 -	    {
 -	      ops[0] = gen_rtx_REG (DImode, regno);
 -	      output_asm_insn ("vldr.64\t%P0, %E1",ops);
 -	    }
 -	}
 -      else if (<MODE>mode == TImode)
-+      if (<MODE>mode == V2DFmode || <MODE>mode == V2DImode || <MODE>mode == TImode)
- 	{
- 	  if (which_alternative == 7)
+-	{
+-	  if (which_alternative == 7)
 -	    output_asm_insn ("vstr.64\t%q1, %E0",ops);
-+	    output_asm_insn ("vstrw.32\t%q1, %E0", operands);
- 	  else
+-	  else
 -	    output_asm_insn ("vldr.64\t%q0, %E1",ops);
 +	    output_asm_insn ("vldrw.u32\t%q0, %E1",operands);
  	}
@@ -16253,17 +16268,15 @@ index 02b04c8457b..e6b8ee1d91e 100644
 -   The static version of the current libgcc unwinder (which differs from the
 -   implementation in libunwind.dylib on systems Darwin10 [10.6]+) can be used
 -   by specifying -static-libgcc.
--
--   If libgcc_eh is linked against, it has to be before -lgcc, because it might
--   need symbols from -lgcc.  */
--
 +   For -static-libgcc: < 10.6, use the unwinder in libgcc_eh (and find
 +   the emultls impl. there too).
-+
+ 
+-   If libgcc_eh is linked against, it has to be before -lgcc, because it might
+-   need symbols from -lgcc.  */
 +   For -static-libgcc: >= 10.6, the unwinder *still* comes from libSystem and
 +   we find the emutls impl from lemutls_w. In either case, the builtins etc.
 +   are linked from -lgcc.
-+
+ 
 +   When we have specified shared-libgcc or any case that might require
 +   exceptions, we pull the libgcc content (including emulated tls) from
 +   -lgcc_s.1 in GCC and the unwinder from /usr/lib/libgcc_s.1 for < 10.6 and
@@ -16770,80 +16783,78 @@ index 76a625f477e..741cbff9234 100644
  #else
 -#define _mm512_scalef_round_pd(A, B, C)            \
 -    (__m512d)__builtin_ia32_scalefpd512_mask(A, B, (__v8df)_mm512_undefined_pd(), -1, C)
--
--#define _mm512_mask_scalef_round_pd(W, U, A, B, C) \
--    (__m512d)__builtin_ia32_scalefpd512_mask(A, B, W, U, C)
--
--#define _mm512_maskz_scalef_round_pd(U, A, B, C)   \
--    (__m512d)__builtin_ia32_scalefpd512_mask(A, B, (__v8df)_mm512_setzero_pd(), U, C)
 +#define _mm512_scalef_round_pd(A, B, C)					\
 +  ((__m512d)								\
 +   __builtin_ia32_scalefpd512_mask((A), (B),				\
 +				   (__v8df) _mm512_undefined_pd(),	\
 +				   -1, (C)))
-+
+ 
+-#define _mm512_mask_scalef_round_pd(W, U, A, B, C) \
+-    (__m512d)__builtin_ia32_scalefpd512_mask(A, B, W, U, C)
 +#define _mm512_mask_scalef_round_pd(W, U, A, B, C)			\
 +  ((__m512d) __builtin_ia32_scalefpd512_mask((A), (B), (W), (U), (C)))
-+
+ 
+-#define _mm512_maskz_scalef_round_pd(U, A, B, C)   \
+-    (__m512d)__builtin_ia32_scalefpd512_mask(A, B, (__v8df)_mm512_setzero_pd(), U, C)
 +#define _mm512_maskz_scalef_round_pd(U, A, B, C)			\
 +  ((__m512d)								\
 +   __builtin_ia32_scalefpd512_mask((A), (B),				\
 +				   (__v8df) _mm512_setzero_pd(),	\
 +				   (U), (C)))
-+
+ 
+-#define _mm512_scalef_round_ps(A, B, C)            \
+-    (__m512)__builtin_ia32_scalefps512_mask(A, B, (__v16sf)_mm512_undefined_ps(), -1, C)
 +#define _mm512_scalef_round_ps(A, B, C)					\
 +  ((__m512)								\
 +   __builtin_ia32_scalefps512_mask((A), (B),				\
 +				   (__v16sf) _mm512_undefined_ps(),	\
 +				   -1, (C)))
-+
+ 
+-#define _mm512_mask_scalef_round_ps(W, U, A, B, C) \
+-    (__m512)__builtin_ia32_scalefps512_mask(A, B, W, U, C)
 +#define _mm512_mask_scalef_round_ps(W, U, A, B, C)			\
 +  ((__m512) __builtin_ia32_scalefps512_mask((A), (B), (W), (U), (C)))
-+
+ 
+-#define _mm512_maskz_scalef_round_ps(U, A, B, C)   \
+-    (__m512)__builtin_ia32_scalefps512_mask(A, B, (__v16sf)_mm512_setzero_ps(), U, C)
 +#define _mm512_maskz_scalef_round_ps(U, A, B, C)			\
 +  ((__m512)								\
 +   __builtin_ia32_scalefps512_mask((A), (B),				\
 +				   (__v16sf) _mm512_setzero_ps(),	\
 +				   (U), (C)))
-+
+ 
+-#define _mm_scalef_round_sd(A, B, C)            \
+-    (__m128d)__builtin_ia32_scalefsd_mask_round (A, B, \
+-	(__v2df)_mm_setzero_pd (), -1, C)
 +#define _mm_scalef_round_sd(A, B, C)					\
 +  ((__m128d)								\
 +   __builtin_ia32_scalefsd_mask_round ((A), (B),			\
 +				       (__v2df) _mm_undefined_pd (),	\
 +				       -1, (C)))
  
--#define _mm512_scalef_round_ps(A, B, C)            \
--    (__m512)__builtin_ia32_scalefps512_mask(A, B, (__v16sf)_mm512_undefined_ps(), -1, C)
+-#define _mm_scalef_round_ss(A, B, C)            \
+-    (__m128)__builtin_ia32_scalefss_mask_round (A, B, \
+-	(__v4sf)_mm_setzero_ps (), -1, C)
 +#define _mm_scalef_round_ss(A, B, C)					\
 +  ((__m128)								\
 +   __builtin_ia32_scalefss_mask_round ((A), (B),			\
 +				       (__v4sf) _mm_undefined_ps (),	\
 +				       -1, (C)))
- 
--#define _mm512_mask_scalef_round_ps(W, U, A, B, C) \
--    (__m512)__builtin_ia32_scalefps512_mask(A, B, W, U, C)
++
 +#define _mm_mask_scalef_round_sd(W, U, A, B, C)				\
 +  ((__m128d)								\
 +   __builtin_ia32_scalefsd_mask_round ((A), (B), (W), (U), (C)))
- 
--#define _mm512_maskz_scalef_round_ps(U, A, B, C)   \
--    (__m512)__builtin_ia32_scalefps512_mask(A, B, (__v16sf)_mm512_setzero_ps(), U, C)
++
 +#define _mm_mask_scalef_round_ss(W, U, A, B, C)				\
 +  ((__m128)								\
 +   __builtin_ia32_scalefss_mask_round ((A), (B), (W), (U), (C)))
- 
--#define _mm_scalef_round_sd(A, B, C)            \
--    (__m128d)__builtin_ia32_scalefsd_mask_round (A, B, \
--	(__v2df)_mm_setzero_pd (), -1, C)
++
 +#define _mm_maskz_scalef_round_sd(U, A, B, C)				\
 +  ((__m128d)								\
 +   __builtin_ia32_scalefsd_mask_round ((A), (B),			\
 +				       (__v2df) _mm_setzero_pd (),	\
 +				       (U), (C)))
- 
--#define _mm_scalef_round_ss(A, B, C)            \
--    (__m128)__builtin_ia32_scalefss_mask_round (A, B, \
--	(__v4sf)_mm_setzero_ps (), -1, C)
++
 +#define _mm_maskz_scalef_round_ss(U, A, B, C)				\
 +  ((__m128)								\
 +   __builtin_ia32_scalefss_mask_round ((A), (B),			\
@@ -18193,14 +18204,18 @@ index 3a82fac85e3..770befc908b 100644
 -  rtx cross_product = gen_reg_rtx (DImode);
    rtx op1l, op1r, op2l, op2r;
 -  rtx op1shifted, op2shifted;
--
+ 
 -  op1shifted = gen_reg_rtx (DImode);
 -  op2shifted = gen_reg_rtx (DImode);
 -  op1l = gen_reg_rtx (SImode);
 -  op1r = gen_reg_rtx (SImode);
 -  op2l = gen_reg_rtx (SImode);
 -  op2r = gen_reg_rtx (SImode);
--
++  if (TARGET_64BIT)
++    {
++      rtx op1shifted = gen_reg_rtx (DImode);
++      rtx op2shifted = gen_reg_rtx (DImode);
+ 
 -  emit_move_insn (op1shifted, gen_rtx_LSHIFTRT (DImode, operands[1],
 -						GEN_INT (32)));
 -  emit_move_insn (op2shifted, gen_rtx_LSHIFTRT (DImode, operands[2],
@@ -18209,12 +18224,6 @@ index 3a82fac85e3..770befc908b 100644
 -  op2r = force_reg (SImode, gen_rtx_SUBREG (SImode, operands[2], 4));
 -  op1l = force_reg (SImode, gen_rtx_SUBREG (SImode, op1shifted, 4));
 -  op2l = force_reg (SImode, gen_rtx_SUBREG (SImode, op2shifted, 4));
-+
-+  if (TARGET_64BIT)
-+    {
-+      rtx op1shifted = gen_reg_rtx (DImode);
-+      rtx op2shifted = gen_reg_rtx (DImode);
-+
 +      emit_move_insn (op1shifted, gen_rtx_LSHIFTRT (DImode, operands[1],
 +						    GEN_INT (32)));
 +      emit_move_insn (op2shifted, gen_rtx_LSHIFTRT (DImode, operands[2],
@@ -20036,18 +20045,17 @@ index 2462cf5bdac..46d079bc13a 100644
 -  __v4si vsum;
 -  const __v4su zero = { 0, 0, 0, 0 };
 -  __v4si result;
--
--  a = (__v16qu) __A;
--  b = (__v16qu) __B;
--  vmin = vec_min (a, b);
--  vmax = vec_max (a, b);
--  vabsdiff = vec_sub (vmax, vmin);
 +  __v16qu __a, __b;
 +  __v16qu __vmin, __vmax, __vabsdiff;
 +  __v4si __vsum;
 +  const __v4su __zero = { 0, 0, 0, 0 };
 +  __v4si __result;
-+
+ 
+-  a = (__v16qu) __A;
+-  b = (__v16qu) __B;
+-  vmin = vec_min (a, b);
+-  vmax = vec_max (a, b);
+-  vabsdiff = vec_sub (vmax, vmin);
 +  __a = (__v16qu) __A;
 +  __b = (__v16qu) __B;
 +  __vmin = vec_min (__a, __b);
@@ -20090,16 +20098,15 @@ index 163f08738c3..be5c2bee415 100644
    /* Linux GLIBC malloc alignment is at least 2 X ptr size.  */
 -  size_t malloc_align = (sizeof (void *) + sizeof (void *));
 -  void *ptr;
--
++  size_t __malloc_align = (sizeof (void *) + sizeof (void *));
++  void *__ptr;
+ 
 -  if (alignment == malloc_align && alignment == vec_align)
 -    return malloc (size);
 -  if (alignment < vec_align)
 -    alignment = vec_align;
 -  if (posix_memalign (&ptr, alignment, size) == 0)
 -    return ptr;
-+  size_t __malloc_align = (sizeof (void *) + sizeof (void *));
-+  void *__ptr;
-+
 +  if (__alignment == __malloc_align && __alignment == __vec_align)
 +    return malloc (__size);
 +  if (__alignment < __vec_align)
@@ -21519,7 +21526,8 @@ index 497fb1528b4..2de4bc7b12b 100644
 +  return (__m64) ((__vector long long) __res)[0];
  #else
 -  __m64_union res;
--
++  __m64_union __res;
+ 
 -  res.as_char[0] = __b;
 -  res.as_char[1] = __b;
 -  res.as_char[2] = __b;
@@ -21529,8 +21537,6 @@ index 497fb1528b4..2de4bc7b12b 100644
 -  res.as_char[6] = __b;
 -  res.as_char[7] = __b;
 -  return (res.as_m64);
-+  __m64_union __res;
-+
 +  __res.as_char[0] = __b;
 +  __res.as_char[1] = __b;
 +  __res.as_char[2] = __b;
@@ -22480,16 +22486,37 @@ index a6dc1156994..0ee9cc8047d 100644
        /* The callee's options must be a subset of the caller's options, i.e.
  	 a vsx function may inline an altivec function, but a no-vsx function
  	 must not inline a vsx function.  However, for those options that the
-@@ -26756,31 +26888,91 @@ rs6000_invalid_conversion (const_tree fromtype, const_tree totype)
+@@ -26756,33 +26888,93 @@ rs6000_invalid_conversion (const_tree fromtype, const_tree totype)
        if (tomode == POImode)
  	return N_("invalid conversion to type %<__vector_pair%>");
      }
 -  else if (POINTER_TYPE_P (fromtype) && POINTER_TYPE_P (totype))
-+
-+  /* Conversion allowed.  */
-+  return NULL;
-+}
-+
+-    {
+-      /* We really care about the modes of the base types.  */
+-      frommode = TYPE_MODE (TREE_TYPE (fromtype));
+-      tomode = TYPE_MODE (TREE_TYPE (totype));
+-
+-      /* Do not allow conversions to/from PXImode and POImode pointer
+-	 types, except to/from void pointers.  */
+-      if (frommode != tomode
+-	  && frommode != VOIDmode
+-	  && tomode != VOIDmode)
+-	{
+-	  if (frommode == PXImode)
+-	    return N_("invalid conversion from type %<* __vector_quad%>");
+-	  if (tomode == PXImode)
+-	    return N_("invalid conversion to type %<* __vector_quad%>");
+-	  if (frommode == POImode)
+-	    return N_("invalid conversion from type %<* __vector_pair%>");
+-	  if (tomode == POImode)
+-	    return N_("invalid conversion to type %<* __vector_pair%>");
+-	}
+-    }
+ 
+   /* Conversion allowed.  */
+   return NULL;
+ }
+ 
 +/* If the given TYPE is one MMA opaque type, emit the corresponding
 +   error messages and return true, otherwise return false.  */
 +
@@ -22503,21 +22530,13 @@ index a6dc1156994..0ee9cc8047d 100644
 +      return true;
 +    }
 +  else if (mv == vector_pair_type_node)
-     {
--      /* We really care about the modes of the base types.  */
--      frommode = TYPE_MODE (TREE_TYPE (fromtype));
--      tomode = TYPE_MODE (TREE_TYPE (totype));
++    {
 +      error ("type %<__vector_pair%> requires the %qs option", "-mmma");
 +      return true;
 +    }
 +  return false;
 +}
- 
--      /* Do not allow conversions to/from PXImode and POImode pointer
--	 types, except to/from void pointers.  */
--      if (frommode != tomode
--	  && frommode != VOIDmode
--	  && tomode != VOIDmode)
++
 +/* Now we have only two opaque types, they are __vector_quad and
 +   __vector_pair built-in types.  They are target specific and
 +   only available when MMA is supported.  With MMA supported, it
@@ -22565,15 +22584,7 @@ index a6dc1156994..0ee9cc8047d 100644
 +	    }
 +	}
 +      else if (gcall *gc = dyn_cast<gcall *> (stmt))
- 	{
--	  if (frommode == PXImode)
--	    return N_("invalid conversion from type %<* __vector_quad%>");
--	  if (tomode == PXImode)
--	    return N_("invalid conversion to type %<* __vector_quad%>");
--	  if (frommode == POImode)
--	    return N_("invalid conversion from type %<* __vector_pair%>");
--	  if (tomode == POImode)
--	    return N_("invalid conversion to type %<* __vector_pair%>");
++	{
 +	  unsigned nargs = gimple_call_num_args (gc);
 +	  for (unsigned i = 0; i < nargs; i++)
 +	    {
@@ -22582,15 +22593,15 @@ index a6dc1156994..0ee9cc8047d 100644
 +	      if (check_and_error_invalid_use (type))
 +		return true;
 +	    }
- 	}
-     }
- 
--  /* Conversion allowed.  */
--  return NULL;
++	}
++    }
++
 +  return false;
- }
- 
++}
++
  struct gcc_target targetm = TARGET_INITIALIZER;
+ 
+ #include "gt-rs6000.h"
 diff --git a/gcc/config/rs6000/rs6000.h b/gcc/config/rs6000/rs6000.h
 index efd989c5d29..bb297a0a14d 100644
 --- a/gcc/config/rs6000/rs6000.h
@@ -23951,15 +23962,14 @@ index 5a996800693..ba5534132ab 100644
  #if _ARCH_PWR8
 -  __vector signed short a, b, r;
 -  __vector __bool short c;
--
++  __vector signed short __a, __b, __r;
++  __vector __bool short __c;
+ 
 -  a = (__vector signed short)vec_splats (__A);
 -  b = (__vector signed short)vec_splats (__B);
 -  c = (__vector __bool short)vec_cmpgt (a, b);
 -  r = vec_sel (b, a, c);
 -  return (__m64) ((__vector long long) r)[0];
-+  __vector signed short __a, __b, __r;
-+  __vector __bool short __c;
-+
 +  __a = (__vector signed short)vec_splats (__A);
 +  __b = (__vector signed short)vec_splats (__B);
 +  __c = (__vector __bool short)vec_cmpgt (__a, __b);
@@ -24002,15 +24012,14 @@ index 5a996800693..ba5534132ab 100644
  #if _ARCH_PWR8
 -  __vector unsigned char a, b, r;
 -  __vector __bool char c;
--
++  __vector unsigned char __a, __b, __r;
++  __vector __bool char __c;
+ 
 -  a = (__vector unsigned char)vec_splats (__A);
 -  b = (__vector unsigned char)vec_splats (__B);
 -  c = (__vector __bool char)vec_cmpgt (a, b);
 -  r = vec_sel (b, a, c);
 -  return (__m64) ((__vector long long) r)[0];
-+  __vector unsigned char __a, __b, __r;
-+  __vector __bool char __c;
-+
 +  __a = (__vector unsigned char)vec_splats (__A);
 +  __b = (__vector unsigned char)vec_splats (__B);
 +  __c = (__vector __bool char)vec_cmpgt (__a, __b);
@@ -24048,15 +24057,14 @@ index 5a996800693..ba5534132ab 100644
  #if _ARCH_PWR8
 -  __vector signed short a, b, r;
 -  __vector __bool short c;
--
++  __vector signed short __a, __b, __r;
++  __vector __bool short __c;
+ 
 -  a = (__vector signed short)vec_splats (__A);
 -  b = (__vector signed short)vec_splats (__B);
 -  c = (__vector __bool short)vec_cmplt (a, b);
 -  r = vec_sel (b, a, c);
 -  return (__m64) ((__vector long long) r)[0];
-+  __vector signed short __a, __b, __r;
-+  __vector __bool short __c;
-+
 +  __a = (__vector signed short)vec_splats (__A);
 +  __b = (__vector signed short)vec_splats (__B);
 +  __c = (__vector __bool short)vec_cmplt (__a, __b);
@@ -24099,15 +24107,14 @@ index 5a996800693..ba5534132ab 100644
  #if _ARCH_PWR8
 -  __vector unsigned char a, b, r;
 -  __vector __bool char c;
--
++  __vector unsigned char __a, __b, __r;
++  __vector __bool char __c;
+ 
 -  a = (__vector unsigned char)vec_splats (__A);
 -  b = (__vector unsigned char)vec_splats (__B);
 -  c = (__vector __bool char)vec_cmplt (a, b);
 -  r = vec_sel (b, a, c);
 -  return (__m64) ((__vector long long) r)[0];
-+  __vector unsigned char __a, __b, __r;
-+  __vector __bool char __c;
-+
 +  __a = (__vector unsigned char)vec_splats (__A);
 +  __b = (__vector unsigned char)vec_splats (__B);
 +  __c = (__vector __bool char)vec_cmplt (__a, __b);
@@ -24380,27 +24387,23 @@ index dee32f11e67..200fd0298ed 100644
  
 -       if (!parm_rtx)
 -	 continue;
--
++      if (!parm_rtx)
++	continue;
+ 
 -       if (REG_P (parm_rtx))
 -	 {
 -	   for (reg = 0; reg < REG_NREGS (parm_rtx); reg++)
 -	     if (!call_used_or_fixed_reg_p (reg + REGNO (parm_rtx)))
 -	       return true;
 -	 }
-+      if (!parm_rtx)
-+	continue;
- 
--       if (GET_CODE (parm_rtx) == PARALLEL)
--	 {
--	   int i;
 +      if (REG_P (parm_rtx))
 +	{
 +	  int size = s390_function_arg_size (arg.mode, arg.type);
 +	  int nregs = (size + UNITS_PER_LONG - 1) / UNITS_PER_LONG;
  
--	   for (i = 0; i < XVECLEN (parm_rtx, 0); i++)
--	     {
--	       rtx r = XEXP (XVECEXP (parm_rtx, 0, i), 0);
+-       if (GET_CODE (parm_rtx) == PARALLEL)
+-	 {
+-	   int i;
 +	  for (reg = 0; reg < nregs; reg++)
 +	    if (!call_used_or_fixed_reg_p (reg + REGNO (parm_rtx)))
 +	      return true;
@@ -24409,11 +24412,15 @@ index dee32f11e67..200fd0298ed 100644
 +	{
 +	  int i;
  
--	       gcc_assert (REG_P (r));
+-	   for (i = 0; i < XVECLEN (parm_rtx, 0); i++)
+-	     {
+-	       rtx r = XEXP (XVECEXP (parm_rtx, 0, i), 0);
 +	  for (i = 0; i < XVECLEN (parm_rtx, 0); i++)
 +	    {
 +	      rtx r = XEXP (XVECEXP (parm_rtx, 0, i), 0);
  
+-	       gcc_assert (REG_P (r));
+-
 -	       for (reg = 0; reg < REG_NREGS (r); reg++)
 -		 if (!call_used_or_fixed_reg_p (reg + REGNO (r)))
 -		   return true;
@@ -27343,29 +27350,35 @@ index ad3853940ff..369920eda90 100644
  	{
  	  r = get_target_expr_sfinae (r, tf_warning_or_error | tf_no_cleanup);
  	  TREE_CONSTANT (r) = true;
-@@ -8131,18 +8305,18 @@ potential_constant_expression_1 (tree t, bool want_rval, bool strict, bool now,
+@@ -8131,20 +8305,20 @@ potential_constant_expression_1 (tree t, bool want_rval, bool strict, bool now,
        tmp = DECL_EXPR_DECL (t);
        if (VAR_P (tmp) && !DECL_ARTIFICIAL (tmp))
  	{
 -	  if (TREE_STATIC (tmp))
+-	    {
+-	      if (flags & tf_error)
+-		error_at (DECL_SOURCE_LOCATION (tmp), "%qD declared "
+-			  "%<static%> in %<constexpr%> context", tmp);
+-	      return false;
+-	    }
+-	  else if (CP_DECL_THREAD_LOCAL_P (tmp))
 +	  if (CP_DECL_THREAD_LOCAL_P (tmp) && !DECL_REALLY_EXTERN (tmp))
  	    {
  	      if (flags & tf_error)
  		error_at (DECL_SOURCE_LOCATION (tmp), "%qD declared "
--			  "%<static%> in %<constexpr%> context", tmp);
-+			  "%<thread_local%> in %<constexpr%> context", tmp);
+ 			  "%<thread_local%> in %<constexpr%> context", tmp);
  	      return false;
  	    }
--	  else if (CP_DECL_THREAD_LOCAL_P (tmp))
 +	  else if (TREE_STATIC (tmp))
- 	    {
- 	      if (flags & tf_error)
- 		error_at (DECL_SOURCE_LOCATION (tmp), "%qD declared "
--			  "%<thread_local%> in %<constexpr%> context", tmp);
++	    {
++	      if (flags & tf_error)
++		error_at (DECL_SOURCE_LOCATION (tmp), "%qD declared "
 +			  "%<static%> in %<constexpr%> context", tmp);
- 	      return false;
- 	    }
++	      return false;
++	    }
  	  else if (!check_for_uninitialized_const_var
+ 		   (tmp, /*constexpr_context_p=*/true, flags))
+ 	    return false;
 @@ -8251,13 +8425,18 @@ potential_constant_expression_1 (tree t, bool want_rval, bool strict, bool now,
        tmp = boolean_false_node;
      truth:
@@ -29780,7 +29793,8 @@ index 8042f03f369..dcb8fc151f9 100644
    tree size_exp = size_in_bytes (target_type);
  
 -  if (integer_zerop (size_exp))
--    {
++  if (integer_zerop (size_exp) || integer_onep (size_exp))
+     {
 -      /* Test for array of void.  */
 -      if (TYPE_MODE (target_type) == TYPE_MODE (void_type_node))
 -	index = fold_convert (type, index);
@@ -29792,8 +29806,7 @@ index 8042f03f369..dcb8fc151f9 100644
 -	}
 -    }
 -  else if (integer_onep (size_exp))
-+  if (integer_zerop (size_exp) || integer_onep (size_exp))
-     {
+-    {
 -      /* Array of bytes -- No need to multiply.  */
 +      /* Array of void or bytes -- No need to multiply.  */
        index = fold_convert (type, index);
@@ -30901,7 +30914,10 @@ index 9c734595950..8184f59e820 100644
  that the pointer @var{P} returned by the function cannot alias any
  other pointer valid when the function returns, and moreover no
 -pointers to valid objects occur in any storage addressed by @var{P}.
--
++pointers to valid objects occur in any storage addressed by @var{P}. In
++addition, GCC predicts that a function with the attribute returns
++non-null in most cases.
+ 
 -Using this attribute can improve optimization.  Compiler predicts
 -that a function with the attribute returns non-null in most cases.
 -Functions like
@@ -30909,10 +30925,6 @@ index 9c734595950..8184f59e820 100644
 -a pointer to uninitialized or zeroed-out storage.  However, functions
 -like @code{realloc} do not have this property, as they can return a
 -pointer to storage containing pointers.
-+pointers to valid objects occur in any storage addressed by @var{P}. In
-+addition, GCC predicts that a function with the attribute returns
-+non-null in most cases.
-+
 +Using the attribute is designed to improve optimization
 +by relying on the aliasing property it implies.  Functions like @code{malloc}
 +and @code{calloc} have this property because they return a pointer to
@@ -34244,7 +34256,7 @@ index 8edc83a42c3..56b05795c27 100644
  				   "structure constructor at %C", comp->name))
  		return false;
 +	      value = gfc_get_null_expr (&gfc_current_locus);
-+	    }
+ 	    }
 +	  /* ....(Preceeding sentence) If a component with default
 +	     initialization has no corresponding component-data-source, then
 +	     the default initialization is applied to that component.  */
@@ -34254,7 +34266,7 @@ index 8edc83a42c3..56b05795c27 100644
 +				   "with missing optional arguments at %C"))
 +		return false;
 +	      value = gfc_copy_expr (comp->initializer);
- 	    }
++	    }
 +	  /* Do not trap components such as the string length for deferred
 +	     length character components.  */
  	  else if (!comp->attr.artificial)
@@ -34717,15 +34729,7 @@ index d28aa7a3c16..cb6f2404c0b 100644
 -	  return result;
 -	}
 -      else if (lensub == 1)
-+      last = -1;
-+      start = len - lensub;
-+      delta = -1;
-+    }
-+
-+  for (; start != last; start += delta)
-+    {
-+      for (i = 0; i < lensub; i++)
- 	{
+-	{
 -	  for (i = 0; i < len; i++)
 -	    {
 -	      for (j = 0; j < lensub; j++)
@@ -34738,13 +34742,9 @@ index d28aa7a3c16..cb6f2404c0b 100644
 -		    }
 -		}
 -	    }
-+	  if (x->value.character.string[start + i]
-+	      != y->value.character.string[i])
-+	    break;
- 	}
+-	}
 -      else
-+      if (i == lensub)
- 	{
+-	{
 -	  for (i = 0; i < len; i++)
 -	    {
 -	      for (j = 0; j < lensub; j++)
@@ -34760,7 +34760,11 @@ index d28aa7a3c16..cb6f2404c0b 100644
 -			    if (y->value.character.string[k]
 -			        == x->value.character.string[k + start])
 -			      count++;
--
++      last = -1;
++      start = len - lensub;
++      delta = -1;
++    }
+ 
 -			  if (count == lensub)
 -			    {
 -			      index = start + 1;
@@ -34774,6 +34778,16 @@ index d28aa7a3c16..cb6f2404c0b 100644
 -		    }
 -		}
 -	    }
++  for (; start != last; start += delta)
++    {
++      for (i = 0; i < lensub; i++)
++	{
++	  if (x->value.character.string[start + i]
++	      != y->value.character.string[i])
++	    break;
++	}
++      if (i == lensub)
++	{
 +	  index = start + 1;
 +	  goto done;
  	}
@@ -35254,10 +35268,9 @@ index c2321a9ff5f..7dfd19ffe10 100644
 -			&& !e->symtree->n.sym->attr.associate_var
 -			&& e->ts.type != BT_CHARACTER && e->ts.type != BT_DERIVED
 -			&& e->ts.type != BT_CLASS && !sym->attr.elemental;
--
--		      gfc_conv_expr_reference (&parmse, e, add_clobber);
 +		      gfc_conv_expr_reference (&parmse, e);
-+
+ 
+-		      gfc_conv_expr_reference (&parmse, e, add_clobber);
 +		      if (fsym
 +			  && fsym->attr.intent == INTENT_OUT
 +			  && !fsym->attr.allocatable
@@ -36108,14 +36121,13 @@ index 19d2ec09aa5..0c567206d20 100644
  	  offset_int off = tree_to_shwi (memrefoff);
  	  refoff += off;
 -      	}
--
+ 
 -      if (!integer_zerop (memrefoff))
 -	/* A non-zero offset into an array of struct with flexible array
 -	   members implies that the array is empty because there is no
 -	   way to initialize such a member when it belongs to an array.
 -	   This must be some sort of a bug.  */
 -	refsize = 0;
-+
 +	  if (!integer_zerop (memrefoff)
 +	      && !COMPLETE_TYPE_P (TREE_TYPE (expr))
 +	      && multiple_of_p (sizetype, memrefoff,
@@ -38590,16 +38602,6 @@ index 4593871ea92..1b8785ce33f 100644
 -     for (insn = head; insn != NEXT_INSN (tail); insn = NEXT_INSN (insn))
 -      {
 -         rtx set;
--
--        if (CALL_P (insn)
--            || BARRIER_P (insn)
--            || (NONDEBUG_INSN_P (insn) && !JUMP_P (insn)
--                && !single_set (insn) && GET_CODE (PATTERN (insn)) != USE
--                && !reg_mentioned_p (count_reg, insn))
--            || (INSN_P (insn) && (set = single_set (insn))
--                && GET_CODE (SET_DEST (set)) == SUBREG))
--        break;
--      }
 +      for (insn = head; insn != NEXT_INSN (tail); insn = NEXT_INSN (insn))
 +	{
 +	  if (INSN_P (insn))
@@ -38610,7 +38612,16 @@ index 4593871ea92..1b8785ce33f 100644
 +	      if (hard_reg_set_intersect_p (regs, prohibited_regs))
 +		break;
 +	    }
-+
+ 
+-        if (CALL_P (insn)
+-            || BARRIER_P (insn)
+-            || (NONDEBUG_INSN_P (insn) && !JUMP_P (insn)
+-                && !single_set (insn) && GET_CODE (PATTERN (insn)) != USE
+-                && !reg_mentioned_p (count_reg, insn))
+-            || (INSN_P (insn) && (set = single_set (insn))
+-                && GET_CODE (SET_DEST (set)) == SUBREG))
+-        break;
+-      }
 +	  if (CALL_P (insn)
 +	      || BARRIER_P (insn)
 +	      || (INSN_P (insn) && single_set (insn)
@@ -63214,8 +63225,6 @@ index 13e8ab4dbfe..b6e743aa8b8 100644
      verbose "args: $args" 2
  
 -    eval spawn -noecho $args
--
--    expect_after full_buffer {	error "got full_buffer" }
 +    # We checked that the executable exists above, and can be executed, but
 +    # that does not cover other reasons that the launch could fail (e.g.
 +    # missing or malformed params); catch such cases here and report them.
@@ -63224,7 +63233,8 @@ index 13e8ab4dbfe..b6e743aa8b8 100644
 +    if { $pid <= 0 || $err != 0 || $sub_proc_id < 0 } {
 +        warning "failed to spawn : $args : err = $err"
 +    }
-+
+ 
+-    expect_after full_buffer {	error "got full_buffer" }
 +    # Increase the buffer size, if needed to avoid spurious buffer-full
 +    # events; GCC uses 10000; chose a power of two here.
 +    set current_max_match [match_max -i $sub_proc_id]
@@ -63856,29 +63866,18 @@ index 2cb54def860..ba059ebc0de 100644
 -      if (!operand_equal_p (CHREC_RIGHT (access1), CHREC_RIGHT (access2), 0))
 +      if (found >= 0)
  	return false;
-+      found = i;
-+    }
- 
+-
 -      tree idx_step = CHREC_RIGHT (access1);
 -      /* Index must have const step, otherwise DR_STEP won't be constant.  */
 -      gcc_assert (TREE_CODE (idx_step) == INTEGER_CST);
 -      /* Index must evaluate in the same direction as DR.  */
 -      gcc_assert (!neg_step || tree_int_cst_sign_bit (idx_step) == 1);
-+  /* Ought not to happen in practice, since if all accesses are equal then the
-+     alias should be decidable at compile time.  */
-+  if (found < 0)
-+    return false;
- 
+-
 -      tree min1 = CHREC_LEFT (access1);
 -      tree min2 = CHREC_LEFT (access2);
 -      if (!types_compatible_p (TREE_TYPE (min1), TREE_TYPE (min2)))
 -	return false;
-+  /* The two indices must have the same step.  */
-+  tree access1 = DR_ACCESS_FN (dr_a.dr, found);
-+  tree access2 = DR_ACCESS_FN (dr_b.dr, found);
-+  if (!operand_equal_p (CHREC_RIGHT (access1), CHREC_RIGHT (access2), 0))
-+    return false;
- 
+-
 -      /* Ideally, alias can be checked against loop's control IV, but we
 -	 need to prove linear mapping between control IV and reference
 -	 index.  Although that should be true, we check against (array)
@@ -63893,38 +63892,15 @@ index 2cb54def860..ba059ebc0de 100644
 -      poly_offset_int idx_len2 = abs_idx_step * niter_len2;
 -      poly_offset_int idx_access1 = abs_idx_step * niter_access1;
 -      poly_offset_int idx_access2 = abs_idx_step * niter_access2;
-+  tree idx_step = CHREC_RIGHT (access1);
-+  /* Index must have const step, otherwise DR_STEP won't be constant.  */
-+  gcc_assert (TREE_CODE (idx_step) == INTEGER_CST);
-+  /* Index must evaluate in the same direction as DR.  */
-+  gcc_assert (!neg_step || tree_int_cst_sign_bit (idx_step) == 1);
- 
+-
 -      gcc_assert (known_ge (idx_len1, 0)
 -		  && known_ge (idx_len2, 0)
 -		  && known_ge (idx_access1, 0)
 -		  && known_ge (idx_access2, 0));
-+  tree min1 = CHREC_LEFT (access1);
-+  tree min2 = CHREC_LEFT (access2);
-+  if (!types_compatible_p (TREE_TYPE (min1), TREE_TYPE (min2)))
-+    return false;
- 
+-
 -      /* Each access has the following pattern, with lengths measured
 -	 in units of INDEX:
-+  /* Ideally, alias can be checked against loop's control IV, but we
-+     need to prove linear mapping between control IV and reference
-+     index.  Although that should be true, we check against (array)
-+     index of data reference.  Like segment length, index length is
-+     linear function of the number of iterations with index_step as
-+     the coefficient, i.e, niter_len * idx_step.  */
-+  offset_int abs_idx_step = offset_int::from (wi::to_wide (idx_step),
-+					      SIGNED);
-+  if (neg_step)
-+    abs_idx_step = -abs_idx_step;
-+  poly_offset_int idx_len1 = abs_idx_step * niter_len1;
-+  poly_offset_int idx_len2 = abs_idx_step * niter_len2;
-+  poly_offset_int idx_access1 = abs_idx_step * niter_access1;
-+  poly_offset_int idx_access2 = abs_idx_step * niter_access2;
- 
+-
 -	      <-- idx_len -->
 -	      <--- A: -ve step --->
 -	      +-----+-------+-----+-------+-----+
@@ -63934,77 +63910,45 @@ index 2cb54def860..ba059ebc0de 100644
 -			    <-- idx_len -->
 -			    |
 -			   min
-+  gcc_assert (known_ge (idx_len1, 0)
-+	      && known_ge (idx_len2, 0)
-+	      && known_ge (idx_access1, 0)
-+	      && known_ge (idx_access2, 0));
- 
+-
 -	 where "n" is the number of scalar iterations covered by the segment
 -	 and where each access spans idx_access units.
-+  /* Each access has the following pattern, with lengths measured
-+     in units of INDEX:
- 
+-
 -	 A is the range of bytes accessed when the step is negative,
 -	 B is the range when the step is positive.
-+	  <-- idx_len -->
-+	  <--- A: -ve step --->
-+	  +-----+-------+-----+-------+-----+
-+	  | n-1 | ..... |  0  | ..... | n-1 |
-+	  +-----+-------+-----+-------+-----+
-+			<--- B: +ve step --->
-+			<-- idx_len -->
-+			|
-+		       min
- 
+-
 -	 When checking for general overlap, we need to test whether
 -	 the range:
-+     where "n" is the number of scalar iterations covered by the segment
-+     and where each access spans idx_access units.
- 
+-
 -	   [min1 + low_offset1, min2 + high_offset1 + idx_access1 - 1]
-+     A is the range of bytes accessed when the step is negative,
-+     B is the range when the step is positive.
- 
+-
 -	 overlaps:
-+     When checking for general overlap, we need to test whether
-+     the range:
- 
+-
 -	   [min2 + low_offset2, min2 + high_offset2 + idx_access2 - 1]
-+       [min1 + low_offset1, min1 + high_offset1 + idx_access1 - 1]
- 
+-
 -	 where:
-+     overlaps:
- 
+-
 -	    low_offsetN = +ve step ? 0 : -idx_lenN;
 -	   high_offsetN = +ve step ? idx_lenN : 0;
-+       [min2 + low_offset2, min2 + high_offset2 + idx_access2 - 1]
- 
+-
 -	 This is equivalent to testing whether:
-+     where:
- 
+-
 -	   min1 + low_offset1 <= min2 + high_offset2 + idx_access2 - 1
 -	   && min2 + low_offset2 <= min1 + high_offset1 + idx_access1 - 1
-+	low_offsetN = +ve step ? 0 : -idx_lenN;
-+       high_offsetN = +ve step ? idx_lenN : 0;
- 
+-
 -	 Converting this into a single test, there is an overlap if:
-+     This is equivalent to testing whether:
- 
+-
 -	   0 <= min2 - min1 + bias <= limit
-+       min1 + low_offset1 <= min2 + high_offset2 + idx_access2 - 1
-+       && min2 + low_offset2 <= min1 + high_offset1 + idx_access1 - 1
- 
+-
 -	 where  bias = high_offset2 + idx_access2 - 1 - low_offset1
 -	       limit = (high_offset1 - low_offset1 + idx_access1 - 1)
 -		     + (high_offset2 - low_offset2 + idx_access2 - 1)
 -	  i.e. limit = idx_len1 + idx_access1 - 1 + idx_len2 + idx_access2 - 1
-+     Converting this into a single test, there is an overlap if:
- 
+-
 -	 Combining the tests requires limit to be computable in an unsigned
 -	 form of the index type; if it isn't, we fall back to the usual
 -	 pointer-based checks.
-+       0 <= min2 - min1 + bias <= limit
- 
+-
 -	 We can do better if DR_B is a write and if DR_A and DR_B are
 -	 well-ordered in both the original and the new code (see the
 -	 comment above the DR_ALIAS_* flags for details).  In this case
@@ -64012,74 +63956,42 @@ index 2cb54def860..ba059ebc0de 100644
 -	 access i of DR_B occurs after access numbers j<=i of DR_A in
 -	 both the original and the new code.  Any write or anti
 -	 dependencies wrt those DR_A accesses are therefore maintained.
-+     where  bias = high_offset2 + idx_access2 - 1 - low_offset1
-+	   limit = (high_offset1 - low_offset1 + idx_access1 - 1)
-+		 + (high_offset2 - low_offset2 + idx_access2 - 1)
-+      i.e. limit = idx_len1 + idx_access1 - 1 + idx_len2 + idx_access2 - 1
- 
+-
 -	 We just need to make sure that each individual write in DR_B does not
 -	 overlap any higher-indexed access in DR_A; such DR_A accesses happen
 -	 after the DR_B access in the original code but happen before it in
 -	 the new code.
-+     Combining the tests requires limit to be computable in an unsigned
-+     form of the index type; if it isn't, we fall back to the usual
-+     pointer-based checks.
- 
+-
 -	 We know the steps for both accesses are equal, so by induction, we
 -	 just need to test whether the first write of DR_B overlaps a later
 -	 access of DR_A.  In other words, we need to move min1 along by
 -	 one iteration:
-+     We can do better if DR_B is a write and if DR_A and DR_B are
-+     well-ordered in both the original and the new code (see the
-+     comment above the DR_ALIAS_* flags for details).  In this case
-+     we know that for each i in [0, n-1], the write performed by
-+     access i of DR_B occurs after access numbers j<=i of DR_A in
-+     both the original and the new code.  Any write or anti
-+     dependencies wrt those DR_A accesses are therefore maintained.
- 
+-
 -	   min1' = min1 + idx_step
-+     We just need to make sure that each individual write in DR_B does not
-+     overlap any higher-indexed access in DR_A; such DR_A accesses happen
-+     after the DR_B access in the original code but happen before it in
-+     the new code.
- 
+-
 -	 and use the ranges:
-+     We know the steps for both accesses are equal, so by induction, we
-+     just need to test whether the first write of DR_B overlaps a later
-+     access of DR_A.  In other words, we need to move min1 along by
-+     one iteration:
- 
+-
 -	   [min1' + low_offset1', min1' + high_offset1' + idx_access1 - 1]
-+       min1' = min1 + idx_step
- 
+-
 -	 and:
-+     and use the ranges:
- 
+-
 -	   [min2, min2 + idx_access2 - 1]
-+       [min1' + low_offset1', min1' + high_offset1' + idx_access1 - 1]
- 
+-
 -	 where:
-+     and:
- 
+-
 -	    low_offset1' = +ve step ? 0 : -(idx_len1 - |idx_step|)
 -	   high_offset1' = +ve_step ? idx_len1 - |idx_step| : 0.  */
 -      if (waw_or_war_p)
 -	idx_len1 -= abs_idx_step;
-+       [min2, min2 + idx_access2 - 1]
- 
+-
 -      poly_offset_int limit = idx_len1 + idx_access1 - 1 + idx_access2 - 1;
 -      if (!waw_or_war_p)
 -	limit += idx_len2;
-+     where:
- 
+-
 -      tree utype = unsigned_type_for (TREE_TYPE (min1));
 -      if (!wi::fits_to_tree_p (limit, utype))
 -	return false;
-+	low_offset1' = +ve step ? 0 : -(idx_len1 - |idx_step|)
-+       high_offset1' = +ve_step ? idx_len1 - |idx_step| : 0.  */
-+  if (waw_or_war_p)
-+    idx_len1 -= abs_idx_step;
- 
+-
 -      poly_offset_int low_offset1 = neg_step ? -idx_len1 : 0;
 -      poly_offset_int high_offset2 = neg_step || waw_or_war_p ? 0 : idx_len2;
 -      poly_offset_int bias = high_offset2 + idx_access2 - 1 - low_offset1;
@@ -64099,7 +64011,137 @@ index 2cb54def860..ba059ebc0de 100644
 -				  *cond_expr, part_cond_expr);
 -      else
 -	*cond_expr = part_cond_expr;
--    }
++      found = i;
+     }
++
++  /* Ought not to happen in practice, since if all accesses are equal then the
++     alias should be decidable at compile time.  */
++  if (found < 0)
++    return false;
++
++  /* The two indices must have the same step.  */
++  tree access1 = DR_ACCESS_FN (dr_a.dr, found);
++  tree access2 = DR_ACCESS_FN (dr_b.dr, found);
++  if (!operand_equal_p (CHREC_RIGHT (access1), CHREC_RIGHT (access2), 0))
++    return false;
++
++  tree idx_step = CHREC_RIGHT (access1);
++  /* Index must have const step, otherwise DR_STEP won't be constant.  */
++  gcc_assert (TREE_CODE (idx_step) == INTEGER_CST);
++  /* Index must evaluate in the same direction as DR.  */
++  gcc_assert (!neg_step || tree_int_cst_sign_bit (idx_step) == 1);
++
++  tree min1 = CHREC_LEFT (access1);
++  tree min2 = CHREC_LEFT (access2);
++  if (!types_compatible_p (TREE_TYPE (min1), TREE_TYPE (min2)))
++    return false;
++
++  /* Ideally, alias can be checked against loop's control IV, but we
++     need to prove linear mapping between control IV and reference
++     index.  Although that should be true, we check against (array)
++     index of data reference.  Like segment length, index length is
++     linear function of the number of iterations with index_step as
++     the coefficient, i.e, niter_len * idx_step.  */
++  offset_int abs_idx_step = offset_int::from (wi::to_wide (idx_step),
++					      SIGNED);
++  if (neg_step)
++    abs_idx_step = -abs_idx_step;
++  poly_offset_int idx_len1 = abs_idx_step * niter_len1;
++  poly_offset_int idx_len2 = abs_idx_step * niter_len2;
++  poly_offset_int idx_access1 = abs_idx_step * niter_access1;
++  poly_offset_int idx_access2 = abs_idx_step * niter_access2;
++
++  gcc_assert (known_ge (idx_len1, 0)
++	      && known_ge (idx_len2, 0)
++	      && known_ge (idx_access1, 0)
++	      && known_ge (idx_access2, 0));
++
++  /* Each access has the following pattern, with lengths measured
++     in units of INDEX:
++
++	  <-- idx_len -->
++	  <--- A: -ve step --->
++	  +-----+-------+-----+-------+-----+
++	  | n-1 | ..... |  0  | ..... | n-1 |
++	  +-----+-------+-----+-------+-----+
++			<--- B: +ve step --->
++			<-- idx_len -->
++			|
++		       min
++
++     where "n" is the number of scalar iterations covered by the segment
++     and where each access spans idx_access units.
++
++     A is the range of bytes accessed when the step is negative,
++     B is the range when the step is positive.
++
++     When checking for general overlap, we need to test whether
++     the range:
++
++       [min1 + low_offset1, min1 + high_offset1 + idx_access1 - 1]
++
++     overlaps:
++
++       [min2 + low_offset2, min2 + high_offset2 + idx_access2 - 1]
++
++     where:
++
++	low_offsetN = +ve step ? 0 : -idx_lenN;
++       high_offsetN = +ve step ? idx_lenN : 0;
++
++     This is equivalent to testing whether:
++
++       min1 + low_offset1 <= min2 + high_offset2 + idx_access2 - 1
++       && min2 + low_offset2 <= min1 + high_offset1 + idx_access1 - 1
++
++     Converting this into a single test, there is an overlap if:
++
++       0 <= min2 - min1 + bias <= limit
++
++     where  bias = high_offset2 + idx_access2 - 1 - low_offset1
++	   limit = (high_offset1 - low_offset1 + idx_access1 - 1)
++		 + (high_offset2 - low_offset2 + idx_access2 - 1)
++      i.e. limit = idx_len1 + idx_access1 - 1 + idx_len2 + idx_access2 - 1
++
++     Combining the tests requires limit to be computable in an unsigned
++     form of the index type; if it isn't, we fall back to the usual
++     pointer-based checks.
++
++     We can do better if DR_B is a write and if DR_A and DR_B are
++     well-ordered in both the original and the new code (see the
++     comment above the DR_ALIAS_* flags for details).  In this case
++     we know that for each i in [0, n-1], the write performed by
++     access i of DR_B occurs after access numbers j<=i of DR_A in
++     both the original and the new code.  Any write or anti
++     dependencies wrt those DR_A accesses are therefore maintained.
++
++     We just need to make sure that each individual write in DR_B does not
++     overlap any higher-indexed access in DR_A; such DR_A accesses happen
++     after the DR_B access in the original code but happen before it in
++     the new code.
++
++     We know the steps for both accesses are equal, so by induction, we
++     just need to test whether the first write of DR_B overlaps a later
++     access of DR_A.  In other words, we need to move min1 along by
++     one iteration:
++
++       min1' = min1 + idx_step
++
++     and use the ranges:
++
++       [min1' + low_offset1', min1' + high_offset1' + idx_access1 - 1]
++
++     and:
++
++       [min2, min2 + idx_access2 - 1]
++
++     where:
++
++	low_offset1' = +ve step ? 0 : -(idx_len1 - |idx_step|)
++       high_offset1' = +ve_step ? idx_len1 - |idx_step| : 0.  */
++  if (waw_or_war_p)
++    idx_len1 -= abs_idx_step;
++
 +  poly_offset_int limit = idx_len1 + idx_access1 - 1 + idx_access2 - 1;
 +  if (!waw_or_war_p)
 +    limit += idx_len2;
@@ -64846,19 +64888,15 @@ index 2fad2472775..328c743d232 100644
  
    /* In other cases, the expression is not materialized, so there
       is no destination to pass to may_propagate_copy.  On the other
-@@ -1352,25 +1356,19 @@ may_propagate_copy_into_asm (tree dest ATTRIBUTE_UNUSED)
+@@ -1352,43 +1356,6 @@ may_propagate_copy_into_asm (tree dest ATTRIBUTE_UNUSED)
  }
  
  
 -/* Common code for propagate_value and replace_exp.
-+/* Replace *OP_P with value VAL (assumed to be a constant or another SSA_NAME).
- 
+-
 -   Replace use operand OP_P with VAL.  FOR_PROPAGATION indicates if the
 -   replacement is done to propagate a value or not.  */
-+   Use this version when not const/copy propagating values.  For example,
-+   PRE uses this version when building expressions as they would appear
-+   in specific blocks taking into account actions of PHI nodes.
- 
+-
 -static void
 -replace_exp_1 (use_operand_p op_p, tree val,
 -    	       bool for_propagation ATTRIBUTE_UNUSED)
@@ -64871,37 +64909,50 @@ index 2fad2472775..328c743d232 100644
 -		  && TREE_CODE (val) == SSA_NAME
 -		  && !may_propagate_copy (op, val)));
 -    }
-+   The statement in which an expression has been replaced should be
-+   folded using fold_stmt_inplace.  */
- 
+-
 -  if (TREE_CODE (val) == SSA_NAME)
-+void
-+replace_exp (use_operand_p op_p, tree val)
-+{
-+  if (TREE_CODE (val) == SSA_NAME || CONSTANT_CLASS_P (val))
-     SET_USE (op_p, val);
-   else
-     SET_USE (op_p, unshare_expr (val));
-@@ -1386,22 +1384,10 @@ replace_exp_1 (use_operand_p op_p, tree val,
- void
- propagate_value (use_operand_p op_p, tree val)
- {
+-    SET_USE (op_p, val);
+-  else
+-    SET_USE (op_p, unshare_expr (val));
+-}
+-
+-
+-/* Propagate the value VAL (assumed to be a constant or another SSA_NAME)
+-   into the operand pointed to by OP_P.
+-
+-   Use this version for const/copy propagation as it will perform additional
+-   checks to ensure validity of the const/copy propagation.  */
+-
+-void
+-propagate_value (use_operand_p op_p, tree val)
+-{
 -  replace_exp_1 (op_p, val, true);
 -}
 -
--/* Replace *OP_P with value VAL (assumed to be a constant or another SSA_NAME).
--
--   Use this version when not const/copy propagating values.  For example,
--   PRE uses this version when building expressions as they would appear
--   in specific blocks taking into account actions of PHI nodes.
--
--   The statement in which an expression has been replaced should be
--   folded using fold_stmt_inplace.  */
--
--void
--replace_exp (use_operand_p op_p, tree val)
--{
+ /* Replace *OP_P with value VAL (assumed to be a constant or another SSA_NAME).
+ 
+    Use this version when not const/copy propagating values.  For example,
+@@ -1401,7 +1368,26 @@ propagate_value (use_operand_p op_p, tree val)
+ void
+ replace_exp (use_operand_p op_p, tree val)
+ {
 -  replace_exp_1 (op_p, val, false);
++  if (TREE_CODE (val) == SSA_NAME || CONSTANT_CLASS_P (val))
++    SET_USE (op_p, val);
++  else
++    SET_USE (op_p, unshare_expr (val));
++}
++
++
++/* Propagate the value VAL (assumed to be a constant or another SSA_NAME)
++   into the operand pointed to by OP_P.
++
++   Use this version for const/copy propagation as it will perform additional
++   checks to ensure validity of the const/copy propagation.  */
++
++void
++propagate_value (use_operand_p op_p, tree val)
++{
 +  if (flag_checking)
 +    gcc_assert (may_propagate_copy (USE_FROM_PTR (op_p), val,
 +				    !is_a <gphi *> (USE_STMT (op_p))));
@@ -66020,50 +66071,48 @@ diff --git a/gcc/tree-vect-slp.c b/gcc/tree-vect-slp.c
 index adc579ff544..551e03c1219 100644
 --- a/gcc/tree-vect-slp.c
 +++ b/gcc/tree-vect-slp.c
-@@ -969,31 +969,31 @@ vect_build_slp_tree_1 (unsigned char *swap,
+@@ -969,6 +969,20 @@ vect_build_slp_tree_1 (unsigned char *swap,
  	      continue;
  	    }
  
--	  if (need_same_oprnds)
 +	  if (!load_p && rhs_code == CALL_EXPR)
- 	    {
--	      tree other_op1 = (call_stmt
--				? gimple_call_arg (call_stmt, 1)
--				: gimple_assign_rhs2 (stmt));
--	      if (!operand_equal_p (first_op1, other_op1, 0))
++	    {
 +	      if (!compatible_calls_p (as_a <gcall *> (stmts[0]->stmt),
 +				       as_a <gcall *> (stmt)))
- 		{
- 		  if (dump_enabled_p ())
- 		    dump_printf_loc (MSG_MISSED_OPTIMIZATION, vect_location,
--				     "Build SLP failed: different shift "
--				     "arguments in %G", stmt);
++		{
++		  if (dump_enabled_p ())
++		    dump_printf_loc (MSG_MISSED_OPTIMIZATION, vect_location,
 +				     "Build SLP failed: different calls in %G",
 +				     stmt);
- 		  /* Mismatch.  */
++		  /* Mismatch.  */
++		  continue;
++		}
++	    }
++
+ 	  if (need_same_oprnds)
+ 	    {
+ 	      tree other_op1 = (call_stmt
+@@ -984,20 +998,6 @@ vect_build_slp_tree_1 (unsigned char *swap,
  		  continue;
  		}
  	    }
- 
+-
 -	  if (!load_p && rhs_code == CALL_EXPR)
-+	  if (need_same_oprnds)
- 	    {
+-	    {
 -	      if (!compatible_calls_p (as_a <gcall *> (stmts[0]->stmt),
 -				       as_a <gcall *> (stmt)))
-+	      tree other_op1 = (call_stmt
-+				? gimple_call_arg (call_stmt, 1)
-+				: gimple_assign_rhs2 (stmt));
-+	      if (!operand_equal_p (first_op1, other_op1, 0))
- 		{
- 		  if (dump_enabled_p ())
- 		    dump_printf_loc (MSG_MISSED_OPTIMIZATION, vect_location,
+-		{
+-		  if (dump_enabled_p ())
+-		    dump_printf_loc (MSG_MISSED_OPTIMIZATION, vect_location,
 -				     "Build SLP failed: different calls in %G",
 -				     stmt);
-+				     "Build SLP failed: different shift "
-+				     "arguments in %G", stmt);
- 		  /* Mismatch.  */
- 		  continue;
- 		}
+-		  /* Mismatch.  */
+-		  continue;
+-		}
+-	    }
+ 	}
+ 
+       /* Grouped store or load.  */
 @@ -1515,6 +1515,10 @@ vect_build_slp_tree_2 (vec_info *vinfo,
  	      }
  	  if (dump_enabled_p ())
@@ -66095,7 +66144,10 @@ index adc579ff544..551e03c1219 100644
 -  slp_tree child;
 -  loop_vec_info loop_vinfo = STMT_VINFO_LOOP_VINFO (stmt_vinfo);
 -  int j;
--
++  loop_vec_info loop_vinfo;
++  vec<stmt_vec_info> *worklist;
++};
+ 
 -  /* We need to union stype over the incoming graph edges but we still
 -     want to limit recursion to stay O(N+E).  */
 -  unsigned visited_cnt = ++visited.get_or_insert (node);
@@ -66155,10 +66207,7 @@ index adc579ff544..551e03c1219 100644
 -	  && SLP_TREE_DEF_TYPE (child) != vect_constant_def)
 -	vect_detect_hybrid_slp_stmts (child, i, stype, visited);
 -}
-+  loop_vec_info loop_vinfo;
-+  vec<stmt_vec_info> *worklist;
-+};
- 
+-
 -/* Helpers for vect_detect_hybrid_slp walking pattern stmt uses.  */
 +/* Walker for walk_gimple_op.  */
  
@@ -66333,14 +66382,14 @@ index 6418edb5204..2ef71ec41c0 100644
  		  if (aligned_access_p (first_dr_info))
  		    ;
 -		  else if (DR_MISALIGNMENT (first_dr_info) == -1)
--		    TREE_TYPE (data_ref)
--		      = build_aligned_type (TREE_TYPE (data_ref),
--					    align * BITS_PER_UNIT);
- 		  else
++		  else
  		    TREE_TYPE (data_ref)
  		      = build_aligned_type (TREE_TYPE (data_ref),
+ 					    align * BITS_PER_UNIT);
+-		  else
+-		    TREE_TYPE (data_ref)
+-		      = build_aligned_type (TREE_TYPE (data_ref),
 -					    TYPE_ALIGN (elem_type));
-+					    align * BITS_PER_UNIT);
  		  vect_copy_ref_info (data_ref, DR_REF (first_dr_info->dr));
  		  gassign *new_stmt
  		    = gimple_build_assign (data_ref, vec_oprnd);
@@ -68359,34 +68408,32 @@ index 8eb4b5edb03..9083af18730 100644
 -FETCH_AND_OP_2 (and,   , &, long long unsigned int, 8, 3)
 -FETCH_AND_OP_2 (xor,   , ^, long long unsigned int, 8, 3)
 -FETCH_AND_OP_2 (nand, ~, &, long long unsigned int, 8, 3)
--
--FETCH_AND_OP_2 (add,   , +, short unsigned int, 2, 1)
--FETCH_AND_OP_2 (sub,   , -, short unsigned int, 2, 1)
--FETCH_AND_OP_2 (or,    , |, short unsigned int, 2, 1)
--FETCH_AND_OP_2 (and,   , &, short unsigned int, 2, 1)
--FETCH_AND_OP_2 (xor,   , ^, short unsigned int, 2, 1)
--FETCH_AND_OP_2 (nand, ~, &, short unsigned int, 2, 1)
--
--FETCH_AND_OP_2 (add,   , +, unsigned char, 1, 0)
--FETCH_AND_OP_2 (sub,   , -, unsigned char, 1, 0)
--FETCH_AND_OP_2 (or,    , |, unsigned char, 1, 0)
--FETCH_AND_OP_2 (and,   , &, unsigned char, 1, 0)
--FETCH_AND_OP_2 (xor,   , ^, unsigned char, 1, 0)
--FETCH_AND_OP_2 (nand, ~, &, unsigned char, 1, 0)
 +FETCH_AND_OP_2 (add,   , +, u64, 8, 3)
 +FETCH_AND_OP_2 (sub,   , -, u64, 8, 3)
 +FETCH_AND_OP_2 (or,    , |, u64, 8, 3)
 +FETCH_AND_OP_2 (and,   , &, u64, 8, 3)
 +FETCH_AND_OP_2 (xor,   , ^, u64, 8, 3)
 +FETCH_AND_OP_2 (nand, ~, &, u64, 8, 3)
-+
+ 
+-FETCH_AND_OP_2 (add,   , +, short unsigned int, 2, 1)
+-FETCH_AND_OP_2 (sub,   , -, short unsigned int, 2, 1)
+-FETCH_AND_OP_2 (or,    , |, short unsigned int, 2, 1)
+-FETCH_AND_OP_2 (and,   , &, short unsigned int, 2, 1)
+-FETCH_AND_OP_2 (xor,   , ^, short unsigned int, 2, 1)
+-FETCH_AND_OP_2 (nand, ~, &, short unsigned int, 2, 1)
 +FETCH_AND_OP_2 (add,   , +, u16, 2, 1)
 +FETCH_AND_OP_2 (sub,   , -, u16, 2, 1)
 +FETCH_AND_OP_2 (or,    , |, u16, 2, 1)
 +FETCH_AND_OP_2 (and,   , &, u16, 2, 1)
 +FETCH_AND_OP_2 (xor,   , ^, u16, 2, 1)
 +FETCH_AND_OP_2 (nand, ~, &, u16, 2, 1)
-+
+ 
+-FETCH_AND_OP_2 (add,   , +, unsigned char, 1, 0)
+-FETCH_AND_OP_2 (sub,   , -, unsigned char, 1, 0)
+-FETCH_AND_OP_2 (or,    , |, unsigned char, 1, 0)
+-FETCH_AND_OP_2 (and,   , &, unsigned char, 1, 0)
+-FETCH_AND_OP_2 (xor,   , ^, unsigned char, 1, 0)
+-FETCH_AND_OP_2 (nand, ~, &, unsigned char, 1, 0)
 +FETCH_AND_OP_2 (add,   , +, u8, 1, 0)
 +FETCH_AND_OP_2 (sub,   , -, u8, 1, 0)
 +FETCH_AND_OP_2 (or,    , |, u8, 1, 0)
@@ -68406,34 +68453,32 @@ index 8eb4b5edb03..9083af18730 100644
 -OP_AND_FETCH_2 (and,   , &, long long unsigned int, 8, 3)
 -OP_AND_FETCH_2 (xor,   , ^, long long unsigned int, 8, 3)
 -OP_AND_FETCH_2 (nand, ~, &, long long unsigned int, 8, 3)
--
--OP_AND_FETCH_2 (add,   , +, short unsigned int, 2, 1)
--OP_AND_FETCH_2 (sub,   , -, short unsigned int, 2, 1)
--OP_AND_FETCH_2 (or,    , |, short unsigned int, 2, 1)
--OP_AND_FETCH_2 (and,   , &, short unsigned int, 2, 1)
--OP_AND_FETCH_2 (xor,   , ^, short unsigned int, 2, 1)
--OP_AND_FETCH_2 (nand, ~, &, short unsigned int, 2, 1)
--
--OP_AND_FETCH_2 (add,   , +, unsigned char, 1, 0)
--OP_AND_FETCH_2 (sub,   , -, unsigned char, 1, 0)
--OP_AND_FETCH_2 (or,    , |, unsigned char, 1, 0)
--OP_AND_FETCH_2 (and,   , &, unsigned char, 1, 0)
--OP_AND_FETCH_2 (xor,   , ^, unsigned char, 1, 0)
--OP_AND_FETCH_2 (nand, ~, &, unsigned char, 1, 0)
 +OP_AND_FETCH_2 (add,   , +, u64, 8, 3)
 +OP_AND_FETCH_2 (sub,   , -, u64, 8, 3)
 +OP_AND_FETCH_2 (or,    , |, u64, 8, 3)
 +OP_AND_FETCH_2 (and,   , &, u64, 8, 3)
 +OP_AND_FETCH_2 (xor,   , ^, u64, 8, 3)
 +OP_AND_FETCH_2 (nand, ~, &, u64, 8, 3)
-+
+ 
+-OP_AND_FETCH_2 (add,   , +, short unsigned int, 2, 1)
+-OP_AND_FETCH_2 (sub,   , -, short unsigned int, 2, 1)
+-OP_AND_FETCH_2 (or,    , |, short unsigned int, 2, 1)
+-OP_AND_FETCH_2 (and,   , &, short unsigned int, 2, 1)
+-OP_AND_FETCH_2 (xor,   , ^, short unsigned int, 2, 1)
+-OP_AND_FETCH_2 (nand, ~, &, short unsigned int, 2, 1)
 +OP_AND_FETCH_2 (add,   , +, u16, 2, 1)
 +OP_AND_FETCH_2 (sub,   , -, u16, 2, 1)
 +OP_AND_FETCH_2 (or,    , |, u16, 2, 1)
 +OP_AND_FETCH_2 (and,   , &, u16, 2, 1)
 +OP_AND_FETCH_2 (xor,   , ^, u16, 2, 1)
 +OP_AND_FETCH_2 (nand, ~, &, u16, 2, 1)
-+
+ 
+-OP_AND_FETCH_2 (add,   , +, unsigned char, 1, 0)
+-OP_AND_FETCH_2 (sub,   , -, unsigned char, 1, 0)
+-OP_AND_FETCH_2 (or,    , |, unsigned char, 1, 0)
+-OP_AND_FETCH_2 (and,   , &, unsigned char, 1, 0)
+-OP_AND_FETCH_2 (xor,   , ^, unsigned char, 1, 0)
+-OP_AND_FETCH_2 (nand, ~, &, unsigned char, 1, 0)
 +OP_AND_FETCH_2 (add,   , +, u8, 1, 0)
 +OP_AND_FETCH_2 (sub,   , -, u8, 1, 0)
 +OP_AND_FETCH_2 (or,    , |, u8, 1, 0)
@@ -68513,12 +68558,12 @@ index 1d0a6ada1a1..026b48b02e5 100644
 -LIB1ASMFUNCS := $(filter-out _dyncall, $(LIB1ASMFUNCS))
 +LIB1ASMSRC = pa/milli64.S
 +LIB1ASMFUNCS = _divI _divU _remI _remU _div_const _mulI
- 
--LIB2ADD_ST = $(srcdir)/config/pa/linux-atomic.c
++
 +HOST_LIBGCC2_CFLAGS += -Dpa64=1 -DELF=1 -DLINUX=1
  
+ LIB2ADD_ST = $(srcdir)/config/pa/linux-atomic.c
+-
 -HOST_LIBGCC2_CFLAGS += -Dpa64=1 -DELF=1
-+LIB2ADD_ST = $(srcdir)/config/pa/linux-atomic.c
 diff --git a/libgcc/config/riscv/div.S b/libgcc/config/riscv/div.S
 index 151f8e273ac..e892a818bee 100644
 --- a/libgcc/config/riscv/div.S
@@ -69195,15 +69240,31 @@ index 9970d003436..a8f69666a82 100644
  	-Wl,-exported_symbols_list,$(SHLIB_MAP) \
  	$(SHLIB_VERSTRING) \
 -	@multilib_flags@ $(SHLIB_OBJS) $(SHLIB_LC)
-+	@multilib_flags@ @shlib_objs@ $(SHLIB_LC)
- 
+-
 -SHLIB_MKMAP = $(srcdir)/mkmap-flat.awk
 -SHLIB_MKMAP_OPTS = -v leading_underscore=1
 -SHLIB_MAPFILES = libgcc-std.ver $(srcdir)/config/libgcc-libsystem.ver
 -SHLIB_VERPFX = $(srcdir)/config/$(cpu_type)/libgcc-darwin
-+# we do our own thing
-+SHLIB_INSTALL =
-+
+-
+-# we're only going to build the stubs if the target slib is /usr/lib
+-# there is no other case in which they're useful in a live system.
+-ifeq (/usr/lib,$(shlib_slibdir))
+-LGCC_STUBS = libgcc_s.10.4.dylib libgcc_s.10.5.dylib
+-else
+-LGCC_STUBS =
+-endif
+-
+-LGCC_FILES = libgcc_s.$(SHLIB_SOVERSION)$(SHLIB_EXT)
+-LGCC_FILES += $(LGCC_STUBS)
+-LEXT_STUBS = libgcc_ext.10.4$(SHLIB_EXT) libgcc_ext.10.5$(SHLIB_EXT)
+-LGCC_FILES += $(LEXT_STUBS)
+-INSTALL_FILES=$(LGCC_FILES)
++	@multilib_flags@ @shlib_objs@ $(SHLIB_LC)
+ 
+ # we do our own thing
+ SHLIB_INSTALL =
+ 
+-# For the toplevel multilib, build a fat archive including all the multilibs.
 +LGCC_FILES = libgcc_s.$(SHLIB_SOVERSION)$(SHLIB_EXT)
 +
 +ifeq ($(BUILD_LIBGCCS1),YES)
@@ -69241,35 +69302,21 @@ index 9970d003436..a8f69666a82 100644
 +all: libgcc_ehs$(SHLIB_EXT)
 +
 +LGCC_FILES += libgcc_ehs.$(SHLIB_SOVERSION)$(SHLIB_EXT)
- 
--# we're only going to build the stubs if the target slib is /usr/lib
--# there is no other case in which they're useful in a live system.
--ifeq (/usr/lib,$(shlib_slibdir))
--LGCC_STUBS = libgcc_s.10.4.dylib libgcc_s.10.5.dylib
--else
--LGCC_STUBS =
- endif
- 
--LGCC_FILES = libgcc_s.$(SHLIB_SOVERSION)$(SHLIB_EXT)
--LGCC_FILES += $(LGCC_STUBS)
--LEXT_STUBS = libgcc_ext.10.4$(SHLIB_EXT) libgcc_ext.10.5$(SHLIB_EXT)
--LGCC_FILES += $(LEXT_STUBS)
--INSTALL_FILES=$(LGCC_FILES)
++
++endif
++
 +# Provide libgcc_s.1 for backwards compatibility.
 +LGCC_FILES += libgcc_s.1.dylib
- 
--# we do our own thing
--SHLIB_INSTALL =
++
 +endif
 +
 +INSTALL_FILES=$(LGCC_FILES)
- 
--# For the toplevel multilib, build a fat archive including all the multilibs.
++
 +# For the toplevel multilib, build FAT dylibs including all the multilibs.
  ifeq ($(MULTIBUILDTOP),)
  
  ifeq ($(enable_shared),yes)
-@@ -52,65 +88,86 @@ all: $(INSTALL_FILES)
+@@ -52,33 +88,6 @@ all: $(INSTALL_FILES)
  install-leaf: install-darwin-libgcc-stubs
  endif
  
@@ -69281,48 +69328,52 @@ index 9970d003436..a8f69666a82 100644
 -#
 -# This assumes each multilib corresponds to a different architecture.
 -libgcc_s.%.dylib : all-multi $(SHLIB_VERPFX).%.ver libgcc_s$(SHLIB_EXT)
-+libgcc_s.$(SHLIB_SOVERSION)$(SHLIB_EXT): all-multi libgcc_s$(SHLIB_EXT)
- 	MLIBS=`$(CC) --print-multi-lib | sed -e 's/;.*$$//'` ; \
- 	for mlib in $$MLIBS ; do \
+-	MLIBS=`$(CC) --print-multi-lib | sed -e 's/;.*$$//'` ; \
+-	for mlib in $$MLIBS ; do \
 -	  $(STRIP) -o $(@)_T$${mlib} \
 -	    -s $(SHLIB_VERPFX).$(*).ver -c -u \
 -	    ../$${mlib}/libgcc/$${mlib}/libgcc_s$(SHLIB_EXT)  || exit 1 ; \
-+	  cp ../$${mlib}/libgcc/$${mlib}/libgcc_s$(SHLIB_EXT)  \
-+	    ./libgcc_s.$(SHLIB_SOVERSION)$(SHLIB_EXT)_T_$${mlib} || exit 1 ; \
- 	done
+-	done
 -	$(LIPO) -output $@ -create $(@)_T*
 -	rm $(@)_T*
-+	$(LIPO) -output libgcc_s.$(SHLIB_SOVERSION)$(SHLIB_EXT) \
-+	  -create libgcc_s.$(SHLIB_SOVERSION)$(SHLIB_EXT)_T*
-+	rm libgcc_s.$(SHLIB_SOVERSION)$(SHLIB_EXT)_T*
-+
-+ifeq ($(BUILD_LIBGCCS1),YES)
-+ifneq ($(LIBEHSOBJS),)
- 
+-
 -libgcc_ext.%.dylib : all-multi $(SHLIB_VERPFX).%.ver libgcc_s$(SHLIB_EXT) 
-+libgcc_ehs.$(SHLIB_SOVERSION)$(SHLIB_EXT): all-multi libgcc_ehs$(SHLIB_EXT)
- 	MLIBS=`$(CC) --print-multi-lib | sed -e 's/;.*$$//'` ; \
- 	for mlib in $$MLIBS ; do \
+-	MLIBS=`$(CC) --print-multi-lib | sed -e 's/;.*$$//'` ; \
+-	for mlib in $$MLIBS ; do \
 -	  $(STRIP) -o $(@)_T$${mlib} \
 -	    -R $(SHLIB_VERPFX).$(*).ver -c -urx \
 -	    ../$${mlib}/libgcc/$${mlib}/libgcc_s$(SHLIB_EXT) || exit 1 ; \
-+	  cp ../$${mlib}/libgcc/$${mlib}/libgcc_ehs$(SHLIB_EXT)  \
-+	    ./libgcc_ehs.$(SHLIB_SOVERSION)$(SHLIB_EXT)_T_$${mlib} || exit 1 ; \
- 	done
+-	done
 -	$(LIPO) -output $@ -create $(@)_T*
 -	rm $(@)_T*
+-
+ libgcc_s.$(SHLIB_SOVERSION)$(SHLIB_EXT): all-multi libgcc_s$(SHLIB_EXT)
+ 	MLIBS=`$(CC) --print-multi-lib | sed -e 's/;.*$$//'` ; \
+ 	for mlib in $$MLIBS ; do \
+@@ -89,28 +98,76 @@ libgcc_s.$(SHLIB_SOVERSION)$(SHLIB_EXT): all-multi libgcc_s$(SHLIB_EXT)
+ 	  -create libgcc_s.$(SHLIB_SOVERSION)$(SHLIB_EXT)_T*
+ 	rm libgcc_s.$(SHLIB_SOVERSION)$(SHLIB_EXT)_T*
+ 
++ifeq ($(BUILD_LIBGCCS1),YES)
++ifneq ($(LIBEHSOBJS),)
++
++libgcc_ehs.$(SHLIB_SOVERSION)$(SHLIB_EXT): all-multi libgcc_ehs$(SHLIB_EXT)
++	MLIBS=`$(CC) --print-multi-lib | sed -e 's/;.*$$//'` ; \
++	for mlib in $$MLIBS ; do \
++	  cp ../$${mlib}/libgcc/$${mlib}/libgcc_ehs$(SHLIB_EXT)  \
++	    ./libgcc_ehs.$(SHLIB_SOVERSION)$(SHLIB_EXT)_T_$${mlib} || exit 1 ; \
++	done
 +	$(LIPO) -output libgcc_ehs.$(SHLIB_SOVERSION)$(SHLIB_EXT) \
 +	  -create libgcc_ehs.$(SHLIB_SOVERSION)$(SHLIB_EXT)_T*
 +	rm libgcc_ehs.$(SHLIB_SOVERSION)$(SHLIB_EXT)_T*
- 
--libgcc_s.$(SHLIB_SOVERSION)$(SHLIB_EXT): all-multi libgcc_s$(SHLIB_EXT)
++
 +
 +libgcc_s.1.dylib: all-multi libgcc_s.$(SHLIB_SOVERSION)$(SHLIB_EXT) \
 +		  libgcc_ehs.$(SHLIB_SOVERSION)$(SHLIB_EXT)
- 	MLIBS=`$(CC) --print-multi-lib | sed -e 's/;.*$$//'` ; \
- 	for mlib in $$MLIBS ; do \
- 	  cp ../$${mlib}/libgcc/$${mlib}/libgcc_s$(SHLIB_EXT)  \
- 	    ./libgcc_s.$(SHLIB_SOVERSION)$(SHLIB_EXT)_T_$${mlib} || exit 1 ; \
++	MLIBS=`$(CC) --print-multi-lib | sed -e 's/;.*$$//'` ; \
++	for mlib in $$MLIBS ; do \
++	  cp ../$${mlib}/libgcc/$${mlib}/libgcc_s$(SHLIB_EXT)  \
++	    ./libgcc_s.$(SHLIB_SOVERSION)$(SHLIB_EXT)_T_$${mlib} || exit 1 ; \
 +	  cp ../$${mlib}/libgcc/$${mlib}/libgcc_ehs$(SHLIB_EXT)  \
 +	    ./libgcc_ehs.$(SHLIB_SOVERSION)$(SHLIB_EXT)_T_$${mlib} || exit 1 ; \
 +	  arch=`$(LIPO) -info libgcc_s.$(SHLIB_SOVERSION)$(SHLIB_EXT)_T_$${mlib} | sed -e 's/.*:\ //'` ; \
@@ -69332,11 +69383,9 @@ index 9970d003436..a8f69666a82 100644
 +	    -Wl,-reexport_library,libgcc_ehs.$(SHLIB_SOVERSION)$(SHLIB_EXT)_T_$${mlib} \
 +	    -install_name $(SHLIB_INSTALL_DIR)/libgcc_s.1.dylib \
 +	    -compatibility_version 1 -current_version 1 ; \
- 	done
--	$(LIPO) -output libgcc_s.$(SHLIB_SOVERSION)$(SHLIB_EXT) \
--	  -create libgcc_s.$(SHLIB_SOVERSION)$(SHLIB_EXT)_T*
++	done
 +	$(LIPO) -output libgcc_s.1$(SHLIB_EXT) -create libgcc_s.1$(SHLIB_EXT)_T*
- 	rm libgcc_s.$(SHLIB_SOVERSION)$(SHLIB_EXT)_T*
++	rm libgcc_s.$(SHLIB_SOVERSION)$(SHLIB_EXT)_T*
 +	rm libgcc_ehs.$(SHLIB_SOVERSION)$(SHLIB_EXT)_T*
 +
 +else
@@ -69362,7 +69411,7 @@ index 9970d003436..a8f69666a82 100644
 +endif
 +
 +# Install the shared libraries.
- 
++
  install-darwin-libgcc-stubs :
  	$(mkinstalldirs) $(DESTDIR)$(slibdir)
  	for d in $(INSTALL_FILES) ; do \
@@ -74015,10 +74064,117 @@ index b9177041fc3..5acf87f8bb7 100644
  
  	* GCC 10.3.0 released.
 diff --git a/libstdc++-v3/ChangeLog b/libstdc++-v3/ChangeLog
-index fdd63cbff1a..1be9436b617 100644
+index fdd63cbff1a..edb95007826 100644
 --- a/libstdc++-v3/ChangeLog
 +++ b/libstdc++-v3/ChangeLog
-@@ -1,3 +1,2214 @@
+@@ -1,3 +1,2321 @@
++2023-04-28  Jonathan Wakely  <jwakely@redhat.com>
++
++	Backported from master:
++	2020-11-24  Jonathan Wakely  <jwakely@redhat.com>
++
++	PR libstdc++/67791
++	* src/c++11/thread.cc (thread::_M_start_thread(_State_ptr, void (*)())):
++	Check that gthreads is available before calling __gthread_create.
++
++2023-04-27  Jonathan Wakely  <jwakely@redhat.com>
++
++	Backported from master:
++	2023-04-04  Jonathan Wakely  <jwakely@redhat.com>
++
++	* doc/xml/manual/extensions.xml: Remove std::bad_exception from
++	example program.
++	* doc/html/manual/ext_demangling.html: Regenerate.
++
++2023-04-27  Jonathan Wakely  <jwakely@redhat.com>
++
++	Backported from master:
++	2023-04-27  Jonathan Wakely  <jwakely@redhat.com>
++
++	* doc/doxygen/user.cfg.in (SOURCE_BROWSER): Only set to YES for
++	HTML docs.
++	* include/bits/gslice_array.h (_DEFINE_VALARRAY_OPERATOR): Omit
++	from doxygen docs.
++	* include/bits/indirect_array.h (_DEFINE_VALARRAY_OPERATOR):
++	Likewise.
++	* include/bits/mask_array.h (_DEFINE_VALARRAY_OPERATOR):
++	Likewise.
++	* include/bits/slice_array.h (_DEFINE_VALARRAY_OPERATOR):
++	Likewise.
++	* include/std/valarray (_DEFINE_VALARRAY_UNARY_OPERATOR)
++	(_DEFINE_VALARRAY_AUGMENTED_ASSIGNMENT)
++	(_DEFINE_VALARRAY_EXPR_AUGMENTED_ASSIGNMENT)
++	(_DEFINE_BINARY_OPERATOR): Likewise.
++
++2023-04-27  Jonathan Wakely  <jwakely@redhat.com>
++
++	Backported from master:
++	2022-10-28  Jonathan Wakely  <jwakely@redhat.com>
++
++	* include/bits/fs_path.h (path::filename()): Fix dangling
++	reference.
++
++2023-04-27  Jonathan Wakely  <jwakely@redhat.com>
++
++	PR libstdc++/109064
++	* python/libstdcxx/v6/xmethods.py (SharedPtrUseCountWorker):
++	Remove self-recursion in __init__. Add missing _supports.
++	* testsuite/libstdc++-xmethods/shared_ptr.cc: Check use_count()
++	and unique().
++
++2023-04-27  Jonathan Wakely  <jwakely@redhat.com>
++
++	Backported from master:
++	2023-02-28  Jonathan Wakely  <jwakely@redhat.com>
++
++	PR libstdc++/108952
++	* include/std/memory (uses_allocator_construction_args):
++	Implement LWG 3527.
++	* testsuite/20_util/pair/astuple/get-2.cc: New test.
++	* testsuite/20_util/scoped_allocator/108952.cc: New test.
++	* testsuite/20_util/uses_allocator/lwg3527.cc: New test.
++
++2023-04-27  Jonathan Wakely  <jwakely@redhat.com>
++
++	Backported from master:
++	2023-02-16  Jonathan Wakely  <jwakely@redhat.com>
++
++	* include/experimental/optional: Fix header name in comment.
++
++2023-04-27  Jonathan Wakely  <jwakely@redhat.com>
++
++	Backported from master:
++	2022-07-20  Jonathan Wakely  <jwakely@redhat.com>
++
++	PR libstdc++/100823
++	* include/bits/stl_iterator.h (common_iterator): Define move
++	constructor and move assignment operator.
++	(common_iterator::_M_assign): New function implementing
++	assignment.
++	(common_iterator::operator=): Use _M_assign.
++	(common_iterator::_S_valueless): New constant.
++	* testsuite/24_iterators/common_iterator/100823.cc: New test.
++
++2023-04-27  Jonathan Wakely  <jwakely@redhat.com>
++
++	Backported from master:
++	2022-07-20  Jonathan Wakely  <jwakely@redhat.com>
++
++	* include/bits/stl_iterator.h (common_iterator): Fix incorrect
++	uses of is_nothrow_assignable_v. Fix inconsistent constraints on
++	friend declaration. Do not move argument in copy constructor.
++	* testsuite/24_iterators/common_iterator/1.cc: Check for
++	noexcept constructibnle/assignable.
++
++2023-04-27  Jonathan Wakely  <jwakely@redhat.com>
++
++	Backported from master:
++	2022-11-23  Jonathan Wakely  <jwakely@redhat.com>
++
++	PR libstdc++/107814
++	* testsuite/experimental/filesystem/iterators/error_reporting.cc:
++	Use a static buffer with space after it.
++
 +2023-03-16  Jonathan Wakely  <jwakely@redhat.com>
 +
 +	Backported from master:
@@ -76290,6 +76446,19 @@ index 01bfa9ddd4f..cb842ea26aa 100644
 +#endif
 +
  #endif
+diff --git a/libstdc++-v3/doc/doxygen/user.cfg.in b/libstdc++-v3/doc/doxygen/user.cfg.in
+index 19f8ffd8230..b5ab9e9413b 100644
+--- a/libstdc++-v3/doc/doxygen/user.cfg.in
++++ b/libstdc++-v3/doc/doxygen/user.cfg.in
+@@ -1157,7 +1157,7 @@ USE_MDFILE_AS_MAINPAGE =
+ # also VERBATIM_HEADERS is set to NO.
+ # The default value is: NO.
+ 
+-SOURCE_BROWSER         = YES
++SOURCE_BROWSER         = @do_html@
+ 
+ # Setting the INLINE_SOURCES tag to YES will include the body of functions,
+ # classes and enums directly into the documentation.
 diff --git a/libstdc++-v3/doc/html/bk02.html b/libstdc++-v3/doc/html/bk02.html
 index 7c47759f223..182c94b59a6 100644
 --- a/libstdc++-v3/doc/html/bk02.html
@@ -76313,6 +76482,42 @@ index 18407225d7a..aa85d85db46 100644
           a list of predefined macros for any particular installation.
        </p><p>This has been discussed on the mailing lists
           <a class="link" href="http://gcc.gnu.org/cgi-bin/htsearch?method=and&amp;format=builtin-long&amp;sort=score&amp;words=_XOPEN_SOURCE+Solaris" target="_top">quite a bit</a>.
+diff --git a/libstdc++-v3/doc/html/manual/ext_demangling.html b/libstdc++-v3/doc/html/manual/ext_demangling.html
+index 879497f7d08..028ec71d8c8 100644
+--- a/libstdc++-v3/doc/html/manual/ext_demangling.html
++++ b/libstdc++-v3/doc/html/manual/ext_demangling.html
+@@ -39,14 +39,6 @@ int main()
+   int     status;
+   char   *realname;
+ 
+-  // exception classes not in &lt;stdexcept&gt;, thrown by the implementation
+-  // instead of the user
+-  std::bad_exception  e;
+-  realname = abi::__cxa_demangle(e.what(), 0, 0, &amp;status);
+-  std::cout &lt;&lt; e.what() &lt;&lt; "\t=&gt; " &lt;&lt; realname &lt;&lt; "\t: " &lt;&lt; status &lt;&lt; '\n';
+-  free(realname);
+-
+-
+   // typeid
+   bar&lt;empty,17&gt;          u;
+   const std::type_info  &amp;ti = typeid(u);
+@@ -61,13 +53,12 @@ int main()
+      This prints
+    </p><pre class="screen">
+    <code class="computeroutput">
+-      St13bad_exception       =&gt; std::bad_exception   : 0
+       3barI5emptyLi17EE       =&gt; bar&lt;empty, 17&gt;       : 0
+    </code>
+    </pre><p>
+      The demangler interface is described in the source documentation
+      linked to above.  It is actually written in C, so you don't need to
+      be writing C++ in order to demangle C++.  (That also means we have to
+-     use crummy memory management facilities, so don't forget to free()
+-     the returned char array.)
++     use crummy memory management facilities, so don't forget to
++     <code class="code">free()</code> the returned char array.)
+    </p></div><div class="navfooter"><hr /><table width="100%" summary="Navigation footer"><tr><td width="40%" align="left"><a accesskey="p" href="ext_io.html">Prev</a> </td><td width="20%" align="center"><a accesskey="u" href="extensions.html">Up</a></td><td width="40%" align="right"> <a accesskey="n" href="ext_concurrency.html">Next</a></td></tr><tr><td width="40%" align="left" valign="top">Chapter 27. Input and Output </td><td width="20%" align="center"><a accesskey="h" href="../index.html">Home</a></td><td width="40%" align="right" valign="top"> Chapter 29. Concurrency</td></tr></table></div></body></html>
+\ No newline at end of file
 diff --git a/libstdc++-v3/doc/html/manual/extensions.html b/libstdc++-v3/doc/html/manual/extensions.html
 index e5836efa85d..1c697413d8d 100644
 --- a/libstdc++-v3/doc/html/manual/extensions.html
@@ -76536,6 +76741,44 @@ index cf8684e1cea..ef673ef4954 100644
           a list of predefined macros for any particular installation.
        </para>
        <para>This has been discussed on the mailing lists
+diff --git a/libstdc++-v3/doc/xml/manual/extensions.xml b/libstdc++-v3/doc/xml/manual/extensions.xml
+index 86e92beffd3..196b55d8347 100644
+--- a/libstdc++-v3/doc/xml/manual/extensions.xml
++++ b/libstdc++-v3/doc/xml/manual/extensions.xml
+@@ -534,14 +534,6 @@ int main()
+   int     status;
+   char   *realname;
+ 
+-  // exception classes not in &lt;stdexcept&gt;, thrown by the implementation
+-  // instead of the user
+-  std::bad_exception  e;
+-  realname = abi::__cxa_demangle(e.what(), 0, 0, &amp;status);
+-  std::cout &lt;&lt; e.what() &lt;&lt; "\t=&gt; " &lt;&lt; realname &lt;&lt; "\t: " &lt;&lt; status &lt;&lt; '\n';
+-  free(realname);
+-
+-
+   // typeid
+   bar&lt;empty,17&gt;          u;
+   const std::type_info  &amp;ti = typeid(u);
+@@ -559,7 +551,6 @@ int main()
+ 
+    <screen>
+    <computeroutput>
+-      St13bad_exception       =&gt; std::bad_exception   : 0
+       3barI5emptyLi17EE       =&gt; bar&lt;empty, 17&gt;       : 0
+    </computeroutput>
+    </screen>
+@@ -568,8 +559,8 @@ int main()
+      The demangler interface is described in the source documentation
+      linked to above.  It is actually written in C, so you don't need to
+      be writing C++ in order to demangle C++.  (That also means we have to
+-     use crummy memory management facilities, so don't forget to free()
+-     the returned char array.)
++     use crummy memory management facilities, so don't forget to
++     <code>free()</code> the returned char array.)
+    </para>
+ </chapter>
+ 
 diff --git a/libstdc++-v3/doc/xml/manual/intro.xml b/libstdc++-v3/doc/xml/manual/intro.xml
 index 4a5d25fa0d7..7137ba2e10c 100644
 --- a/libstdc++-v3/doc/xml/manual/intro.xml
@@ -76969,42 +77212,46 @@ index d224aa3ec5e..33831936185 100644
  	struct rebind
  	{ typedef allocator<_Tp1> other; };
 -#else
--      allocator() = default;
--
--      template<typename _Up>
--	constexpr
++#endif
++
++#if __cplusplus >= 201103L
++      // _GLIBCXX_RESOLVE_LIB_DEFECTS
++      // 2103. std::allocator propagate_on_container_move_assignment
++      typedef true_type propagate_on_container_move_assignment;
++
++      typedef true_type is_always_equal;
++
++#if __cplusplus > 201703L
++      // As noted above, these members are present for C++20 to provide the
++      // same API as the primary template, but still trivial as in pre-C++20.
+       allocator() = default;
++      ~allocator() = default;
+ 
+       template<typename _Up>
+ 	constexpr
 -	allocator(const allocator<_Up>&) { }
 -#endif // ! C++20
-+#endif
++	allocator(const allocator<_Up>&) noexcept { }
  
 -#if __cplusplus >= 201103L && __cplusplus <= 201703L
-+#if __cplusplus >= 201103L
-       // _GLIBCXX_RESOLVE_LIB_DEFECTS
-       // 2103. std::allocator propagate_on_container_move_assignment
-       typedef true_type propagate_on_container_move_assignment;
- 
-       typedef true_type is_always_equal;
- 
+-      // _GLIBCXX_RESOLVE_LIB_DEFECTS
+-      // 2103. std::allocator propagate_on_container_move_assignment
+-      typedef true_type propagate_on_container_move_assignment;
+-
+-      typedef true_type is_always_equal;
+-
 -      template<typename _Up, typename... _Args>
 -	void
 -	construct(_Up* __p, _Args&&... __args)
 -	noexcept(std::is_nothrow_constructible<_Up, _Args...>::value)
 -	{ ::new((void *)__p) _Up(std::forward<_Args>(__args)...); }
-+#if __cplusplus > 201703L
-+      // As noted above, these members are present for C++20 to provide the
-+      // same API as the primary template, but still trivial as in pre-C++20.
-+      allocator() = default;
-+      ~allocator() = default;
- 
-       template<typename _Up>
+-
+-      template<typename _Up>
 -	void
 -	destroy(_Up* __p)
 -	noexcept(std::is_nothrow_destructible<_Up>::value)
 -	{ __p->~_Up(); }
 -#endif // C++11 to C++17
-+	constexpr
-+	allocator(const allocator<_Up>&) noexcept { }
-+
 +      // No allocate member because it's ill-formed by LWG 3307.
 +      // No deallocate member because it would be undefined to call it
 +      // with any pointer which wasn't obtained from allocate.
@@ -77340,7 +77587,7 @@ index 11efdcbb5ba..db17d11d8b7 100644
  
  _GLIBCXX_END_NAMESPACE_VERSION
 diff --git a/libstdc++-v3/include/bits/fs_path.h b/libstdc++-v3/include/bits/fs_path.h
-index 0b9911e638a..3370bf7161e 100644
+index 0b9911e638a..9f0f2bf5d2d 100644
 --- a/libstdc++-v3/include/bits/fs_path.h
 +++ b/libstdc++-v3/include/bits/fs_path.h
 @@ -116,7 +116,7 @@ namespace __detail
@@ -77376,6 +77623,19 @@ index 0b9911e638a..3370bf7161e 100644
  
      _Cmpt() : _M_pos(-1) { }
  
+@@ -1217,9 +1211,9 @@ namespace __detail
+       {
+ 	if (_M_pathname.back() == preferred_separator)
+ 	  return {};
+-	auto& __last = *--end();
+-	if (__last._M_type() == _Type::_Filename)
+-	  return __last;
++	auto __last = --end();
++	if (__last->_M_type() == _Type::_Filename)
++	  return *__last;
+       }
+     return {};
+   }
 @@ -1340,7 +1334,7 @@ namespace __detail
      return _M_at_end == __rhs._M_at_end;
    }
@@ -77421,12 +77681,22 @@ index b252c3c1f0f..a793ea774df 100644
  _GLIBCXX_END_NAMESPACE_VERSION
  } // namespace
 diff --git a/libstdc++-v3/include/bits/gslice_array.h b/libstdc++-v3/include/bits/gslice_array.h
-index 89fdda537a4..da60e3bf3c7 100644
+index 89fdda537a4..8c7075a5d38 100644
 --- a/libstdc++-v3/include/bits/gslice_array.h
 +++ b/libstdc++-v3/include/bits/gslice_array.h
-@@ -215,7 +215,7 @@ _DEFINE_VALARRAY_OPERATOR(>>, __shift_right)
+@@ -183,6 +183,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+ 			      _Array<size_t>(_M_index));
+       }
+ 
++  /// @cond undocumented
+ #undef _DEFINE_VALARRAY_OPERATOR
+ #define _DEFINE_VALARRAY_OPERATOR(_Op, _Name)				\
+   template<typename _Tp>						\
+@@ -214,8 +215,9 @@ _DEFINE_VALARRAY_OPERATOR(<<, __shift_left)
+ _DEFINE_VALARRAY_OPERATOR(>>, __shift_right)
  
  #undef _DEFINE_VALARRAY_OPERATOR
++  /// @endcond
  
 -  // @} group numeric_arrays
 +  /// @} group numeric_arrays
@@ -77643,12 +77913,22 @@ index ef120134914..63958cc1d9c 100644
  _GLIBCXX_END_NAMESPACE_VERSION
  } // namespace std
 diff --git a/libstdc++-v3/include/bits/indirect_array.h b/libstdc++-v3/include/bits/indirect_array.h
-index 11fac329036..9d75219a741 100644
+index 11fac329036..ab24867fda3 100644
 --- a/libstdc++-v3/include/bits/indirect_array.h
 +++ b/libstdc++-v3/include/bits/indirect_array.h
-@@ -204,7 +204,7 @@ _DEFINE_VALARRAY_OPERATOR(>>, __shift_right)
+@@ -174,6 +174,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+       indirect_array<_Tp>::operator=(const _Expr<_Dom, _Tp>& __e) const
+       { std::__valarray_copy(__e, _M_sz, _M_array, _M_index); }
+ 
++  /// @cond undocumented
+ #undef _DEFINE_VALARRAY_OPERATOR
+ #define _DEFINE_VALARRAY_OPERATOR(_Op, _Name)				\
+   template<typename _Tp>						\
+@@ -203,8 +204,9 @@ _DEFINE_VALARRAY_OPERATOR(<<, __shift_left)
+ _DEFINE_VALARRAY_OPERATOR(>>, __shift_right)
  
  #undef _DEFINE_VALARRAY_OPERATOR
++  /// @endcond
  
 -  // @} group numeric_arrays
 +  /// @} group numeric_arrays
@@ -78053,12 +78333,22 @@ index b76eac435bd..a8dbce2eb9c 100644
      protected:
        // Underlying "C" library locale information saved from
 diff --git a/libstdc++-v3/include/bits/mask_array.h b/libstdc++-v3/include/bits/mask_array.h
-index 579cd59e59a..845a1d6570a 100644
+index 579cd59e59a..bcfa17e4df5 100644
 --- a/libstdc++-v3/include/bits/mask_array.h
 +++ b/libstdc++-v3/include/bits/mask_array.h
-@@ -205,7 +205,7 @@ _DEFINE_VALARRAY_OPERATOR(>>, __shift_right)
+@@ -174,6 +174,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+       mask_array<_Tp>::operator=(const _Expr<_Ex, _Tp>& __e) const
+       { std::__valarray_copy(__e, __e.size(), _M_array, _M_mask); }
+ 
++  /// @cond undocumented
+ #undef _DEFINE_VALARRAY_OPERATOR
+ #define _DEFINE_VALARRAY_OPERATOR(_Op, _Name)				\
+   template<typename _Tp>						\
+@@ -204,8 +205,9 @@ _DEFINE_VALARRAY_OPERATOR(<<, __shift_left)
+ _DEFINE_VALARRAY_OPERATOR(>>, __shift_right)
  
  #undef _DEFINE_VALARRAY_OPERATOR
++  /// @endcond
  
 -  // @} group numeric_arrays
 +  /// @} group numeric_arrays
@@ -79661,12 +79951,22 @@ index ff578e66117..792d8344664 100644
  				    std::forward<_Args>(__args)...);
      }
 diff --git a/libstdc++-v3/include/bits/slice_array.h b/libstdc++-v3/include/bits/slice_array.h
-index de33342e252..d875fc225b3 100644
+index de33342e252..1fbb010feb4 100644
 --- a/libstdc++-v3/include/bits/slice_array.h
 +++ b/libstdc++-v3/include/bits/slice_array.h
-@@ -276,7 +276,7 @@ _DEFINE_VALARRAY_OPERATOR(>>, __shift_right)
+@@ -245,6 +245,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+     slice_array<_Tp>::operator=(const _Expr<_Dom,_Tp>& __e) const
+     { std::__valarray_copy(__e, _M_sz, _M_array, _M_stride); }
+ 
++  /// @cond undocumented
+ #undef _DEFINE_VALARRAY_OPERATOR
+ #define _DEFINE_VALARRAY_OPERATOR(_Op,_Name)				\
+   template<typename _Tp>						\
+@@ -275,8 +276,9 @@ _DEFINE_VALARRAY_OPERATOR(<<, __shift_left)
+ _DEFINE_VALARRAY_OPERATOR(>>, __shift_right)
  
  #undef _DEFINE_VALARRAY_OPERATOR
++  /// @endcond
  
 -  // @} group numeric_arrays
 +  /// @} group numeric_arrays
@@ -79793,7 +80093,7 @@ index 3959dd7899d..2d7f7e11b3f 100644
  #if __cplusplus >= 201103L
        // Constant-time, nothrow move assignment when source object's memory
 diff --git a/libstdc++-v3/include/bits/stl_iterator.h b/libstdc++-v3/include/bits/stl_iterator.h
-index d950e896928..a46872fc3c2 100644
+index d950e896928..15fedc32d5f 100644
 --- a/libstdc++-v3/include/bits/stl_iterator.h
 +++ b/libstdc++-v3/include/bits/stl_iterator.h
 @@ -61,6 +61,7 @@
@@ -80013,6 +80313,15 @@ index d950e896928..a46872fc3c2 100644
    } // namespace __detail
  
    /// An iterator/sentinel adaptor for representing a non-common range.
+@@ -1624,7 +1683,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+       _S_noexcept1()
+       {
+ 	if constexpr (is_trivially_default_constructible_v<_Tp>)
+-	  return is_nothrow_assignable_v<_Tp, _Up>;
++	  return is_nothrow_assignable_v<_Tp&, _Up>;
+ 	else
+ 	  return is_nothrow_constructible_v<_Tp, _Up>;
+       }
 @@ -1634,25 +1693,43 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
        _S_noexcept()
        { return _S_noexcept1<_It, _It2>() && _S_noexcept1<_Sent, _Sent2>(); }
@@ -80061,7 +80370,154 @@ index d950e896928..a46872fc3c2 100644
      : _M_it(), _M_index(0)
      { }
  
-@@ -1805,7 +1882,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+@@ -1676,6 +1753,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+       noexcept(_S_noexcept<const _It2&, const _Sent2&>())
+       : _M_valueless(), _M_index(__x._M_index)
+       {
++	__glibcxx_assert(__x._M_has_value());
+ 	if (_M_index == 0)
+ 	  {
+ 	    if constexpr (is_trivially_default_constructible_v<_It>)
+@@ -1696,31 +1774,75 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+     common_iterator(const common_iterator& __x)
+     noexcept(_S_noexcept<const _It&, const _Sent&>())
+     : _M_valueless(), _M_index(__x._M_index)
++    {
++      if (_M_index == 0)
++	{
++	  if constexpr (is_trivially_default_constructible_v<_It>)
++	    _M_it = __x._M_it;
++	  else
++	    ::new((void*)std::__addressof(_M_it)) _It(__x._M_it);
++	}
++      else if (_M_index == 1)
++	{
++	  if constexpr (is_trivially_default_constructible_v<_Sent>)
++	    _M_sent = __x._M_sent;
++	  else
++	    ::new((void*)std::__addressof(_M_sent)) _Sent(__x._M_sent);
++	}
++    }
++
++    constexpr
++    common_iterator(common_iterator&& __x)
++    noexcept(_S_noexcept<_It, _Sent>())
++    : _M_valueless(), _M_index(__x._M_index)
+     {
+       if (_M_index == 0)
+ 	{
+ 	  if constexpr (is_trivially_default_constructible_v<_It>)
+ 	    _M_it = std::move(__x._M_it);
+ 	  else
+-	    ::new((void*)std::__addressof(_M_it)) _It(__x._M_it);
++	    ::new((void*)std::__addressof(_M_it)) _It(std::move(__x._M_it));
+ 	}
+       else if (_M_index == 1)
+ 	{
+ 	  if constexpr (is_trivially_default_constructible_v<_Sent>)
+ 	    _M_sent = std::move(__x._M_sent);
+ 	  else
+-	    ::new((void*)std::__addressof(_M_sent)) _Sent(__x._M_sent);
++	    ::new((void*)std::__addressof(_M_sent))
++	      _Sent(std::move(__x._M_sent));
+ 	}
+     }
+ 
++    constexpr common_iterator&
++    operator=(const common_iterator&) = default;
++
+     common_iterator&
+     operator=(const common_iterator& __x)
+     noexcept(is_nothrow_copy_assignable_v<_It>
+ 	     && is_nothrow_copy_assignable_v<_Sent>
+ 	     && is_nothrow_copy_constructible_v<_It>
+ 	     && is_nothrow_copy_constructible_v<_Sent>)
++    requires (!is_trivially_copy_assignable_v<_It>
++		|| !is_trivially_copy_assignable_v<_Sent>)
+     {
+-      return this->operator=<_It, _Sent>(__x);
++      _M_assign(__x);
++      return *this;
++    }
++
++    constexpr common_iterator&
++    operator=(common_iterator&&) = default;
++
++    common_iterator&
++    operator=(common_iterator&& __x)
++    noexcept(is_nothrow_move_assignable_v<_It>
++	     && is_nothrow_move_assignable_v<_Sent>
++	     && is_nothrow_move_constructible_v<_It>
++	     && is_nothrow_move_constructible_v<_Sent>)
++    requires (!is_trivially_move_assignable_v<_It>
++		|| !is_trivially_move_assignable_v<_Sent>)
++    {
++      _M_assign(std::move(__x));
++      return *this;
+     }
+ 
+     template<typename _It2, typename _Sent2>
+@@ -1732,51 +1854,20 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+       operator=(const common_iterator<_It2, _Sent2>& __x)
+       noexcept(is_nothrow_constructible_v<_It, const _It2&>
+ 	       && is_nothrow_constructible_v<_Sent, const _Sent2&>
+-	       && is_nothrow_assignable_v<_It, const _It2&>
+-	       && is_nothrow_assignable_v<_Sent, const _Sent2&>)
++	       && is_nothrow_assignable_v<_It&, const _It2&>
++	       && is_nothrow_assignable_v<_Sent&, const _Sent2&>)
+       {
+-	switch(_M_index << 2 | __x._M_index)
+-	  {
+-	  case 0b0000:
+-	    _M_it = __x._M_it;
+-	    break;
+-	  case 0b0101:
+-	    _M_sent = __x._M_sent;
+-	    break;
+-	  case 0b0001:
+-	    _M_it.~_It();
+-	    _M_index = -1;
+-	    [[fallthrough]];
+-	  case 0b1001:
+-	    ::new((void*)std::__addressof(_M_sent)) _Sent(__x._M_sent);
+-	    _M_index = 1;
+-	    break;
+-	  case 0b0100:
+-	    _M_sent.~_Sent();
+-	    _M_index = -1;
+-	    [[fallthrough]];
+-	  case 0b1000:
+-	    ::new((void*)std::__addressof(_M_it)) _It(__x._M_it);
+-	    _M_index = 0;
+-	    break;
+-	  default:
+-	    __glibcxx_assert(__x._M_has_value());
+-	    __builtin_unreachable();
+-	  }
++	__glibcxx_assert(__x._M_has_value());
++	_M_assign(__x);
+ 	return *this;
+       }
+ 
+     ~common_iterator()
+     {
+-      switch (_M_index)
+-	{
+-	case 0:
+-	  _M_it.~_It();
+-	  break;
+-	case 1:
+-	  _M_sent.~_Sent();
+-	  break;
+-	}
++      if (_M_index == 0)
++	_M_it.~_It();
++      else if (_M_index == 1)
++	_M_sent.~_Sent();
+     }
+ 
+     decltype(auto)
+@@ -1805,7 +1896,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
  	  return std::__addressof(__tmp);
  	}
        else
@@ -80070,7 +80526,7 @@ index d950e896928..a46872fc3c2 100644
      }
  
      common_iterator&
-@@ -1826,8 +1903,14 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+@@ -1826,8 +1917,14 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
  	  ++*this;
  	  return __tmp;
  	}
@@ -80086,7 +80542,60 @@ index d950e896928..a46872fc3c2 100644
      }
  
      template<typename _It2, sentinel_for<_It> _Sent2>
-@@ -1958,12 +2041,21 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+@@ -1921,9 +2018,40 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+ 
+   private:
+     template<input_or_output_iterator _It2, sentinel_for<_It2> _Sent2>
++      requires (!same_as<_It2, _Sent2>) && copyable<_It2>
+       friend class common_iterator;
+ 
+-    bool _M_has_value() const noexcept { return _M_index < 2; }
++    bool
++    _M_has_value() const noexcept { return _M_index != _S_valueless; }
++
++    template<typename _CIt>
++      void
++      _M_assign(_CIt&& __x)
++      {
++	if (_M_index == __x._M_index)
++	  {
++	    if (_M_index == 0)
++	      _M_it = std::forward<_CIt>(__x)._M_it;
++	    else if (_M_index == 1)
++	      _M_sent = std::forward<_CIt>(__x)._M_sent;
++	  }
++	else
++	  {
++	    if (_M_index == 0)
++	      _M_it.~_It();
++	    else if (_M_index == 1)
++	      _M_sent.~_Sent();
++	    _M_index = _S_valueless;
++
++	    if (__x._M_index == 0)
++	      ::new((void*)std::__addressof(_M_it))
++		_It(std::forward<_CIt>(__x)._M_it);
++	    else if (__x._M_index == 1)
++	      ::new((void*)std::__addressof(_M_sent))
++		_Sent(std::forward<_CIt>(__x)._M_sent);
++	    _M_index = __x._M_index;
++	  }
++      }
+ 
+     union
+     {
+@@ -1931,7 +2059,9 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+       _Sent _M_sent;
+       unsigned char _M_valueless;
+     };
+-    unsigned char _M_index; // 0==_M_it, 1==_M_sent, 2==valueless
++    unsigned char _M_index; // 0 == _M_it, 1 == _M_sent, 2 == valueless
++
++    static constexpr unsigned char _S_valueless{2};
+   };
+ 
+   template<typename _It, typename _Sent>
+@@ -1958,12 +2088,21 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
  	  using type = decltype(std::declval<const _CIter&>().operator->());
  	};
  
@@ -80111,7 +80620,7 @@ index d950e896928..a46872fc3c2 100644
        using value_type = iter_value_t<_It>;
        using difference_type = iter_difference_t<_It>;
        using pointer = typename __ptr<_It>::type;
-@@ -1972,14 +2064,50 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+@@ -1972,14 +2111,50 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
  
    // [iterators.counted] Counted iterators
  
@@ -80163,7 +80672,7 @@ index d950e896928..a46872fc3c2 100644
  
        constexpr
        counted_iterator(_It __i, iter_difference_t<_It> __n)
-@@ -2003,10 +2131,8 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+@@ -2003,10 +2178,8 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
  	  return *this;
  	}
  
@@ -80176,7 +80685,7 @@ index d950e896928..a46872fc3c2 100644
        { return _M_current; }
  
        constexpr _It
-@@ -2028,6 +2154,11 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+@@ -2028,6 +2201,11 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
        requires __detail::__dereferenceable<const _It>
        { return *_M_current; }
  
@@ -80188,7 +80697,7 @@ index d950e896928..a46872fc3c2 100644
        constexpr counted_iterator&
        operator++()
        {
-@@ -2170,22 +2301,20 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+@@ -2170,22 +2348,20 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
        iter_difference_t<_It> _M_length = 0;
      };
  
@@ -80217,7 +80726,7 @@ index d950e896928..a46872fc3c2 100644
      auto
      __niter_base(move_iterator<_Iterator> __it)
      -> decltype(make_move_iterator(__niter_base(__it.base())))
-@@ -2199,6 +2328,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+@@ -2199,6 +2375,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
      };
  
    template<typename _Iterator>
@@ -82822,9 +83331,15 @@ index add9b09192d..de9da930274 100644
  } // namespace ip
  } // namespace v1
 diff --git a/libstdc++-v3/include/experimental/optional b/libstdc++-v3/include/experimental/optional
-index 370e95ae83e..33c509678c1 100644
+index 370e95ae83e..b779e3d2cee 100644
 --- a/libstdc++-v3/include/experimental/optional
 +++ b/libstdc++-v3/include/experimental/optional
+@@ -1,4 +1,4 @@
+-// <optional> -*- C++ -*-
++// <experimental/optional> -*- C++ -*-
+ 
+ // Copyright (C) 2013-2020 Free Software Foundation, Inc.
+ //
 @@ -910,8 +910,8 @@ inline namespace fundamentals_v1
      make_optional(_Tp&& __t)
      { return optional<decay_t<_Tp>> { std::forward<_Tp>(__t) }; }
@@ -84148,7 +84663,7 @@ index 407c1ccda49..5454f87a38e 100644
    /**
     *  @brief  Template class basic_iostream
 diff --git a/libstdc++-v3/include/std/memory b/libstdc++-v3/include/std/memory
-index 3b3fec0d95c..eea472e8600 100644
+index 3b3fec0d95c..ce54f260257 100644
 --- a/libstdc++-v3/include/std/memory
 +++ b/libstdc++-v3/include/std/memory
 @@ -177,7 +177,7 @@ undeclare_no_pointers(char*, size_t) { }
@@ -84160,6 +84675,23 @@ index 3b3fec0d95c..eea472e8600 100644
  
  #if __cplusplus > 201703L
  #define __cpp_lib_assume_aligned 201811L
+@@ -378,11 +378,14 @@ get_pointer_safety() noexcept { return pointer_safety::relaxed; }
+       using _Tp1 = typename _Tp::first_type;
+       using _Tp2 = typename _Tp::second_type;
+ 
++      // _GLIBCXX_RESOLVE_LIB_DEFECTS
++      // 3527. uses_allocator_construction_args handles rvalue pairs
++      // of rvalue references incorrectly
+       return std::make_tuple(piecewise_construct,
+ 	  std::uses_allocator_construction_args<_Tp1>(__a,
+-	    std::move(__pr).first),
++	    std::get<0>(std::move(__pr))),
+ 	  std::uses_allocator_construction_args<_Tp2>(__a,
+-	    std::move(__pr).second));
++	    std::get<1>(std::move(__pr))));
+     }
+ 
+   template<typename _Tp, typename _Alloc, typename... _Args>
 diff --git a/libstdc++-v3/include/std/mutex b/libstdc++-v3/include/std/mutex
 index 3c619f87040..dc846f015aa 100644
 --- a/libstdc++-v3/include/std/mutex
@@ -84645,13 +85177,13 @@ index 8e00222c2e8..2ff8dbd53ed 100644
  	}
        };
 +  } // namespace __detail
-+
+ 
 +  namespace __detail
 +  {
 +    template<typename _Base>
 +      struct __filter_view_iter_cat
 +      { };
- 
++
 +    template<forward_range _Base>
 +      struct __filter_view_iter_cat<_Base>
 +      {
@@ -84783,13 +85315,13 @@ index 8e00222c2e8..2ff8dbd53ed 100644
        template<bool _Const>
 -	struct _Sentinel;
 +	using _Base = __detail::__maybe_const_t<_Const, _Vp>;
-+
-+      template<bool _Const>
-+	struct __iter_cat
-+	{ };
  
        template<bool _Const>
 -	struct _Iterator
++	struct __iter_cat
++	{ };
++
++      template<bool _Const>
 +	requires forward_range<_Base<_Const>>
 +	struct __iter_cat<_Const>
  	{
@@ -86077,7 +86609,7 @@ index c62dc72d3d7..cc34f82a31d 100644
    // let C be remove_reference_t<COMMON-REF(X&, Y&)>&&
    template<typename _Xp, typename _Yp>
 diff --git a/libstdc++-v3/include/std/valarray b/libstdc++-v3/include/std/valarray
-index be2e70dc06a..e1b5d5f4f02 100644
+index be2e70dc06a..df001b5b720 100644
 --- a/libstdc++-v3/include/std/valarray
 +++ b/libstdc++-v3/include/std/valarray
 @@ -595,7 +595,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
@@ -86089,7 +86621,23 @@ index be2e70dc06a..e1b5d5f4f02 100644
  
  _GLIBCXX_END_NAMESPACE_VERSION
  } // namespace
-@@ -1211,8 +1211,8 @@ _DEFINE_BINARY_OPERATOR(>=, __greater_equal)
+@@ -1076,6 +1076,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+       return _Expr<_Closure, _Tp>(_Closure(*this, func));
+     }
+ 
++  /// @cond undocumented
+ #define _DEFINE_VALARRAY_UNARY_OPERATOR(_Op, _Name)                     \
+   template<typename _Tp>						\
+     inline typename valarray<_Tp>::template _UnaryOp<_Name>::_Rt	\
+@@ -1202,6 +1203,7 @@ _DEFINE_BINARY_OPERATOR(<=, __less_equal)
+ _DEFINE_BINARY_OPERATOR(>=, __greater_equal)
+ 
+ #undef _DEFINE_BINARY_OPERATOR
++  /// @endcond
+ 
+ #if __cplusplus >= 201103L
+   /**
+@@ -1211,8 +1213,8 @@ _DEFINE_BINARY_OPERATOR(>=, __greater_equal)
     */
    template<class _Tp>
      inline _Tp*
@@ -86100,7 +86648,7 @@ index be2e70dc06a..e1b5d5f4f02 100644
  
    /**
     *  @brief  Return an iterator pointing to the first element of
-@@ -1221,8 +1221,8 @@ _DEFINE_BINARY_OPERATOR(>=, __greater_equal)
+@@ -1221,8 +1223,8 @@ _DEFINE_BINARY_OPERATOR(>=, __greater_equal)
     */
    template<class _Tp>
      inline const _Tp*
@@ -86111,7 +86659,7 @@ index be2e70dc06a..e1b5d5f4f02 100644
  
    /**
     *  @brief  Return an iterator pointing to one past the last element of
-@@ -1231,8 +1231,13 @@ _DEFINE_BINARY_OPERATOR(>=, __greater_equal)
+@@ -1231,8 +1233,13 @@ _DEFINE_BINARY_OPERATOR(>=, __greater_equal)
     */
    template<class _Tp>
      inline _Tp*
@@ -86127,7 +86675,7 @@ index be2e70dc06a..e1b5d5f4f02 100644
  
    /**
     *  @brief  Return an iterator pointing to one past the last element of
-@@ -1241,11 +1246,16 @@ _DEFINE_BINARY_OPERATOR(>=, __greater_equal)
+@@ -1241,11 +1248,16 @@ _DEFINE_BINARY_OPERATOR(>=, __greater_equal)
     */
    template<class _Tp>
      inline const _Tp*
@@ -87248,7 +87796,7 @@ index 27e0740af7e..74c629a710c 100644
      libstdcxx_printer.add_container('std::__cxx11::', 'list', StdListPrinter)
      libstdcxx_printer.add_container('std::', 'map', StdMapPrinter)
 diff --git a/libstdc++-v3/python/libstdcxx/v6/xmethods.py b/libstdc++-v3/python/libstdcxx/v6/xmethods.py
-index e77f8504cc3..2617c189e40 100644
+index e77f8504cc3..cd535fb5ed6 100644
 --- a/libstdc++-v3/python/libstdcxx/v6/xmethods.py
 +++ b/libstdc++-v3/python/libstdcxx/v6/xmethods.py
 @@ -597,7 +597,7 @@ class UniquePtrGetWorker(gdb.xmethod.XMethodWorker):
@@ -87260,6 +87808,25 @@ index e77f8504cc3..2617c189e40 100644
          elif head_field.is_base_class:
              return tuple_member.cast(head_field.type)
          else:
+@@ -730,7 +730,7 @@ class SharedPtrUseCountWorker(gdb.xmethod.XMethodWorker):
+     "Implements std::shared_ptr<T>::use_count()"
+ 
+     def __init__(self, elem_type):
+-        SharedPtrUseCountWorker.__init__(self, elem_type)
++        pass
+ 
+     def get_arg_types(self):
+         return None
+@@ -738,6 +738,9 @@ class SharedPtrUseCountWorker(gdb.xmethod.XMethodWorker):
+     def get_result_type(self, obj):
+         return gdb.lookup_type('long')
+ 
++    def _supports(self, method_name):
++        return True
++
+     def __call__(self, obj):
+         refcounts = obj['_M_refcount']['_M_pi']
+         return refcounts['_M_use_count'] if refcounts else 0
 diff --git a/libstdc++-v3/src/Makefile.am b/libstdc++-v3/src/Makefile.am
 index a139adc81b3..9a97b88ce1f 100644
 --- a/libstdc++-v3/src/Makefile.am
@@ -87311,6 +87878,27 @@ index 1f06e67feea..2c8fd4bf161 100644
          return std::error_condition(ev, std::generic_category());
  
        /* Additional system-dependent mappings from non-standard error codes
+diff --git a/libstdc++-v3/src/c++11/thread.cc b/libstdc++-v3/src/c++11/thread.cc
+index 2d8781724f2..b175ad5413e 100644
+--- a/libstdc++-v3/src/c++11/thread.cc
++++ b/libstdc++-v3/src/c++11/thread.cc
+@@ -132,6 +132,16 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+   void
+   thread::_M_start_thread(_State_ptr state, void (*)())
+   {
++    if (!__gthread_active_p())
++      {
++#if __cpp_exceptions
++	throw system_error(make_error_code(errc::operation_not_permitted),
++			   "Enable multithreading to use std::thread");
++#else
++	__builtin_abort();
++#endif
++      }
++
+     const int err = __gthread_create(&_M_id._M_thread,
+ 				     &execute_native_thread_routine,
+ 				     state.get());
 diff --git a/libstdc++-v3/src/c++17/fs_dir.cc b/libstdc++-v3/src/c++17/fs_dir.cc
 index 21a80b7d56b..d728ac70e8a 100644
 --- a/libstdc++-v3/src/c++17/fs_dir.cc
@@ -88232,6 +88820,109 @@ index d7bd16bf32a..416e6a9b891 100644
 +  struct U : O { };
 +  static_assert( ! has_spaceship<U> );
 +}
+diff --git a/libstdc++-v3/testsuite/20_util/pair/astuple/get-2.cc b/libstdc++-v3/testsuite/20_util/pair/astuple/get-2.cc
+new file mode 100644
+index 00000000000..573d239effa
+--- /dev/null
++++ b/libstdc++-v3/testsuite/20_util/pair/astuple/get-2.cc
+@@ -0,0 +1,68 @@
++// { dg-do compile { target c++11 } }
++
++#include <utility>
++
++template<int N, typename T, typename Pair>
++constexpr bool
++check()
++{
++  return std::is_same<decltype(std::get<N>(std::declval<Pair>())), T>::value;
++}
++
++void
++test_value_category()
++{
++  using P = std::pair<int, long>;
++  static_assert( check<0, int&, P&>(),
++		 "get<0>(pair<T1, T2>&)" );
++  static_assert( check<1, long&, P&>(),
++		 "get<1>(pair<T1, T2>&)" );
++  static_assert( check<0, int&&, P&&>(),
++		 "get<0>(pair<T1, T2>&&)" );
++  static_assert( check<1, long&&, P&&>(),
++		 "get<1>(pair<T1, T2>&&)" );
++  static_assert( check<0, const int&, const P&>(),
++		 "get<0>(const pair<T1, T2>&)" );
++  static_assert( check<1, const long&, const P&>(),
++		 "get<1>(const pair<T1, T2>&)" );
++  static_assert( check<0, const int&&, const P&&>(),
++		 "get<0>(const pair<T1, T2>&&)" );
++  static_assert( check<1, const long&&, const P&&>(),
++		 "get<1>(const pair<T1, T2>&&)" );
++
++  using PL = std::pair<int&, long&>;
++  static_assert( check<0, int&, PL&>(),
++		 "get<0>(pair<T1&, T2&>&)" );
++  static_assert( check<1, long&, PL&>(),
++		 "get<1>(pair<T1&, T2&>&)" );
++  static_assert( check<0, int&, PL&&>(),
++		 "get<0>(pair<T1&, T2&>&&)" );
++  static_assert( check<1, long&, PL&&>(),
++		 "get<1>(pair<T1&, T2&>&&)" );
++  static_assert( check<0, int&, const PL&>(),
++		 "get<0>(const pair<T1&, T2&>&)" );
++  static_assert( check<1, long&, const PL&>(),
++		 "get<1>(const pair<T1&, T2&>&)" );
++  static_assert( check<0, int&, const PL&&>(),
++		 "get<0>(const pair<T1&, T2&>&&)" );
++  static_assert( check<1, long&, const PL&&>(),
++		 "get<1>(const pair<T1&, T2&>&&)" );
++
++  using PR = std::pair<int&&, long&&>;
++  static_assert( check<0, int&, P&>(),
++		 "get<0>(pair<T1&&, T2&&>&)" );
++  static_assert( check<1, long&, P&>(),
++		 "get<1>(pair<T1&&, T2&&>&)" );
++  static_assert( check<0, int&&, PR&&>(),
++		 "get<0>(pair<T1&&, T2&&>&&)" );
++  static_assert( check<1, long&&, PR&&>(),
++		 "get<1>(pair<T1&&, T2&&>&&)" );
++  static_assert( check<0, int&, const PR&>(),
++		 "get<0>(const pair<T1&&, T2&&>&)" );
++  static_assert( check<1, long&, const PR&>(),
++		 "get<1>(const pair<T1&&, T2&&>&)" );
++  static_assert( check<0, int&&, const PR&&>(),
++		 "get<0>(const pair<T1&&, T2&&>&&)" );
++  static_assert( check<1, long&&, const PR&&>(),
++		 "get<1>(const pair<T1&&, T2&&>&&)" );
++}
+diff --git a/libstdc++-v3/testsuite/20_util/scoped_allocator/108952.cc b/libstdc++-v3/testsuite/20_util/scoped_allocator/108952.cc
+new file mode 100644
+index 00000000000..a6b9c67498c
+--- /dev/null
++++ b/libstdc++-v3/testsuite/20_util/scoped_allocator/108952.cc
+@@ -0,0 +1,23 @@
++// { dg-do compile { target c++11 } }
++
++#include <scoped_allocator>
++
++struct move_only
++{
++  move_only(move_only&&);
++};
++
++using P = std::pair<move_only, move_only>;
++
++void
++test_pr108952(std::pair<move_only&&, move_only&&> rvals)
++{
++  // LWG 3527. uses_allocator_construction_args handles rvalue pairs of
++  // rvalue references incorrectly.
++  // PR libstdc++/108952 Regression in uses_allocator_construction_args
++  // for pair of rvalue references
++  std::scoped_allocator_adaptor<std::allocator<P>> a;
++  auto p = a.allocate(1);
++  a.construct(p, std::move(rvals));
++  a.deallocate(p, 1);
++}
 diff --git a/libstdc++-v3/testsuite/20_util/scoped_allocator/69293_neg.cc b/libstdc++-v3/testsuite/20_util/scoped_allocator/69293_neg.cc
 index 6f3cd0a2521..975862b3365 100644
 --- a/libstdc++-v3/testsuite/20_util/scoped_allocator/69293_neg.cc
@@ -88418,6 +89109,34 @@ index c3ff05aa72a..966e579cc99 100644
  // { dg-error "failed: .* uses_allocator is true" "" { target *-*-* } 0 }
  // { dg-error "no matching function for call" "" { target c++2a } 0 }
 +// { dg-prune-output "in 'constexpr' expansion" }
+diff --git a/libstdc++-v3/testsuite/20_util/uses_allocator/lwg3527.cc b/libstdc++-v3/testsuite/20_util/uses_allocator/lwg3527.cc
+new file mode 100644
+index 00000000000..ae377f4b5a3
+--- /dev/null
++++ b/libstdc++-v3/testsuite/20_util/uses_allocator/lwg3527.cc
+@@ -0,0 +1,22 @@
++// { dg-options "-std=gnu++20" }
++// { dg-do compile { target c++20 } }
++
++#include <memory>
++
++struct move_only
++{
++  move_only(move_only&&);
++};
++
++using P = std::pair<move_only, move_only>;
++
++void
++test_lwg3527(std::pair<move_only&&, move_only&&> rvals)
++{
++  // LWG 3527. uses_allocator_construction_args handles rvalue pairs of
++  // rvalue references incorrectly.
++  // PR libstdc++/108952 Regression in uses_allocator_construction_args
++  // for pair of rvalue references
++  std::allocator<move_only> a;
++  (void) std::uses_allocator_construction_args<P>(a, std::move(rvals));
++}
 diff --git a/libstdc++-v3/testsuite/20_util/variant/100384.cc b/libstdc++-v3/testsuite/20_util/variant/100384.cc
 new file mode 100644
 index 00000000000..4866aa017ff
@@ -90257,6 +90976,104 @@ index b503b0cdc1e..3c9c3927153 100644
 +  using element_type = long;
 +};
 +static_assert( ! has_alias<I4> );
+diff --git a/libstdc++-v3/testsuite/24_iterators/common_iterator/1.cc b/libstdc++-v3/testsuite/24_iterators/common_iterator/1.cc
+index 576c4d818a4..8b69ecd54fe 100644
+--- a/libstdc++-v3/testsuite/24_iterators/common_iterator/1.cc
++++ b/libstdc++-v3/testsuite/24_iterators/common_iterator/1.cc
+@@ -27,15 +27,30 @@ test01()
+   using I = std::common_iterator<int*, const int*>;
+   static_assert( std::is_default_constructible_v<I> );
+   static_assert( std::is_copy_constructible_v<I> );
++  static_assert( std::is_move_constructible_v<I> );
+   static_assert( std::is_copy_assignable_v<I> );
++  static_assert( std::is_move_assignable_v<I> );
+   static_assert( std::is_constructible_v<I, int*> );
+   static_assert( std::is_constructible_v<I, const int*> );
+ 
+-  struct sentinel { operator int*() const { return nullptr; } };
++  static_assert( std::is_nothrow_copy_constructible_v<I> ); // GCC extension
++  static_assert( std::is_nothrow_move_constructible_v<I> ); // GCC extension
++  static_assert( std::is_nothrow_copy_assignable_v<I> ); // GCC extension
++  static_assert( std::is_nothrow_move_assignable_v<I> ); // GCC extension
++
++  struct sentinel { operator int*() const noexcept { return nullptr; } };
+   using K = std::common_iterator<int*, sentinel>;
+   static_assert( std::is_constructible_v<I, const K&> );
+   static_assert( std::is_assignable_v<I, const K&> );
+ 
++  static_assert( std::is_nothrow_assignable_v<I&, const K&> ); // GCC extension
++
++  struct sentinel_throwing { operator int*() const { return nullptr; } };
++  using K_throwing = std::common_iterator<int*, sentinel_throwing>;
++  // Conversion is noexcept(false)
++  static_assert( ! std::is_nothrow_assignable_v<I&, const K_throwing&> );
++
++
+   struct sentinel2
+   {
+     const int* p;
+@@ -46,6 +61,12 @@ test01()
+   using J = std::common_iterator<const int*, sentinel2>;
+   static_assert( std::is_constructible_v<J, const I&> );
+   static_assert( std::is_convertible_v<const I&, J> );
++
++  static_assert( std::is_constructible_v<J, I> );
++  static_assert( std::is_convertible_v<I, J> );
++
++  // Constructor is noexcept(false)
++  static_assert( ! std::is_nothrow_constructible_v<J, I> );
+ }
+ 
+ void
+diff --git a/libstdc++-v3/testsuite/24_iterators/common_iterator/100823.cc b/libstdc++-v3/testsuite/24_iterators/common_iterator/100823.cc
+new file mode 100644
+index 00000000000..4f2b23de8cc
+--- /dev/null
++++ b/libstdc++-v3/testsuite/24_iterators/common_iterator/100823.cc
+@@ -0,0 +1,43 @@
++// { dg-options "-std=gnu++20 -D_GLIBCXX_ASSERTIONS" }
++// { dg-do run { target c++20 } }
++#include <iterator>
++#include <testsuite_iterators.h>
++#include <testsuite_hooks.h>
++
++void
++test_valueless_assignment()
++{
++  int x[1] { };
++  __gnu_test::test_forward_range<int> r(x);
++  using Iter = decltype(r.begin());
++  using Sent = decltype(r.end());
++
++  std::common_iterator<Iter, Sent> i;
++  const std::common_iterator<Iter, Sent> j(r.begin());
++  try
++  {
++    struct Bomb
++    {
++      bool operator==(Iter) const { return true; }
++      operator Sent() const { throw 1; }
++    };
++    std::common_iterator<Iter, Bomb> b{Bomb{}};
++    i = b; // Throws, leaving i valueless-by-exception.
++    VERIFY(false);
++  }
++  catch (int)
++  {
++    std::common_iterator<Iter, Sent> k(i);
++
++    // PR libstdc++/100823
++    k = i; // Valid even though both operands are valueless.
++
++    i = j; // No longer valueless.
++  }
++  VERIFY( i == j );
++}
++
++int main()
++{
++  test_valueless_assignment();
++}
 diff --git a/libstdc++-v3/testsuite/24_iterators/headers/iterator/synopsis_c++20.cc b/libstdc++-v3/testsuite/24_iterators/headers/iterator/synopsis_c++20.cc
 index fbe116be2fd..8962e869123 100644
 --- a/libstdc++-v3/testsuite/24_iterators/headers/iterator/synopsis_c++20.cc
@@ -91432,14 +92249,6 @@ index 10d36dfe42b..2f6c3a04acd 100644
 -  iter = fs::directory_iterator(p, ec);
 -  VERIFY( ec );
 -  VERIFY( iter == end(iter) );
--
--  // Test inaccessible directory, skipping permission denied.
--  const auto opts = fs::directory_options::skip_permission_denied;
--  ec = bad_ec;
--  iter = fs::directory_iterator(p, opts, ec);
--  VERIFY( !ec );
--  VERIFY( iter == end(iter) );
--#endif
 +  if (__gnu_test::permissions_are_testable())
 +  {
 +    // Test inaccessible directory.
@@ -91449,7 +92258,14 @@ index 10d36dfe42b..2f6c3a04acd 100644
 +    iter = fs::directory_iterator(p, ec);
 +    VERIFY( ec );
 +    VERIFY( iter == end(iter) );
-+
+ 
+-  // Test inaccessible directory, skipping permission denied.
+-  const auto opts = fs::directory_options::skip_permission_denied;
+-  ec = bad_ec;
+-  iter = fs::directory_iterator(p, opts, ec);
+-  VERIFY( !ec );
+-  VERIFY( iter == end(iter) );
+-#endif
 +    // Test inaccessible directory, skipping permission denied.
 +    const auto opts = fs::directory_options::skip_permission_denied;
 +    ec = bad_ec;
@@ -91634,13 +92450,27 @@ index 86a03c3c787..283024fe287 100644
 -  iter = fs::recursive_directory_iterator(p, ec);
 -  VERIFY( ec );
 -  VERIFY( iter == end(iter) );
--
++  if (__gnu_test::permissions_are_testable())
++  {
++    // Test inaccessible directory.
++    ec = bad_ec;
++    permissions(p, fs::perms::none, ec);
++    VERIFY( !ec );
++    iter = fs::recursive_directory_iterator(p, ec);
++    VERIFY( ec );
++    VERIFY( iter == end(iter) );
+ 
 -  // Test inaccessible directory, skipping permission denied.
 -  const auto opts = fs::directory_options::skip_permission_denied;
 -  iter = fs::recursive_directory_iterator(p, opts, ec);
 -  VERIFY( !ec );
 -  VERIFY( iter == end(iter) );
--
++    // Test inaccessible directory, skipping permission denied.
++    const auto opts = fs::directory_options::skip_permission_denied;
++    iter = fs::recursive_directory_iterator(p, opts, ec);
++    VERIFY( !ec );
++    VERIFY( iter == end(iter) );
+ 
 -  // Test inaccessible sub-directory.
 -  ec = bad_ec;
 -  permissions(p, fs::perms::owner_all, ec);
@@ -91659,37 +92489,6 @@ index 86a03c3c787..283024fe287 100644
 -  iter.increment(ec);  // should fail to recurse into p/d1/d2
 -  VERIFY( ec );
 -  VERIFY( iter == end(iter) );
--
--  // Test inaccessible sub-directory, skipping permission denied.
--  ec = bad_ec;
--  iter = fs::recursive_directory_iterator(p, opts, ec);
--  VERIFY( !ec );
--  VERIFY( iter != end(iter) );
--  VERIFY( iter->path() == p/"d1" );
--  ++iter;              // should recurse into d1
--  VERIFY( iter != end(iter) );
--  VERIFY( iter->path() == p/"d1/d2" );
--  ec = bad_ec;
--  iter.increment(ec);  // should fail to recurse into p/d1/d2, so skip it
--  VERIFY( !ec );
--  VERIFY( iter == end(iter) );
--#endif
-+  if (__gnu_test::permissions_are_testable())
-+  {
-+    // Test inaccessible directory.
-+    ec = bad_ec;
-+    permissions(p, fs::perms::none, ec);
-+    VERIFY( !ec );
-+    iter = fs::recursive_directory_iterator(p, ec);
-+    VERIFY( ec );
-+    VERIFY( iter == end(iter) );
-+
-+    // Test inaccessible directory, skipping permission denied.
-+    const auto opts = fs::directory_options::skip_permission_denied;
-+    iter = fs::recursive_directory_iterator(p, opts, ec);
-+    VERIFY( !ec );
-+    VERIFY( iter == end(iter) );
-+
 +    // Test inaccessible sub-directory.
 +    ec = bad_ec;
 +    permissions(p, fs::perms::owner_all, ec);
@@ -91708,7 +92507,21 @@ index 86a03c3c787..283024fe287 100644
 +    iter.increment(ec);  // should fail to recurse into p/d1/d2
 +    VERIFY( ec );
 +    VERIFY( iter == end(iter) );
-+
+ 
+-  // Test inaccessible sub-directory, skipping permission denied.
+-  ec = bad_ec;
+-  iter = fs::recursive_directory_iterator(p, opts, ec);
+-  VERIFY( !ec );
+-  VERIFY( iter != end(iter) );
+-  VERIFY( iter->path() == p/"d1" );
+-  ++iter;              // should recurse into d1
+-  VERIFY( iter != end(iter) );
+-  VERIFY( iter->path() == p/"d1/d2" );
+-  ec = bad_ec;
+-  iter.increment(ec);  // should fail to recurse into p/d1/d2, so skip it
+-  VERIFY( !ec );
+-  VERIFY( iter == end(iter) );
+-#endif
 +    // Test inaccessible sub-directory, skipping permission denied.
 +    ec = bad_ec;
 +    iter = fs::recursive_directory_iterator(p, opts, ec);
@@ -92209,13 +93022,6 @@ index 82f39aa347f..6044a11e436 100644
 -  iter = fs::directory_iterator(p, ec);
 -  VERIFY( ec );
 -  VERIFY( iter == end(iter) );
--
--  // Test inaccessible directory, skipping permission denied.
--  const auto opts = fs::directory_options::skip_permission_denied;
--  iter = fs::directory_iterator(p, opts, ec);
--  VERIFY( !ec );
--  VERIFY( iter == end(iter) );
--#endif
 +  if (__gnu_test::permissions_are_testable())
 +  {
 +    // Test inaccessible directory.
@@ -92224,7 +93030,13 @@ index 82f39aa347f..6044a11e436 100644
 +    iter = fs::directory_iterator(p, ec);
 +    VERIFY( ec );
 +    VERIFY( iter == end(iter) );
-+
+ 
+-  // Test inaccessible directory, skipping permission denied.
+-  const auto opts = fs::directory_options::skip_permission_denied;
+-  iter = fs::directory_iterator(p, opts, ec);
+-  VERIFY( !ec );
+-  VERIFY( iter == end(iter) );
+-#endif
 +    // Test inaccessible directory, skipping permission denied.
 +    const auto opts = fs::directory_options::skip_permission_denied;
 +    iter = fs::directory_iterator(p, opts, ec);
@@ -92240,10 +93052,10 @@ index 82f39aa347f..6044a11e436 100644
  
 diff --git a/libstdc++-v3/testsuite/experimental/filesystem/iterators/error_reporting.cc b/libstdc++-v3/testsuite/experimental/filesystem/iterators/error_reporting.cc
 new file mode 100644
-index 00000000000..806c511ebef
+index 00000000000..ddf0d7fec54
 --- /dev/null
 +++ b/libstdc++-v3/testsuite/experimental/filesystem/iterators/error_reporting.cc
-@@ -0,0 +1,140 @@
+@@ -0,0 +1,149 @@
 +// Copyright (C) 2020-2022 Free Software Foundation, Inc.
 +//
 +// This file is part of the GNU ISO C++ Library.  This library is free
@@ -92275,35 +93087,44 @@ index 00000000000..806c511ebef
 +
 +int choice;
 +
-+struct dirent global_dirent;
-+
 +extern "C" struct dirent* readdir(DIR*)
 +{
++  // On some targets dirent::d_name is very small, but the OS allocates
++  // a trailing char array after the dirent struct. Emulate that here.
++  union State
++  {
++    struct dirent d;
++    char buf[sizeof(struct dirent) + 16] = {};
++  };
++
++  static State state;
++  char* d_name = state.buf + offsetof(struct dirent, d_name);
++
 +  switch (choice)
 +  {
 +  case 1:
-+    global_dirent.d_ino = 999;
++    state.d.d_ino = 999;
 +#if defined _GLIBCXX_HAVE_STRUCT_DIRENT_D_TYPE && defined DT_REG
-+    global_dirent.d_type = DT_REG;
++    state.d.d_type = DT_REG;
 +#endif
-+    global_dirent.d_reclen = 0;
-+    std::char_traits<char>::copy(global_dirent.d_name, "file", 5);
++    state.d.d_reclen = 0;
++    std::char_traits<char>::copy(d_name, "file", 5);
 +    choice = 0;
-+    return &global_dirent;
++    return &state.d;
 +  case 2:
-+    global_dirent.d_ino = 111;
++    state.d.d_ino = 111;
 +#if defined _GLIBCXX_HAVE_STRUCT_DIRENT_D_TYPE && defined DT_DIR
-+    global_dirent.d_type = DT_DIR;
++    state.d.d_type = DT_DIR;
 +#endif
-+    global_dirent.d_reclen = 60;
-+    std::char_traits<char>::copy(global_dirent.d_name, "subdir", 7);
++    state.d.d_reclen = 60;
++    std::char_traits<char>::copy(d_name, "subdir", 7);
 +    choice = 1;
-+    return &global_dirent;
++    return &state.d;
 +  default:
 +    errno = EIO;
 +    return nullptr;
 +  }
-+  return &global_dirent;
++  return &state.d;
 +}
 +
 +void
@@ -92399,14 +93220,29 @@ index 1c073e125f9..e9569c2dd53 100644
 -  iter = fs::recursive_directory_iterator(p, ec);
 -  VERIFY( ec );
 -  VERIFY( iter == end(iter) );
--
++  if (__gnu_test::permissions_are_testable())
++  {
++    // Test inaccessible directory.
++    ec = bad_ec;
++    permissions(p, fs::perms::none, ec);
++    VERIFY( !ec );
++    iter = fs::recursive_directory_iterator(p, ec);
++    VERIFY( ec );
++    VERIFY( iter == end(iter) );
+ 
 -  // Test inaccessible directory, skipping permission denied.
 -  const auto opts = fs::directory_options::skip_permission_denied;
 -  ec = bad_ec;
 -  iter = fs::recursive_directory_iterator(p, opts, ec);
 -  VERIFY( !ec );
 -  VERIFY( iter == end(iter) );
--
++    // Test inaccessible directory, skipping permission denied.
++    const auto opts = fs::directory_options::skip_permission_denied;
++    ec = bad_ec;
++    iter = fs::recursive_directory_iterator(p, opts, ec);
++    VERIFY( !ec );
++    VERIFY( iter == end(iter) );
+ 
 -  // Test inaccessible sub-directory.
 -  ec = bad_ec;
 -  permissions(p, fs::perms::owner_all, ec);
@@ -92425,36 +93261,6 @@ index 1c073e125f9..e9569c2dd53 100644
 -  iter.increment(ec);  // should fail to recurse into p/d1/d2
 -  VERIFY( ec );
 -  VERIFY( iter == end(iter) );
--
--  // Test inaccessible sub-directory, skipping permission denied.
--  ec = bad_ec;
--  iter = fs::recursive_directory_iterator(p, opts, ec);
--  VERIFY( !ec );
--  VERIFY( iter != end(iter) );
--  VERIFY( iter->path() == p/"d1" );
--  ++iter;              // should recurse into d1
--  VERIFY( iter->path() == p/"d1/d2" );
--  ec = bad_ec;
--  iter.increment(ec);  // should fail to recurse into p/d1/d2, so skip it
--  VERIFY( !ec );
--  VERIFY( iter == end(iter) );
-+  if (__gnu_test::permissions_are_testable())
-+  {
-+    // Test inaccessible directory.
-+    ec = bad_ec;
-+    permissions(p, fs::perms::none, ec);
-+    VERIFY( !ec );
-+    iter = fs::recursive_directory_iterator(p, ec);
-+    VERIFY( ec );
-+    VERIFY( iter == end(iter) );
-+
-+    // Test inaccessible directory, skipping permission denied.
-+    const auto opts = fs::directory_options::skip_permission_denied;
-+    ec = bad_ec;
-+    iter = fs::recursive_directory_iterator(p, opts, ec);
-+    VERIFY( !ec );
-+    VERIFY( iter == end(iter) );
-+
 +    // Test inaccessible sub-directory.
 +    ec = bad_ec;
 +    permissions(p, fs::perms::owner_all, ec);
@@ -92473,7 +93279,19 @@ index 1c073e125f9..e9569c2dd53 100644
 +    iter.increment(ec);  // should fail to recurse into p/d1/d2
 +    VERIFY( ec );
 +    VERIFY( iter == end(iter) );
-+
+ 
+-  // Test inaccessible sub-directory, skipping permission denied.
+-  ec = bad_ec;
+-  iter = fs::recursive_directory_iterator(p, opts, ec);
+-  VERIFY( !ec );
+-  VERIFY( iter != end(iter) );
+-  VERIFY( iter->path() == p/"d1" );
+-  ++iter;              // should recurse into d1
+-  VERIFY( iter->path() == p/"d1/d2" );
+-  ec = bad_ec;
+-  iter.increment(ec);  // should fail to recurse into p/d1/d2, so skip it
+-  VERIFY( !ec );
+-  VERIFY( iter == end(iter) );
 +    // Test inaccessible sub-directory, skipping permission denied.
 +    ec = bad_ec;
 +    iter = fs::recursive_directory_iterator(p, opts, ec);
@@ -92854,13 +93672,9 @@ index 3d5bf882fd0..aeb21089be6 100644
      return $gdb_markers($filename,$marker)
  }
  
--# Make note of a gdb test.  A test consists of a variable name and an
--# expected result.
--proc note-test {var result} {
 +proc register_gdb_test {var result kind rexp selector} {
-     global gdb_tests
- 
--    lappend gdb_tests $var $result print 0
++    global gdb_tests
++
 +    set xfail 0
 +    if {[string length $selector] > 0} {
 +	switch [dg-process-target $selector] {
@@ -92874,7 +93688,12 @@ index 3d5bf882fd0..aeb21089be6 100644
 +    lappend gdb_tests $var $result $kind $rexp $xfail
 +}
 +
-+# Make note of a gdb test.  A test consists of a variable name and an
+ # Make note of a gdb test.  A test consists of a variable name and an
+-# expected result.
+-proc note-test {var result} {
+-    global gdb_tests
+-
+-    lappend gdb_tests $var $result print 0
 +# expected result, and an optional target selector.
 +proc note-test {var result {selector {}}} {
 +    register_gdb_test $var $result print 0 $selector
@@ -93091,6 +93910,31 @@ index 18ea1619ec4..2eb5ef546ef 100644
    regsub {^(.*)-Wl,--gc-sections(.*)$} $cxxldflags {\1\2} cxxldflags
    gdb-dg-runtest [lsort [glob $srcdir/$subdir/*.cc]] \
      "" "$DEFAULT_CXXFLAGS -flto $PCH_CXXFLAGS"
+diff --git a/libstdc++-v3/testsuite/libstdc++-xmethods/shared_ptr.cc b/libstdc++-v3/testsuite/libstdc++-xmethods/shared_ptr.cc
+index 05fdd57ec3f..e7a79d67d59 100644
+--- a/libstdc++-v3/testsuite/libstdc++-xmethods/shared_ptr.cc
++++ b/libstdc++-v3/testsuite/libstdc++-xmethods/shared_ptr.cc
+@@ -36,6 +36,8 @@ main ()
+ 
+   std::shared_ptr<x_struct[3]> s(new x_struct[2]{ {92}, {115} });
+ 
++  auto qq = q;
++
+ // { dg-final { note-test *p 10 } }
+ // { dg-final { regexp-test p.get() 0x.* } }
+ 
+@@ -66,6 +68,11 @@ main ()
+ // { dg-final { whatis-test s.get() "x_struct \*" } }
+ // { dg-final { whatis-test s\[1].y int } }
+ 
++// { dg-final { note-test p.use_count() 1 } }
++// { dg-final { note-test p.unique() true } }
++// { dg-final { note-test q.use_count() 2 } }
++// { dg-final { note-test q.unique() false } }
++
+   return 0;  // Mark SPOT
+ }
+ 
 diff --git a/libstdc++-v3/testsuite/std/ranges/97600.cc b/libstdc++-v3/testsuite/std/ranges/97600.cc
 new file mode 100644
 index 00000000000..d992318259d
