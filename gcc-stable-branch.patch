@@ -115,7 +115,11 @@ François-Xavier Coudert (1):
 Fritz Reese (1):
       fortran: Fix conv of UNION constructors [PR105310]
 
-GCC Administrator (747):
+GCC Administrator (751):
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -1052,7 +1056,7 @@ Ian Lance Taylor (2):
       compiler: correct condition for calling memclrHasPointers
       libgo: don't include <linux/fs.h> when building gen-sysinfo.go
 
-Jakub Jelinek (181):
+Jakub Jelinek (183):
       rs6000: Fix up libgcc ABI when built with --with-long-double-format=ieee [PR97653]
       dse: Fix up hard reg conflict checking in replace_read [PR99863]
       c++: Don't cache constexpr functions which are passed pointers to heap or static vars being constructed [PR99859]
@@ -1234,6 +1238,8 @@ Jakub Jelinek (181):
       sanopt: Return TODO_cleanup_cfg if any .{UB,HWA,A}SAN_* calls were lowered [PR106190]
       libiberty: Make strstr.c in libiberty ANSI compliant
       reassoc: Fix up another ICE with returns_twice call [PR109410]
+      tree-ssa-ccp, wide-int: Fix up handling of [LR]ROTATE_EXPR in bitwise ccp [PR109778]
+      testsuite: Add further testcase for already fixed PR [PR109778]
 
 Jan Hubicka (2):
       Fix looping flag discovery in ipa-pure-const
@@ -53242,6 +53248,38 @@ index 00000000000..d2ccf6a5b52
 +    __builtin_abort ();
 +  return 0;
 +}
+diff --git a/gcc/testsuite/gcc.c-torture/execute/pr109778.c b/gcc/testsuite/gcc.c-torture/execute/pr109778.c
+new file mode 100644
+index 00000000000..309fbf413e0
+--- /dev/null
++++ b/gcc/testsuite/gcc.c-torture/execute/pr109778.c
+@@ -0,0 +1,26 @@
++/* PR tree-optimization/109778 */
++
++int a, b, c, d, *e = &c;
++
++static inline unsigned
++foo (unsigned char x)
++{
++  x = 1 | x << 1;
++  x = x >> 4 | x << 4;
++  return x;
++}
++
++static inline void
++bar (unsigned x)
++{
++  *e = 8 > foo (x + 86) - 86;
++}
++
++int
++main ()
++{
++  d = a && b;
++  bar (d + 4);
++  if (c != 1)
++    __builtin_abort ();
++}
 diff --git a/gcc/testsuite/gcc.c-torture/execute/pr98736.c b/gcc/testsuite/gcc.c-torture/execute/pr98736.c
 new file mode 100644
 index 00000000000..c066abcd86a
@@ -54054,6 +54092,47 @@ index 00000000000..61217625be7
 +rexc_raise(VALUE mesg)
 +{
 +        __builtin_exit(0);
++}
+diff --git a/gcc/testsuite/gcc.dg/lto/pr109778_0.c b/gcc/testsuite/gcc.dg/lto/pr109778_0.c
+new file mode 100644
+index 00000000000..3c6e1b8f7b7
+--- /dev/null
++++ b/gcc/testsuite/gcc.dg/lto/pr109778_0.c
+@@ -0,0 +1,22 @@
++/* PR tree-optimization/109778 */
++/* { dg-lto-do run } */
++/* { dg-lto-options { "-O2 -flto" } } */
++/* { dg-require-effective-target int32 } */
++
++int bar (int);
++
++__attribute__((noipa)) int
++foo (int x)
++{
++  x = bar (x);
++  x = (x << 16) | (int) ((unsigned) x >> 16);
++  return x & 0x10000000;
++}
++
++int
++main ()
++{
++  if (foo (0) || foo (-1))
++    __builtin_abort ();
++  return 0;
++}
+diff --git a/gcc/testsuite/gcc.dg/lto/pr109778_1.c b/gcc/testsuite/gcc.dg/lto/pr109778_1.c
+new file mode 100644
+index 00000000000..d18a7209983
+--- /dev/null
++++ b/gcc/testsuite/gcc.dg/lto/pr109778_1.c
+@@ -0,0 +1,7 @@
++int
++bar (int x)
++{
++  x &= 0x22222222;
++  x |= (int) 0xf1234567U;
++  return x;
 +}
 diff --git a/gcc/testsuite/gcc.dg/lto/pr99849_0.c b/gcc/testsuite/gcc.dg/lto/pr99849_0.c
 new file mode 100644
@@ -68302,6 +68381,19 @@ index 85b9cc9ed7f..420329f63f6 100644
  	    enum total_sra_field_state
  	      state = total_should_skip_creating_access (root,
  							 &last_seen_sibling,
+diff --git a/gcc/tree-ssa-ccp.c b/gcc/tree-ssa-ccp.c
+index 952fd9cd4bd..37619dfdafa 100644
+--- a/gcc/tree-ssa-ccp.c
++++ b/gcc/tree-ssa-ccp.c
+@@ -1412,6 +1412,8 @@ bit_value_binop (enum tree_code code, signop sgn, int width,
+ 		  *mask = wi::lrotate (r1mask, shift, width);
+ 		  *val = wi::lrotate (r1val, shift, width);
+ 		}
++	      *mask = wi::ext (*mask, width, sgn);
++	      *val = wi::ext (*val, width, sgn);
+ 	    }
+ 	}
+       break;
 diff --git a/gcc/tree-ssa-dom.c b/gcc/tree-ssa-dom.c
 index 864c984f636..fcdbf547c42 100644
 --- a/gcc/tree-ssa-dom.c
@@ -70442,6 +70534,38 @@ index c377e68e4b9..b173d0247a5 100644
  }
  
  } // namespace selftest
+diff --git a/gcc/wide-int.h b/gcc/wide-int.h
+index bb0d16b99b1..e529a3157a8 100644
+--- a/gcc/wide-int.h
++++ b/gcc/wide-int.h
+@@ -3167,9 +3167,11 @@ wi::lrotate (const T1 &x, const T2 &y, unsigned int width)
+     width = precision;
+   WI_UNARY_RESULT (T2) ymod = umod_trunc (y, width);
+   WI_UNARY_RESULT (T1) left = wi::lshift (x, ymod);
+-  WI_UNARY_RESULT (T1) right = wi::lrshift (x, wi::sub (width, ymod));
++  WI_UNARY_RESULT (T1) right
++    = wi::lrshift (width != precision ? wi::zext (x, width) : x,
++		   wi::sub (width, ymod));
+   if (width != precision)
+-    return wi::zext (left, width) | wi::zext (right, width);
++    return wi::zext (left, width) | right;
+   return left | right;
+ }
+ 
+@@ -3184,10 +3186,11 @@ wi::rrotate (const T1 &x, const T2 &y, unsigned int width)
+   if (width == 0)
+     width = precision;
+   WI_UNARY_RESULT (T2) ymod = umod_trunc (y, width);
+-  WI_UNARY_RESULT (T1) right = wi::lrshift (x, ymod);
++  WI_UNARY_RESULT (T1) right
++    = wi::lrshift (width != precision ? wi::zext (x, width) : x, ymod);
+   WI_UNARY_RESULT (T1) left = wi::lshift (x, wi::sub (width, ymod));
+   if (width != precision)
+-    return wi::zext (left, width) | wi::zext (right, width);
++    return wi::zext (left, width) | right;
+   return left | right;
+ }
+ 
 diff --git a/gnattools/ChangeLog b/gnattools/ChangeLog
 index d5154401c35..101157945d4 100644
 --- a/gnattools/ChangeLog
