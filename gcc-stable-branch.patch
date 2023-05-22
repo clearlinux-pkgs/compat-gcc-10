@@ -115,7 +115,8 @@ François-Xavier Coudert (1):
 Fritz Reese (1):
       fortran: Fix conv of UNION constructors [PR105310]
 
-GCC Administrator (763):
+GCC Administrator (764):
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -5952,10 +5953,30 @@ index 00000000000..f5e9ecd577c
 +        changelog = generate_changelog(PATCH9)
 +        assert changelog == EXPECTED9
 diff --git a/fixincludes/ChangeLog b/fixincludes/ChangeLog
-index 61b30386b38..a36b6b7c192 100644
+index 61b30386b38..8cad739247e 100644
 --- a/fixincludes/ChangeLog
 +++ b/fixincludes/ChangeLog
-@@ -1,3 +1,7 @@
+@@ -1,3 +1,27 @@
++2023-05-21  Iain Sandoe  <iain@sandoe.co.uk>
++
++	Backported from master:
++	2023-01-21  Iain Sandoe  <iain@sandoe.co.uk>
++
++	* fixincl.x: Regenerate.
++	* inclhack.def (darwin_objc_runtime_1): New hack.
++	* tests/base/objc/runtime.h: New file.
++
++2023-05-21  Iain Sandoe  <iain@sandoe.co.uk>
++
++	Backported from master:
++	2023-01-21  Iain Sandoe  <iain@sandoe.co.uk>
++
++	PR target/107568
++	* fixincl.x: Regenerate.
++	* inclhack.def: Add a fix for MacOS13 SDK function deprecations
++	in stdio.h.
++	* tests/base/stdio.h (__deprecated_msg): New test.
++
 +2022-06-28  Release Manager
 +
 +	* GCC 10.4.0 released.
@@ -6264,10 +6285,22 @@ index 0719d810258..da772b97257 100644
 -10.3.0
 +10.4.1
 diff --git a/gcc/ChangeLog b/gcc/ChangeLog
-index 3b1384e707f..55a23b47eeb 100644
+index 3b1384e707f..0e8f1aa07c7 100644
 --- a/gcc/ChangeLog
 +++ b/gcc/ChangeLog
-@@ -1,3 +1,3895 @@
+@@ -1,3 +1,3907 @@
++2023-05-21  Iain Sandoe  <iain@sandoe.co.uk>
++
++	Backported from master:
++	2021-12-24  Iain Sandoe  <iain@sandoe.co.uk>
++
++	* config.gcc: Emit L2_MAX_OFILE_ALIGNMENT with suitable
++	values for the host.
++	* config/darwin.c (darwin_emit_common): Error for alignment
++	values > 32768.
++	* config/darwin.h (MAX_OFILE_ALIGNMENT): Rework to use the
++	configured L2_MAX_OFILE_ALIGNMENT.
++
 +2023-05-09  Jakub Jelinek  <jakub@redhat.com>
 +
 +	Backported from master:
@@ -42497,10 +42530,21 @@ index f5a6d507e91..6b2c3e17346 100644
  DEFHOOKPOD
  (have_tls,
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index 2913065bf31..22d8bc74181 100644
+index 2913065bf31..e1f3d8da7a2 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,4383 @@
+@@ -1,3 +1,4394 @@
++2023-05-21  Iain Sandoe  <iain@sandoe.co.uk>
++
++	Backported from master:
++	2021-12-24  Iain Sandoe  <iain@sandoe.co.uk>
++
++	* gcc.dg/darwin-aligned-globals.c: New test.
++	* gcc.dg/darwin-comm-1.c: New test.
++	* gcc.dg/attr-aligned.c: Amend for new alignment values on
++	Darwin.
++	* gcc.target/i386/pr89261.c: Likewise.
++
 +2023-05-09  Jakub Jelinek  <jakub@redhat.com>
 +
 +	Backported from master:
@@ -71877,10 +71921,42 @@ index 00000000000..6f3d7369f27
 +  exit(0);
 +}
 diff --git a/libgcc/ChangeLog b/libgcc/ChangeLog
-index 1f9de3d5091..3737ea93681 100644
+index 1f9de3d5091..0ed255bf6d7 100644
 --- a/libgcc/ChangeLog
 +++ b/libgcc/ChangeLog
-@@ -1,3 +1,170 @@
+@@ -1,3 +1,202 @@
++2023-05-21  Iain Sandoe  <iain@sandoe.co.uk>
++
++	Backported from master:
++	2023-05-19  Iain Sandoe  <iain@sandoe.co.uk>
++
++	* config.host: Arrange to set min Darwin OS versions from
++	the configured host version.
++	* config/darwin10-unwind-find-enc-func.c: Do not use current
++	headers, but declare the nexessary structures locally to the
++	versions in use for Mac OSX 10.6.
++	* config/t-darwin: Amend to handle configured min OS
++	versions.
++	* config/t-darwin-min-1: New.
++	* config/t-darwin-min-5: New.
++	* config/t-darwin-min-8: New.
++
++2023-05-21  Iain Sandoe  <iain@sandoe.co.uk>
++
++	Backported from master:
++	2021-11-05  Iain Sandoe  <iain@sandoe.co.uk>
++
++	* config/darwin10-unwind-find-enc-func.c: Include libgcc_tm.h.
++
++2023-05-21  Iain Sandoe  <iain@sandoe.co.uk>
++
++	Backported from master:
++	2022-12-24  Iain Sandoe  <iain@sandoe.co.uk>
++
++	* config/t-slibgcc-darwin (install-darwin-libgcc-stubs): Skip the
++	install of libgcc_s.1.dylib when the installation is into the build
++	gcc directory.
++
 +2023-05-03  Jakub Jelinek  <jakub@redhat.com>
 +
 +	Backported from master:
@@ -78875,10 +78951,18 @@ index 0b0e85a3cf7..38602841cd7 100644
  	  return round_and_return (retval, exponent - 1, negative,
  				   quot, BITS_PER_MP_LIMB - 1 - used,
 diff --git a/libsanitizer/ChangeLog b/libsanitizer/ChangeLog
-index ceea82c4f70..5fede980241 100644
+index ceea82c4f70..7ec5fc80c91 100644
 --- a/libsanitizer/ChangeLog
 +++ b/libsanitizer/ChangeLog
-@@ -1,3 +1,52 @@
+@@ -1,3 +1,60 @@
++2023-05-21  Iain Sandoe  <iain@sandoe.co.uk>
++
++	Backported from master:
++	2023-04-18  Iain Sandoe  <iain@sandoe.co.uk>
++
++	* configure.tgt: Unsupport Darwin22+ until a mechanism can be found
++	to locate dyld in the shared cache.
++
 +2022-06-28  Release Manager
 +
 +	* GCC 10.4.0 released.
@@ -79159,10 +79243,15 @@ index b9177041fc3..5acf87f8bb7 100644
  
  	* GCC 10.3.0 released.
 diff --git a/libstdc++-v3/ChangeLog b/libstdc++-v3/ChangeLog
-index fdd63cbff1a..a3cef8f3031 100644
+index fdd63cbff1a..0498257dcd9 100644
 --- a/libstdc++-v3/ChangeLog
 +++ b/libstdc++-v3/ChangeLog
-@@ -1,3 +1,2357 @@
+@@ -1,3 +1,2362 @@
++2023-05-21  Iain Sandoe  <iain@sandoe.co.uk>
++
++	* include/bits/fs_path.h: Rename __null_terminated to __nul_terminated
++	to avoid colliding with a macro in Darwin system headers.
++
 +2023-05-03  Jonathan Wakely  <jwakely@redhat.com>
 +
 +	PR libstdc++/105844
