@@ -115,7 +115,16 @@ François-Xavier Coudert (1):
 Fritz Reese (1):
       fortran: Fix conv of UNION constructors [PR105310]
 
-GCC Administrator (765):
+GCC Administrator (774):
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -1334,7 +1343,7 @@ John David Anglin (7):
       Fix addvdi3 and subvdi3 patterns
       Skip guality tests on hppa-hpux.
 
-Jonathan Wakely (157):
+Jonathan Wakely (158):
       libstdc++: Fix Doxygen warning about ambiguous file name
       maintainer-scripts: Disable multilib when generating libstdc++ docs
       libstdc++: Fix doxygen markup for group close commands
@@ -1492,6 +1501,7 @@ Jonathan Wakely (157):
       libstdc++: Strip absolute paths from files shown in Doxygen docs
       libstdc++: Make std::lcm and std::gcd detect overflow [PR105844]
       libstdc++: Ensure constexpr std::lcm detects out-of-range result [PR105844]
+      doc: Fix description of x86 -m32 option [PR109954]
 
 José Rui Faustino de Sousa (4):
       Fortran: Fix double function call with -fcheck=pointer [PR]
@@ -32845,7 +32855,7 @@ index 7d98ec4190a..83f97cb2ce5 100644
  Specify that stabs debugging
  information should be used instead of whatever format the host normally
 diff --git a/gcc/doc/invoke.texi b/gcc/doc/invoke.texi
-index eabeec944e7..39ed6fcfb94 100644
+index eabeec944e7..a2f05de39cf 100644
 --- a/gcc/doc/invoke.texi
 +++ b/gcc/doc/invoke.texi
 @@ -770,6 +770,7 @@ Objective-C and Objective-C++ Dialects}.
@@ -33054,6 +33064,15 @@ index eabeec944e7..39ed6fcfb94 100644
  @samp{sparclite86x}, @samp{tsc701}, @samp{ultrasparc},
  @samp{ultrasparc3}, @samp{niagara}, @samp{niagara2}, @samp{niagara3},
  @samp{niagara4}, @samp{niagara7} and @samp{m8}.  With native Solaris
+@@ -30246,7 +30278,7 @@ on x86-64 processors in 64-bit environments.
+ Generate code for a 16-bit, 32-bit or 64-bit environment.
+ The @option{-m32} option sets @code{int}, @code{long}, and pointer types
+ to 32 bits, and
+-generates code that runs on any i386 system.
++generates code that runs in 32-bit mode.
+ 
+ The @option{-m64} option sets @code{int} to 32 bits and @code{long} and pointer
+ types to 64 bits, and generates code for the x86-64 architecture.
 @@ -30812,8 +30844,7 @@ Substitute the contents of spec string @var{name} at this point.
  Accumulate an option for @samp{%X}.
  
