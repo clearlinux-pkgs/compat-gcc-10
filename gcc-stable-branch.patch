@@ -115,7 +115,14 @@ François-Xavier Coudert (1):
 Fritz Reese (1):
       fortran: Fix conv of UNION constructors [PR105310]
 
-GCC Administrator (775):
+GCC Administrator (782):
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -1038,7 +1045,7 @@ Iain Buclaw (29):
       libphobos: Fix std.path.expandTilde raising onOutOfMemory
       d: Fix ICE on explicit immutable struct import [PR108877]
 
-Iain Sandoe (44):
+Iain Sandoe (45):
       coroutines: Fix a typo in rewriting the function.
       coroutines: Factor code. Match original source location in helpers [NFC].
       coroutines: Adjust outlined function names [PR95520].
@@ -1083,12 +1090,13 @@ Iain Sandoe (44):
       Darwin, libgcc : Adjust min version supported for the OS.
       libsanitizer, darwin: Unsupport Darwin >= 22 for now.
       libstdc++: Rename __null_terminated to avoid a collision with system headers.
+      Darwin, PPC: Fix struct layout with pragma pack [PR110044].
 
 Ian Lance Taylor (2):
       compiler: correct condition for calling memclrHasPointers
       libgo: don't include <linux/fs.h> when building gen-sysinfo.go
 
-Jakub Jelinek (183):
+Jakub Jelinek (184):
       rs6000: Fix up libgcc ABI when built with --with-long-double-format=ieee [PR97653]
       dse: Fix up hard reg conflict checking in replace_read [PR99863]
       c++: Don't cache constexpr functions which are passed pointers to heap or static vars being constructed [PR99859]
@@ -1272,6 +1280,7 @@ Jakub Jelinek (183):
       reassoc: Fix up another ICE with returns_twice call [PR109410]
       tree-ssa-ccp, wide-int: Fix up handling of [LR]ROTATE_EXPR in bitwise ccp [PR109778]
       testsuite: Add further testcase for already fixed PR [PR109778]
+      fortran: Fix ICE on pr96024.f90 on big-endian hosts [PR96024]
 
 Jan Hubicka (2):
       Fix looping flag discovery in ipa-pure-const
@@ -23475,7 +23484,7 @@ index 5508484ba19..75e9e6d3bb5 100644
 +extern bool rs6000_opaque_type_invalid_use_p (gimple *);
  #endif  /* rs6000-protos.h */
 diff --git a/gcc/config/rs6000/rs6000.c b/gcc/config/rs6000/rs6000.c
-index a6dc1156994..0ee9cc8047d 100644
+index a6dc1156994..21816f061b4 100644
 --- a/gcc/config/rs6000/rs6000.c
 +++ b/gcc/config/rs6000/rs6000.c
 @@ -3815,6 +3815,15 @@ rs6000_option_override_internal (bool global_init_p)
@@ -23658,7 +23667,17 @@ index a6dc1156994..0ee9cc8047d 100644
      return false;
  
    nunits = GET_MODE_NUNITS (mode);
-@@ -7551,8 +7617,14 @@ darwin_rs6000_legitimate_lo_sum_const_p (rtx x, machine_mode mode)
+@@ -7354,7 +7420,8 @@ darwin_rs6000_special_round_type_align (tree type, unsigned int computed,
+       type = TREE_TYPE (type);
+   } while (AGGREGATE_TYPE_P (type));
+ 
+-  if (! AGGREGATE_TYPE_P (type) && type != error_mark_node)
++  if (type != error_mark_node && ! AGGREGATE_TYPE_P (type)
++      && ! TYPE_PACKED (type) && maximum_field_alignment == 0)
+     align = MAX (align, TYPE_ALIGN (type));
+ 
+   return align;
+@@ -7551,8 +7618,14 @@ darwin_rs6000_legitimate_lo_sum_const_p (rtx x, machine_mode mode)
    if (GET_CODE (x) == CONST)
      x = XEXP (x, 0);
  
@@ -23674,7 +23693,7 @@ index a6dc1156994..0ee9cc8047d 100644
  
    rtx sym = NULL_RTX;
    unsigned HOST_WIDE_INT offset = 0;
-@@ -7583,6 +7655,9 @@ darwin_rs6000_legitimate_lo_sum_const_p (rtx x, machine_mode mode)
+@@ -7583,6 +7656,9 @@ darwin_rs6000_legitimate_lo_sum_const_p (rtx x, machine_mode mode)
    if (sym)
      {
        tree decl = SYMBOL_REF_DECL (sym);
@@ -23684,7 +23703,7 @@ index a6dc1156994..0ee9cc8047d 100644
  #if TARGET_MACHO
        if (MACHO_SYMBOL_INDIRECTION_P (sym))
        /* The decl in an indirection symbol is the original one, which might
-@@ -8170,7 +8245,7 @@ legitimate_lo_sum_address_p (machine_mode mode, rtx x, int strict)
+@@ -8170,7 +8246,7 @@ legitimate_lo_sum_address_p (machine_mode mode, rtx x, int strict)
      return false;
    x = XEXP (x, 1);
  
@@ -23693,7 +23712,7 @@ index a6dc1156994..0ee9cc8047d 100644
      {
        bool large_toc_ok;
  
-@@ -8196,7 +8271,32 @@ legitimate_lo_sum_address_p (machine_mode mode, rtx x, int strict)
+@@ -8196,7 +8272,32 @@ legitimate_lo_sum_address_p (machine_mode mode, rtx x, int strict)
  
        return CONSTANT_P (x) || large_toc_ok;
      }
@@ -23726,7 +23745,7 @@ index a6dc1156994..0ee9cc8047d 100644
    return false;
  }
  
-@@ -8250,7 +8350,7 @@ rs6000_legitimize_address (rtx x, rtx oldx ATTRIBUTE_UNUSED,
+@@ -8250,7 +8351,7 @@ rs6000_legitimize_address (rtx x, rtx oldx ATTRIBUTE_UNUSED,
        else
  	return force_reg (Pmode, x);
      }
@@ -23735,7 +23754,7 @@ index a6dc1156994..0ee9cc8047d 100644
      {
        enum tls_model model = SYMBOL_REF_TLS_MODEL (x);
        if (model != 0)
-@@ -8926,15 +9026,21 @@ rs6000_legitimate_address_p (machine_mode mode, rtx x, bool reg_ok_strict)
+@@ -8926,15 +9027,21 @@ rs6000_legitimate_address_p (machine_mode mode, rtx x, bool reg_ok_strict)
    bool reg_offset_p = reg_offset_addressing_ok_p (mode);
    bool quad_offset_p = mode_supports_dq_form (mode);
  
@@ -23761,7 +23780,7 @@ index a6dc1156994..0ee9cc8047d 100644
    if (legitimate_indirect_address_p (x, reg_ok_strict))
      return 1;
    if (TARGET_UPDATE
-@@ -10178,6 +10284,12 @@ init_float128_ibm (machine_mode mode)
+@@ -10178,6 +10285,12 @@ init_float128_ibm (machine_mode mode)
        set_conv_libfunc (trunc_optab, DDmode, mode, "__dpd_trunctfdd");
        set_conv_libfunc (sext_optab, TDmode, mode, "__dpd_extendtftd");
  
@@ -23774,7 +23793,7 @@ index a6dc1156994..0ee9cc8047d 100644
        if (TARGET_POWERPC64)
  	{
  	  set_conv_libfunc (sfix_optab, TImode, mode, "__fixtfti");
-@@ -16018,20 +16130,28 @@ rs6000_split_multireg_move (rtx dst, rtx src)
+@@ -16018,20 +16131,28 @@ rs6000_split_multireg_move (rtx dst, rtx src)
  
        if (GET_CODE (src) == UNSPEC)
  	{
@@ -23809,7 +23828,7 @@ index a6dc1156994..0ee9cc8047d 100644
  
  	  return;
  	}
-@@ -21351,6 +21471,14 @@ rs6000_rtx_costs (rtx x, machine_mode mode, int outer_code,
+@@ -21351,6 +21472,14 @@ rs6000_rtx_costs (rtx x, machine_mode mode, int outer_code,
  	}
        break;
  
@@ -23824,7 +23843,7 @@ index a6dc1156994..0ee9cc8047d 100644
      default:
        break;
      }
-@@ -24427,6 +24555,10 @@ rs6000_can_inline_p (tree caller, tree callee)
+@@ -24427,6 +24556,10 @@ rs6000_can_inline_p (tree caller, tree callee)
        else
  	caller_isa = rs6000_isa_flags;
  
@@ -23835,7 +23854,7 @@ index a6dc1156994..0ee9cc8047d 100644
        /* The callee's options must be a subset of the caller's options, i.e.
  	 a vsx function may inline an altivec function, but a no-vsx function
  	 must not inline a vsx function.  However, for those options that the
-@@ -26756,33 +26888,93 @@ rs6000_invalid_conversion (const_tree fromtype, const_tree totype)
+@@ -26756,33 +26889,93 @@ rs6000_invalid_conversion (const_tree fromtype, const_tree totype)
        if (tomode == POImode)
  	return N_("invalid conversion to type %<__vector_pair%>");
      }
@@ -36208,7 +36227,7 @@ index 3e19d5fdfbe..69c0f4350ad 100644
  	 be done by looking at target.rank, because that might not have been
  	 set yet.  Therefore traverse the chain of refs, looking for the last
 diff --git a/gcc/fortran/primary.c b/gcc/fortran/primary.c
-index 8edc83a42c3..56b05795c27 100644
+index 8edc83a42c3..c12cbe92e85 100644
 --- a/gcc/fortran/primary.c
 +++ b/gcc/fortran/primary.c
 @@ -2172,6 +2172,7 @@ gfc_match_varspec (gfc_expr *primary, int equiv_flag, bool sub_flag,
@@ -36267,7 +36286,20 @@ index 8edc83a42c3..56b05795c27 100644
  	  else if (!comp->attr.artificial)
  	    {
  	      gfc_error ("No initializer for component %qs given in the"
-@@ -3365,6 +3376,7 @@ gfc_match_structure_constructor (gfc_symbol *sym, gfc_expr **result)
+@@ -3198,10 +3209,11 @@ gfc_convert_to_structure_constructor (gfc_expr *e, gfc_symbol *sym, gfc_expr **c
+ 	goto cleanup;
+ 
+       /* For a constant string constructor, make sure the length is
+-	 correct; truncate of fill with blanks if needed.  */
++	 correct; truncate or fill with blanks if needed.  */
+       if (this_comp->ts.type == BT_CHARACTER && !this_comp->attr.allocatable
+ 	  && this_comp->ts.u.cl && this_comp->ts.u.cl->length
+ 	  && this_comp->ts.u.cl->length->expr_type == EXPR_CONSTANT
++	  && this_comp->ts.u.cl->length->ts.type == BT_INTEGER
+ 	  && actual->expr->ts.type == BT_CHARACTER
+ 	  && actual->expr->expr_type == EXPR_CONSTANT)
+ 	{
+@@ -3365,6 +3377,7 @@ gfc_match_structure_constructor (gfc_symbol *sym, gfc_expr **result)
    match m;
    gfc_expr *e;
    gfc_symtree *symtree;
@@ -36275,7 +36307,7 @@ index 8edc83a42c3..56b05795c27 100644
  
    gfc_get_ha_sym_tree (sym->name, &symtree);
  
-@@ -3395,10 +3407,18 @@ gfc_match_structure_constructor (gfc_symbol *sym, gfc_expr **result)
+@@ -3395,10 +3408,18 @@ gfc_match_structure_constructor (gfc_symbol *sym, gfc_expr **result)
       in the structure constructor must be a constant.  Try to reduce the
       expression here.  */
    if (gfc_in_match_data ())
@@ -60566,6 +60598,136 @@ index 0d2b8b3cba0..683895e599e 100644
  test_4 (_mm512_mask_shuffle_f32x4, __m512, __m512, __mmask16, __m512, __m512, 1)
  test_4 (_mm512_mask_shuffle_f64x2, __m512d, __m512d, __mmask8, __m512d, __m512d, 1)
  test_4 (_mm512_mask_shuffle_i32x4, __m512i, __m512i, __mmask16, __m512i, __m512i, 1)
+diff --git a/gcc/testsuite/gcc.target/powerpc/darwin-abi-13-0.c b/gcc/testsuite/gcc.target/powerpc/darwin-abi-13-0.c
+new file mode 100644
+index 00000000000..d8d3c63a083
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/powerpc/darwin-abi-13-0.c
+@@ -0,0 +1,23 @@
++/* { dg-do compile { target powerpc*-*-darwin* } } */
++/* { dg-require-effective-target ilp32 } */
++/* { dg-options "-Wno-long-long" } */
++
++#include "darwin-structs-0.h"
++
++int tcd[sizeof(cd) != 12 ? -1 : 1];
++int acd[__alignof__(cd) != 4 ? -1 : 1];
++
++int sdc[sizeof(dc) != 16 ? -1 : 1];
++int adc[__alignof__(dc) != 8 ? -1 : 1];
++
++int scL[sizeof(cL) != 12 ? -1 : 1];
++int acL[__alignof__(cL) != 4 ? -1 : 1];
++
++int sLc[sizeof(Lc) != 16 ? -1 : 1];
++int aLc[__alignof__(Lc) != 8 ? -1 : 1];
++
++int scD[sizeof(cD) != 32 ? -1 : 1];
++int acD[__alignof__(cD) != 16 ? -1 : 1];
++
++int sDc[sizeof(Dc) != 32 ? -1 : 1];
++int aDc[__alignof__(Dc) != 16 ? -1 : 1];
+diff --git a/gcc/testsuite/gcc.target/powerpc/darwin-abi-13-1.c b/gcc/testsuite/gcc.target/powerpc/darwin-abi-13-1.c
+new file mode 100644
+index 00000000000..4d888d383fa
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/powerpc/darwin-abi-13-1.c
+@@ -0,0 +1,27 @@
++/* { dg-do compile { target powerpc*-*-darwin* } } */
++/* { dg-require-effective-target ilp32 } */
++/* { dg-options "-Wno-long-long" } */
++
++#pragma pack(push, 1)
++
++#include "darwin-structs-0.h"
++
++int tcd[sizeof(cd) != 9 ? -1 : 1];
++int acd[__alignof__(cd) != 1 ? -1 : 1];
++
++int sdc[sizeof(dc) != 9 ? -1 : 1];
++int adc[__alignof__(dc) != 1 ? -1 : 1];
++
++int scL[sizeof(cL) != 9 ? -1 : 1];
++int acL[__alignof__(cL) != 1 ? -1 : 1];
++
++int sLc[sizeof(Lc) != 9 ? -1 : 1];
++int aLc[__alignof__(Lc) != 1 ? -1 : 1];
++
++int scD[sizeof(cD) != 17 ? -1 : 1];
++int acD[__alignof__(cD) != 1 ? -1 : 1];
++
++int sDc[sizeof(Dc) != 17 ? -1 : 1];
++int aDc[__alignof__(Dc) != 1 ? -1 : 1];
++
++#pragma pack(pop)
+diff --git a/gcc/testsuite/gcc.target/powerpc/darwin-abi-13-2.c b/gcc/testsuite/gcc.target/powerpc/darwin-abi-13-2.c
+new file mode 100644
+index 00000000000..3bd52c0a8f8
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/powerpc/darwin-abi-13-2.c
+@@ -0,0 +1,27 @@
++/* { dg-do compile { target powerpc*-*-darwin* } } */
++/* { dg-require-effective-target ilp32 } */
++/* { dg-options "-Wno-long-long" } */
++
++#pragma pack(push, 2)
++
++#include "darwin-structs-0.h"
++
++int tcd[sizeof(cd) != 10 ? -1 : 1];
++int acd[__alignof__(cd) != 2 ? -1 : 1];
++
++int sdc[sizeof(dc) != 10 ? -1 : 1];
++int adc[__alignof__(dc) != 2 ? -1 : 1];
++
++int scL[sizeof(cL) != 10 ? -1 : 1];
++int acL[__alignof__(cL) != 2 ? -1 : 1];
++
++int sLc[sizeof(Lc) != 10 ? -1 : 1];
++int aLc[__alignof__(Lc) != 2 ? -1 : 1];
++
++int scD[sizeof(cD) != 18 ? -1 : 1];
++int acD[__alignof__(cD) != 2 ? -1 : 1];
++
++int sDc[sizeof(Dc) != 18 ? -1 : 1];
++int aDc[__alignof__(Dc) != 2 ? -1 : 1];
++
++#pragma pack(pop)
+diff --git a/gcc/testsuite/gcc.target/powerpc/darwin-structs-0.h b/gcc/testsuite/gcc.target/powerpc/darwin-structs-0.h
+new file mode 100644
+index 00000000000..1db44f7a808
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/powerpc/darwin-structs-0.h
+@@ -0,0 +1,29 @@
++typedef struct _cd {
++ char c;
++ double d;
++} cd;
++
++typedef struct _dc {
++ double d;
++ char c;
++} dc;
++
++typedef struct _cL {
++ char c;
++ long long L;
++} cL;
++
++typedef struct _Lc {
++ long long L;
++ char c;
++} Lc;
++
++typedef struct _cD {
++ char c;
++ long double D;
++} cD;
++
++typedef struct _Dc {
++ long double D;
++ char c;
++} Dc;
 diff --git a/gcc/testsuite/gcc.target/powerpc/fusion.c b/gcc/testsuite/gcc.target/powerpc/fusion.c
 index 876b9f54d5a..2a115580439 100644
 --- a/gcc/testsuite/gcc.target/powerpc/fusion.c
