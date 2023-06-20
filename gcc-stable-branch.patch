@@ -115,7 +115,8 @@ François-Xavier Coudert (1):
 Fritz Reese (1):
       fortran: Fix conv of UNION constructors [PR105310]
 
-GCC Administrator (792):
+GCC Administrator (793):
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -1529,7 +1530,7 @@ José Rui Faustino de Sousa (4):
       Fortran: Fix function attributes [PR100132]
       Fortran: Fix ICE and wrong code for assumed-rank arrays [PR100029, PR100040]
 
-Kewen Lin (16):
+Kewen Lin (17):
       ipa-fnsummary: Remove inconsistent bp_pack_value
       vect: Don't update inits for simd_lane_access DRs [PR102789]
       rs6000/doc: Rename future cpu with power10
@@ -1546,6 +1547,7 @@ Kewen Lin (16):
       rs6000: Teach rs6000_opaque_type_invalid_use_p about gcall [PR108348]
       rs6000: Fix vector parity support [PR108699]
       rs6000: Don't use TFmode for 128 bits fp constant in toc [PR110011]
+      rs6000: Guard __builtin_{un,}pack_vector_int128 with vsx [PR109932]
 
 Kyrylo Tkachov (1):
       aarch64: Add support for -mcpu=neoverse-v2
@@ -6318,10 +6320,19 @@ index 0719d810258..da772b97257 100644
 -10.3.0
 +10.4.1
 diff --git a/gcc/ChangeLog b/gcc/ChangeLog
-index 3b1384e707f..f1fe413d9a7 100644
+index 3b1384e707f..4bc7a2c122e 100644
 --- a/gcc/ChangeLog
 +++ b/gcc/ChangeLog
-@@ -1,3 +1,3932 @@
+@@ -1,3 +1,3941 @@
++2023-06-19  Kewen Lin  <linkw@linux.ibm.com>
++
++	Backported from master:
++	2023-06-12  Kewen Lin  <linkw@linux.ibm.com>
++
++	PR target/110011
++	* config/rs6000/rs6000.c (output_toc): Use the mode of the 128-bit
++	floating constant itself for real_to_target call.
++
 +2023-06-09  Iain Sandoe  <iain@sandoe.co.uk>
 +
 +	Backported from master:
@@ -23062,10 +23073,25 @@ index 956f7dd5b46..7161c10d5a8 100644
 +    return false;
 +})
 diff --git a/gcc/config/rs6000/rs6000-builtin.def b/gcc/config/rs6000/rs6000-builtin.def
-index 1766d325bfb..36ba145ad3d 100644
+index 1766d325bfb..52ca2416e36 100644
 --- a/gcc/config/rs6000/rs6000-builtin.def
 +++ b/gcc/config/rs6000/rs6000-builtin.def
-@@ -467,6 +467,25 @@
+@@ -320,6 +320,14 @@
+ 		     | RS6000_BTC_SPECIAL),				\
+ 		    CODE_FOR_nothing)			/* ICODE */
+ 
++#define BU_VSX_MISC_2(ENUM, NAME, ATTR, ICODE)				\
++  RS6000_BUILTIN_2 (MISC_BUILTIN_ ## ENUM,		/* ENUM */	\
++		    "__builtin_" NAME,			/* NAME */	\
++		    RS6000_BTM_VSX,			/* MASK */	\
++		    (RS6000_BTC_ ## ATTR		/* ATTR */	\
++		     | RS6000_BTC_BINARY),				\
++		    CODE_FOR_ ## ICODE)			/* ICODE */
++
+ /* VSX overloaded builtin function macros.  */
+ #define BU_VSX_OVERLOAD_1(ENUM, NAME)					\
+   RS6000_BUILTIN_1 (VSX_BUILTIN_VEC_ ## ENUM,		/* ENUM */	\
+@@ -467,6 +475,25 @@
  		     | RS6000_BTC_SENARY),				\
  		    CODE_FOR_ ## ICODE)			/* ICODE */
  
@@ -23091,7 +23117,18 @@ index 1766d325bfb..36ba145ad3d 100644
  /* ISA 2.05 (power6) convenience macros. */
  /* For functions that depend on the CMPB instruction */
  #define BU_P6_2(ENUM, NAME, ATTR, ICODE)				\
-@@ -2608,9 +2627,9 @@ BU_P9V_AV_1 (VCTZB,		"vctzb",		CONST,  ctzv16qi2)
+@@ -2570,8 +2597,8 @@ BU_LDBL128_2 (UNPACK_TF,	"unpack_longdouble",	CONST,	unpacktf)
+ BU_IBM128_2 (PACK_IF,		"pack_ibm128",		CONST,	packif)
+ BU_IBM128_2 (UNPACK_IF,		"unpack_ibm128",	CONST,	unpackif)
+ 
+-BU_P7_MISC_2 (PACK_V1TI,	"pack_vector_int128",	CONST,	packv1ti)
+-BU_P7_MISC_2 (UNPACK_V1TI,	"unpack_vector_int128",	CONST,	unpackv1ti)
++BU_VSX_MISC_2 (PACK_V1TI,	"pack_vector_int128",	CONST,	packv1ti)
++BU_VSX_MISC_2 (UNPACK_V1TI,	"unpack_vector_int128",	CONST,	unpackv1ti)
+ 
+ /* 2 argument DFP (Decimal Floating Point) functions added in ISA 3.0.  */
+ BU_P9_DFP_MISC_2 (TSTSFI_LT_DD, "dtstsfi_lt_dd", CONST, dfptstsfi_lt_dd)
+@@ -2608,9 +2635,9 @@ BU_P9V_AV_1 (VCTZB,		"vctzb",		CONST,  ctzv16qi2)
  BU_P9V_AV_1 (VCTZH,		"vctzh",		CONST,  ctzv8hi2)
  BU_P9V_AV_1 (VCTZW,		"vctzw",		CONST,  ctzv4si2)
  BU_P9V_AV_1 (VCTZD,		"vctzd",		CONST,  ctzv2di2)
@@ -23104,7 +23141,7 @@ index 1766d325bfb..36ba145ad3d 100644
  
  /* ISA 3.0 vector overloaded 1 argument functions.  */
  BU_P9V_OVERLOAD_1 (VCTZ,	"vctz")
-@@ -2771,6 +2790,9 @@ BU_SPECIAL_X (RS6000_BUILTIN_CFSTRING, "__builtin_cfstring", RS6000_BTM_ALWAYS,
+@@ -2771,6 +2798,9 @@ BU_SPECIAL_X (RS6000_BUILTIN_CFSTRING, "__builtin_cfstring", RS6000_BTM_ALWAYS,
  BU_P10V_VSX_1 (XVCVBF16SPN,	    "xvcvbf16spn",	MISC, vsx_xvcvbf16spn)
  BU_P10V_VSX_1 (XVCVSPBF16,	    "xvcvspbf16",	MISC, vsx_xvcvspbf16)
  
@@ -23114,7 +23151,7 @@ index 1766d325bfb..36ba145ad3d 100644
  BU_MMA_1 (XXMFACC,	    "xxmfacc",		QUAD, mma_xxmfacc)
  BU_MMA_1 (XXMTACC,	    "xxmtacc",		QUAD, mma_xxmtacc)
  BU_MMA_1 (XXSETACCZ,	    "xxsetaccz",	MISC, mma_xxsetaccz)
-@@ -2779,6 +2801,7 @@ BU_MMA_M2 (DISASSEMBLE_ACC, "disassemble_acc",  QUAD, nothing)
+@@ -2779,6 +2809,7 @@ BU_MMA_M2 (DISASSEMBLE_ACC, "disassemble_acc",  QUAD, nothing)
  BU_MMA_V2 (DISASSEMBLE_PAIR,"disassemble_pair", PAIR, nothing)
  BU_COMPAT (VSX_BUILTIN_DISASSEMBLE_PAIR, "mma_disassemble_pair")
  
@@ -23122,7 +23159,7 @@ index 1766d325bfb..36ba145ad3d 100644
  BU_MMA_V3 (ASSEMBLE_PAIR,   "assemble_pair",	MISC, vsx_assemble_pair)
  BU_COMPAT (VSX_BUILTIN_ASSEMBLE_PAIR, "mma_assemble_pair")
  BU_MMA_3 (XVBF16GER2,	    "xvbf16ger2",	MISC, mma_xvbf16ger2)
-@@ -2811,6 +2834,7 @@ BU_MMA_3 (XVI8GER4SPP,	    "xvi8ger4spp",      QUAD, mma_xvi8ger4spp)
+@@ -2811,6 +2842,7 @@ BU_MMA_3 (XVI8GER4SPP,	    "xvi8ger4spp",      QUAD, mma_xvi8ger4spp)
  BU_MMA_3 (XVI16GER2PP,	    "xvi16ger2pp",      QUAD, mma_xvi16ger2pp)
  BU_MMA_3 (XVI16GER2SPP,	    "xvi16ger2spp",     QUAD, mma_xvi16ger2spp)
  
@@ -42699,10 +42736,18 @@ index f5a6d507e91..6b2c3e17346 100644
  DEFHOOKPOD
  (have_tls,
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index 2913065bf31..8b962439ea9 100644
+index 2913065bf31..c9da55f92ac 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,4411 @@
+@@ -1,3 +1,4419 @@
++2023-06-19  Kewen Lin  <linkw@linux.ibm.com>
++
++	Backported from master:
++	2023-06-12  Kewen Lin  <linkw@linux.ibm.com>
++
++	PR target/110011
++	* gcc.target/powerpc/pr110011.c: New test.
++
 +2023-06-09  Iain Sandoe  <iain@sandoe.co.uk>
 +
 +	Backported from master:
@@ -61884,6 +61929,52 @@ index 00000000000..f02bac130cc
 +      __builtin_abort();
 +
 +  return 0;
++}
++
+diff --git a/gcc/testsuite/gcc.target/powerpc/pr109932-1.c b/gcc/testsuite/gcc.target/powerpc/pr109932-1.c
+new file mode 100644
+index 00000000000..374d9f60618
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/powerpc/pr109932-1.c
+@@ -0,0 +1,17 @@
++/* { dg-require-effective-target int128 } */
++/* { dg-require-effective-target powerpc_altivec_ok } */
++/* { dg-options "-maltivec -mno-vsx" } */
++
++/* Verify there is no ICE but one expected error message instead.  */
++
++#include <altivec.h>
++
++extern vector signed __int128 res_vslll;
++extern unsigned long long aull[2];
++
++void
++testVectorInt128Pack ()
++{
++  res_vslll = __builtin_pack_vector_int128 (aull[0], aull[1]); /* { dg-error "'__builtin_pack_vector_int128' requires the '-mvsx' option" } */
++}
++
+diff --git a/gcc/testsuite/gcc.target/powerpc/pr109932-2.c b/gcc/testsuite/gcc.target/powerpc/pr109932-2.c
+new file mode 100644
+index 00000000000..374d9f60618
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/powerpc/pr109932-2.c
+@@ -0,0 +1,17 @@
++/* { dg-require-effective-target int128 } */
++/* { dg-require-effective-target powerpc_altivec_ok } */
++/* { dg-options "-maltivec -mno-vsx" } */
++
++/* Verify there is no ICE but one expected error message instead.  */
++
++#include <altivec.h>
++
++extern vector signed __int128 res_vslll;
++extern unsigned long long aull[2];
++
++void
++testVectorInt128Pack ()
++{
++  res_vslll = __builtin_pack_vector_int128 (aull[0], aull[1]); /* { dg-error "'__builtin_pack_vector_int128' requires the '-mvsx' option" } */
 +}
 +
 diff --git a/gcc/testsuite/gcc.target/powerpc/pr110011.c b/gcc/testsuite/gcc.target/powerpc/pr110011.c
