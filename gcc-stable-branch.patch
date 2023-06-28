@@ -116,7 +116,8 @@ François-Xavier Coudert (1):
 Fritz Reese (1):
       fortran: Fix conv of UNION constructors [PR105310]
 
-GCC Administrator (800):
+GCC Administrator (801):
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -1991,10 +1992,11 @@ konglin1 (2):
       i386: Fix _mm512_fpclass_ps_mask in O0 [PR 101471]
       i386: Fix wrong optimization for consecutive masked scatters [PR 101472]
 
-liuhongt (3):
+liuhongt (4):
       ICE: QImode(not SImode) operand should be passed to gen_vec_initv16qiqi in ashlv16qi3.
       Fix incorrect optimization by cprop_hardreg.
       Fix unrecognizable insn due to illegal immediate_operand (const_int 255) of QImode.
+      Make option mvzeroupper independent of optimization level.
 
 diff --git a/ChangeLog b/ChangeLog
 index 4e6f61ddbe3..802689249e9 100644
@@ -18521,6 +18523,47 @@ index 47d52550e5e..15ea243503a 100644
    cst = const_double_from_real_value
      (REAL_VALUE_ATOF ("0.29289321881345247561810596348408353", XFmode), XFmode);
    cstln2 = force_reg (XFmode, standard_80387_constant_rtx (4)); /* fldln2 */
+diff --git a/gcc/config/i386/i386-features.c b/gcc/config/i386/i386-features.c
+index 329f4c36a9a..a5e0c21ec1a 100644
+--- a/gcc/config/i386/i386-features.c
++++ b/gcc/config/i386/i386-features.c
+@@ -1825,9 +1825,7 @@ ix86_add_reg_usage_to_vzerouppers (void)
+ static unsigned int
+ rest_of_handle_insert_vzeroupper (void)
+ {
+-  if (TARGET_VZEROUPPER
+-      && flag_expensive_optimizations
+-      && !optimize_size)
++  if (TARGET_VZEROUPPER)
+     {
+       /* vzeroupper instructions are inserted immediately after reload to
+ 	 account for possible spills from 256bit or 512bit registers.  The pass
+@@ -1871,9 +1869,7 @@ public:
+   virtual bool gate (function *)
+     {
+       return TARGET_AVX
+-	     && ((TARGET_VZEROUPPER
+-		  && flag_expensive_optimizations
+-		  && !optimize_size)
++	     && (TARGET_VZEROUPPER
+ 		 || cfun->machine->has_explicit_vzeroupper);
+     }
+ 
+diff --git a/gcc/config/i386/i386-options.c b/gcc/config/i386/i386-options.c
+index 7bb644b67b4..3510ad5f5d7 100644
+--- a/gcc/config/i386/i386-options.c
++++ b/gcc/config/i386/i386-options.c
+@@ -2715,7 +2715,9 @@ ix86_option_override_internal (bool main_args_p,
+     sorry ("%<-mcall-ms2sysv-xlogues%> isn%'t currently supported with SEH");
+ 
+   if (!(opts_set->x_target_flags & MASK_VZEROUPPER)
+-      && TARGET_EMIT_VZEROUPPER)
++      && TARGET_EMIT_VZEROUPPER
++      && flag_expensive_optimizations
++      && !optimize_size)
+     opts->x_target_flags |= MASK_VZEROUPPER;
+   if (!(opts_set->x_target_flags & MASK_STV))
+     opts->x_target_flags |= MASK_STV;
 diff --git a/gcc/config/i386/i386.c b/gcc/config/i386/i386.c
 index 2f838840e96..80486f8f10c 100644
 --- a/gcc/config/i386/i386.c
@@ -59759,6 +59802,26 @@ index 00000000000..be6b88c05db
 +{
 +  main1 ();
 +}
+diff --git a/gcc/testsuite/gcc.target/i386/avx-vzeroupper-29.c b/gcc/testsuite/gcc.target/i386/avx-vzeroupper-29.c
+new file mode 100644
+index 00000000000..4af637757f7
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/i386/avx-vzeroupper-29.c
+@@ -0,0 +1,14 @@
++/* { dg-do compile } */
++/* { dg-options "-O0 -mavx -mtune=generic -mvzeroupper -dp" } */
++
++#include <immintrin.h>
++
++extern __m256 x, y;
++
++void
++foo ()
++{
++  x = y;
++}
++
++/* { dg-final { scan-assembler-times "avx_vzeroupper" 1 } } */
 diff --git a/gcc/testsuite/gcc.target/i386/avx512bf16-pr108881.c b/gcc/testsuite/gcc.target/i386/avx512bf16-pr108881.c
 new file mode 100644
 index 00000000000..9428c53abec
