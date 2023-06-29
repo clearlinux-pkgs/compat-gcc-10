@@ -1714,6 +1714,9 @@ Patrick Palka (43):
 Paul A. Clarke (1):
       rs6000: __Uglify non-uglified local variables in headers
 
+Paul E. Murphy (1):
+      go: Update usage of TARGET_AIX to TARGET_AIX_OS
+
 Paul Thomas (12):
       Fortran: Fix for class defined operators [PR99125].
       Fortran: Allow pointer deferred length associate selectors. [PR93794]
@@ -38591,6 +38594,54 @@ index b8ed04d3aed..94bbfa1a82a 100644
  2021-04-08  Release Manager
  
  	* GCC 10.3.0 released.
+diff --git a/gcc/go/go-backend.c b/gcc/go/go-backend.c
+index 5d1aaf0e63a..d94468fd52d 100644
+--- a/gcc/go/go-backend.c
++++ b/gcc/go/go-backend.c
+@@ -45,8 +45,8 @@ along with GCC; see the file COPYING3.  If not see
+ #define GO_EXPORT_SECTION_NAME ".go_export"
+ #endif
+ 
+-#ifndef TARGET_AIX
+-#define TARGET_AIX 0
++#ifndef TARGET_AIX_OS
++#define TARGET_AIX_OS 0
+ #endif
+ 
+ /* This file holds all the cases where the Go frontend needs
+@@ -107,7 +107,7 @@ go_write_export_data (const char *bytes, unsigned int size)
+     {
+       gcc_assert (targetm_common.have_named_sections);
+       sec = get_section (GO_EXPORT_SECTION_NAME,
+-			 TARGET_AIX ? SECTION_EXCLUDE : SECTION_DEBUG,
++			 TARGET_AIX_OS ? SECTION_EXCLUDE : SECTION_DEBUG,
+ 			 NULL);
+     }
+ 
+diff --git a/gcc/go/go-lang.c b/gcc/go/go-lang.c
+index 387694e4f56..92c65df4624 100644
+--- a/gcc/go/go-lang.c
++++ b/gcc/go/go-lang.c
+@@ -39,8 +39,8 @@ along with GCC; see the file COPYING3.  If not see
+ #include "go-c.h"
+ #include "go-gcc.h"
+ 
+-#ifndef TARGET_AIX
+-#define TARGET_AIX 0
++#ifndef TARGET_AIX_OS
++#define TARGET_AIX_OS 0
+ #endif
+ 
+ /* Language-dependent contents of a type.  */
+@@ -117,7 +117,7 @@ go_langhook_init (void)
+   args.compiling_runtime = go_compiling_runtime;
+   args.debug_escape_level = go_debug_escape_level;
+   args.debug_escape_hash = go_debug_escape_hash;
+-  args.nil_check_size_threshold = TARGET_AIX ? -1 : 4096;
++  args.nil_check_size_threshold = TARGET_AIX_OS ? -1 : 4096;
+   args.debug_optimization = go_debug_optimization;
+   args.linemap = go_get_linemap();
+   args.backend = go_get_backend();
 diff --git a/gcc/go/gofrontend/expressions.cc b/gcc/go/gofrontend/expressions.cc
 index 8f59b18d47f..f27375d52a6 100644
 --- a/gcc/go/gofrontend/expressions.cc
