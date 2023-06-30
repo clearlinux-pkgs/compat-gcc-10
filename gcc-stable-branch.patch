@@ -116,7 +116,8 @@ François-Xavier Coudert (1):
 Fritz Reese (1):
       fortran: Fix conv of UNION constructors [PR105310]
 
-GCC Administrator (802):
+GCC Administrator (803):
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -1666,7 +1667,7 @@ Pascal Obry (1):
 Pat Haugen (1):
       Fix register count when not splitting Complex IEEE 128-bit args.
 
-Patrick Palka (43):
+Patrick Palka (45):
       c++: Fix deduction with reference NTTP [PR83476]
       c++: Fix tsubsting CLASS_PLACEHOLDER_TEMPLATE [PR95434]
       c++: ICE in dependent_type_p with constrained auto [PR97052]
@@ -1710,6 +1711,8 @@ Patrick Palka (43):
       libstdc++: invalid default init in _CachedPosition [PR101231]
       libstdc++: Fix backward compatibility of P2325R3 backport [PR106320]
       c++: quadratic constexpr behavior for left-assoc logical exprs [PR102780]
+      c++: Fix reference NTTP binding to noexcept fn [PR97420]
+      c++: bogus warning with value init of const pmf [PR92752]
 
 Paul A. Clarke (1):
       rs6000: __Uglify non-uglified local variables in headers
@@ -29778,7 +29781,7 @@ index 9a66fe5884f..36e047ad4c0 100644
  
  struct push_nested_class_guard
 diff --git a/gcc/cp/cvt.c b/gcc/cp/cvt.c
-index 9f9f6b658ad..0e11f060c53 100644
+index 9f9f6b658ad..fe3282f0d8e 100644
 --- a/gcc/cp/cvt.c
 +++ b/gcc/cp/cvt.c
 @@ -2004,6 +2004,11 @@ can_convert_qual (tree type, tree expr)
@@ -29793,6 +29796,73 @@ index 9f9f6b658ad..0e11f060c53 100644
    if (TYPE_PTR_P (type) && TYPE_PTR_P (expr_type))
      return comp_ptr_ttypes (TREE_TYPE (type), TREE_TYPE (expr_type));
    else if (TYPE_PTRMEM_P (type) && TYPE_PTRMEM_P (expr_type))
+@@ -2067,7 +2072,8 @@ can_convert_tx_safety (tree to, tree from)
+ 	  && same_type_p (to, tx_unsafe_fn_variant (from)));
+ }
+ 
+-/* Return true iff FROM can convert to TO by dropping noexcept.  */
++/* Return true iff FROM can convert to TO by dropping noexcept.
++   This is just a subroutine of of fnptr_conv_p.  */
+ 
+ static bool
+ noexcept_conv_p (tree to, tree from)
+@@ -2075,30 +2081,15 @@ noexcept_conv_p (tree to, tree from)
+   if (!flag_noexcept_type)
+     return false;
+ 
+-  tree t = non_reference (to);
+-  tree f = from;
+-  if (TYPE_PTRMEMFUNC_P (t)
+-      && TYPE_PTRMEMFUNC_P (f))
+-    {
+-      t = TYPE_PTRMEMFUNC_FN_TYPE (t);
+-      f = TYPE_PTRMEMFUNC_FN_TYPE (f);
+-    }
+-  if (TYPE_PTR_P (t)
+-      && TYPE_PTR_P (f))
+-    {
+-      t = TREE_TYPE (t);
+-      f = TREE_TYPE (f);
+-    }
+-  tree_code code = TREE_CODE (f);
+-  if (TREE_CODE (t) != code)
++  if (TREE_CODE (to) != TREE_CODE (from))
+     return false;
+-  if (code != FUNCTION_TYPE && code != METHOD_TYPE)
++  if (!FUNC_OR_METHOD_TYPE_P (from))
+     return false;
+-  if (!type_throw_all_p (t)
+-      || type_throw_all_p (f))
++  if (!type_throw_all_p (to)
++      || type_throw_all_p (from))
+     return false;
+-  tree v = build_exception_variant (f, NULL_TREE);
+-  return same_type_p (t, v);
++  tree v = build_exception_variant (from, NULL_TREE);
++  return same_type_p (to, v);
+ }
+ 
+ /* Return true iff FROM can convert to TO by a function pointer conversion.  */
+@@ -2106,7 +2097,7 @@ noexcept_conv_p (tree to, tree from)
+ bool
+ fnptr_conv_p (tree to, tree from)
+ {
+-  tree t = non_reference (to);
++  tree t = to;
+   tree f = from;
+   if (TYPE_PTRMEMFUNC_P (t)
+       && TYPE_PTRMEMFUNC_P (f))
+@@ -2114,8 +2105,8 @@ fnptr_conv_p (tree to, tree from)
+       t = TYPE_PTRMEMFUNC_FN_TYPE (t);
+       f = TYPE_PTRMEMFUNC_FN_TYPE (f);
+     }
+-  if (TYPE_PTR_P (t)
+-      && TYPE_PTR_P (f))
++  if (INDIRECT_TYPE_P (t)
++      && INDIRECT_TYPE_P (f))
+     {
+       t = TREE_TYPE (t);
+       f = TREE_TYPE (f);
 diff --git a/gcc/cp/decl.c b/gcc/cp/decl.c
 index 4293ee6238f..1608c0a2560 100644
 --- a/gcc/cp/decl.c
@@ -30630,7 +30700,7 @@ index 1f4a28ff7c0..fcc0bd60a49 100644
    if (concept_name == error_mark_node
        || (seen_error () && !concept_definition_p (tmpl_decl)))
 diff --git a/gcc/cp/pt.c b/gcc/cp/pt.c
-index d329c0128ba..1185cdcaab6 100644
+index d329c0128ba..448da256250 100644
 --- a/gcc/cp/pt.c
 +++ b/gcc/cp/pt.c
 @@ -63,7 +63,6 @@ static GTY(()) struct pending_template *last_pending_template;
@@ -30663,7 +30733,19 @@ index d329c0128ba..1185cdcaab6 100644
        tree alias_args = INNERMOST_TEMPLATE_ARGS (generic_targs_for (tmpl));
        if (!comp_template_args (TI_ARGS (tinfo), alias_args))
  	break;
-@@ -11762,6 +11769,9 @@ instantiate_class_template_1 (tree type)
+@@ -6552,7 +6559,10 @@ convert_nontype_argument_function (tree type, tree expr,
+   if (value_dependent_expression_p (fn))
+     goto accept;
+ 
+-  fn_no_ptr = strip_fnptr_conv (fn);
++  fn_no_ptr = fn;
++  if (REFERENCE_REF_P (fn_no_ptr))
++    fn_no_ptr = TREE_OPERAND (fn_no_ptr, 0);
++  fn_no_ptr = strip_fnptr_conv (fn_no_ptr);
+   if (TREE_CODE (fn_no_ptr) == ADDR_EXPR)
+     fn_no_ptr = TREE_OPERAND (fn_no_ptr, 0);
+   if (BASELINK_P (fn_no_ptr))
+@@ -11762,6 +11772,9 @@ instantiate_class_template_1 (tree type)
       class, except we also need to push the enclosing classes.  */
    push_nested_class (type);
  
@@ -30673,7 +30755,7 @@ index d329c0128ba..1185cdcaab6 100644
    /* Now members are processed in the order of declaration.  */
    for (member = CLASSTYPE_DECL_LIST (pattern);
         member; member = TREE_CHAIN (member))
-@@ -11839,7 +11849,7 @@ instantiate_class_template_1 (tree type)
+@@ -11839,7 +11852,7 @@ instantiate_class_template_1 (tree type)
  	      finish_member_declaration (r);
  	      /* Instantiate members marked with attribute used.  */
  	      if (r != error_mark_node && DECL_PRESERVE_P (r))
@@ -30682,7 +30764,7 @@ index d329c0128ba..1185cdcaab6 100644
  	      if (TREE_CODE (r) == FUNCTION_DECL
  		  && DECL_OMP_DECLARE_REDUCTION_P (r))
  		cp_check_omp_declare_reduction (r);
-@@ -11917,7 +11927,7 @@ instantiate_class_template_1 (tree type)
+@@ -11917,7 +11930,7 @@ instantiate_class_template_1 (tree type)
  			     /*flags=*/0);
  			  /* Instantiate members marked with attribute used. */
  			  if (r != error_mark_node && DECL_PRESERVE_P (r))
@@ -30691,7 +30773,7 @@ index d329c0128ba..1185cdcaab6 100644
  			}
  		      else if (TREE_CODE (r) == FIELD_DECL)
  			{
-@@ -12130,6 +12140,13 @@ instantiate_class_template_1 (tree type)
+@@ -12130,6 +12143,13 @@ instantiate_class_template_1 (tree type)
    if (TYPE_CONTAINS_VPTR_P (type) && CLASSTYPE_KEY_METHOD (type))
      vec_safe_push (keyed_classes, type);
  
@@ -30705,7 +30787,7 @@ index d329c0128ba..1185cdcaab6 100644
    return type;
  }
  
-@@ -12301,9 +12318,9 @@ use_pack_expansion_extra_args_p (tree parm_packs,
+@@ -12301,9 +12321,9 @@ use_pack_expansion_extra_args_p (tree parm_packs,
        return false;
      }
  
@@ -30716,7 +30798,7 @@ index d329c0128ba..1185cdcaab6 100644
        bool has_non_expansion_arg = false;
        for (tree parm_pack = parm_packs;
  	   parm_pack;
-@@ -12323,7 +12340,10 @@ use_pack_expansion_extra_args_p (tree parm_packs,
+@@ -12323,7 +12343,10 @@ use_pack_expansion_extra_args_p (tree parm_packs,
  	}
  
        if (has_expansion_arg && has_non_expansion_arg)
@@ -30728,7 +30810,7 @@ index d329c0128ba..1185cdcaab6 100644
      }
    return false;
  }
-@@ -12663,7 +12683,11 @@ tsubst_binary_right_fold (tree t, tree args, tsubst_flags_t complain,
+@@ -12663,7 +12686,11 @@ tsubst_binary_right_fold (tree t, tree args, tsubst_flags_t complain,
  class el_data
  {
  public:
@@ -30740,7 +30822,7 @@ index d329c0128ba..1185cdcaab6 100644
    tree extra;
    tsubst_flags_t complain;
  
-@@ -12682,7 +12706,36 @@ extract_locals_r (tree *tp, int */*walk_subtrees*/, void *data_)
+@@ -12682,7 +12709,36 @@ extract_locals_r (tree *tp, int */*walk_subtrees*/, void *data_)
      tp = &TYPE_NAME (*tp);
  
    if (TREE_CODE (*tp) == DECL_EXPR)
@@ -30778,7 +30860,7 @@ index d329c0128ba..1185cdcaab6 100644
    else if (tree spec = retrieve_local_specialization (*tp))
      {
        if (data.internal.contains (*tp))
-@@ -12739,7 +12792,7 @@ static tree
+@@ -12739,7 +12795,7 @@ static tree
  extract_local_specs (tree pattern, tsubst_flags_t complain)
  {
    el_data data (complain);
@@ -30787,7 +30869,7 @@ index d329c0128ba..1185cdcaab6 100644
    return data.extra;
  }
  
-@@ -13020,12 +13073,23 @@ tsubst_pack_expansion (tree t, tree args, tsubst_flags_t complain,
+@@ -13020,12 +13076,23 @@ tsubst_pack_expansion (tree t, tree args, tsubst_flags_t complain,
  	 pattern and return a PACK_EXPANSION_*. The caller will need to
  	 deal with that.  */
        if (TREE_CODE (t) == EXPR_PACK_EXPANSION)
@@ -30815,7 +30897,7 @@ index d329c0128ba..1185cdcaab6 100644
      }
  
    gcc_assert (len >= 0);
-@@ -13750,45 +13814,6 @@ tsubst_function_decl (tree t, tree args, tsubst_flags_t complain,
+@@ -13750,45 +13817,6 @@ tsubst_function_decl (tree t, tree args, tsubst_flags_t complain,
  	  if (tree spec = retrieve_specialization (gen_tmpl, argvec, hash))
  	    return spec;
  	}
@@ -30861,7 +30943,7 @@ index d329c0128ba..1185cdcaab6 100644
      }
    else
      {
-@@ -14216,6 +14241,19 @@ enclosing_instantiation_of (tree otctx)
+@@ -14216,6 +14244,19 @@ enclosing_instantiation_of (tree otctx)
  		  || instantiated_lambda_fn_p (tctx));
         tctx = decl_function_context (tctx))
      ++lambda_count;
@@ -30881,7 +30963,7 @@ index d329c0128ba..1185cdcaab6 100644
    for (; fn; fn = decl_function_context (fn))
      {
        tree ofn = fn;
-@@ -14776,6 +14814,13 @@ tsubst_decl (tree t, tree args, tsubst_flags_t complain)
+@@ -14776,6 +14817,13 @@ tsubst_decl (tree t, tree args, tsubst_flags_t complain)
  	  {
  	    DECL_ORIGINAL_TYPE (r) = NULL_TREE;
  	    set_underlying_type (r);
@@ -30895,7 +30977,7 @@ index d329c0128ba..1185cdcaab6 100644
  	    if (TYPE_DECL_ALIAS_P (r))
  	      /* An alias template specialization can be dependent
  		 even if its underlying type is not.  */
-@@ -15486,6 +15531,8 @@ tsubst (tree t, tree args, tsubst_flags_t complain, tree in_decl)
+@@ -15486,6 +15534,8 @@ tsubst (tree t, tree args, tsubst_flags_t complain, tree in_decl)
  		    else if (tree pl = CLASS_PLACEHOLDER_TEMPLATE (t))
  		      {
  			pl = tsubst_copy (pl, args, complain, in_decl);
@@ -30904,7 +30986,7 @@ index d329c0128ba..1185cdcaab6 100644
  			CLASS_PLACEHOLDER_TEMPLATE (r) = pl;
  		      }
  		  }
-@@ -16093,7 +16140,8 @@ tsubst_baselink (tree baselink, tree object_type,
+@@ -16093,7 +16143,8 @@ tsubst_baselink (tree baselink, tree object_type,
  
    tree binfo_type = BINFO_TYPE (BASELINK_BINFO (baselink));
    binfo_type = tsubst (binfo_type, args, complain, in_decl);
@@ -30914,7 +30996,7 @@ index d329c0128ba..1185cdcaab6 100644
  
    if (dependent_p)
      {
-@@ -16119,8 +16167,19 @@ tsubst_baselink (tree baselink, tree object_type,
+@@ -16119,8 +16170,19 @@ tsubst_baselink (tree baselink, tree object_type,
  	fns = BASELINK_FUNCTIONS (baselink);
      }
    else
@@ -30936,7 +31018,7 @@ index d329c0128ba..1185cdcaab6 100644
  
    /* If lookup found a single function, mark it as used at this point.
       (If lookup found multiple functions the one selected later by
-@@ -18098,6 +18157,11 @@ tsubst_expr (tree t, tree args, tsubst_flags_t complain, tree in_decl,
+@@ -18098,6 +18160,11 @@ tsubst_expr (tree t, tree args, tsubst_flags_t complain, tree in_decl,
  		    tree asmspec_tree = NULL_TREE;
  		    maybe_push_decl (decl);
  
@@ -30948,7 +31030,7 @@ index d329c0128ba..1185cdcaab6 100644
  		    if (VAR_P (decl)
  			&& DECL_DECOMPOSITION_P (decl)
  			&& TREE_TYPE (pattern_decl) != error_mark_node)
-@@ -19223,8 +19287,13 @@ tsubst_lambda_expr (tree t, tree args, tsubst_flags_t complain, tree in_decl)
+@@ -19223,8 +19290,13 @@ tsubst_lambda_expr (tree t, tree args, tsubst_flags_t complain, tree in_decl)
  	 the purposes of template argument deduction. */
        complain = tf_warning_or_error;
  
@@ -30964,7 +31046,7 @@ index d329c0128ba..1185cdcaab6 100644
  
        finish_lambda_function (body);
  
-@@ -21670,8 +21739,10 @@ static bool uses_deducible_template_parms (tree type);
+@@ -21670,8 +21742,10 @@ static bool uses_deducible_template_parms (tree type);
  static bool
  deducible_expression (tree expr)
  {
@@ -30977,7 +31059,7 @@ index d329c0128ba..1185cdcaab6 100644
      expr = TREE_OPERAND (expr, 0);
    return (TREE_CODE (expr) == TEMPLATE_PARM_INDEX);
  }
-@@ -23988,7 +24059,10 @@ mark_decl_instantiated (tree result, int extern_p)
+@@ -23988,7 +24062,10 @@ mark_decl_instantiated (tree result, int extern_p)
    DECL_COMDAT (result) = 0;
  
    if (extern_p)
@@ -30989,7 +31071,7 @@ index d329c0128ba..1185cdcaab6 100644
    else
      {
        mark_definable (result);
-@@ -27964,7 +28038,9 @@ make_constrained_placeholder_type (tree type, tree con, tree args)
+@@ -27964,7 +28041,9 @@ make_constrained_placeholder_type (tree type, tree con, tree args)
    tree expr = tmpl;
    if (TREE_CODE (con) == FUNCTION_DECL)
      expr = ovl_make (tmpl);
@@ -30999,7 +31081,7 @@ index d329c0128ba..1185cdcaab6 100644
  
    PLACEHOLDER_TYPE_CONSTRAINTS (type) = expr;
  
-@@ -28727,7 +28803,8 @@ alias_ctad_tweaks (tree tmpl, tree uguides)
+@@ -28727,7 +28806,8 @@ alias_ctad_tweaks (tree tmpl, tree uguides)
  	  unsigned len = TREE_VEC_LENGTH (ftparms);
  	  tree targs = make_tree_vec (len);
  	  int err = unify (ftparms, targs, ret, utype, UNIFY_ALLOW_NONE, false);
@@ -31009,7 +31091,7 @@ index d329c0128ba..1185cdcaab6 100644
  
  	  /* The number of parms for f' is the number of parms for A plus
  	     non-deduced parms of f.  */
-@@ -28760,7 +28837,7 @@ alias_ctad_tweaks (tree tmpl, tree uguides)
+@@ -28760,7 +28840,7 @@ alias_ctad_tweaks (tree tmpl, tree uguides)
  	     guideness, and explicit-specifier.  */
  	  tree g = tsubst_decl (DECL_TEMPLATE_RESULT (f), targs, complain);
  	  if (g == error_mark_node)
@@ -31018,7 +31100,7 @@ index d329c0128ba..1185cdcaab6 100644
  	  DECL_USE_TEMPLATE (g) = 0;
  	  fprime = build_template_decl (g, gtparms, false);
  	  DECL_TEMPLATE_RESULT (fprime) = g;
-@@ -28774,7 +28851,7 @@ alias_ctad_tweaks (tree tmpl, tree uguides)
+@@ -28774,7 +28854,7 @@ alias_ctad_tweaks (tree tmpl, tree uguides)
  	  if (ci)
  	    ci = tsubst_constraint_info (ci, targs, complain, in_decl);
  	  if (ci == error_mark_node)
@@ -31027,7 +31109,7 @@ index d329c0128ba..1185cdcaab6 100644
  
  	  /* Add a constraint that the return type matches the instantiation of
  	     A with the same template arguments.  */
-@@ -28788,7 +28865,10 @@ alias_ctad_tweaks (tree tmpl, tree uguides)
+@@ -28788,7 +28868,10 @@ alias_ctad_tweaks (tree tmpl, tree uguides)
  	    }
  
  	  if (ci)
@@ -31192,7 +31274,7 @@ index 10b818d1370..399c4435293 100644
  	offset_int fld = wi::to_offset (DECL_FIELD_OFFSET (field));
  	offset_int bitpos = wi::to_offset (DECL_FIELD_BIT_OFFSET (field));
 diff --git a/gcc/cp/typeck.c b/gcc/cp/typeck.c
-index 6ebf6319efd..548c81ef12c 100644
+index 6ebf6319efd..b23f03a032b 100644
 --- a/gcc/cp/typeck.c
 +++ b/gcc/cp/typeck.c
 @@ -4779,7 +4779,12 @@ cp_build_binary_op (const op_location_t &location,
@@ -31302,7 +31384,18 @@ index 6ebf6319efd..548c81ef12c 100644
  
        if (TREE_SIDE_EFFECTS (pfn))
  	pfn = save_expr (pfn);
-@@ -10037,6 +10056,9 @@ check_return_expr (tree retval, bool *no_warning)
+@@ -9073,7 +9092,9 @@ build_ptrmemfunc (tree type, tree pfn, int force, bool c_cast_p,
+   /* Handle null pointer to member function conversions.  */
+   if (null_ptr_cst_p (pfn))
+     {
+-      pfn = cp_build_c_cast (input_location, type, pfn, complain);
++      pfn = cp_build_c_cast (input_location,
++			     TYPE_PTRMEMFUNC_FN_TYPE_RAW (to_type),
++			     pfn, complain);
+       return build_ptrmemfunc1 (to_type,
+ 				integer_zero_node,
+ 				pfn);
+@@ -10037,6 +10058,9 @@ check_return_expr (tree retval, bool *no_warning)
      dependent:
        /* We should not have changed the return value.  */
        gcc_assert (retval == saved_retval);
@@ -38583,10 +38676,18 @@ index 89a4ae087ce..d324406193f 100644
  	    pc = &OMP_CLAUSE_CHAIN (*pc);
  	    break;
 diff --git a/gcc/go/ChangeLog b/gcc/go/ChangeLog
-index b8ed04d3aed..94bbfa1a82a 100644
+index b8ed04d3aed..40a57a35904 100644
 --- a/gcc/go/ChangeLog
 +++ b/gcc/go/ChangeLog
-@@ -1,3 +1,7 @@
+@@ -1,3 +1,15 @@
++2023-06-29  Paul E. Murphy  <murphyp@linux.ibm.com>
++
++	Backported from master:
++	2023-06-22  Paul E. Murphy  <murphyp@linux.ibm.com>
++
++	* go-backend.c [TARGET_AIX]: Rename and update usage to TARGET_AIX_OS.
++	* go-lang.c: Likewise.
++
 +2022-06-28  Release Manager
 +
 +	* GCC 10.4.0 released.
@@ -49274,6 +49375,20 @@ index 00000000000..cf048f56c2a
 +// { dg-final { scan-assembler "_ZN2S4ILi1EE3barEv" } }
 +// { dg-final { scan-assembler "_ZN2S5ILi1EE3barEv" } }
 +// { dg-final { scan-assembler "_ZN2S6ILi1EE1NILi1EE3barEv" } }
+diff --git a/gcc/testsuite/g++.dg/cpp0x/noexcept68.C b/gcc/testsuite/g++.dg/cpp0x/noexcept68.C
+new file mode 100644
+index 00000000000..086899a4a19
+--- /dev/null
++++ b/gcc/testsuite/g++.dg/cpp0x/noexcept68.C
+@@ -0,0 +1,8 @@
++// PR c++/97420
++// { dg-do compile { target c++11 } }
++
++int f(int) noexcept;
++template<int (&)(int)> void A();
++int main() {
++  A<f>();
++}
 diff --git a/gcc/testsuite/g++.dg/cpp0x/noexcept70.C b/gcc/testsuite/g++.dg/cpp0x/noexcept70.C
 new file mode 100644
 index 00000000000..45a6137dd6f
@@ -52624,6 +52739,29 @@ index 00000000000..f5ae6312bc5
 +  using t = X<sizeof(T)>;
 +  using u = X<alignof(T)>;
 +};
+diff --git a/gcc/testsuite/g++.dg/warn/Wignored-qualifiers2.C b/gcc/testsuite/g++.dg/warn/Wignored-qualifiers2.C
+new file mode 100644
+index 00000000000..c4c37545c02
+--- /dev/null
++++ b/gcc/testsuite/g++.dg/warn/Wignored-qualifiers2.C
+@@ -0,0 +1,17 @@
++// PR c++/92752
++// { dg-do compile }
++// { dg-additional-options "-Wignored-qualifiers" }
++
++struct X;
++
++template<class T>
++struct Wrap {
++  T data;
++  Wrap() : data() {}
++};
++
++typedef int (X::*type)();
++Wrap<const type> x;
++#if __cpp_initializer_lists
++const type t{};
++#endif
 diff --git a/gcc/testsuite/g++.dg/warn/Wsequence-point-5.C b/gcc/testsuite/g++.dg/warn/Wsequence-point-5.C
 new file mode 100644
 index 00000000000..0354ab09f53
