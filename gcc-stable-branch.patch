@@ -116,7 +116,10 @@ François-Xavier Coudert (1):
 Fritz Reese (1):
       fortran: Fix conv of UNION constructors [PR105310]
 
-GCC Administrator (803):
+GCC Administrator (806):
+      Daily bump.
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -1036,7 +1039,7 @@ Harald Anlauf (92):
 Hongyu Wang (1):
       AVX512F: Add missing macro for mask(z?)_scalf_s[sd] [PR 105339]
 
-Iain Buclaw (30):
+Iain Buclaw (31):
       d: Fix ICE in when formating a string with '%' or '`' characters (PR98457)
       d: Fix ICE in gimplify_var_or_parm_decl, at gimplify.c:2755 (PR100882)
       d: Respect explicit align(N) type alignment (PR100935)
@@ -1067,6 +1070,7 @@ Iain Buclaw (30):
       libphobos: Fix std.path.expandTilde raising onOutOfMemory
       d: Fix ICE on explicit immutable struct import [PR108877]
       d: Suboptimal codegen for __builtin_expect(cond, false)
+      d: Fix ICE in setValue, at d/dmd/dinterpret.c:7013
 
 Iain Sandoe (45):
       coroutines: Fix a typo in rewriting the function.
@@ -27436,10 +27440,32 @@ index 38820bc170f..2747f8f1b4c 100644
    gcov_write_unsigned (end_column);
    gcov_write_length (offset);
 diff --git a/gcc/cp/ChangeLog b/gcc/cp/ChangeLog
-index b576f9a3678..a8d4a726e55 100644
+index b576f9a3678..ff2bf92954e 100644
 --- a/gcc/cp/ChangeLog
 +++ b/gcc/cp/ChangeLog
-@@ -1,3 +1,976 @@
+@@ -1,3 +1,998 @@
++2023-06-30  Patrick Palka  <ppalka@redhat.com>
++
++	Backported from master:
++	2022-01-28  Patrick Palka  <ppalka@redhat.com>
++		    Jason Merrill  <jason@redhat.com>
++
++	PR c++/92752
++	* typeck.c (build_ptrmemfunc): Cast a nullptr constant to the
++	unqualified pointer type not the qualified one.
++
++2023-06-30  Patrick Palka  <ppalka@redhat.com>
++
++	Backported from master:
++	2021-05-26  Patrick Palka  <ppalka@redhat.com>
++
++	PR c++/97420
++	* cvt.c (noexcept_conv_p): Remove redundant checks and simplify.
++	(fnptr_conv_p): Don't call non_reference.  Use INDIRECT_TYPE_P
++	instead of TYPE_PTR_P.
++	* pt.c (convert_nontype_argument_function): Look through
++	implicit INDIRECT_REFs before calling strip_fnptr_conv.
++
 +2023-05-03  Jakub Jelinek  <jakub@redhat.com>
 +
 +	Backported from master:
@@ -31587,10 +31613,19 @@ index 53e9603868d..5ecedef0bb4 100644
        return DEBUG_IMPLICIT_PTR_DECL (x)
  	     == DEBUG_IMPLICIT_PTR_DECL (y);
 diff --git a/gcc/d/ChangeLog b/gcc/d/ChangeLog
-index 8bc729ae32d..cae0ecf13ab 100644
+index 8bc729ae32d..dc5e5b33fc2 100644
 --- a/gcc/d/ChangeLog
 +++ b/gcc/d/ChangeLog
-@@ -1,3 +1,255 @@
+@@ -1,3 +1,264 @@
++2023-07-01  Iain Buclaw  <ibuclaw@gdcproject.org>
++
++	Backported from master:
++	2023-07-01  Iain Buclaw  <ibuclaw@gdcproject.org>
++
++	PR d/110511
++	* dmd/dinterpret.c (Interpreter::visit (CastExp *)): Handle casting
++	null to int or float.
++
 +2023-06-26  Iain Buclaw  <ibuclaw@gdcproject.org>
 +
 +	Backported from master:
@@ -32529,7 +32564,7 @@ index a3df701c341..905aed72625 100644
                      goto Lok;
                  }
 diff --git a/gcc/d/dmd/dinterpret.c b/gcc/d/dmd/dinterpret.c
-index 8a02aa8d31d..214a73cd8bb 100644
+index 8a02aa8d31d..51b4a7d1c48 100644
 --- a/gcc/d/dmd/dinterpret.c
 +++ b/gcc/d/dmd/dinterpret.c
 @@ -645,7 +645,16 @@ Expression *ctfeInterpret(Expression *e)
@@ -32549,6 +32584,30 @@ index 8a02aa8d31d..214a73cd8bb 100644
          if (e->type->ty == Terror)
              return new ErrorExp();
          /* fall through */
+@@ -5834,12 +5843,22 @@ public:
+         }
+         if (e->to->ty == Tsarray)
+             e1 = resolveSlice(e1);
+-        if (e->to->toBasetype()->ty == Tbool && e1->type->ty == Tpointer)
++        Type *tobt = e->to->toBasetype();
++        if (tobt->ty == Tbool && e1->type->ty == Tpointer)
+         {
+             new(pue) IntegerExp(e->loc, e1->op != TOKnull, e->to);
+             result = pue->exp();
+             return;
+         }
++        else if (tobt->isTypeBasic() && e1->op == TOKnull)
++        {
++            if (tobt->isintegral())
++                new(pue) IntegerExp(e->loc, 0, e->to);
++            else if (tobt->isreal())
++                new(pue) RealExp(e->loc, CTFloat::zero, e->to);
++            result = pue->exp();
++            return;
++        }
+         result = ctfeCast(pue, e->loc, e->type, e->to, e1);
+     }
+ 
 diff --git a/gcc/d/dmd/expression.c b/gcc/d/dmd/expression.c
 index c639fd10aae..25ee68b68a4 100644
 --- a/gcc/d/dmd/expression.c
@@ -43000,10 +43059,35 @@ index f5a6d507e91..6b2c3e17346 100644
  DEFHOOKPOD
  (have_tls,
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index 2913065bf31..79db43dcef0 100644
+index 2913065bf31..1df3c6b2dc1 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,4440 @@
+@@ -1,3 +1,4465 @@
++2023-07-01  Iain Buclaw  <ibuclaw@gdcproject.org>
++
++	Backported from master:
++	2023-07-01  Iain Buclaw  <ibuclaw@gdcproject.org>
++
++	PR d/110511
++	* gdc.test/compilable/test21794.d: New test.
++
++2023-06-30  Patrick Palka  <ppalka@redhat.com>
++
++	Backported from master:
++	2022-01-28  Patrick Palka  <ppalka@redhat.com>
++		    Jason Merrill  <jason@redhat.com>
++
++	PR c++/92752
++	* g++.dg/warn/Wignored-qualifiers2.C: New test.
++
++2023-06-30  Patrick Palka  <ppalka@redhat.com>
++
++	Backported from master:
++	2021-05-26  Patrick Palka  <ppalka@redhat.com>
++
++	PR c++/97420
++	* g++.dg/cpp0x/noexcept68.C: New test.
++
 +2023-06-28  liuhongt  <hongtao.liu@intel.com>
 +
 +	* gcc.target/i386/avx-vzeroupper-29.c: New testcase.
@@ -63530,6 +63614,64 @@ index 00000000000..b8f5df4b46d
 +
 +// failed, gagged error: expression B().foo()() has no type
 +static assert(is(typeof(B().foo) == void));
+diff --git a/gcc/testsuite/gdc.test/compilable/test21794.d b/gcc/testsuite/gdc.test/compilable/test21794.d
+new file mode 100644
+index 00000000000..68e504bce56
+--- /dev/null
++++ b/gcc/testsuite/gdc.test/compilable/test21794.d
+@@ -0,0 +1,52 @@
++// https://issues.dlang.org/show_bug.cgi?id=21794
++/*
++TEST_OUTPUT:
++---
++0
++0u
++0L
++0LU
++0.0F
++0.0
++0.0L
++---
++*/
++
++bool fun(void* p) {
++    const x = cast(ulong)p;
++    return 1;
++}
++
++static assert(fun(null));
++
++T fun2(T)(void* p) {
++    const x = cast(T)p;
++    return x;
++}
++
++// These were an error before, they were returning a NullExp instead of IntegerExp/RealExp
++
++static assert(fun2!int(null)    == 0);
++static assert(fun2!uint(null)   == 0);
++static assert(fun2!long(null)   == 0);
++static assert(fun2!ulong(null)  == 0);
++static assert(fun2!float(null)  == 0);
++static assert(fun2!double(null) == 0);
++static assert(fun2!real(null)   == 0);
++
++// These were printing 'null' instead of the corresponding number
++
++const i = cast(int)null;
++const ui = cast(uint)null;
++const l = cast(long)null;
++const ul = cast(ulong)null;
++const f = cast(float)null;
++const d = cast(double)null;
++const r = cast(real)null;
++pragma(msg, i);
++pragma(msg, ui);
++pragma(msg, l);
++pragma(msg, ul);
++pragma(msg, f);
++pragma(msg, d);
++pragma(msg, r);
 diff --git a/gcc/testsuite/gdc.test/compilable/test22006.d b/gcc/testsuite/gdc.test/compilable/test22006.d
 new file mode 100644
 index 00000000000..913dd859012
