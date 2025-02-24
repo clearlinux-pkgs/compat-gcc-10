@@ -12310,15 +12310,23 @@ index 395b810262a..24ae41bcac5 100644
 -	      && pre[src->index] >= pre[dest->index]
 -	      && !(dest->flags & post_assigned))
 -	    e->flags |= EDGE_DFS_BACK;
+-
+-	  if (idx != 0 && stack[idx - 1]->src != src)
 +	  if (bb_data[ei_edge (ei)->dest->index].depth > 0) /* on the stack */
-+	    {
+ 	    {
+-	      /* There are no more successors for the SRC node
+-		 so assign its reverse completion number.  */
+-	      post[src->index] = rev_post_order_num;
+-	      src->flags |= post_assigned;
+-	      rev_post_order[rev_post_order_num] = src->index;
+-	      rev_post_order_num++;
 +	      ei_edge (ei)->flags |= EDGE_DFS_BACK;
 +	      n_sccs++;
 +	      ei_edge (ei)->dest->flags |= is_header;
 +	      ::new (&bb_data[ei_edge (ei)->dest->index].scc_exits)
 +		auto_vec<int, 2> ();
 +	      tag_header (dest->index, ei_edge (ei)->dest->index, bb_data);
-+	    }
+ 	    }
 +	  else if (bb_data[ei_edge (ei)->dest->index].scc == -1)
 +	    ;
 +	  else
@@ -12351,7 +12359,7 @@ index 395b810262a..24ae41bcac5 100644
 +    /* Return from DFS recursion.  */
 +    goto ret_from_find_loops;
  
--	  if (idx != 0 && stack[idx - 1]->src != src)
+-	  stack.pop ();
 +  /* Optimize for no SCCs found or !for_iteration.  */
 +  if (n_sccs == 0 || !for_iteration)
 +    {
@@ -12409,13 +12417,7 @@ index 395b810262a..24ae41bcac5 100644
 +	  int tem_src_scc = src_scc;
 +	  unsigned src_scc_depth = 0;
 +	  while (tem_src_scc != -1)
- 	    {
--	      /* There are no more successors for the SRC node
--		 so assign its reverse completion number.  */
--	      post[src->index] = rev_post_order_num;
--	      src->flags |= post_assigned;
--	      rev_post_order[rev_post_order_num] = src->index;
--	      rev_post_order_num++;
++	    {
 +	      if (bb_data[tem_src_scc].scc == dest_scc)
 +		{
 +		  edge_count++;
@@ -12424,7 +12426,7 @@ index 395b810262a..24ae41bcac5 100644
 +		}
 +	      tem_src_scc = bb_data[tem_src_scc].scc;
 +	      src_scc_depth++;
- 	    }
++	    }
 +	  /* Else find the outermost SCC this edge exits (exits
 +	     from the inner SCCs are not important for the DFS
 +	     walk adjustment).  Do so by computing the common
@@ -12450,9 +12452,10 @@ index 395b810262a..24ae41bcac5 100644
 +		}
 +	      bb_data[src_scc].scc_exits.safe_push (e->dest->index);
 +	    }
-+	}
-+    }
-+
+ 	}
+     }
+ 
+-  XDELETEVEC (pre);
 +  /* Now the second DFS walk to compute a RPO where the extent of SCCs
 +     is minimized thus SCC members are adjacent in the RPO array.
 +     This is done by performing a DFS walk computing RPO with first visiting
@@ -12467,7 +12470,7 @@ index 395b810262a..24ae41bcac5 100644
 +  basic_block edest;
 +  dest = entry->dest;
  
--	  stack.pop ();
+-  /* Clear the temporarily allocated flags.  */
 +  /* DFS process DEST.  */
 +dfs_rpo:
 +  gcc_checking_assert ((dest->flags & visited) == 0);
@@ -12537,14 +12540,13 @@ index 395b810262a..24ae41bcac5 100644
 +	    if (!bitmap_bit_p (exit_bbs, EDGE_SUCC (dest, i)->dest->index))
 +	      estack.quick_push (std::make_pair (dest,
 +						 EDGE_SUCC (dest, i)->dest));
- 	}
-     }
++	}
++    }
 +  rev_post_order[--idx] = dest->index;
 +  if (!estack.is_empty ())
 +    /* Return from DFS recursion.  */
 +    goto ret_from_dfs_rpo;
- 
--  XDELETEVEC (pre);
++
 +  /* Each SCC extends are from the position of the header inside
 +     the RPO array up to RPO array index scc_end[header-index].  */
 +  if (toplevel_scc_extents)
@@ -12558,8 +12560,7 @@ index 395b810262a..24ae41bcac5 100644
 +	    i = bb_data[bb->index].scc_end;
 +	  }
 +      }
- 
--  /* Clear the temporarily allocated flags.  */
++
 +  /* Clear the temporarily allocated flags and free memory.  */
    for (int i = 0; i < rev_post_order_num; ++i)
 -    BASIC_BLOCK_FOR_FN (fn, rev_post_order[i])->flags
@@ -16213,10 +16214,15 @@ index 449219e90fc..a19006f5008 100644
 +  int (*)[__ARM_mve_type_int8x16_t][__ARM_mve_type_int8x16_t]: __arm_vmlsdavaxq_p_s8 (p0, __ARM_mve_coerce(__p1, int8x16_t), __ARM_mve_coerce(__p2, int8x16_t), p3), \
 +  int (*)[__ARM_mve_type_int16x8_t][__ARM_mve_type_int16x8_t]: __arm_vmlsdavaxq_p_s16 (p0, __ARM_mve_coerce(__p1, int16x8_t), __ARM_mve_coerce(__p2, int16x8_t), p3), \
 +  int (*)[__ARM_mve_type_int32x4_t][__ARM_mve_type_int32x4_t]: __arm_vmlsdavaxq_p_s32 (p0, __ARM_mve_coerce(__p1, int32x4_t), __ARM_mve_coerce(__p2, int32x4_t), p3));})
-+
+ 
+-#define __arm_vmlsdavaq_p(p0,p1,p2,p3) ({ __typeof(p0) __p0 = (p0); \
+-  __typeof(p1) __p1 = (p1); \
 +#define __arm_vmlsdavaq(p0,p1,p2) ({  __typeof(p1) __p1 = (p1); \
-+  __typeof(p2) __p2 = (p2); \
-+  _Generic( (int (*)[__ARM_mve_typeid(__p1)][__ARM_mve_typeid(__p2)])0, \
+   __typeof(p2) __p2 = (p2); \
+   _Generic( (int (*)[__ARM_mve_typeid(__p1)][__ARM_mve_typeid(__p2)])0, \
+-  int (*)[__ARM_mve_type_int8x16_t][__ARM_mve_type_int8x16_t]: __arm_vmlsdavaq_p_s8(__p0, __ARM_mve_coerce(__p1, int8x16_t), __ARM_mve_coerce(__p2, int8x16_t), p3), \
+-  int (*)[__ARM_mve_type_int16x8_t][__ARM_mve_type_int16x8_t]: __arm_vmlsdavaq_p_s16(__p0, __ARM_mve_coerce(__p1, int16x8_t), __ARM_mve_coerce(__p2, int16x8_t), p3), \
+-  int (*)[__ARM_mve_type_int32x4_t][__ARM_mve_type_int32x4_t]: __arm_vmlsdavaq_p_s32(__p0, __ARM_mve_coerce(__p1, int32x4_t), __ARM_mve_coerce(__p2, int32x4_t), p3));})
 +  int (*)[__ARM_mve_type_int8x16_t][__ARM_mve_type_int8x16_t]: __arm_vmlsdavaq_s8(p0, __ARM_mve_coerce(__p1, int8x16_t), __ARM_mve_coerce(__p2, int8x16_t)), \
 +  int (*)[__ARM_mve_type_int16x8_t][__ARM_mve_type_int16x8_t]: __arm_vmlsdavaq_s16(p0, __ARM_mve_coerce(__p1, int16x8_t), __ARM_mve_coerce(__p2, int16x8_t)), \
 +  int (*)[__ARM_mve_type_int32x4_t][__ARM_mve_type_int32x4_t]: __arm_vmlsdavaq_s32(p0, __ARM_mve_coerce(__p1, int32x4_t), __ARM_mve_coerce(__p2, int32x4_t)));})
@@ -16227,10 +16233,9 @@ index 449219e90fc..a19006f5008 100644
 +  int (*)[__ARM_mve_type_int8x16_t][__ARM_mve_type_int8x16_t]: __arm_vmlsdavaxq_s8(p0, __ARM_mve_coerce(__p1, int8x16_t), __ARM_mve_coerce(__p2, int8x16_t)), \
 +  int (*)[__ARM_mve_type_int16x8_t][__ARM_mve_type_int16x8_t]: __arm_vmlsdavaxq_s16(p0, __ARM_mve_coerce(__p1, int16x8_t), __ARM_mve_coerce(__p2, int16x8_t)), \
 +  int (*)[__ARM_mve_type_int32x4_t][__ARM_mve_type_int32x4_t]: __arm_vmlsdavaxq_s32(p0, __ARM_mve_coerce(__p1, int32x4_t), __ARM_mve_coerce(__p2, int32x4_t)));})
- 
--#define __arm_vmlsdavaq_p(p0,p1,p2,p3) ({ __typeof(p0) __p0 = (p0); \
++
 +#define __arm_vmlsdavq_p(p0,p1,p2) ({ __typeof(p0) __p0 = (p0); \
-   __typeof(p1) __p1 = (p1); \
++  __typeof(p1) __p1 = (p1); \
 +  _Generic( (int (*)[__ARM_mve_typeid(__p0)][__ARM_mve_typeid(__p1)])0, \
 +  int (*)[__ARM_mve_type_int8x16_t][__ARM_mve_type_int8x16_t]: __arm_vmlsdavq_p_s8 (__ARM_mve_coerce(__p0, int8x16_t), __ARM_mve_coerce(__p1, int8x16_t), p2), \
 +  int (*)[__ARM_mve_type_int16x8_t][__ARM_mve_type_int16x8_t]: __arm_vmlsdavq_p_s16 (__ARM_mve_coerce(__p0, int16x8_t), __ARM_mve_coerce(__p1, int16x8_t), p2), \
@@ -16244,11 +16249,8 @@ index 449219e90fc..a19006f5008 100644
 +  int (*)[__ARM_mve_type_int32x4_t][__ARM_mve_type_int32x4_t]: __arm_vmlsdavxq_p_s32 (__ARM_mve_coerce(__p0, int32x4_t), __ARM_mve_coerce(__p1, int32x4_t), p2));})
 +
 +#define __arm_vmlsdavaq_p(p0,p1,p2,p3) ({ __typeof(p1) __p1 = (p1); \
-   __typeof(p2) __p2 = (p2); \
-   _Generic( (int (*)[__ARM_mve_typeid(__p1)][__ARM_mve_typeid(__p2)])0, \
--  int (*)[__ARM_mve_type_int8x16_t][__ARM_mve_type_int8x16_t]: __arm_vmlsdavaq_p_s8(__p0, __ARM_mve_coerce(__p1, int8x16_t), __ARM_mve_coerce(__p2, int8x16_t), p3), \
--  int (*)[__ARM_mve_type_int16x8_t][__ARM_mve_type_int16x8_t]: __arm_vmlsdavaq_p_s16(__p0, __ARM_mve_coerce(__p1, int16x8_t), __ARM_mve_coerce(__p2, int16x8_t), p3), \
--  int (*)[__ARM_mve_type_int32x4_t][__ARM_mve_type_int32x4_t]: __arm_vmlsdavaq_p_s32(__p0, __ARM_mve_coerce(__p1, int32x4_t), __ARM_mve_coerce(__p2, int32x4_t), p3));})
++  __typeof(p2) __p2 = (p2); \
++  _Generic( (int (*)[__ARM_mve_typeid(__p1)][__ARM_mve_typeid(__p2)])0, \
 +  int (*)[__ARM_mve_type_int8x16_t][__ARM_mve_type_int8x16_t]: __arm_vmlsdavaq_p_s8(p0, __ARM_mve_coerce(__p1, int8x16_t), __ARM_mve_coerce(__p2, int8x16_t), p3), \
 +  int (*)[__ARM_mve_type_int16x8_t][__ARM_mve_type_int16x8_t]: __arm_vmlsdavaq_p_s16(p0, __ARM_mve_coerce(__p1, int16x8_t), __ARM_mve_coerce(__p2, int16x8_t), p3), \
 +  int (*)[__ARM_mve_type_int32x4_t][__ARM_mve_type_int32x4_t]: __arm_vmlsdavaq_p_s32(p0, __ARM_mve_coerce(__p1, int32x4_t), __ARM_mve_coerce(__p2, int32x4_t), p3));})
@@ -36662,38 +36664,38 @@ index 8edc83a42c3..c12cbe92e85 100644
        if (!comp_iter)
  	{
 -	  if (comp->initializer)
--	    {
--	      if (!gfc_notify_std (GFC_STD_F2003, "Structure constructor "
--				   "with missing optional arguments at %C"))
--		return false;
--	      value = gfc_copy_expr (comp->initializer);
--	    }
--	  else if (comp->attr.allocatable
--		   || (comp->ts.type == BT_CLASS
--		       && CLASS_DATA (comp)->attr.allocatable))
 +	  /* F2018 7.5.10: If an allocatable component has no corresponding
 +	     component-data-source, then that component has an allocation
 +	     status of unallocated....  */
 +	  if (comp->attr.allocatable
 +	      || (comp->ts.type == BT_CLASS
 +		  && CLASS_DATA (comp)->attr.allocatable))
- 	    {
- 	      if (!gfc_notify_std (GFC_STD_F2008, "No initializer for "
- 				   "allocatable component %qs given in the "
- 				   "structure constructor at %C", comp->name))
- 		return false;
++	    {
++	      if (!gfc_notify_std (GFC_STD_F2008, "No initializer for "
++				   "allocatable component %qs given in the "
++				   "structure constructor at %C", comp->name))
++		return false;
 +	      value = gfc_get_null_expr (&gfc_current_locus);
- 	    }
++	    }
 +	  /* ....(Preceeding sentence) If a component with default
 +	     initialization has no corresponding component-data-source, then
 +	     the default initialization is applied to that component.  */
 +	  else if (comp->initializer)
-+	    {
-+	      if (!gfc_notify_std (GFC_STD_F2003, "Structure constructor "
-+				   "with missing optional arguments at %C"))
-+		return false;
-+	      value = gfc_copy_expr (comp->initializer);
-+	    }
+ 	    {
+ 	      if (!gfc_notify_std (GFC_STD_F2003, "Structure constructor "
+ 				   "with missing optional arguments at %C"))
+ 		return false;
+ 	      value = gfc_copy_expr (comp->initializer);
+ 	    }
+-	  else if (comp->attr.allocatable
+-		   || (comp->ts.type == BT_CLASS
+-		       && CLASS_DATA (comp)->attr.allocatable))
+-	    {
+-	      if (!gfc_notify_std (GFC_STD_F2008, "No initializer for "
+-				   "allocatable component %qs given in the "
+-				   "structure constructor at %C", comp->name))
+-		return false;
+-	    }
 +	  /* Do not trap components such as the string length for deferred
 +	     length character components.  */
  	  else if (!comp->attr.artificial)
@@ -41683,16 +41685,16 @@ index 16d4d63c86f..78825893ee2 100644
  #include "objc-runtime-hooks.h"
  
  #include "objc-runtime-shared-support.h"
--#include "objc-encoding.h"
--
++#include "objc-next-metadata-tags.h"
+ #include "objc-encoding.h"
+ 
 -/* rt_trees identifiers - shared between NeXT implementations.  These allow
 -   the FE to tag meta-data in a manner that survives LTO and can be used when
 -   the  runtime requires that certain meta-data items appear in particular
 -   named sections.  */
- #include "objc-next-metadata-tags.h"
+-#include "objc-next-metadata-tags.h"
 -extern GTY(()) tree objc_rt_trees[OCTI_RT_META_MAX];
-+#include "objc-encoding.h"
- 
+-
  /* Rather than repeatedly looking up the identifiers, we save them here.  */
 +extern GTY(()) tree objc_rt_trees[OCTI_RT_META_MAX];
  tree objc_rt_trees[OCTI_RT_META_MAX];
@@ -42565,31 +42567,30 @@ index 3aac3c14817..6b61a6d8975 100644
 -      INSN_CODE (insn) = -1;
 -      if (recog_memoized (insn) == -1)
 -	fail = 1;
+-      /* In case the flags don't die here, recurse to try fix
+-         following user too.  */
+-      else if (! dead_or_set_p (insn, ix86_flags_rtx))
 +      if (DEBUG_INSN_P (insn))
 +	gcc_assert (debug_seen < 0);
 +      else
-+	{
-+	  INSN_CODE (insn) = -1;
-+	  if (recog_memoized (insn) == -1)
-+	    fail = 1;
-+	}
-       /* In case the flags don't die here, recurse to try fix
--         following user too.  */
--      else if (! dead_or_set_p (insn, ix86_flags_rtx))
-+	 following user too.  */
-+      if (!fail && !dead_or_set_p (insn, ix86_flags_rtx))
  	{
 -	  insn = next_flags_user (insn);
 -	  if (!insn || !swap_rtx_condition (insn))
-+	  insn = next_flags_user (insn, debug_seen);
-+	  if (!insn || !swap_rtx_condition (insn, debug_seen))
++	  INSN_CODE (insn) = -1;
++	  if (recog_memoized (insn) == -1)
  	    fail = 1;
  	}
 -      if (fail)
--	{
++      /* In case the flags don't die here, recurse to try fix
++	 following user too.  */
++      if (!fail && !dead_or_set_p (insn, ix86_flags_rtx))
+ 	{
 -	  swap_rtx_condition_1 (pat);
 -	  return 0;
--	}
++	  insn = next_flags_user (insn, debug_seen);
++	  if (!insn || !swap_rtx_condition (insn, debug_seen))
++	    fail = 1;
+ 	}
 -      return 1;
 +      if (fail || debug_seen == 1)
 +	swap_rtx_condition_1 (pat);
@@ -70348,19 +70349,28 @@ index 2fad2472775..328c743d232 100644
  
    /* In other cases, the expression is not materialized, so there
       is no destination to pass to may_propagate_copy.  On the other
-@@ -1352,43 +1356,6 @@ may_propagate_copy_into_asm (tree dest ATTRIBUTE_UNUSED)
+@@ -1352,25 +1356,19 @@ may_propagate_copy_into_asm (tree dest ATTRIBUTE_UNUSED)
  }
  
  
 -/* Common code for propagate_value and replace_exp.
--
++/* Replace *OP_P with value VAL (assumed to be a constant or another SSA_NAME).
+ 
 -   Replace use operand OP_P with VAL.  FOR_PROPAGATION indicates if the
 -   replacement is done to propagate a value or not.  */
--
++   Use this version when not const/copy propagating values.  For example,
++   PRE uses this version when building expressions as they would appear
++   in specific blocks taking into account actions of PHI nodes.
+ 
 -static void
 -replace_exp_1 (use_operand_p op_p, tree val,
 -    	       bool for_propagation ATTRIBUTE_UNUSED)
--{
++   The statement in which an expression has been replaced should be
++   folded using fold_stmt_inplace.  */
++
++void
++replace_exp (use_operand_p op_p, tree val)
+ {
 -  if (flag_checking)
 -    {
 -      tree op = USE_FROM_PTR (op_p);
@@ -70371,48 +70381,30 @@ index 2fad2472775..328c743d232 100644
 -    }
 -
 -  if (TREE_CODE (val) == SSA_NAME)
--    SET_USE (op_p, val);
--  else
--    SET_USE (op_p, unshare_expr (val));
--}
--
--
--/* Propagate the value VAL (assumed to be a constant or another SSA_NAME)
--   into the operand pointed to by OP_P.
--
--   Use this version for const/copy propagation as it will perform additional
--   checks to ensure validity of the const/copy propagation.  */
--
--void
--propagate_value (use_operand_p op_p, tree val)
--{
++  if (TREE_CODE (val) == SSA_NAME || CONSTANT_CLASS_P (val))
+     SET_USE (op_p, val);
+   else
+     SET_USE (op_p, unshare_expr (val));
+@@ -1386,22 +1384,10 @@ replace_exp_1 (use_operand_p op_p, tree val,
+ void
+ propagate_value (use_operand_p op_p, tree val)
+ {
 -  replace_exp_1 (op_p, val, true);
 -}
 -
- /* Replace *OP_P with value VAL (assumed to be a constant or another SSA_NAME).
- 
-    Use this version when not const/copy propagating values.  For example,
-@@ -1401,7 +1368,26 @@ propagate_value (use_operand_p op_p, tree val)
- void
- replace_exp (use_operand_p op_p, tree val)
- {
+-/* Replace *OP_P with value VAL (assumed to be a constant or another SSA_NAME).
+-
+-   Use this version when not const/copy propagating values.  For example,
+-   PRE uses this version when building expressions as they would appear
+-   in specific blocks taking into account actions of PHI nodes.
+-
+-   The statement in which an expression has been replaced should be
+-   folded using fold_stmt_inplace.  */
+-
+-void
+-replace_exp (use_operand_p op_p, tree val)
+-{
 -  replace_exp_1 (op_p, val, false);
-+  if (TREE_CODE (val) == SSA_NAME || CONSTANT_CLASS_P (val))
-+    SET_USE (op_p, val);
-+  else
-+    SET_USE (op_p, unshare_expr (val));
-+}
-+
-+
-+/* Propagate the value VAL (assumed to be a constant or another SSA_NAME)
-+   into the operand pointed to by OP_P.
-+
-+   Use this version for const/copy propagation as it will perform additional
-+   checks to ensure validity of the const/copy propagation.  */
-+
-+void
-+propagate_value (use_operand_p op_p, tree val)
-+{
 +  if (flag_checking)
 +    gcc_assert (may_propagate_copy (USE_FROM_PTR (op_p), val,
 +				    !is_a <gphi *> (USE_STMT (op_p))));
@@ -71808,14 +71800,14 @@ index 6418edb5204..2ef71ec41c0 100644
  		  if (aligned_access_p (first_dr_info))
  		    ;
 -		  else if (DR_MISALIGNMENT (first_dr_info) == -1)
-+		  else
- 		    TREE_TYPE (data_ref)
- 		      = build_aligned_type (TREE_TYPE (data_ref),
- 					    align * BITS_PER_UNIT);
--		  else
 -		    TREE_TYPE (data_ref)
 -		      = build_aligned_type (TREE_TYPE (data_ref),
+-					    align * BITS_PER_UNIT);
+ 		  else
+ 		    TREE_TYPE (data_ref)
+ 		      = build_aligned_type (TREE_TYPE (data_ref),
 -					    TYPE_ALIGN (elem_type));
++					    align * BITS_PER_UNIT);
  		  vect_copy_ref_info (data_ref, DR_REF (first_dr_info->dr));
  		  gassign *new_stmt
  		    = gimple_build_assign (data_ref, vec_oprnd);
@@ -74989,46 +74981,33 @@ index 9970d003436..cb0cbbdb1c5 100644
 +SHLIB_VERSTRING = -compatibility_version $(SHLIB_SO_MINVERSION) \
 +		  -current_version $(SHLIB_SOVERSION)
  SHLIB_EXT = .dylib
-+SHLIB_LC = -lSystem
-+SHLIB_INSTALL_DIR = $(slibdir)
-+
-+SHLIB_MKMAP = $(srcdir)/mkmap-flat.awk
-+SHLIB_MKMAP_OPTS = -v leading_underscore=1
-+
-+# Shorthand expressions for the LINK below, these are substituted in the
-+# link expression.
- SHLIB_INSTALL_NAME = @shlib_base_name@.$(SHLIB_SOVERSION)$(SHLIB_EXT)
+-SHLIB_INSTALL_NAME = @shlib_base_name@.$(SHLIB_SOVERSION)$(SHLIB_EXT)
 -SHLIB_SONAME = @shlib_base_name@$(SHLIB_EXT)
 -SHLIB_SOLINK = @shlib_base_name@.so
- SHLIB_MAP = @shlib_map_file@
+-SHLIB_MAP = @shlib_map_file@
 -SHLIB_OBJS = @shlib_objs@
- SHLIB_DIR = @multilib_dir@
+-SHLIB_DIR = @multilib_dir@
 -SHLIB_LC = -lc
-+SHLIB_SONAME = @shlib_base_name@$(SHLIB_EXT)
- 
+-
 -# Darwin only searches in /usr/lib for shared libraries, not in subdirectories,
 -# so the libgcc variants have different names not different locations.
 -# Note that this version is used for the loader, not the linker; the linker
 -# uses the stub versions named by the versioned members of $(INSTALL_FILES).
-+# Darwin only searches in shlib_slibdir for shared libraries, not in
-+# subdirectories.  The link builds one architecture slice in its designated
-+# subdir.  The code under MULTIBUILDTOP combines these into a single FAT
-+# library, that is what we eventually install.
- 
+-
 -SHLIB_LINK = $(CC) $(LIBGCC2_CFLAGS) -dynamiclib -nodefaultlibs \
 -	-install_name @shlib_slibdir@/$(SHLIB_INSTALL_NAME) \
-+SHLIB_LINK = $(CC) $(LIBGCC2_CFLAGS) $(LDFLAGS) -dynamiclib -nodefaultlibs \
-+	-install_name $(SHLIB_INSTALL_DIR)/$(SHLIB_INSTALL_NAME) \
- 	-single_module -o $(SHLIB_DIR)/$(SHLIB_SONAME) \
- 	-Wl,-exported_symbols_list,$(SHLIB_MAP) \
- 	$(SHLIB_VERSTRING) \
+-	-single_module -o $(SHLIB_DIR)/$(SHLIB_SONAME) \
+-	-Wl,-exported_symbols_list,$(SHLIB_MAP) \
+-	$(SHLIB_VERSTRING) \
 -	@multilib_flags@ $(SHLIB_OBJS) $(SHLIB_LC)
--
--SHLIB_MKMAP = $(srcdir)/mkmap-flat.awk
--SHLIB_MKMAP_OPTS = -v leading_underscore=1
++SHLIB_LC = -lSystem
++SHLIB_INSTALL_DIR = $(slibdir)
+ 
+ SHLIB_MKMAP = $(srcdir)/mkmap-flat.awk
+ SHLIB_MKMAP_OPTS = -v leading_underscore=1
 -SHLIB_MAPFILES = libgcc-std.ver $(srcdir)/config/libgcc-libsystem.ver
 -SHLIB_VERPFX = $(srcdir)/config/$(cpu_type)/libgcc-darwin
--
+ 
 -# we're only going to build the stubs if the target slib is /usr/lib
 -# there is no other case in which they're useful in a live system.
 -ifeq (/usr/lib,$(shlib_slibdir))
@@ -75036,12 +75015,28 @@ index 9970d003436..cb0cbbdb1c5 100644
 -else
 -LGCC_STUBS =
 -endif
--
++# Shorthand expressions for the LINK below, these are substituted in the
++# link expression.
++SHLIB_INSTALL_NAME = @shlib_base_name@.$(SHLIB_SOVERSION)$(SHLIB_EXT)
++SHLIB_MAP = @shlib_map_file@
++SHLIB_DIR = @multilib_dir@
++SHLIB_SONAME = @shlib_base_name@$(SHLIB_EXT)
+ 
 -LGCC_FILES = libgcc_s.$(SHLIB_SOVERSION)$(SHLIB_EXT)
 -LGCC_FILES += $(LGCC_STUBS)
 -LEXT_STUBS = libgcc_ext.10.4$(SHLIB_EXT) libgcc_ext.10.5$(SHLIB_EXT)
 -LGCC_FILES += $(LEXT_STUBS)
 -INSTALL_FILES=$(LGCC_FILES)
++# Darwin only searches in shlib_slibdir for shared libraries, not in
++# subdirectories.  The link builds one architecture slice in its designated
++# subdir.  The code under MULTIBUILDTOP combines these into a single FAT
++# library, that is what we eventually install.
++
++SHLIB_LINK = $(CC) $(LIBGCC2_CFLAGS) $(LDFLAGS) -dynamiclib -nodefaultlibs \
++	-install_name $(SHLIB_INSTALL_DIR)/$(SHLIB_INSTALL_NAME) \
++	-single_module -o $(SHLIB_DIR)/$(SHLIB_SONAME) \
++	-Wl,-exported_symbols_list,$(SHLIB_MAP) \
++	$(SHLIB_VERSTRING) \
 +	@multilib_flags@ @shlib_objs@ $(SHLIB_LC)
  
  # we do our own thing
@@ -75138,6 +75133,10 @@ index 9970d003436..cb0cbbdb1c5 100644
  	  -create libgcc_s.$(SHLIB_SOVERSION)$(SHLIB_EXT)_T*
  	rm libgcc_s.$(SHLIB_SOVERSION)$(SHLIB_EXT)_T*
  
+-install-darwin-libgcc-stubs :
+-	$(mkinstalldirs) $(DESTDIR)$(slibdir)
+-	for d in $(INSTALL_FILES) ; do \
+-	  $(INSTALL_DATA) $$d $(DESTDIR)$(slibdir)/$$d || exit 1 ; \
 +ifeq ($(BUILD_LIBGCCS1),YES)
 +ifneq ($(LIBEHSOBJS),)
 +
@@ -75146,7 +75145,17 @@ index 9970d003436..cb0cbbdb1c5 100644
 +	for mlib in $$MLIBS ; do \
 +	  cp ../$${mlib}/libgcc/$${mlib}/libgcc_ehs$(SHLIB_EXT)  \
 +	    ./libgcc_ehs.$(SHLIB_SOVERSION)$(SHLIB_EXT)_T_$${mlib} || exit 1 ; \
-+	done
+ 	done
+-	if [ -f $(DESTDIR)$(slibdir)/libgcc_s_ppc64.1.dylib ]; then \
+-	  rm -f $(DESTDIR)$(slibdir)/libgcc_s_ppc64.1.dylib; \
+-	else true; fi
+-	$(LN_S) libgcc_s.1.dylib \
+-		$(DESTDIR)$(slibdir)/libgcc_s_ppc64.1.dylib
+-	if [ -f $(DESTDIR)$(slibdir)/libgcc_s_x86_64.1.dylib ]; then \
+-	  rm -f $(DESTDIR)$(slibdir)/libgcc_s_x86_64.1.dylib; \
+-	else true; fi
+-	$(LN_S) libgcc_s.1.dylib \
+-		$(DESTDIR)$(slibdir)/libgcc_s_x86_64.1.dylib
 +	$(LIPO) -output libgcc_ehs.$(SHLIB_SOVERSION)$(SHLIB_EXT) \
 +	  -create libgcc_ehs.$(SHLIB_SOVERSION)$(SHLIB_EXT)_T*
 +	rm libgcc_ehs.$(SHLIB_SOVERSION)$(SHLIB_EXT)_T*
@@ -75171,9 +75180,13 @@ index 9970d003436..cb0cbbdb1c5 100644
 +	$(LIPO) -output libgcc_s.1$(SHLIB_EXT) -create libgcc_s.1$(SHLIB_EXT)_T*
 +	rm libgcc_s.$(SHLIB_SOVERSION)$(SHLIB_EXT)_T*
 +	rm libgcc_ehs.$(SHLIB_SOVERSION)$(SHLIB_EXT)_T*
-+
-+else
-+
+ 
+ else
+ 
+-# Do not install shared libraries for any other multilibs.  Unless
+-# we're putting them in the gcc directory during a build, for
+-# compatibility with the pre-top-level layout.  In that case we
+-# need symlinks.
 +libgcc_s.1.dylib: all-multi libgcc_s.$(SHLIB_SOVERSION)$(SHLIB_EXT)
 +	MLIBS=`$(CC) --print-multi-lib | sed -e 's/;.*$$//'` ; \
 +	for mlib in $$MLIBS ; do \
@@ -75196,21 +75209,8 @@ index 9970d003436..cb0cbbdb1c5 100644
 +
 +# Install the shared libraries.
 +
- install-darwin-libgcc-stubs :
- 	$(mkinstalldirs) $(DESTDIR)$(slibdir)
--	for d in $(INSTALL_FILES) ; do \
--	  $(INSTALL_DATA) $$d $(DESTDIR)$(slibdir)/$$d || exit 1 ; \
--	done
--	if [ -f $(DESTDIR)$(slibdir)/libgcc_s_ppc64.1.dylib ]; then \
--	  rm -f $(DESTDIR)$(slibdir)/libgcc_s_ppc64.1.dylib; \
--	else true; fi
--	$(LN_S) libgcc_s.1.dylib \
--		$(DESTDIR)$(slibdir)/libgcc_s_ppc64.1.dylib
--	if [ -f $(DESTDIR)$(slibdir)/libgcc_s_x86_64.1.dylib ]; then \
--	  rm -f $(DESTDIR)$(slibdir)/libgcc_s_x86_64.1.dylib; \
--	else true; fi
--	$(LN_S) libgcc_s.1.dylib \
--		$(DESTDIR)$(slibdir)/libgcc_s_x86_64.1.dylib
++install-darwin-libgcc-stubs :
++	$(mkinstalldirs) $(DESTDIR)$(slibdir)
 +	if test x$(slibdir) = x; then \
 +	  for d in $(LGCC_FILES) ; do \
 +	    $(INSTALL_DATA) $$d $(DESTDIR)$(slibdir)/$$d || exit 1 ; \
@@ -75220,13 +75220,9 @@ index 9970d003436..cb0cbbdb1c5 100644
 +	    $(INSTALL_DATA) $$d $(DESTDIR)$(slibdir)/$$d || exit 1 ; \
 +	  done; \
 +	fi
- 
- else
- 
--# Do not install shared libraries for any other multilibs.  Unless
--# we're putting them in the gcc directory during a build, for
--# compatibility with the pre-top-level layout.  In that case we
--# need symlinks.
++
++else
++
 +# Do not install shared libraries for multilibs.  Unless we are putting them
 +# in the gcc directory during a build, for compatibility with the pre-top-
 +# level layout.  In that case we provide symlinks to the FAT lib from the
@@ -83878,46 +83874,42 @@ index d224aa3ec5e..33831936185 100644
  	struct rebind
  	{ typedef allocator<_Tp1> other; };
 -#else
+-      allocator() = default;
 +#endif
-+
-+#if __cplusplus >= 201103L
-+      // _GLIBCXX_RESOLVE_LIB_DEFECTS
-+      // 2103. std::allocator propagate_on_container_move_assignment
-+      typedef true_type propagate_on_container_move_assignment;
-+
-+      typedef true_type is_always_equal;
-+
-+#if __cplusplus > 201703L
-+      // As noted above, these members are present for C++20 to provide the
-+      // same API as the primary template, but still trivial as in pre-C++20.
-       allocator() = default;
-+      ~allocator() = default;
  
-       template<typename _Up>
- 	constexpr
+-      template<typename _Up>
+-	constexpr
 -	allocator(const allocator<_Up>&) { }
 -#endif // ! C++20
-+	allocator(const allocator<_Up>&) noexcept { }
- 
+-
 -#if __cplusplus >= 201103L && __cplusplus <= 201703L
--      // _GLIBCXX_RESOLVE_LIB_DEFECTS
--      // 2103. std::allocator propagate_on_container_move_assignment
--      typedef true_type propagate_on_container_move_assignment;
--
--      typedef true_type is_always_equal;
--
++#if __cplusplus >= 201103L
+       // _GLIBCXX_RESOLVE_LIB_DEFECTS
+       // 2103. std::allocator propagate_on_container_move_assignment
+       typedef true_type propagate_on_container_move_assignment;
+ 
+       typedef true_type is_always_equal;
+ 
 -      template<typename _Up, typename... _Args>
 -	void
 -	construct(_Up* __p, _Args&&... __args)
 -	noexcept(std::is_nothrow_constructible<_Up, _Args...>::value)
 -	{ ::new((void *)__p) _Up(std::forward<_Args>(__args)...); }
--
--      template<typename _Up>
++#if __cplusplus > 201703L
++      // As noted above, these members are present for C++20 to provide the
++      // same API as the primary template, but still trivial as in pre-C++20.
++      allocator() = default;
++      ~allocator() = default;
+ 
+       template<typename _Up>
 -	void
 -	destroy(_Up* __p)
 -	noexcept(std::is_nothrow_destructible<_Up>::value)
 -	{ __p->~_Up(); }
 -#endif // C++11 to C++17
++	constexpr
++	allocator(const allocator<_Up>&) noexcept { }
++
 +      // No allocate member because it's ill-formed by LWG 3307.
 +      // No deallocate member because it would be undefined to call it
 +      // with any pointer which wasn't obtained from allocate.
@@ -85312,12 +85304,7 @@ index c93d1e37f34..98c81a153f3 100644
 -	    ++__it;
 -	}
 -    }
-+	    __glibcxx_assert(__n >= 0);
-+	    while (__n-- > 0)
-+	      ++__it;
-+	  }
-+      }
- 
+-
 -  template<input_or_output_iterator _It, sentinel_for<_It> _Sent>
 -    constexpr void
 -    advance(_It& __it, _Sent __bound)
@@ -85332,21 +85319,7 @@ index c93d1e37f34..98c81a153f3 100644
 -	    ++__it;
 -	}
 -    }
-+    template<input_or_output_iterator _It, sentinel_for<_It> _Sent>
-+      constexpr void
-+      operator()(_It& __it, _Sent __bound) const
-+      {
-+	if constexpr (assignable_from<_It&, _Sent>)
-+	  __it = std::move(__bound);
-+	else if constexpr (sized_sentinel_for<_Sent, _It>)
-+	  (*this)(__it, __bound - __it);
-+	else
-+	  {
-+	    while (__it != __bound)
-+	      ++__it;
-+	  }
-+      }
- 
+-
 -  template<input_or_output_iterator _It, sentinel_for<_It> _Sent>
 -    constexpr iter_difference_t<_It>
 -    advance(_It& __it, iter_difference_t<_It> __n, _Sent __bound)
@@ -85354,30 +85327,11 @@ index c93d1e37f34..98c81a153f3 100644
 -      if constexpr (sized_sentinel_for<_Sent, _It>)
 -	{
 -	  const auto __diff = __bound - __it;
-+    template<input_or_output_iterator _It, sentinel_for<_It> _Sent>
-+      constexpr iter_difference_t<_It>
-+      operator()(_It& __it, iter_difference_t<_It> __n, _Sent __bound) const
-+      {
-+	if constexpr (sized_sentinel_for<_Sent, _It>)
-+	  {
-+	    const auto __diff = __bound - __it;
-+
-+	    if (__diff == 0)
-+	      return __n;
-+	    else if (__diff > 0 ? __n >= __diff : __n <= __diff)
-+	      {
-+		(*this)(__it, __bound);
-+		return __n - __diff;
-+	      }
-+	    else if (__n != 0) [[likely]]
-+	      {
- #ifdef __cpp_lib_is_constant_evaluated
+-#ifdef __cpp_lib_is_constant_evaluated
 -	  if (std::is_constant_evaluated()
 -	      && !(__n == 0 || __diff == 0 || (__n < 0 == __diff < 0)))
 -	    throw "inconsistent directions for distance and bound";
-+		if (std::is_constant_evaluated() && !(__n < 0 == __diff < 0))
-+		  throw "inconsistent directions for distance and bound";
- #endif
+-#endif
 -	  // n and bound must not lead in opposite directions:
 -	  __glibcxx_assert(__n == 0 || __diff == 0 || (__n < 0 == __diff < 0));
 -	  const auto __absdiff = __diff < 0 ? -__diff : __diff;
@@ -85390,14 +85344,7 @@ index c93d1e37f34..98c81a153f3 100644
 -	  else
 -	    {
 -	      ranges::advance(__it, __n);
-+		// n and bound must not lead in opposite directions:
-+		__glibcxx_assert(__n < 0 == __diff < 0);
-+
-+		(*this)(__it, __n);
-+		return 0;
-+	      }
-+	    else
- 	      return 0;
+-	      return 0;
 -	    }
 -	}
 -      else if (__it == __bound || __n == 0)
@@ -85407,7 +85354,9 @@ index c93d1e37f34..98c81a153f3 100644
 -	  iter_difference_t<_It> __m = 0;
 -	  do
 -	    {
--	      ++__it;
++	    __glibcxx_assert(__n >= 0);
++	    while (__n-- > 0)
+ 	      ++__it;
 -	      ++__m;
 -	    }
 -	  while (__m != __n && __it != __bound);
@@ -85427,8 +85376,60 @@ index c93d1e37f34..98c81a153f3 100644
 -      else
 -	{
 +	  }
++      }
++
++    template<input_or_output_iterator _It, sentinel_for<_It> _Sent>
++      constexpr void
++      operator()(_It& __it, _Sent __bound) const
++      {
++	if constexpr (assignable_from<_It&, _Sent>)
++	  __it = std::move(__bound);
++	else if constexpr (sized_sentinel_for<_Sent, _It>)
++	  (*this)(__it, __bound - __it);
++	else
++	  {
++	    while (__it != __bound)
++	      ++__it;
++	  }
++      }
++
++    template<input_or_output_iterator _It, sentinel_for<_It> _Sent>
++      constexpr iter_difference_t<_It>
++      operator()(_It& __it, iter_difference_t<_It> __n, _Sent __bound) const
++      {
++	if constexpr (sized_sentinel_for<_Sent, _It>)
++	  {
++	    const auto __diff = __bound - __it;
++
++	    if (__diff == 0)
++	      return __n;
++	    else if (__diff > 0 ? __n >= __diff : __n <= __diff)
++	      {
++		(*this)(__it, __bound);
++		return __n - __diff;
++	      }
++	    else if (__n != 0) [[likely]]
++	      {
+ #ifdef __cpp_lib_is_constant_evaluated
+-	  if (std::is_constant_evaluated() && __n < 0)
+-	    throw "attempt to decrement a non-bidirectional iterator";
++		if (std::is_constant_evaluated() && !(__n < 0 == __diff < 0))
++		  throw "inconsistent directions for distance and bound";
+ #endif
+-	  __glibcxx_assert(__n >= 0);
++		// n and bound must not lead in opposite directions:
++		__glibcxx_assert(__n < 0 == __diff < 0);
++
++		(*this)(__it, __n);
++		return 0;
++	      }
++	    else
++	      return 0;
++	  }
 +	else if (__it == __bound || __n == 0)
-+	  return __n;
+ 	  return __n;
+-	}
+-    }
 +	else if (__n > 0)
 +	  {
 +	    iter_difference_t<_It> __m = 0;
@@ -85453,16 +85454,10 @@ index c93d1e37f34..98c81a153f3 100644
 +	  }
 +	else
 +	  {
- #ifdef __cpp_lib_is_constant_evaluated
--	  if (std::is_constant_evaluated() && __n < 0)
--	    throw "attempt to decrement a non-bidirectional iterator";
++#ifdef __cpp_lib_is_constant_evaluated
 +	    if (std::is_constant_evaluated() && __n < 0)
 +	      throw "attempt to decrement a non-bidirectional iterator";
- #endif
--	  __glibcxx_assert(__n >= 0);
--	  return __n;
--	}
--    }
++#endif
 +	    __glibcxx_assert(__n >= 0);
 +	    return __n;
 +	  }
@@ -87697,51 +87692,47 @@ index d950e896928..15fedc32d5f 100644
  	if (_M_index == 0)
  	  {
  	    if constexpr (is_trivially_default_constructible_v<_It>)
-@@ -1696,31 +1774,75 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
-     common_iterator(const common_iterator& __x)
-     noexcept(_S_noexcept<const _It&, const _Sent&>())
-     : _M_valueless(), _M_index(__x._M_index)
-+    {
-+      if (_M_index == 0)
-+	{
-+	  if constexpr (is_trivially_default_constructible_v<_It>)
-+	    _M_it = __x._M_it;
-+	  else
-+	    ::new((void*)std::__addressof(_M_it)) _It(__x._M_it);
-+	}
-+      else if (_M_index == 1)
-+	{
-+	  if constexpr (is_trivially_default_constructible_v<_Sent>)
-+	    _M_sent = __x._M_sent;
-+	  else
-+	    ::new((void*)std::__addressof(_M_sent)) _Sent(__x._M_sent);
-+	}
-+    }
-+
-+    constexpr
-+    common_iterator(common_iterator&& __x)
-+    noexcept(_S_noexcept<_It, _Sent>())
-+    : _M_valueless(), _M_index(__x._M_index)
-     {
+@@ -1700,27 +1778,71 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
        if (_M_index == 0)
  	{
  	  if constexpr (is_trivially_default_constructible_v<_It>)
- 	    _M_it = std::move(__x._M_it);
+-	    _M_it = std::move(__x._M_it);
++	    _M_it = __x._M_it;
  	  else
--	    ::new((void*)std::__addressof(_M_it)) _It(__x._M_it);
-+	    ::new((void*)std::__addressof(_M_it)) _It(std::move(__x._M_it));
+ 	    ::new((void*)std::__addressof(_M_it)) _It(__x._M_it);
  	}
        else if (_M_index == 1)
  	{
  	  if constexpr (is_trivially_default_constructible_v<_Sent>)
- 	    _M_sent = std::move(__x._M_sent);
+-	    _M_sent = std::move(__x._M_sent);
++	    _M_sent = __x._M_sent;
  	  else
--	    ::new((void*)std::__addressof(_M_sent)) _Sent(__x._M_sent);
-+	    ::new((void*)std::__addressof(_M_sent))
-+	      _Sent(std::move(__x._M_sent));
+ 	    ::new((void*)std::__addressof(_M_sent)) _Sent(__x._M_sent);
  	}
      }
  
++    constexpr
++    common_iterator(common_iterator&& __x)
++    noexcept(_S_noexcept<_It, _Sent>())
++    : _M_valueless(), _M_index(__x._M_index)
++    {
++      if (_M_index == 0)
++	{
++	  if constexpr (is_trivially_default_constructible_v<_It>)
++	    _M_it = std::move(__x._M_it);
++	  else
++	    ::new((void*)std::__addressof(_M_it)) _It(std::move(__x._M_it));
++	}
++      else if (_M_index == 1)
++	{
++	  if constexpr (is_trivially_default_constructible_v<_Sent>)
++	    _M_sent = std::move(__x._M_sent);
++	  else
++	    ::new((void*)std::__addressof(_M_sent))
++	      _Sent(std::move(__x._M_sent));
++	}
++    }
++
 +    constexpr common_iterator&
 +    operator=(const common_iterator&) = default;
 +
@@ -90794,10 +90785,10 @@ index 4154e535a94..2b06d9ffb51 100644
 -      static_assert(is_integral_v<_Nn>,
 -	  "std::experimental::lcm arguments must be integers");
 -      static_assert(_Mn(2) != _Mn(1),
--	  "std::experimental::lcm arguments must not be bool");
--      static_assert(_Nn(2) != _Nn(1),
 +      static_assert(_Mn(2) == 2 && _Nn(2) == 2,
  	  "std::experimental::lcm arguments must not be bool");
+-      static_assert(_Nn(2) != _Nn(1),
+-	  "std::experimental::lcm arguments must not be bool");
 -      using _Up = make_unsigned_t<common_type_t<_Mn, _Nn>>;
 -      return std::__detail::__lcm(std::__detail::__absu<_Up>(__m),
 -				  std::__detail::__absu<_Up>(__n));
@@ -101904,9 +101895,13 @@ index 3d5bf882fd0..aeb21089be6 100644
      return $gdb_markers($filename,$marker)
  }
  
+-# Make note of a gdb test.  A test consists of a variable name and an
+-# expected result.
+-proc note-test {var result} {
 +proc register_gdb_test {var result kind rexp selector} {
-+    global gdb_tests
-+
+     global gdb_tests
+ 
+-    lappend gdb_tests $var $result print 0
 +    set xfail 0
 +    if {[string length $selector] > 0} {
 +	switch [dg-process-target $selector] {
@@ -101920,12 +101915,7 @@ index 3d5bf882fd0..aeb21089be6 100644
 +    lappend gdb_tests $var $result $kind $rexp $xfail
 +}
 +
- # Make note of a gdb test.  A test consists of a variable name and an
--# expected result.
--proc note-test {var result} {
--    global gdb_tests
--
--    lappend gdb_tests $var $result print 0
++# Make note of a gdb test.  A test consists of a variable name and an
 +# expected result, and an optional target selector.
 +proc note-test {var result {selector {}}} {
 +    register_gdb_test $var $result print 0 $selector
